@@ -18,7 +18,7 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
         WHERE p.status = 'active'";
 
-if ($search) {
+if ($search !== '') {
     $sql .= " AND (p.title LIKE ? OR p.description LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
@@ -93,9 +93,12 @@ include '../includes/header.php';
                         <a href="browse.php" class="text-muted small font-bold uppercase tracking-wider hover:text-primary">Clear</a>
                     </div>
 
-                    <form method="GET" action="browse.php">
-                        <?php if($search): ?>
+                    <form method="GET" action="<?php echo BASE_URL; ?>pages/browse.php">
+                        <?php if($search !== ''): ?>
                             <input type="hidden" name="q" value="<?php echo sanitize($search); ?>">
+                        <?php endif; ?>
+                        <?php if($sort): ?>
+                            <input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>">
                         <?php endif; ?>
                         
                         <!-- Category Block -->
@@ -114,7 +117,7 @@ include '../includes/header.php';
                                 </select>
                             </div>
                         </div>
-
+                        
                         <!-- Price Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
@@ -152,30 +155,31 @@ include '../includes/header.php';
 
             <!-- Results -->
             <main class="lg:col-span-4">
-                <div class="mb-8 flex flex-row items-center justify-between gap-6" style="background: var(--bg-surface); padding: 1.1rem 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
-                    <div class="flex-1 flex items-center justify-start gap-4">
-                        <div class="flex items-center gap-2">
-                            <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.35rem 1rem; border-radius: var(--radius-full); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(99,102,241,0.2);">
-                                <?php echo count($products); ?>
-                            </div>
-                        </div>
-
-                        <!-- Results Search (Modern Pill Design) -->
-                        <form method="GET" action="browse.php" class="search-bar mb-0" style="max-width: 400px; height: 46px;">
-                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                            <?php if($category): ?><input type="hidden" name="category" value="<?php echo sanitize($category); ?>"><?php endif; ?>
-                            <?php if($sort): ?><input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>"><?php endif; ?>
-                            <?php if($condition): ?><input type="hidden" name="condition" value="<?php echo sanitize($condition); ?>"><?php endif; ?>
-                            <input type="text" name="q" value="<?php echo sanitize($search); ?>" placeholder="Search items..." class="search-input">
-                            <button type="submit" class="search-btn">Find</button>
-                        </form>
+                <div class="mb-8 flex items-center justify-between gap-6" style="background: var(--bg-surface); padding: 1.1rem 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
+                    <!-- Item Count -->
+                    <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-full); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
+                        <?php echo count($products); ?> Items
                     </div>
 
+                    <!-- Search Bar (In Between) -->
+                    <form method="GET" action="" class="search-bar mb-0" style="flex: 1; max-width: 500px; height: 46px; position: relative; z-index: 50;">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        
+                        <?php if($category): ?><input type="hidden" name="category" value="<?php echo sanitize($category); ?>"><?php endif; ?>
+                        <?php if($condition): ?><input type="hidden" name="condition" value="<?php echo sanitize($condition); ?>"><?php endif; ?>
+                        <?php if($minPrice !== ''): ?><input type="hidden" name="min_price" value="<?php echo sanitize($minPrice); ?>"><?php endif; ?>
+                        <?php if($maxPrice !== ''): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
+                        <?php if($sort): ?><input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>"><?php endif; ?>
+                        
+                        <input type="text" name="q" value="<?php echo sanitize($search); ?>" placeholder="Search items..." class="search-input">
+                        <button type="submit" class="search-btn" style="height: 34px; padding: 0 1.25rem;">Find</button>
+                    </form>
+
                     <!-- Sort Dropdown -->
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 flex-shrink-0">
                         <span class="text-muted small font-bold uppercase tracking-wider" style="font-size: 0.8rem;">Sort By</span>
                         <form method="GET" action="browse.php" id="sort-form" class="mb-0">
                             <?php if($search): ?><input type="hidden" name="q" value="<?php echo sanitize($search); ?>"><?php endif; ?>
@@ -184,7 +188,7 @@ include '../includes/header.php';
                             <?php if($minPrice): ?><input type="hidden" name="min_price" value="<?php echo sanitize($minPrice); ?>"><?php endif; ?>
                             <?php if($maxPrice): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
                             
-                            <select name="sort" class="premium-input" style="padding: 0.6rem 1rem; font-size: 0.95rem; min-width: 200px; border-radius: var(--radius-full); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
+                            <select name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-full); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
                                 <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest First</option>
                                 <option value="price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>>Price: Low to High</option>
                                 <option value="price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>>Price: High to Low</option>
@@ -193,6 +197,12 @@ include '../includes/header.php';
                         </form>
                     </div>
                 </div>
+
+                <?php if($search): ?>
+                    <div class="mb-6 px-2">
+                        <span class="text-muted text-sm">Showing results for "<strong class="text-main"><?php echo sanitize($search); ?></strong>"</span>
+                    </div>
+                <?php endif; ?>
 
                 <?php if (empty($products)): ?>
                     <div class="glass-panel p-16 text-center shadow-sm" style="border-radius: var(--radius-xl); border: 2px dashed rgba(0,0,0,0.05);">

@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../config/constants.php';
 include __DIR__ . '/../config/db.php';
 include __DIR__ . '/../includes/functions.php';
 include __DIR__ . '/../includes/data.php';

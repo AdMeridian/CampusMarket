@@ -108,8 +108,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
                     <div class="form-group">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);">Price (<?php echo APP_CURRENCY; ?>) *</label>
                         <div class="relative">
-                            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-weight: bold; color: var(--text-muted);">$</span>
-                            <input type="number" name="price" step="0.01" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem 0.8rem 2rem;" required>
+                            <input type="number" name="price" step="0.01" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                         </div>
                     </div>
                 </div>
@@ -117,15 +116,21 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);">Condition *</label>
                     <div class="flex flex-wrap gap-4">
-                        <label class="flex items-center gap-2 cursor-pointer glass-panel py-2 px-4 hover-scale" style="border-radius: var(--radius-full); border: 2px solid transparent; transition: all 0.2s;" onclick="this.parentElement.querySelectorAll('label').forEach(l => l.style.borderColor='transparent'); this.style.borderColor='var(--primary)';">
-                            <input type="radio" name="condition" value="new" required class="m-0 accent-primary" style="accent-color: var(--primary);"> <span class="font-medium">New</span>
+                        <?php 
+                        $opts = [
+                            'new' => 'New',
+                            'like_new' => 'Like New',
+                            'used' => 'Used'
+                        ];
+                        $default = 'used';
+                        foreach($opts as $val => $label):
+                        ?>
+                        <label class="condition-label group flex items-center gap-3 cursor-pointer glass-panel py-3 px-5 transition-all duration-200" style="border-radius: var(--radius-full); border: 2px solid transparent;">
+                            <input type="radio" name="condition" value="<?php echo $val; ?>" <?php echo $val == $default ? 'checked' : ''; ?> class="hidden-radio">
+                            <span class="custom-radio"></span>
+                            <span class="font-semibold text-main"><?php echo $label; ?></span>
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer glass-panel py-2 px-4 hover-scale" style="border-radius: var(--radius-full); border: 2px solid transparent; transition: all 0.2s;" onclick="this.parentElement.querySelectorAll('label').forEach(l => l.style.borderColor='transparent'); this.style.borderColor='var(--primary)';">
-                            <input type="radio" name="condition" value="like_new" class="m-0" style="accent-color: var(--primary);"> <span class="font-medium">Like New</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer glass-panel py-2 px-4 hover-scale" style="border-radius: var(--radius-full); border: 2px solid var(--primary); transition: all 0.2s;" onclick="this.parentElement.querySelectorAll('label').forEach(l => l.style.borderColor='transparent'); this.style.borderColor='var(--primary)';">
-                            <input type="radio" name="condition" value="used" checked class="m-0" style="accent-color: var(--primary);"> <span class="font-medium">Used</span>
-                        </label>
+                        <?php endforeach; ?>
                     </div>
                 </div>
 
@@ -158,7 +163,53 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 </div>
 
 <style>
-    input[type="radio"] { width: 1.25rem; height: 1.25rem; }
+    .hidden-radio { position: absolute; opacity: 0; width: 0; height: 0; }
+    
+    .custom-radio {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border-light);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .custom-radio::after {
+        content: '';
+        width: 10px;
+        height: 10px;
+        background: var(--primary);
+        border-radius: 50%;
+        transform: scale(0);
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Selected State */
+    .hidden-radio:checked + .custom-radio {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+    
+    .hidden-radio:checked + .custom-radio::after {
+        transform: scale(1);
+    }
+
+    /* Card highlighting */
+    .condition-label:has(.hidden-radio:checked) {
+        background: rgba(99, 102, 241, 0.05);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .condition-label:hover {
+        background: rgba(99, 102, 241, 0.02);
+        transform: translateY(-1px);
+    }
+
     textarea { resize: vertical; }
 </style>
 

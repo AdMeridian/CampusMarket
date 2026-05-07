@@ -4,21 +4,34 @@ require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/header.php';
 
 $query = sanitize($_GET['q'] ?? '');
-$pageTitle = "Search Results: " . $query;
+$categoryId = $_GET['category'] ?? '';
+$pageTitle = "Search Results" . ($query ? ": " . $query : "");
 
 $results = [];
-if ($query) {
-    $stmt = $pdo->prepare("
-        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
-        FROM products p
-        JOIN categories c ON p.category_id = c.id
-        JOIN users u ON p.user_id = u.id
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
-        WHERE (p.title LIKE :q1 OR p.description LIKE :q2 OR c.name LIKE :q3)
-        AND p.status = 'active'
-        ORDER BY p.created_at DESC
-    ");
-    $stmt->execute([':q1' => "%$query%", ':q2' => "%$query%", ':q3' => "%$query%"]);
+if ($query !== '' || $categoryId !== '') {
+    $sql = "SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.id
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+            WHERE p.status = 'active'";
+    $params = [];
+
+    if ($query !== '') {
+        $sql .= " AND (p.title LIKE ? OR p.description LIKE ?)";
+        $params[] = "%$query%";
+        $params[] = "%$query%";
+    }
+
+    if ($categoryId !== '') {
+        $sql .= " AND p.category_id = ?";
+        $params[] = $categoryId;
+    }
+
+    $sql .= " ORDER BY p.created_at DESC";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     $results = $stmt->fetchAll();
 }
 ?>
@@ -31,15 +44,16 @@ if ($query) {
     <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         <div class="text-center md:text-left">
             <h1 class="font-bold text-2xl mb-1 text-main">Search Results</h1>
-            <p class="text-muted font-medium" style="font-size: 0.95rem;">Found <strong class="text-primary"><?php echo count($results); ?></strong> items for "<strong class="text-main"><?php echo sanitize($query); ?></strong>"</p>
+            <p class="text-muted font-medium" style="font-size: 0.95rem;">Found <strong class="text-primary"><?php echo count($results); ?></strong> items <?php echo $query ? 'for "<strong class="text-main">'.sanitize($query).'</strong>"' : ''; ?></p>
         </div>
         
-        <form action="search.php" method="GET" class="flex items-center w-full md:w-auto" style="background: var(--bg-main); border-radius: var(--radius-full); padding: 0.25rem; border: 1px solid var(--border-light);">
-            <div class="flex items-center pl-3">
-                <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-            <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="Search..." class="bg-transparent border-none search-input w-full md:w-64" style="padding: 0.5rem 0.75rem; font-size: 0.95rem; color: var(--text-main);" required>
-            <button type="submit" class="btn btn-primary btn-sm shadow-sm" style="border-radius: var(--radius-full); padding: 0.4rem 1.2rem; font-weight: 600;">Search</button>
+        <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar" style="flex: 1; max-width: 450px; height: 48px;">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="Search items..." class="search-input">
+            <button type="submit" class="search-btn">Search</button>
         </form>
     </div>
 

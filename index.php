@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Category Quick Access -->
 <section class="mt-12">
     <div class="container">
-        <div class="flex justify-between items-end mb-6">
+        <div class="flex justify-between items-end mb-8">
             <h2 class="mb-0">Shop by Category</h2>
             <a href="pages/categories.php" class="text-muted" style="font-weight: 500;">View all</a>
         </div>
@@ -87,6 +87,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </a>
             <?php endforeach; ?>
         </div>
+        
+        <div class="mt-12 text-center">
+            <a href="pages/categories.php" class="btn btn-outline" style="padding: 0.8rem 2.5rem; border-radius: var(--radius-full); font-weight: 600; font-size: 1rem;">View All Categories</a>
+        </div>
     </div>
 </section>
 
@@ -113,6 +117,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <?php include 'includes/product_card_template.php'; ?>
                 <?php endforeach; ?>
             <?php endif; ?>
+        </div>
+
+        <div class="mt-12 text-center">
+            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-full); font-weight: 700; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">Explore All Listings</a>
         </div>
     </div>
 </section>
