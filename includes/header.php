@@ -25,7 +25,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <?php endif; ?>
     
     <!-- Member 5: Design System -->
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/style.css">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/style.css?v=<?php echo filemtime(__DIR__ . '/../public/css/style.css'); ?>">
     <?php if (isAdmin()): ?>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/admin.css">
     <?php endif; ?>

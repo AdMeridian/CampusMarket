@@ -133,7 +133,7 @@ if (!empty($featuredProducts)):
             <a href="pages/browse.php" class="btn btn-secondary btn-sm">See everything</a>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-4 gap-6">
             <?php if (empty($recentProducts)): ?>
                 <div class="col-span-full text-center py-12 bg-white rounded-lg border">
                     <p class="text-muted">No products listed yet. Be the first to sell something!</p>
