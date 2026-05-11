@@ -51,13 +51,13 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 <nav class="navbar">
     <div class="container flex justify-between items-center">
         <!-- Logo -->
-        <a href="<?php echo BASE_URL; ?>index.php" class="logo" style="display: flex; align-items: center; gap: 0.6rem;">
-            <img src="<?php echo BASE_URL; ?>public/images/logo.png" alt="CampusMarket Logo" style="height: 42px; width: auto; object-fit: contain;">
+        <a href="<?php echo rtrim(BASE_URL, '/'); ?>/index.php" class="logo" style="display: flex; align-items: center; gap: 0.6rem;">
+            <img src="<?php echo rtrim(BASE_URL, '/'); ?>/public/images/logo.png" alt="CampusMarket Logo" style="height: 42px; width: auto; object-fit: contain;">
             <span>CampusMarket</span>
         </a>
         
-        <!-- Shared Search Bar -->
-        <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar group" style="flex: 1; max-width: 450px;">
+        <!-- Shared Search Bar (Desktop) -->
+        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar group" style="flex: 1; max-width: 450px; margin: 0 auto;">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>

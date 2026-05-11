@@ -6,43 +6,36 @@ $pageTitle = 'Support CampusMarket';
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; display: flex; align-items: center; justify-content: center;">
-    <!-- Subtle Background Glow -->
+<div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: 4rem 0;">
+    <!-- Subtle Background Glows -->
     <div style="position: absolute; top: 10%; left: 15%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(255, 255, 255, 0) 70%); filter: blur(60px); z-index: -1;"></div>
     <div style="position: absolute; bottom: 10%; right: 15%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, rgba(255, 255, 255, 0) 70%); filter: blur(60px); z-index: -1;"></div>
 
-    <div class="container" style="max-width: 950px; padding: 2rem 1rem;">
-        <!-- Strong Messaging Header -->
-        <div class="text-center mb-10">
-            <div class="inline-flex items-center gap-2 mb-3 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
-                <span style="font-size: 1.2rem;">💜</span> Student Focused • Ad-Free
+    <div class="container" style="max-width: 1000px; padding: 0 1.5rem;">
+        <!-- Header -->
+        <div class="text-center mb-16">
+            <div class="inline-flex items-center gap-2 mb-4 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
+                <span style="font-size: 1.2rem;">✨</span> Small Gift • Big Change
             </div>
-            <h1 class="font-bold text-6xl mb-4 text-main" style="letter-spacing: -0.03em; line-height: 1.1;">Help Keep CampusMarket <br><span class="gradient-text">Free & Safe for Everyone</span></h1>
-            <p class="text-main" style="font-size: 1.1rem; line-height: 1.6; font-weight: 500; opacity: 0.8; text-align: center; width: 100%;">
-                Your support directly funds our server costs, verification tools, and safety features. 100% of your donation goes back into the community.
+            <h1 class="font-bold mb-6 text-main hero-title" style="font-size: 4rem; letter-spacing: -0.03em; line-height: 1.1;">Building the <br><span class="gradient-text">Future Together</span></h1>
+            <p class="text-main mx-auto" style="font-size: 1.1rem; line-height: 1.6; font-weight: 500; opacity: 0.8; text-align: center; width: 100%;">
+                Your contributions help us maintain a safe, student-first marketplace. <br class="hidden lg:block"> 100% of donations go directly into platform improvements and community events.
             </p>
         </div>
 
-        <!-- Premium Split Card -->
-        <div class="flex flex-col lg:flex-row gap-8 items-stretch">
+        <div class="flex flex-col lg:flex-row gap-10 items-stretch">
             
             <!-- Left: High-Contrast Payment Form -->
-            <div class="glass-panel" style="flex: 1.2; width: 100%; border-radius: 32px; border: 1px solid rgba(99, 102, 241, 0.15); box-shadow: 0 25px 60px rgba(0,0,0,0.08), 0 0 0 1px rgba(99,102,241,0.05), inset 0 1px 0 rgba(255,255,255,0.8); background: white; padding: 2rem 1.75rem; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                <h3 class="mb-5 font-bold text-main uppercase tracking-widest text-center" style="font-size: 0.8rem; letter-spacing: 0.15em;">Select Your Amount</h3>
+            <div class="glass-panel" style="flex: 1.2; width: 100%; border-radius: 32px; border: 1px solid rgba(99, 102, 241, 0.15); box-shadow: 0 25px 60px rgba(0,0,0,0.08); background: white; padding: 2.5rem 2rem; display: flex; flex-direction: column; align-items: center;">
+                <h3 class="mb-6 font-bold text-main uppercase tracking-widest text-center" style="font-size: 0.8rem; letter-spacing: 0.15em;">Select Your Amount</h3>
                 
                 <form action="create_stripe_session.php" method="POST" id="donation-form" style="width: 100%;">
                     <input type="hidden" name="payment_type" value="donation">
                     
-                    <div class="grid grid-cols-3 gap-4 mb-6">
-                        <div class="amount-pill active" data-amount="50">
-                            <span class="amount-val">₺50</span>
-                        </div>
-                        <div class="amount-pill" data-amount="100">
-                            <span class="amount-val">₺100</span>
-                        </div>
-                        <div class="amount-pill" data-amount="200">
-                            <span class="amount-val">₺200</span>
-                        </div>
+                    <div class="grid grid-cols-3 gap-6 mb-8">
+                        <div class="amount-pill active" data-amount="50"><span>₺50</span></div>
+                        <div class="amount-pill" data-amount="100"><span>₺100</span></div>
+                        <div class="amount-pill" data-amount="200"><span>₺200</span></div>
                     </div>
 
                     <div class="mb-0 text-center">
@@ -56,7 +49,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
 
-                    <div class="text-center" style="margin-top: 1.25rem;">
+                    <div class="text-center" style="margin-top: 2rem;">
                         <button type="submit" class="cta-button" id="submit-btn">
                             Donate with Stripe
                         </button>
@@ -75,7 +68,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- Right: Impact & Trust -->
             <div style="flex: 0.8; display: flex; flex-direction: column; justify-content: center; gap: 1.5rem; padding: 0.5rem;">
-                <div class="flex flex-col items-center text-center gap-4">
+                <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
                     <div class="perk-icon">🚀</div>
                     <div>
                         <h5 class="font-bold text-xl mb-1">100% Ad-Free</h5>
@@ -83,7 +76,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
                 
-                <div class="flex flex-col items-center text-center gap-4">
+                <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
                     <div class="perk-icon">🛡️</div>
                     <div>
                         <h5 class="font-bold text-xl mb-1">Community Safety</h5>
@@ -91,7 +84,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 </div>
 
-                <div class="flex flex-col items-center text-center gap-4">
+                <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
                     <div class="perk-icon">💎</div>
                     <div>
                         <h5 class="font-bold text-xl mb-1">Supporter Status</h5>
@@ -104,12 +97,45 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php
+$donors = getDonors($pdo, 12);
+if (!empty($donors)):
+?>
+<div class="container mt-16 mb-24" style="max-width: 950px; padding: 0 1rem;">
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase;">
+            <span style="animation: pulse 2s infinite;">❤️</span> Wall of Supporters
+        </div>
+        <h2 class="font-bold text-2xl mt-2 mb-2" style="color: var(--text-main); letter-spacing: -0.02em;">Community Hall of Fame</h2>
+        <p class="text-muted" style="font-size: 0.9rem; opacity: 0.7;">Thank you to everyone who has supported CampusMarket.</p>
+    </div>
+
+    <div class="flex flex-wrap justify-center gap-8">
+        <?php foreach ($donors as $donor): ?>
+            <div class="donor-card flex flex-col items-center gap-2">
+                <div style="position: relative; display: inline-block;">
+                    <img src="<?php echo avatarUrl($donor['avatar']); ?>"
+                         alt="<?php echo sanitize($donor['username']); ?>"
+                         style="width: 64px; height: 64px; border-radius: 18px; border: 3px solid white; box-shadow: var(--shadow-md); object-fit: cover; transform: rotate(-3deg); transition: var(--transition); background: white;">
+                    <div style="position: absolute; top: -6px; right: -6px; background: #fbbf24; color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">★</div>
+                </div>
+                <p style="font-weight: 800; font-size: 0.8rem; color: var(--text-main);">@<?php echo sanitize($donor['username']); ?></p>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
 <style>
+@media (max-width: 768px) {
+    .hero-title { font-size: 2.25rem !important; }
+}
+
 .amount-pill {
     background: #f8fafc;
     border: 2px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 1.25rem 0.5rem;
+    border-radius: 14px;
+    padding: 1rem 0.4rem;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -124,9 +150,8 @@ require_once __DIR__ . '/../includes/header.php';
     box-shadow: 0 10px 25px rgba(99, 102, 241, 0.12);
     transform: scale(1.05);
 }
-.amount-val { font-size: 1.4rem; font-weight: 900; color: #0f172a; }
-.amount-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; }
-.amount-pill.active .amount-val { color: var(--primary); }
+.amount-pill span { font-size: 1.2rem; font-weight: 900; color: #0f172a; }
+.amount-pill.active span { color: var(--primary); }
 
 .cta-button {
     background: linear-gradient(135deg, #635bff 0%, #8b5cf6 100%);
@@ -148,7 +173,6 @@ require_once __DIR__ . '/../includes/header.php';
     box-shadow: 0 22px 45px rgba(99, 91, 255, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
 }
-.cta-button:active { transform: translateY(0); }
 
 .perk-icon {
     width: 60px;
@@ -167,6 +191,10 @@ require_once __DIR__ . '/../includes/header.php';
 
 #custom-amount:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.1); }
 input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.donor-card { transition: var(--transition); cursor: default; }
+.donor-card:hover { transform: translateY(-5px); }
+.donor-card:hover img { transform: rotate(0deg); }
 </style>
 
 <script>
@@ -190,40 +218,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php
-$donors = getDonors($pdo, 12);
-if (!empty($donors)):
-?>
-<div class="container mt-16 mb-8" style="max-width: 950px; padding: 0 1rem;">
-    <div class="text-center mb-8">
-        <div class="inline-flex items-center gap-2 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase;">
-            <span style="animation: pulse 2s infinite;">❤️</span> Wall of Supporters
-        </div>
-        <h2 class="font-bold text-2xl mt-2 mb-2" style="color: var(--text-main); letter-spacing: -0.02em;">Community Hall of Fame</h2>
-        <p class="text-muted" style="font-size: 0.9rem; opacity: 0.7;">Thank you to everyone who has supported CampusMarket.</p>
-    </div>
-
-    <div class="flex flex-wrap justify-center gap-8">
-        <?php foreach ($donors as $donor): ?>
-            <div class="donor-card flex flex-col items-center gap-2">
-                <div style="position: relative; display: inline-block;">
-                    <img src="<?php echo avatarUrl($donor['avatar']); ?>"
-                         alt="<?php echo sanitize($donor['username']); ?>"
-                         style="width: 64px; height: 64px; border-radius: 18px; border: 3px solid white; box-shadow: var(--shadow-md); object-fit: cover; transform: rotate(-3deg); transition: var(--transition); background: white;">
-                    <div style="position: absolute; top: -6px; right: -6px; background: #fbbf24; color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">★</div>
-                </div>
-                <p style="font-weight: 800; font-size: 0.8rem; color: var(--text-main);">@<?php echo sanitize($donor['username']); ?></p>
-            </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-
-<style>
-.donor-card { transition: var(--transition); cursor: default; }
-.donor-card:hover { transform: translateY(-5px); }
-.donor-card:hover img { transform: rotate(0deg); }
-</style>
-<?php endif; ?>
-
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-

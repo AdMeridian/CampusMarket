@@ -15,3 +15,6 @@ public/uploads/*
 !public/uploads/.gitkeep
 scratch/
 config/secrets.php
+.env
+*.local.php
+/vendor/

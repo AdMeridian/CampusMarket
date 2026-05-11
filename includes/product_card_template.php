@@ -10,11 +10,19 @@ global $pdo; // Ensure PDO is available if included inside a function scope
 ?>
 <div class="card card-hover flex flex-col h-full" style="position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); overflow: hidden; padding: 1.5rem; transition: var(--transition);">
     <!-- Main Product Link -->
-    <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo $prod['id']; ?>" style="text-decoration: none; display: flex; flex-direction: column; height: 100%;">
+    <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/product.php?id=<?php echo $prod['id']; ?>" style="text-decoration: none; display: flex; flex-direction: column; height: 100%;">
         <!-- Product Image Container -->
         <div class="product-card-image-wrap" style="border-radius: var(--radius-md); margin-bottom: 1.5rem;">
-            <img src="<?php echo !empty($prod['image_path']) ? sanitize(BASE_URL . 'public/' . $prod['image_path']) : sanitize(BASE_URL . 'public/images/default-product.png'); ?>" 
-                 alt="<?php echo sanitize($prod['title']); ?>">
+            <?php 
+                $imgUrl = sanitize(rtrim(BASE_URL, '/') . '/public/images/default-product.png');
+                if (!empty($prod['image_path'])) {
+                    // Normalize path: if it starts with 'uploads/', it's already including the 'public/' relative root in some contexts
+                    // but usually it's stored relative to 'public/'
+                    $path = ltrim($prod['image_path'], '/');
+                    $imgUrl = sanitize(rtrim(BASE_URL, '/') . '/public/' . $path);
+                }
+            ?>
+            <img src="<?php echo $imgUrl; ?>" alt="<?php echo sanitize($prod['title']); ?>">
             
             <!-- Condition Badge -->
             <div style="position: absolute; top: 1rem; left: 1rem; z-index: 5;">
