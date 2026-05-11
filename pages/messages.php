@@ -85,13 +85,26 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- Action area -->
         <?php if ($currentUserId !== $sellerId): ?>
             <!-- Buyer's context: showing order proposal button -->
-            <div class="bg-white border-t border-gray-100 p-3 flex justify-between items-center" style="background: var(--bg-surface); border-color: var(--border-light);">
-                <span class="text-sm font-medium text-main">Ready to buy? Send a formal purchase request.</span>
+            <div class="purchase-cta-bar p-3 border-t flex justify-between items-center" style="background: linear-gradient(to right, var(--bg-surface), var(--primary-light)); border-color: var(--border-light); opacity: 0.95;">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;">Ready to buy?</h4>
+                        <p class="text-xs text-muted mb-0">Send a formal purchase request to the seller.</p>
+                    </div>
+                </div>
                 <form action="api_messages.php" method="POST" class="m-0">
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn btn-secondary btn-sm shadow-sm font-bold uppercase tracking-wide hover-scale" style="font-size: 0.75rem; padding: 0.4rem 1rem; border-radius: var(--radius-lg); background: var(--bg-main); color: var(--secondary); border-color: var(--secondary);" onclick="proposeOrder()">Propose Order Details</button>
-                    <!-- In a full app, this button would trigger a modal to set meetup details -->
+                    <button type="button" class="btn btn-primary btn-sm shadow-md font-bold uppercase tracking-wider hover-scale" 
+                            style="font-size: 0.7rem; padding: 0.5rem 1.25rem; border-radius: var(--radius-lg); letter-spacing: 0.05em;" 
+                            onclick="proposeOrder()">
+                        Propose Order
+                    </button>
                 </form>
             </div>
         <?php endif; ?>
@@ -318,49 +331,75 @@ function renderHandshakeBar(deal) {
     let borderStyle = '';
 
     if (status === 'pending') {
-        borderStyle = 'border-left: 4px solid var(--primary);';
+        borderStyle = 'border-left: 4px solid var(--primary); background: linear-gradient(to right, var(--bg-surface), var(--primary-light)); opacity: 0.95;';
         html = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                <div>
-                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">🤝 Did this deal happen?</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Confirming marks this item as sold and removes it from listings.</div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">Did this deal happen?</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Confirming marks this item as sold and removes it from listings.</div>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">✅ Yes, deal is done!</button>
-                    <button onclick="dismissDeal()" class="btn btn-secondary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">⏳ Not yet</button>
+                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes, deal is done!</button>
+                    <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">Not yet</button>
                 </div>
             </div>
         `;
     } else if (status === 'buyer_confirmed' && !isSeller) {
-        borderStyle = 'border-left: 4px solid #94a3b8;';
+        borderStyle = 'border-left: 4px solid var(--text-light); background: var(--bg-surface);';
         html = `
-            <div style="display: flex; align-items: center; gap: 0.75rem; opacity: 0.8;">
-                <span style="font-size: 1.3rem;">✅</span>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-light);">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
                 <div>
-                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">You confirmed this deal. Waiting for the seller to confirm...</div>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">Awaiting Confirmation</div>
+                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">You confirmed this deal. Waiting for the seller to confirm...</div>
                 </div>
             </div>
         `;
     } else if (status === 'buyer_confirmed' && isSeller) {
-        borderStyle = 'border-left: 4px solid #10b981; background: rgba(16,185,129,0.06);';
+        borderStyle = 'border-left: 4px solid var(--secondary); background: linear-gradient(to right, var(--bg-surface), rgba(16,185,129,0.1));';
         html = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                <div>
-                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">🔔 @${buyerName} says the deal is done!</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Confirm below to mark &ldquo;${productTitle}&rdquo; as sold.</div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">@${buyerName} says the deal is done!</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Confirm below to mark &ldquo;${productTitle}&rdquo; as sold.</div>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: #10b981; border-color: #10b981;">✅ Confirm & Delist Item</button>
-                    <button onclick="dismissDeal()" class="btn btn-secondary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Not done yet</button>
+                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">Confirm & Delist Item</button>
+                    <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">Not done yet</button>
                 </div>
             </div>
         `;
     } else if (status === 'completed') {
-        borderStyle = 'border-left: 4px solid #10b981; background: rgba(16,185,129,0.06);';
+        borderStyle = 'border-left: 4px solid var(--secondary); background: linear-gradient(to right, var(--bg-surface), rgba(16,185,129,0.1));';
         html = `
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <span style="font-size: 1.3rem;">✅</span>
-                <div style="font-weight: 600; font-size: 0.9rem; color: #059669;">Deal confirmed! This item has been marked as sold.</div>
+                <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--secondary); line-height: 1.2;">Deal confirmed!</div>
+                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">This item has been marked as sold.</div>
+                </div>
             </div>
         `;
     } else {
@@ -385,21 +424,6 @@ function confirmDeal() {
                 checkDealStatus();
             } else {
                 alert('Error: ' + (data.error || 'Unknown'));
-            }
-        });
-}
-
-function dismissDeal() {
-    const formData = new FormData();
-    formData.append('action', 'dismiss_deal');
-    formData.append('product_id', productId);
-    formData.append('other_user_id', otherUserId);
-
-    fetch('api_messages.php', { method: 'POST', body: formData })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                handshakeBar.style.display = 'none';
             }
         });
 }
