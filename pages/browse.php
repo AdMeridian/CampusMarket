@@ -92,10 +92,10 @@ include '../includes/header.php';
             </button>
         </div>
 
-        <div class="grid grid-cols-1 lg-grid-cols-5 gap-8 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
             
             <!-- Sidebar Filters -->
-            <aside class="lg-col-span-1">
+            <aside class="lg:col-span-1">
                 <div id="filter-sidebar" class="hidden lg-block glass-panel p-5 sticky-desktop" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                     <div class="flex justify-between items-center mb-8 pb-4 border-b">
                         <h2 class="mb-0" style="font-size: 1.25rem;">Filters</h2>
@@ -163,7 +163,7 @@ include '../includes/header.php';
             </aside>
 
             <!-- Results -->
-            <main class="lg-col-span-4">
+            <main class="lg:col-span-4">
                 <div class="mb-8 flex items-center justify-between gap-6" style="background: var(--bg-surface); padding: 1.1rem 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
                     <!-- Item Count -->
                     <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-lg); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
@@ -221,7 +221,7 @@ include '../includes/header.php';
                         <a href="browse.php" class="btn btn-primary mt-6 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Clear All Filters</a>
                     </div>
                 <?php else: ?>
-                    <div class="grid grid-cols-1 md-grid-cols-2 xl-grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         <?php foreach ($products as $prod): ?>
                             <?php include '../includes/product_card_template.php'; ?>
                         <?php endforeach; ?>
