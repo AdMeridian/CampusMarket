@@ -17,7 +17,7 @@ $stmt->execute([':id' => $productId]);
 $product = $stmt->fetch();
 
 if (!$product) {
-    echo '<div class="container mt-16 mb-20 text-center"><div class="glass-panel p-16" style="border-radius: var(--radius-xl);"><div class="text-6xl mb-4 opacity-50">🔍</div><h2 class="mb-2 font-bold text-main">Product not found</h2><p class="text-muted text-lg mb-6">This item may have been sold or removed.</p><a href="browse.php" class="btn btn-primary hover-scale" style="border-radius: var(--radius-full);">Back to Browse</a></div></div>';
+    echo '<div class="container mt-16 mb-20 text-center"><div class="glass-panel p-16" style="border-radius: var(--radius-xl);"><div class="text-6xl mb-4 opacity-50">🔍</div><h2 class="mb-2 font-bold text-main">Product not found</h2><p class="text-muted text-lg mb-6">This item may have been sold or removed.</p><a href="browse.php" class="btn btn-primary hover-scale" style="border-radius: var(--radius-lg);">Back to Browse</a></div></div>';
     include __DIR__ . '/../includes/footer.php';
     exit;
 }
@@ -35,10 +35,9 @@ $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
 <div class="container mt-8 mb-20 relative">
     
     <!-- Background Accents -->
-    <div style="position: absolute; top: -100px; right: -50px; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
 
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-full backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
+    <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
         <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors">Home</a>
         <span class="opacity-50">/</span>
         <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors">Browse</a>
@@ -86,14 +85,14 @@ $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
                 <h1 class="mb-4 text-main font-bold" style="font-size: 2.75rem; line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
                 <div class="flex items-center gap-4">
                     <span style="font-size: 2.1rem; font-weight: 800; color: var(--primary); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
-                    <span class="text-muted small px-3 py-1 rounded-full font-medium" style="background: var(--bg-main); border: 1px solid var(--border-light);">Listed <?php echo timeAgo($product['created_at']); ?></span>
+                    <span class="text-muted small px-3 py-1 rounded-lg font-medium" style="background: var(--bg-main); border: 1px solid var(--border-light);">Listed <?php echo timeAgo($product['created_at']); ?></span>
                 </div>
             </div>
 
             <!-- Seller Card -->
-            <div class="glass-panel p-6 mb-8 flex items-center justify-between" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); background: linear-gradient(to right, rgba(99,102,241,0.08), var(--bg-surface));">
+            <div class="glass-panel p-6 mb-8 flex items-center justify-between" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); background: rgba(99,102,241,0.04);">
                 <div class="flex items-center gap-4">
-                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; box-shadow: var(--shadow-md);">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; box-shadow: var(--shadow-md);">
                         <?php echo strtoupper(substr($product['seller_name'], 0, 1)); ?>
                     </div>
                     <div>
@@ -111,7 +110,7 @@ $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
                         </div>
                     </div>
                 </div>
-                <a href="profile.php?id=<?php echo $product['seller_id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);">View Profile</a>
+                <a href="profile.php?id=<?php echo $product['seller_id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View Profile</a>
             </div>
 
             <div class="glass-panel p-8 mb-8 flex-grow" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--bg-surface); border: 1px solid var(--border-light);">
@@ -126,7 +125,7 @@ $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
 
             <!-- Action Buttons -->
             <div class="flex gap-4 sticky bottom-4 z-10 glass-panel p-4" style="border-radius: var(--radius-xl); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); background: color-mix(in srgb, var(--bg-surface) 95%, transparent); backdrop-filter: blur(10px);">
-                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg shadow-lg hover-scale" style="border-radius: var(--radius-full); font-weight: bold;">
+                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg shadow-lg hover-scale" style="border-radius: var(--radius-lg); font-weight: bold;">
                     Message Seller
                 </a>
             </div>

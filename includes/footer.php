@@ -4,7 +4,7 @@
     <div class="container">
         <div class="footer-grid">
             <div class="footer-col">
-                <a href="<?php echo BASE_URL; ?>/" class="logo" style="font-size: 1.5rem; background: linear-gradient(135deg, var(--primary-light), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CampusMarket</a>
+                <a href="<?php echo BASE_URL; ?>/" class="logo" style="font-size: 1.5rem; color: var(--primary); font-weight: 800;">CampusMarket</a>
                 <p class="mt-4" style="color: var(--text-muted); font-size: 0.9rem;">
                     The premier student-to-student marketplace. Buy, sell, and trade safely within your university community.
                 </p>

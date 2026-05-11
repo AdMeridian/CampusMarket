@@ -38,8 +38,6 @@ if ($query !== '' || $categoryId !== '') {
 
 <div class="container min-h-screen pt-12 pb-20 relative">
     <!-- Background Accents -->
-    <div style="position: absolute; top: -5%; left: 10%; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
-    <div style="position: absolute; top: 20%; right: -5%; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(236,72,153,0.04) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
 
     <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         <div class="text-center md:text-left">
@@ -90,7 +88,7 @@ if ($query !== '' || $categoryId !== '') {
                         <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
                             <span style="font-weight: 800; color: var(--text-main); font-size: 1.05rem; font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($prod); ?></span>
                             <div class="flex items-center gap-2">
-                                <div style="min-width: 24px; min-height: 24px; border-radius: 50%; background: var(--primaryLight); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: bold; padding:0.2rem;"><?php echo strtoupper(substr($prod['seller_name'],0,2)); ?></div>
+                                <div style="min-width: 24px; min-height: 24px; border-radius: var(--radius-md); background: var(--primaryLight); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: bold; padding:0.2rem;"><?php echo strtoupper(substr($prod['seller_name'],0,2)); ?></div>
                                 <span class="text-muted font-medium text-sm truncate" style="max-width: 80px;">@<?php echo sanitize($prod['seller_name']); ?></span>
                             </div>
                         </div>
