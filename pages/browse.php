@@ -69,8 +69,8 @@ include '../includes/header.php';
 
     <div class="container">
         <!-- Browse Header -->
-        <div class="mb-10 text-left flex flex-col gap-3">
-            <div>
+        <div class="mb-10 flex justify-between items-end gap-6">
+            <div class="text-left">
                 <h1 class="font-bold text-4xl mb-2 gradient-text" style="background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Discover Great Finds</h1>
                 <p class="text-muted text-lg">Browse items from students around your campus</p>
             </div>
