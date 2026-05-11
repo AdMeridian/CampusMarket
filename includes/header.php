@@ -76,7 +76,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
             <?php if (isLoggedIn() && isAdmin()): ?>
                 <!-- Admin-only nav: no marketplace actions -->
                 <div class="flex items-center gap-4" style="border-left: 1px solid var(--border-light); padding-left: 1.5rem; margin-left: 0.25rem;">
-                    <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; padding: 0.35rem 0.85rem; background: var(--warning-bg); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; text-align: center; gap: 0.4rem; box-shadow: var(--shadow-sm);">
+                    <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; padding: 0.35rem 0.85rem; background: var(--warning-bg); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; text-align: center; gap: 0.4rem; box-shadow: var(--shadow-sm);">
                         🛡️ Admin Mode
                     </span>
                     <a href="<?php echo BASE_URL; ?>admin/index.php" style="color: var(--primary); font-weight: 700; font-size: 0.95rem;">Admin Panel</a>

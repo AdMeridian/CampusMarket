@@ -65,9 +65,6 @@ include '../includes/header.php';
 ?>
 
 <div class="min-h-screen pt-8 pb-16 relative">
-    <!-- Background Accents -->
-    <div style="position: absolute; top: -5%; left: -5%; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
-    <div style="position: absolute; top: 15%; right: -5%; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(236,72,153,0.06) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
 
     <div class="container">
         <!-- Browse Header -->
@@ -157,7 +154,7 @@ include '../includes/header.php';
             <main class="lg:col-span-4">
                 <div class="mb-8 flex items-center justify-between gap-6" style="background: var(--bg-surface); padding: 1.1rem 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
                     <!-- Item Count -->
-                    <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-full); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
+                    <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-lg); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
                         <?php echo count($products); ?> Items
                     </div>
 
@@ -188,7 +185,7 @@ include '../includes/header.php';
                             <?php if($minPrice): ?><input type="hidden" name="min_price" value="<?php echo sanitize($minPrice); ?>"><?php endif; ?>
                             <?php if($maxPrice): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
                             
-                            <select name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-full); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
+                            <select name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-lg); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
                                 <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest First</option>
                                 <option value="price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>>Price: Low to High</option>
                                 <option value="price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>>Price: High to Low</option>
@@ -209,7 +206,7 @@ include '../includes/header.php';
                         <div class="mb-4 text-6xl opacity-30">🔍</div>
                         <h3 class="font-bold text-main text-2xl mb-2">No items found</h3>
                         <p class="text-muted text-lg max-w-md mx-auto">We couldn't find any items matching your current filters. Try adjusting your search criteria or clearing filters.</p>
-                        <a href="browse.php" class="btn btn-primary mt-6 hover-scale shadow-sm" style="border-radius: var(--radius-full);">Clear All Filters</a>
+                        <a href="browse.php" class="btn btn-primary mt-6 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Clear All Filters</a>
                     </div>
                 <?php else: ?>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -1,7 +1,14 @@
 <?php
 require_once __DIR__ . '/../includes/bootstrap.php';
-
+ob_start(); // Buffer output to prevent warnings from breaking JSON
 header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+function logApiError($msg) {
+    file_put_contents(__DIR__ . '/../api_error.log', date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+}
 
 if (!isLoggedIn()) {
     echo json_encode(['error' => 'Not authenticated']);
@@ -25,7 +32,8 @@ function isValidProductConversation(PDO $pdo, int $productId, int $currentUserId
 }
 
 if ($action === 'fetch') {
-    $productId = (int)($_GET['product_id'] ?? 0);
+    try {
+        $productId = (int)($_GET['product_id'] ?? 0);
     $otherUserId = (int)($_GET['other_user_id'] ?? 0);
     
     if (!$productId || !$otherUserId) {
@@ -93,8 +101,15 @@ if ($action === 'fetch') {
         ];
     }
     
+    ob_clean();
     echo json_encode(['success' => true, 'messages' => $results]);
     exit;
+} catch (Exception $e) {
+    logApiError("Fetch Error: " . $e->getMessage());
+    ob_clean();
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    exit;
+}
 }
 
 if ($action === 'send') {
@@ -103,12 +118,12 @@ if ($action === 'send') {
     $body = sanitize($_POST['body'] ?? '');
     
     if (!$productId || !$receiverId || empty($body)) {
-        echo json_encode(['error' => 'Missing or empty parameters']);
+        echo json_encode(['success' => false, 'error' => 'Missing or empty parameters']);
         exit;
     }
 
     if (!isValidProductConversation($pdo, $productId, $currentUserId, $receiverId)) {
-        echo json_encode(['error' => 'Invalid conversation context']);
+        echo json_encode(['success' => false, 'error' => 'Invalid conversation context']);
         exit;
     }
     
@@ -127,10 +142,13 @@ if ($action === 'send') {
         createNotification($pdo, $receiverId, 'message', "New Message", "You received a new message.", $productId);
         
         $pdo->commit();
+        ob_clean();
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        $pdo->rollBack();
-        echo json_encode(['error' => 'Database error']);
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        logApiError("Send Error: " . $e->getMessage());
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
     }
     exit;
 }
@@ -217,6 +235,194 @@ if ($action === 'get_propose') {
     $proposedBody = "Hi! I'm interested in purchasing your item '" . $product['title'] . "' for " . $quotedPrice . ". Can we arrange a meetup to complete the transaction? Please let me know your availability.";
     
     echo json_encode(['success' => true, 'proposed_text' => $proposedBody]);
+    exit;
+}
+
+// ─── Deal Handshake: Check Status ────────────────────────
+if ($action === 'check_deal_status') {
+    $productId = (int)($_GET['product_id'] ?? 0);
+    $otherUserId = (int)($_GET['other_user_id'] ?? 0);
+
+    if (!$productId || !$otherUserId) {
+        echo json_encode(['error' => 'Missing parameters']);
+        exit;
+    }
+
+    // Determine seller
+    $stmt = $pdo->prepare("SELECT user_id FROM products WHERE id = :pid");
+    $stmt->execute([':pid' => $productId]);
+    $sellerId = (int)$stmt->fetchColumn();
+
+    if (!$sellerId) {
+        echo json_encode(['show_handshake' => false]);
+        exit;
+    }
+
+    // Figure out buyer/seller roles
+    $isSeller = ($currentUserId === $sellerId);
+    $buyerId = $isSeller ? $otherUserId : $currentUserId;
+
+    // Check both parties have sent at least one message
+    $stmtBuyer = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE sender_id = :buyer AND receiver_id = :seller AND product_id = :pid");
+    $stmtBuyer->execute([':buyer' => $buyerId, ':seller' => $sellerId, ':pid' => $productId]);
+    $buyerMsgCount = (int)$stmtBuyer->fetchColumn();
+
+    $stmtSeller = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE sender_id = :seller AND receiver_id = :buyer AND product_id = :pid");
+    $stmtSeller->execute([':seller' => $sellerId, ':buyer' => $buyerId, ':pid' => $productId]);
+    $sellerMsgCount = (int)$stmtSeller->fetchColumn();
+
+    if ($buyerMsgCount < 1 || $sellerMsgCount < 1) {
+        echo json_encode(['show_handshake' => false]);
+        exit;
+    }
+
+    // Check/create deal_confirmations record
+    $stmtDeal = $pdo->prepare("SELECT * FROM deal_confirmations WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid");
+    $stmtDeal->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+    $deal = $stmtDeal->fetch(PDO::FETCH_ASSOC);
+
+    if (!$deal) {
+        // Create a new pending record
+        $stmtInsert = $pdo->prepare("INSERT INTO deal_confirmations (product_id, buyer_id, seller_id) VALUES (:pid, :bid, :sid)");
+        $stmtInsert->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+        $deal = [
+            'id' => $pdo->lastInsertId(),
+            'status' => 'pending',
+            'buyer_confirmed_at' => null,
+            'seller_confirmed_at' => null,
+        ];
+    }
+
+    // If dismissed, hide the bar
+    if ($deal['status'] === 'dismissed') {
+        echo json_encode(['show_handshake' => false]);
+        exit;
+    }
+
+    // Fetch buyer username for display
+    $stmtBuyerName = $pdo->prepare("SELECT username FROM users WHERE id = :id");
+    $stmtBuyerName->execute([':id' => $buyerId]);
+    $buyerUsername = $stmtBuyerName->fetchColumn();
+
+    // Fetch product title for display
+    $stmtProd = $pdo->prepare("SELECT title FROM products WHERE id = :id");
+    $stmtProd->execute([':id' => $productId]);
+    $productTitle = $stmtProd->fetchColumn();
+
+    echo json_encode([
+        'show_handshake' => true,
+        'deal' => [
+            'id' => $deal['id'],
+            'status' => $deal['status'],
+            'buyer_confirmed_at' => $deal['buyer_confirmed_at'],
+            'seller_confirmed_at' => $deal['seller_confirmed_at'],
+            'is_seller' => $isSeller,
+            'buyer_username' => $buyerUsername,
+            'product_title' => $productTitle,
+        ]
+    ]);
+    exit;
+}
+
+// ─── Deal Handshake: Confirm Deal ────────────────────────
+if ($action === 'confirm_deal') {
+    $productId = (int)($_POST['product_id'] ?? 0);
+    $otherUserId = (int)($_POST['other_user_id'] ?? 0);
+
+    if (!$productId || !$otherUserId) {
+        echo json_encode(['error' => 'Missing parameters']);
+        exit;
+    }
+
+    // Determine seller
+    $stmt = $pdo->prepare("SELECT user_id, title FROM products WHERE id = :pid");
+    $stmt->execute([':pid' => $productId]);
+    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$product) {
+        echo json_encode(['error' => 'Product not found']);
+        exit;
+    }
+
+    $sellerId = (int)$product['user_id'];
+    $productTitle = $product['title'];
+    $isSeller = ($currentUserId === $sellerId);
+    $buyerId = $isSeller ? $otherUserId : $currentUserId;
+
+    // Get current user's username
+    $stmtMe = $pdo->prepare("SELECT username FROM users WHERE id = :id");
+    $stmtMe->execute([':id' => $currentUserId]);
+    $myUsername = $stmtMe->fetchColumn();
+
+    try {
+        $pdo->beginTransaction();
+
+        if ($isSeller) {
+            // Seller confirms → mark completed and delist product
+            $stmtUp = $pdo->prepare("
+                UPDATE deal_confirmations 
+                SET seller_confirmed_at = NOW(), status = 'completed', updated_at = NOW()
+                WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
+            ");
+            $stmtUp->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+
+            // Mark product as sold
+            $stmtProd = $pdo->prepare("UPDATE products SET status = 'sold' WHERE id = :pid");
+            $stmtProd->execute([':pid' => $productId]);
+
+            // Notify buyer
+            createNotification($pdo, $buyerId, 'order', 'Deal Confirmed!',
+                "$myUsername confirmed the deal for '$productTitle'. It has been marked as sold.", $productId);
+
+            $pdo->commit();
+            echo json_encode(['success' => true, 'action' => 'delisted']);
+        } else {
+            // Buyer confirms → awaiting seller
+            $stmtUp = $pdo->prepare("
+                UPDATE deal_confirmations 
+                SET buyer_confirmed_at = NOW(), status = 'buyer_confirmed', updated_at = NOW()
+                WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
+            ");
+            $stmtUp->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+
+            // Notify seller
+            createNotification($pdo, $sellerId, 'order', 'Deal Confirmation Request',
+                "$myUsername says the deal for '$productTitle' is done. Open the chat to confirm and delist.", $productId);
+
+            $pdo->commit();
+            echo json_encode(['success' => true, 'action' => 'awaiting_seller']);
+        }
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        echo json_encode(['error' => 'Database error']);
+    }
+    exit;
+}
+
+// ─── Deal Handshake: Dismiss Deal ────────────────────────
+if ($action === 'dismiss_deal') {
+    $productId = (int)($_POST['product_id'] ?? 0);
+    $otherUserId = (int)($_POST['other_user_id'] ?? 0);
+
+    if (!$productId || !$otherUserId) {
+        echo json_encode(['error' => 'Missing parameters']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT user_id FROM products WHERE id = :pid");
+    $stmt->execute([':pid' => $productId]);
+    $sellerId = (int)$stmt->fetchColumn();
+    $isSeller = ($currentUserId === $sellerId);
+    $buyerId = $isSeller ? $otherUserId : $currentUserId;
+
+    $stmtUp = $pdo->prepare("
+        UPDATE deal_confirmations 
+        SET status = 'dismissed', dismissed_by = :uid, updated_at = NOW()
+        WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
+    ");
+    $stmtUp->execute([':uid' => $currentUserId, ':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+
+    echo json_encode(['success' => true]);
     exit;
 }
 

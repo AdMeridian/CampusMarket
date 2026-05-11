@@ -6,13 +6,13 @@ requireLogin();
 $currentUserId = currentUserId();
 
 // Fetch the latest message for each conversation
-// Grouping by product_id and the "other" user
 $stmt = $pdo->prepare("
     SELECT 
         m.id, m.sender_id, m.receiver_id, m.product_id, m.body, m.is_read, m.created_at,
         p.title as product_title,
         IF(m.sender_id = :uid1, m.receiver_id, m.sender_id) as other_user_id,
-        u.username as other_username
+        u.username as other_username,
+        u.avatar as other_avatar
     FROM messages m
     JOIN products p ON m.product_id = p.id
     JOIN users u ON u.id = IF(m.sender_id = :uid2, m.receiver_id, m.sender_id)
@@ -33,80 +33,312 @@ $stmt->execute([
 ]);
 $conversations = $stmt->fetchAll();
 
+$unreadCount = array_reduce($conversations, function($carry, $item) use ($currentUserId) {
+    return $carry + ($item['receiver_id'] == $currentUserId && $item['is_read'] == 0 ? 1 : 0);
+}, 0);
+
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container main-content relative min-h-screen pt-8 pb-20">
-    <!-- Background Accents -->
-    <div style="position: absolute; top: -5%; left: -5%; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.05) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
+<style>
+/* ── Inbox Styles ─────────────────────────────────────── */
+.inbox-wrap {
+    max-width: 820px;
+    margin: 2.5rem auto 5rem;
+    padding: 0 1.25rem;
+}
 
-    <div class="max-w-4xl mx-auto">
-        <div class="flex items-center gap-4 mb-10">
-            <h1 class="mb-0 text-main font-bold" style="font-size: 2.75rem; letter-spacing: -0.5px;">Messages</h1>
-            <?php 
-                $unreadCount = array_reduce($conversations, function($carry, $item) use ($currentUserId) {
-                    return $carry + ($item['receiver_id'] == $currentUserId && $item['is_read'] == 0 ? 1 : 0);
-                }, 0);
-            ?>
+.inbox-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.inbox-header h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.inbox-unread-count {
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.25rem 0.7rem;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
+}
+
+/* Conversation card */
+.convo-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    position: relative;
+    cursor: pointer;
+}
+
+.convo-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    color: inherit;
+}
+
+.convo-card.unread {
+    border-left: 3px solid var(--primary);
+    background: rgba(99,102,241,0.02);
+}
+
+/* Avatar */
+.convo-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--primary);
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+}
+
+.convo-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Content */
+.convo-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.convo-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.15rem;
+}
+
+.convo-username {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.convo-card.unread .convo-username {
+    font-weight: 800;
+}
+
+.convo-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.convo-card.unread .convo-time {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.convo-product {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary);
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.convo-body {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.convo-card.unread .convo-body {
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+.convo-body-prefix {
+    opacity: 0.55;
+    font-size: 0.85em;
+}
+
+/* Arrow indicator */
+.convo-arrow {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    opacity: 0.4;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.convo-card:hover .convo-arrow {
+    opacity: 0.8;
+    transform: translateX(2px);
+    color: var(--primary);
+}
+
+/* Unread dot */
+.convo-unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--primary);
+    flex-shrink: 0;
+}
+
+/* List */
+.convo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* Empty state */
+.inbox-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-lg);
+}
+
+.inbox-empty-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1.25rem;
+    color: var(--text-muted);
+    opacity: 0.35;
+}
+
+.inbox-empty h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.4rem;
+}
+
+.inbox-empty p {
+    font-size: 0.9rem;
+    max-width: 380px;
+    margin: 0 auto 1.5rem;
+    line-height: 1.5;
+}
+
+/* Dark mode tweaks */
+body.dark-mode .convo-card.unread {
+    background: rgba(99,102,241,0.04);
+}
+</style>
+
+<div class="inbox-wrap">
+
+    <!-- Header -->
+    <div class="inbox-header">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <h1>Messages</h1>
             <?php if ($unreadCount > 0): ?>
-                <span class="badge shadow-md px-3 py-1 font-bold" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; display:flex; align-items:center; justify-content:center; border-radius: 9999px; font-size: 1.1rem;"><?= $unreadCount ?> New</span>
+                <span class="inbox-unread-count"><?= $unreadCount ?> new</span>
             <?php endif; ?>
         </div>
-        
-        <?php if (empty($conversations)): ?>
-            <div class="glass-panel p-16 text-center shadow-sm" style="border-radius: var(--radius-xl); border: 2px dashed rgba(0,0,0,0.05);">
-                <div class="mb-6 text-6xl opacity-30">📭</div>
-                <h3 class="font-bold text-main text-2xl mb-2">Your inbox is empty</h3>
-                <p class="text-muted text-lg max-w-md mx-auto">When you reach out to sellers or receive inquiries about your items, your conversations will appear here.</p>
-                <a href="<?= BASE_URL ?>/pages/browse.php" class="btn btn-primary mt-6 hover-scale shadow-md" style="border-radius: var(--radius-full); padding: 0.8rem 2rem; font-weight: bold;">Browse Items</a>
-            </div>
-        <?php else: ?>
-            <div class="inbox-list grid gap-4">
-                <?php foreach ($conversations as $conv): ?>
-                    <?php
-                        $isUnread = ($conv['receiver_id'] == $currentUserId && $conv['is_read'] == 0);
-                        $cardBg = $isUnread ? 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02))' : 'white';
-                        $cardBorder = $isUnread ? 'border-primary' : 'border-gray-100';
-                        $dotDisplay = $isUnread ? 'block' : 'none';
-                    ?>
-                    <a href="<?= BASE_URL ?>/pages/messages.php?product_id=<?= $conv['product_id'] ?>&other_user_id=<?= $conv['other_user_id'] ?>" 
-                       class="glass-panel hover-scale relative overflow-hidden transition-all duration-300" 
-                       style="text-decoration: none; color: inherit; padding: 1.5rem; background: <?= $cardBg ?>; border-radius: var(--radius-lg); border: 1px solid transparent; display: block; box-shadow: var(--shadow-sm);">
-                       
-                        <!-- Read Status Indicator -->
-                        <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 4px; background: var(--primary); display: <?= $dotDisplay ?>;"></div>
-
-                        <div class="flex items-center gap-5">
-                            <!-- Avatar -->
-                            <div style="width: 56px; height: 56px; flex-shrink: 0; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary); box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
-                                <?php echo strtoupper(substr($conv['other_username'], 0, 2)); ?>
-                            </div>
-
-                            <div style="flex: 1; min-width: 0;">
-                                <div class="flex justify-between items-baseline mb-1">
-                                    <h4 class="mb-0 text-main truncate" style="font-size: 1.15rem; font-weight: <?= $isUnread ? '800' : '600' ?>;">
-                                        <?= htmlspecialchars($conv['other_username']) ?> 
-                                    </h4>
-                                    <span class="text-sm shrink-0 whitespace-nowrap" style="color: <?= $isUnread ? 'var(--primary)' : 'var(--text-muted)' ?>; font-weight: <?= $isUnread ? 'bold' : 'normal' ?>;">
-                                        <?= timeAgo($conv['created_at']) ?>
-                                    </span>
-                                </div>
-                                <div class="text-xs uppercase tracking-wider font-bold mb-1 truncate" style="color: var(--primary);">
-                                    Regarding: <?= htmlspecialchars($conv['product_title']) ?>
-                                </div>
-                                <p class="mb-0 truncate" style="color: <?= $isUnread ? 'var(--text-main)' : 'var(--text-muted)' ?>; font-weight: <?= $isUnread ? '600' : 'normal' ?>;">
-                                    <?php if ($conv['sender_id'] == $currentUserId): ?>
-                                        <span style="opacity: 0.6; font-size: 0.85em;">You:</span> 
-                                    <?php endif; ?>
-                                    <?= htmlspecialchars($conv['body']) ?>
-                                </p>
-                            </div>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
-            </div>
+        <?php if (!empty($conversations)): ?>
+            <span style="font-size: 0.82rem; color: var(--text-muted);"><?= count($conversations) ?> conversation<?= count($conversations) !== 1 ? 's' : '' ?></span>
         <?php endif; ?>
     </div>
+
+    <?php if (empty($conversations)): ?>
+        <!-- Empty State -->
+        <div class="inbox-empty">
+            <svg class="inbox-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"></path>
+            </svg>
+            <h3>Your inbox is empty</h3>
+            <p>When you reach out to sellers or receive inquiries about your items, conversations will appear here.</p>
+            <a href="<?= BASE_URL ?>/pages/browse.php" class="btn btn-primary" style="border-radius: var(--radius-full); padding: 0.6rem 1.75rem; font-weight: 600; font-size: 0.9rem;">Browse Items</a>
+        </div>
+    <?php else: ?>
+        <!-- Conversation List -->
+        <div class="convo-list">
+            <?php foreach ($conversations as $conv): ?>
+                <?php
+                    $isUnread = ($conv['receiver_id'] == $currentUserId && $conv['is_read'] == 0);
+                    $initials = strtoupper(substr($conv['other_username'], 0, 2));
+                    $hasAvatar = !empty($conv['other_avatar']);
+                ?>
+                <a href="<?= BASE_URL ?>/pages/messages.php?product_id=<?= $conv['product_id'] ?>&other_user_id=<?= $conv['other_user_id'] ?>"
+                   class="convo-card <?= $isUnread ? 'unread' : '' ?>">
+
+                    <!-- Avatar -->
+                    <div class="convo-avatar">
+                        <?php if ($hasAvatar): ?>
+                            <img src="<?= avatarUrl($conv['other_avatar']) ?>" alt="<?= htmlspecialchars($conv['other_username']) ?>">
+                        <?php else: ?>
+                            <?= $initials ?>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="convo-content">
+                        <div class="convo-top">
+                            <span class="convo-username"><?= htmlspecialchars($conv['other_username']) ?></span>
+                            <span class="convo-time"><?= timeAgo($conv['created_at']) ?></span>
+                        </div>
+                        <div class="convo-product">Re: <?= htmlspecialchars($conv['product_title']) ?></div>
+                        <p class="convo-body">
+                            <?php if ($conv['sender_id'] == $currentUserId): ?>
+                                <span class="convo-body-prefix">You:</span>
+                            <?php endif; ?>
+                            <?= htmlspecialchars(mb_strimwidth($conv['body'], 0, 90, '...')) ?>
+                        </p>
+                    </div>
+
+                    <!-- Indicators -->
+                    <?php if ($isUnread): ?>
+                        <div class="convo-unread-dot"></div>
+                    <?php endif; ?>
+
+                    <svg class="convo-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

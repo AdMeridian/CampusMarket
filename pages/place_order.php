@@ -68,7 +68,7 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container min-h-screen pt-12 pb-20 relative">
     
     <!-- Background Accents -->
-    <div style="position: absolute; top: -5%; right: 10%; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
+
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
         <!-- Product Summary -->
