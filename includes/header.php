@@ -95,12 +95,13 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                 <!-- User Account Dropdown -->
                 <div class="user-dropdown">
                     <button class="user-dropdown-btn">
-                        <span>Account</span>
+                        <span><?php echo sanitize($_SESSION['username'] ?? 'Account'); ?></span>
                         <svg viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                     </button>
                     <div class="user-dropdown-content">
                         <a href="<?php echo BASE_URL; ?>pages/my_orders.php">My Orders</a>
                         <a href="<?php echo BASE_URL; ?>pages/wishlist.php">Wishlist</a>
+                        <a href="<?php echo BASE_URL; ?>pages/promotions.php">Promotions & Donate</a>
                         <a href="<?php echo BASE_URL; ?>pages/profile.php">Profile Settings</a>
                         <div style="border-top: 1px solid var(--border-light); margin: 0.5rem 0;"></div>
                         <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>

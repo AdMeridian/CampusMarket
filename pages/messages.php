@@ -123,6 +123,9 @@ const chatBox = document.getElementById('chat-box');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 let loadingDiv = document.getElementById('chat-loading');
+const realtimeRoom = `chat:${productId}:${[<?= $currentUserId ?>, otherUserId].sort((a, b) => a - b).join(':')}`;
+let realtimeChannel = null;
+let pollIntervalId = null;
 
 function fetchMessages() {
     const cacheBuster = Date.now();
@@ -259,6 +262,18 @@ chatForm.addEventListener('submit', (e) => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            if (realtimeChannel) {
+                realtimeChannel.send({
+                    type: 'broadcast',
+                    event: 'new_message',
+                    payload: {
+                        product_id: productId,
+                        sender_id: <?= $currentUserId ?>,
+                        receiver_id: otherUserId,
+                        sent_at: new Date().toISOString()
+                    }
+                });
+            }
             fetchMessages();
         } else {
             alert('Error sending message: ' + data.error);
@@ -408,11 +423,50 @@ function dismissDeal() {
 fetchMessages();
 checkDealStatus();
 
-// Long polling every 3 seconds (messages)
-setInterval(fetchMessages, 3000);
+function startPolling(intervalMs = 3000) {
+    if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+    }
+    pollIntervalId = setInterval(fetchMessages, intervalMs);
+}
 
-// Deal status check every 10 seconds
-setInterval(checkDealStatus, 10000);
+function initRealtime() {
+    if (!window.CampusMarketSupabase) {
+        startPolling(3000);
+        return;
+    }
+
+    realtimeChannel = window.CampusMarketSupabase.channel(realtimeRoom);
+
+    realtimeChannel.on('broadcast', { event: 'new_message' }, (payload) => {
+        const msg = payload && payload.payload ? payload.payload : null;
+        if (!msg || Number(msg.product_id) !== Number(productId)) return;
+        if (![Number(<?= $currentUserId ?>), Number(otherUserId)].includes(Number(msg.sender_id))) return;
+        fetchMessages();
+    });
+
+    realtimeChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            // Keep a low-frequency fallback in case realtime delivery is missed.
+            startPolling(15000);
+            return;
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            startPolling(3000);
+        }
+    });
+}
+
+initRealtime();
+
+window.addEventListener('beforeunload', () => {
+    if (realtimeChannel && window.CampusMarketSupabase) {
+        window.CampusMarketSupabase.removeChannel(realtimeChannel);
+    }
+    if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+    }
+});
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
