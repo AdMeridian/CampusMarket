@@ -68,27 +68,22 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
         </form>
 
         <!-- Navigation Links -->
-        <div class="nav-links">
-            <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
-                <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
-            </button>
+        <div class="nav-links" id="nav-links">
+
+            <div class="hidden lg-block">
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+                    <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
+                </button>
+            </div>
+
             <a href="<?php echo BASE_URL; ?>pages/browse.php">Browse</a>
             <?php if (isLoggedIn() && isAdmin()): ?>
-                <!-- Admin-only nav: no marketplace actions -->
-                <div class="flex items-center gap-4" style="border-left: 1px solid var(--border-light); padding-left: 1.5rem; margin-left: 0.25rem;">
-                    <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; padding: 0.35rem 0.85rem; background: var(--warning-bg); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; text-align: center; gap: 0.4rem; box-shadow: var(--shadow-sm);">
-                        🛡️ Admin Mode
-                    </span>
-                    <a href="<?php echo BASE_URL; ?>admin/index.php" style="color: var(--primary); font-weight: 700; font-size: 0.95rem;">Admin Panel</a>
-                    <a href="<?php echo BASE_URL; ?>pages/logout.php" class="btn btn-danger btn-sm" style="border-radius: var(--radius-full); padding: 0.45rem 1.2rem; font-weight: 600;">Logout</a>
-                </div>
+                <a href="<?php echo BASE_URL; ?>admin/index.php">Admin Panel</a>
+                <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>
             <?php elseif (isLoggedIn()): ?>
                 <?php $unreadMessages = countUnreadMessages($pdo, currentUserId()); ?>
                 <a href="<?php echo BASE_URL; ?>/pages/inbox.php" class="flex items-center gap-1">
-                    Inbox
-                    <?php if ($unreadMessages > 0): ?>
-                        <span class="badge" style="background: var(--accent); color: white; padding: 0.1rem 0.4rem; font-size: 0.7rem;"><?php echo $unreadMessages; ?></span>
-                    <?php endif; ?>
+                    Inbox <?php if ($unreadMessages > 0): ?><span class="badge" style="background: var(--accent); color: white; padding: 0.1rem 0.4rem; font-size: 0.7rem;"><?php echo $unreadMessages; ?></span><?php endif; ?>
                 </a>
                 <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 600; color: var(--primary);">Sell Item</a>
                 
@@ -109,13 +104,14 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                 </div>
             <?php else: ?>
                 <a href="<?php echo BASE_URL; ?>pages/login.php">Login</a>
-                <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn btn-primary btn-sm">Sign Up</a>
+                <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn btn-primary btn-sm" style="color: white !important;">Sign Up</a>
             <?php endif; ?>
         </div>
     </div>
 </nav>
 
 <script src="<?php echo BASE_URL; ?>public/js/theme.js"></script>
+<script src="<?php echo BASE_URL; ?>public/js/mobile-menu.js"></script>
 
 <div class="container">
     <?php if ($flash = getFlash()): ?>
