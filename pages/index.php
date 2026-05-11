@@ -92,7 +92,7 @@ $latest_products = array_slice($authentic_products, 0, 6);
 
 <style>
   .product-card { position: relative; }
-  .heart-btn { position: absolute; top: 8px; right: 8px; z-index: 2; width: 36px; height: 36px; border: none; border-radius: 50%; background: rgba(255,255,255,.95); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.12); color: #64748b; }
+  .heart-btn { position: absolute; top: 8px; right: 8px; z-index: 2; width: 36px; height: 36px; border: none; border-radius: var(--radius-lg); background: rgba(255,255,255,.95); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.12); color: #64748b; }
   .heart-btn.active { color: #dc2626; }
 </style>
 <script src="../public/js/wishlist.js"></script>

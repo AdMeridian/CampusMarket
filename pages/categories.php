@@ -24,7 +24,7 @@ $catEmojis = [
 
 <div class="container min-h-screen pt-12 pb-20 relative">
     <!-- Background Accents -->
-    <div style="position: absolute; top: -5%; left: 30%; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, rgba(255,255,255,0) 70%); z-index: -1;"></div>
+
 
     <div class="mb-10 text-center lg:text-left">
         <h1 class="font-bold text-4xl mb-3 gradient-text" style="background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Explore Categories</h1>
@@ -39,7 +39,7 @@ $catEmojis = [
                     
                     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--primary), var(--secondary)); opacity: 0; transition: opacity 0.3s ease;" class="group-hover:opacity-100"></div>
                     
-                    <div style="width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, var(--bg-main), white); display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02), 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.3s ease;" class="group-hover:scale-110">
+                    <div style="width: 70px; height: 70px; border-radius: var(--radius-lg); background: linear-gradient(135deg, var(--bg-main), white); display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: inset 0 2px 5px rgba(0,0,0,0.02), 0 4px 10px rgba(0,0,0,0.05); transition: transform 0.3s ease;" class="group-hover:scale-110">
                         <?php echo $emoji; ?>
                     </div>
                     

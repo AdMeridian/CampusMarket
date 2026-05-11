@@ -72,8 +72,8 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 
 <div class="container relative mt-16 mb-20 flex justify-center">
     <!-- Decorative elements -->
-    <div style="position: absolute; top: -50px; left: 10%; width: 300px; height: 300px; border-radius: 50%; background: linear-gradient(135deg, var(--primaryLight), var(--secondaryLight)); opacity: 0.15; filter: blur(40px); z-index: -1;"></div>
-    <div style="position: absolute; bottom: -50px; right: 10%; width: 250px; height: 250px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #3b82f6); opacity: 0.1; filter: blur(40px); z-index: -1;"></div>
+
+
 
     <div class="w-full max-w-3xl">
         <div class="text-center mb-8">
@@ -169,7 +169,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
         width: 20px;
         height: 20px;
         border: 2px solid var(--border-light);
-        border-radius: 50%;
+        border-radius: var(--radius-md);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -183,7 +183,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
         width: 10px;
         height: 10px;
         background: var(--primary);
-        border-radius: 50%;
+        border-radius: var(--radius-lg);
         transform: scale(0);
         transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }

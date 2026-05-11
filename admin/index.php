@@ -19,7 +19,23 @@ $stats = [
     'orders'          => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
     'pending_orders'  => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
     'reports'         => $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'")->fetchColumn(),
+    'completed_deals' => $pdo->query("SELECT COUNT(*) FROM deal_confirmations WHERE status = 'completed'")->fetchColumn(),
 ];
+
+// Top sellers by completed transactions
+$sellerTxnStmt = $pdo->query("
+    SELECT
+        u.id AS seller_id,
+        u.username AS seller_username,
+        COUNT(dc.id) AS total_transactions
+    FROM deal_confirmations dc
+    JOIN users u ON u.id = dc.seller_id
+    WHERE dc.status = 'completed'
+    GROUP BY u.id, u.username
+    ORDER BY total_transactions DESC, u.username ASC
+    LIMIT 10
+");
+$sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <style>
@@ -58,7 +74,7 @@ $stats = [
 
 .stat-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.25rem;
     margin-bottom: 2.5rem;
 }
@@ -201,7 +217,7 @@ $stats = [
 /* ── System Status Card ───────────────────────────────── */
 
 .system-card {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: #4f46e5;
     border-radius: var(--radius-lg);
     padding: 1.75rem;
     color: #fff;
@@ -236,7 +252,7 @@ $stats = [
 .status-dot {
     width: 10px;
     height: 10px;
-    border-radius: 50%;
+    border-radius: var(--radius-lg);
     background: #34d399;
     box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.3);
     flex-shrink: 0;
@@ -309,6 +325,71 @@ $stats = [
     margin-bottom: 0.75rem;
     margin-top: 0.25rem;
 }
+
+/* ── Transaction Insight Card ─────────────────────────── */
+.txn-insight-card {
+    margin-top: 1.5rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+}
+
+.txn-insight-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.txn-insight-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.txn-insight-total {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #059669;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 9999px;
+    padding: 0.2rem 0.65rem;
+}
+
+.txn-seller-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.txn-seller-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 0.55rem 0.7rem;
+}
+
+.txn-seller-name {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.88rem;
+}
+
+.txn-seller-count {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
 </style>
 
 <div class="admin-wrap">
@@ -347,6 +428,11 @@ $stats = [
             <div class="stat-card-label">Pending Reports</div>
             <div class="stat-card-num"><?php echo $stats['reports']; ?></div>
             <div class="stat-card-sub">Awaiting moderation</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #10b981;">
+            <div class="stat-card-label">🤝 Completed Deals</div>
+            <div class="stat-card-num"><?php echo $stats['completed_deals']; ?></div>
+            <div class="stat-card-sub">Verified transactions</div>
         </div>
     </div>
 
@@ -402,6 +488,14 @@ $stats = [
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
+                    <a href="transactions.php" class="module-card" style="--module-color: #10b981; --module-bg: #d1fae5;">
+                        <div class="module-icon">🤝</div>
+                        <div class="module-info">
+                            <div class="module-name">Transactions</div>
+                            <div class="module-desc">Verified deal history</div>
+                        </div>
+                        <span class="module-arrow">›</span>
+                    </a>
                 </div>
 
                 <div class="section-label">Taxonomy</div>
@@ -422,6 +516,29 @@ $stats = [
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
+                </div>
+
+                <div class="txn-insight-card">
+                    <div class="txn-insight-head">
+                        <h4 class="txn-insight-title">Transaction Insights</h4>
+                        <span class="txn-insight-total">Total: <?php echo (int)$stats['completed_deals']; ?></span>
+                    </div>
+                    <?php if (empty($sellerTransactionStats)): ?>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">No completed transactions yet.</p>
+                    <?php else: ?>
+                        <div class="txn-seller-list">
+                            <?php foreach ($sellerTransactionStats as $row): ?>
+                                <div class="txn-seller-row">
+                                    <a class="txn-seller-name" href="../pages/profile.php?id=<?php echo (int)$row['seller_id']; ?>">
+                                        @<?php echo sanitize($row['seller_username']); ?>
+                                    </a>
+                                    <span class="txn-seller-count">
+                                        <?php echo (int)$row['total_transactions']; ?> transaction<?php echo (int)$row['total_transactions'] !== 1 ? 's' : ''; ?>
+                                    </span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

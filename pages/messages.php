@@ -46,13 +46,13 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Chat Header Context -->
     <div class="glass-panel mb-4 p-4 flex justify-between items-center" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
         <div class="flex items-center gap-4">
-            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
+            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
                 <?php echo strtoupper(substr($otherUser['username'], 0, 2)); ?>
             </div>
             <div>
                 <h3 class="mb-0 font-bold" style="line-height: 1.2;">@<?= htmlspecialchars($otherUser['username']) ?></h3>
                 <p class="text-muted small mb-0 flex items-center gap-1">
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span> Active recently
+                    <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span> Active recently
                 </p>
             </div>
         </div>
@@ -77,6 +77,11 @@ require_once __DIR__ . '/../includes/header.php';
             <!-- Messages will be loaded here via JS -->
         </div>
         
+        <!-- Deal Handshake Bar -->
+        <div id="deal-handshake-bar" style="display:none; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 0.9rem 1.25rem; background: var(--bg-surface);">
+            <!-- Content injected by JS based on deal status -->
+        </div>
+        
         <!-- Action area -->
         <?php if ($currentUserId !== $sellerId): ?>
             <!-- Buyer's context: showing order proposal button -->
@@ -85,7 +90,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <form action="api_messages.php" method="POST" class="m-0">
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn btn-secondary btn-sm shadow-sm font-bold uppercase tracking-wide hover-scale" style="font-size: 0.75rem; padding: 0.4rem 1rem; border-radius: var(--radius-full); background: var(--bg-main); color: var(--secondary); border-color: var(--secondary);" onclick="proposeOrder()">Propose Order Details</button>
+                    <button type="button" class="btn btn-secondary btn-sm shadow-sm font-bold uppercase tracking-wide hover-scale" style="font-size: 0.75rem; padding: 0.4rem 1rem; border-radius: var(--radius-lg); background: var(--bg-main); color: var(--secondary); border-color: var(--secondary);" onclick="proposeOrder()">Propose Order Details</button>
                     <!-- In a full app, this button would trigger a modal to set meetup details -->
                 </form>
             </div>
@@ -94,8 +99,8 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- Input Area -->
         <div style="background: var(--bg-surface); border-top: 1px solid var(--border-light); padding: 0.75rem;">
             <form id="chat-form" class="flex gap-3 relative m-0">
-                <input type="text" id="chat-input" class="premium-input" style="background: var(--bg-surface); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: var(--radius-full); border: 1px solid var(--border-light); font-size: 1rem; flex-grow: 1;" placeholder="Type your message..." required autocomplete="off">
-                <button type="submit" class="btn btn-primary hover-scale shadow-md" style="border-radius: var(--radius-full); width: 54px; height: 54px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Send">
+                <input type="text" id="chat-input" class="premium-input" style="background: var(--bg-surface); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); font-size: 1rem; flex-grow: 1;" placeholder="Type your message..." required autocomplete="off">
+                <button type="submit" class="btn btn-primary hover-scale shadow-md" style="border-radius: var(--radius-lg); width: 54px; height: 54px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Send">
                     <svg style="width: 24px; height: 24px; transform: translateX(2px);" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                 </button>
             </form>
@@ -120,12 +125,25 @@ const chatInput = document.getElementById('chat-input');
 let loadingDiv = document.getElementById('chat-loading');
 
 function fetchMessages() {
-    fetch(`api_messages.php?action=fetch&product_id=${productId}&other_user_id=${otherUserId}`)
-        .then(res => res.json())
+    const cacheBuster = Date.now();
+    fetch(`api_messages.php?action=fetch&product_id=${productId}&other_user_id=${otherUserId}&_=${cacheBuster}`, {
+        cache: 'no-store'
+    })
+        .then(res => {
+            if (!res.ok) throw new Error('Network error');
+            return res.json();
+        })
         .then(data => {
             if (data.success) {
                 renderMessages(data.messages);
+            } else {
+                console.warn('API error:', data.error);
             }
+        })
+        .catch(err => {
+            console.warn('Failed to fetch messages:', err);
+            // Even if fetch fails, if we have an optimistic message, it might be stuck.
+            // But we can't easily distinguish which one it is here without a ID.
         });
 }
 
@@ -159,7 +177,7 @@ function renderMessages(messages) {
             const dateDiv = document.createElement('div');
             dateDiv.style.textAlign = 'center';
             dateDiv.style.margin = '1rem 0';
-            dateDiv.innerHTML = `<span style="background: var(--bg-surface); color: var(--text-muted); padding: 0.2rem 0.8rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: bold;">${msgDate}</span>`;
+            dateDiv.innerHTML = `<span style="background: var(--bg-surface); color: var(--text-muted); padding: 0.2rem 0.8rem; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: bold;">${msgDate}</span>`;
             chatBox.appendChild(dateDiv);
             lastDate = msgDate;
         }
@@ -167,7 +185,7 @@ function renderMessages(messages) {
         const msgDiv = document.createElement('div');
         msgDiv.style.maxWidth = '75%';
         msgDiv.style.padding = '0.875rem 1.25rem';
-        msgDiv.style.boxShadow = 'var(--shadow-sm)';
+        msgDiv.style.boxShadow = 'none';
         msgDiv.style.position = 'relative';
         msgDiv.style.lineHeight = '1.6';
         msgDiv.style.wordWrap = 'break-word';
@@ -176,14 +194,14 @@ function renderMessages(messages) {
             msgDiv.style.alignSelf = 'flex-end';
             msgDiv.style.background = 'var(--primary)';
             msgDiv.style.color = '#ffffff';
-            msgDiv.style.borderRadius = '18px 18px 4px 18px';
+            msgDiv.style.borderRadius = '10px';
             msgDiv.style.marginLeft = 'auto';
         } else {
             msgDiv.style.alignSelf = 'flex-start';
             msgDiv.style.background = 'var(--bg-surface)';
             msgDiv.style.color = 'var(--text-main)';
             msgDiv.style.border = '1px solid var(--border-light)';
-            msgDiv.style.borderRadius = '18px 18px 18px 4px';
+            msgDiv.style.borderRadius = '10px';
             msgDiv.style.marginRight = 'auto';
         }
         
@@ -215,9 +233,9 @@ chatForm.addEventListener('submit', (e) => {
     msgDiv.style.alignSelf = 'flex-end';
     msgDiv.style.background = 'var(--primary)';
     msgDiv.style.color = '#ffffff';
-    msgDiv.style.borderRadius = '18px 18px 4px 18px';
+    msgDiv.style.borderRadius = '10px';
     msgDiv.style.marginLeft = 'auto';
-    msgDiv.style.boxShadow = 'var(--shadow-sm)';
+    msgDiv.style.boxShadow = 'none';
     msgDiv.style.lineHeight = '1.6';
     msgDiv.style.wordWrap = 'break-word';
     msgDiv.style.opacity = '0.7'; // Indicate sending
@@ -244,9 +262,15 @@ chatForm.addEventListener('submit', (e) => {
             fetchMessages();
         } else {
             alert('Error sending message: ' + data.error);
-            msgDiv.remove(); // Remove failed optimistic message
-            chatInput.value = text; // Restore input
+            msgDiv.remove();
+            chatInput.value = text;
         }
+    })
+    .catch(err => {
+        console.error('Send failed:', err);
+        alert('Failed to send message. Please try again.');
+        msgDiv.remove();
+        chatInput.value = text;
     });
 });
 
@@ -263,11 +287,132 @@ function proposeOrder() {
     });
 }
 
+// ─── Deal Handshake Logic ──────────────────────────────
+const handshakeBar = document.getElementById('deal-handshake-bar');
+
+function checkDealStatus() {
+    fetch(`api_messages.php?action=check_deal_status&product_id=${productId}&other_user_id=${otherUserId}&_=${Date.now()}`, {
+        cache: 'no-store'
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.show_handshake) {
+                renderHandshakeBar(data.deal);
+                handshakeBar.style.display = 'block';
+            } else {
+                handshakeBar.style.display = 'none';
+            }
+        })
+        .catch(() => {
+            handshakeBar.style.display = 'none';
+        });
+}
+
+function renderHandshakeBar(deal) {
+    const status = deal.status;
+    const isSeller = deal.is_seller;
+    const buyerName = deal.buyer_username || 'Buyer';
+    const productTitle = deal.product_title || 'this item';
+
+    let html = '';
+    let borderStyle = '';
+
+    if (status === 'pending') {
+        borderStyle = 'border-left: 4px solid var(--primary);';
+        html = `
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">🤝 Did this deal happen?</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Confirming marks this item as sold and removes it from listings.</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">✅ Yes, deal is done!</button>
+                    <button onclick="dismissDeal()" class="btn btn-secondary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">⏳ Not yet</button>
+                </div>
+            </div>
+        `;
+    } else if (status === 'buyer_confirmed' && !isSeller) {
+        borderStyle = 'border-left: 4px solid #94a3b8;';
+        html = `
+            <div style="display: flex; align-items: center; gap: 0.75rem; opacity: 0.8;">
+                <span style="font-size: 1.3rem;">✅</span>
+                <div>
+                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-main);">You confirmed this deal. Waiting for the seller to confirm...</div>
+                </div>
+            </div>
+        `;
+    } else if (status === 'buyer_confirmed' && isSeller) {
+        borderStyle = 'border-left: 4px solid #10b981; background: rgba(16,185,129,0.06);';
+        html = `
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">🔔 @${buyerName} says the deal is done!</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Confirm below to mark &ldquo;${productTitle}&rdquo; as sold.</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: #10b981; border-color: #10b981;">✅ Confirm & Delist Item</button>
+                    <button onclick="dismissDeal()" class="btn btn-secondary btn-sm" style="font-size: 0.82rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Not done yet</button>
+                </div>
+            </div>
+        `;
+    } else if (status === 'completed') {
+        borderStyle = 'border-left: 4px solid #10b981; background: rgba(16,185,129,0.06);';
+        html = `
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-size: 1.3rem;">✅</span>
+                <div style="font-weight: 600; font-size: 0.9rem; color: #059669;">Deal confirmed! This item has been marked as sold.</div>
+            </div>
+        `;
+    } else {
+        handshakeBar.style.display = 'none';
+        return;
+    }
+
+    handshakeBar.setAttribute('style', `display:block; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 0.9rem 1.25rem; ${borderStyle}`);
+    handshakeBar.innerHTML = html;
+}
+
+function confirmDeal() {
+    const formData = new FormData();
+    formData.append('action', 'confirm_deal');
+    formData.append('product_id', productId);
+    formData.append('other_user_id', otherUserId);
+
+    fetch('api_messages.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                checkDealStatus();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown'));
+            }
+        });
+}
+
+function dismissDeal() {
+    const formData = new FormData();
+    formData.append('action', 'dismiss_deal');
+    formData.append('product_id', productId);
+    formData.append('other_user_id', otherUserId);
+
+    fetch('api_messages.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                handshakeBar.style.display = 'none';
+            }
+        });
+}
+
 // Initial fetch
 fetchMessages();
+checkDealStatus();
 
-// Long polling every 3 seconds
+// Long polling every 3 seconds (messages)
 setInterval(fetchMessages, 3000);
+
+// Deal status check every 10 seconds
+setInterval(checkDealStatus, 10000);
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
