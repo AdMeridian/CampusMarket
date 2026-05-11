@@ -145,43 +145,14 @@ $pageTitle = 'Create account';
 require_once '../includes/header.php';
 ?>
 
-<style>
-  .auth-card { max-width: 480px; margin: 2rem auto; background: #fff; border-radius: 0.5rem; border: 1px solid #e2e8f0; padding: 2rem; }
-  .auth-card h1 { margin-top: 0; }
-  .form-row { margin-bottom: 1rem; }
-  .form-row label { display: block; font-weight: 500; margin-bottom: 0.35rem; }
-  .form-row input { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 1rem; box-sizing: border-box; }
-  .form-row input:focus { outline: 2px solid var(--primary); border-color: transparent; }
-  .form-row .hint { color: #64748b; font-size: 0.85rem; margin-top: 0.25rem; }
-  .form-row .error { color: #b91c1c; font-size: 0.85rem; margin-top: 0.25rem; }
-  .form-row input.is-invalid { border-color: #dc2626; }
-  .btn-full { width: 100%; padding: 0.7rem; font-size: 1rem; }
-  .auth-foot { text-align: center; color: #64748b; margin-top: 1.25rem; font-size: 0.9rem; }
-  .alert-error { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding:0.6rem 0.8rem; border-radius:0.375rem; margin-bottom:1rem; }
 
-  /* Password eye toggle */
-  .password-wrap { position: relative; }
-  .password-wrap input { padding-right: 2.6rem; }
-  .password-toggle {
-    position: absolute; top: 50%; right: 0.4rem; transform: translateY(-50%);
-    background: none; border: 0; padding: 0.35rem;
-    color: #64748b; cursor: pointer; display: flex; align-items: center;
-    border-radius: 0.25rem;
-  }
-  .password-toggle:hover       { color: #0f172a; }
-  .password-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
-  .password-toggle svg         { width: 1.15rem; height: 1.15rem; }
-  .password-toggle .icon-hide  { display: none; }
-  .password-toggle.is-shown .icon-show { display: none; }
-  .password-toggle.is-shown .icon-hide { display: block; }
-</style>
-
-<div class="auth-card">
+<div class="auth-page">
+  <div class="auth-card">
   <h1>Create your account</h1>
   <p style="color:#64748b; margin-top:-0.25rem;">University email required. We'll send you a link to verify it.</p>
 
   <?php if (!empty($errors['form'])): ?>
-    <div class="alert-error"><?php echo sanitize($errors['form']); ?></div>
+    <div class="flash flash-error"><?php echo sanitize($errors['form']); ?></div>
   <?php endif; ?>
 
   <form method="post" novalidate>
@@ -295,13 +266,14 @@ require_once '../includes/header.php';
       <div class="error" style="margin-top: -1rem; margin-bottom: 1rem; color: #b91c1c; font-size: 0.85rem;"><?php echo sanitize($errors['terms']); ?></div>
     <?php endif; ?>
 
-    <button type="submit" class="btn btn-full">Create account</button>
+    <button type="submit" class="btn btn-primary w-full py-4 mt-6">Create account</button>
   </form>
 
   <p class="auth-foot">
     Already have an account?
     <a href="<?php echo BASE_URL; ?>pages/login.php">Log in</a>
   </p>
+</div>
 </div>
 
 <script>

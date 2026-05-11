@@ -21,16 +21,16 @@ $topCategories = getTopCategories($pdo);
     <div class="hero-overlay"></div>
     
     <div class="container">
-        <h1 style="font-size: 4rem; font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 4px 12px rgba(0,0,0,0.3); color: white;">The Campus Marketplace</h1>
-        <p style="font-size: 1.5rem; max-width: 700px; margin: 0 auto 3rem; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.3); color: white;">
+        <h1 class="hero-title" style="font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 4px 12px rgba(0,0,0,0.3); color: white;">The Campus Marketplace</h1>
+        <p class="hero-subtitle" style="max-width: 700px; margin: 0 auto 3rem; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.3); color: white;">
             The safest way to buy and sell within your university community.
         </p>
-        <div class="flex justify-center gap-6">
-            <a href="pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);">Start Browsing</a>
+        <div class="flex justify-center gap-4 md:gap-6">
+            <a href="pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); white-space: nowrap;">Start Browsing</a>
             <?php if (isLoggedIn()): ?>
-                <a href="pages/create_listing.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px);">Sell an Item</a>
+                <a href="pages/create_listing.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); white-space: nowrap;">Sell an Item</a>
             <?php else: ?>
-                <a href="pages/register.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px);">Join to Sell</a>
+                <a href="pages/register.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); white-space: nowrap;">Join to Sell</a>
             <?php endif; ?>
         </div>
     </div>
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <a href="pages/browse.php" class="btn btn-secondary btn-sm">See everything</a>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-4 gap-6">
             <?php if (empty($recentProducts)): ?>
                 <div class="col-span-full text-center py-12 bg-white rounded-lg border">
                     <p class="text-muted">No products listed yet. Be the first to sell something!</p>

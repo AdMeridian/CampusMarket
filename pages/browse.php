@@ -68,7 +68,7 @@ include '../includes/header.php';
 
     <div class="container">
         <!-- Browse Header -->
-        <div class="mb-10 text-center lg:text-left flex flex-col lg:flex-row justify-between items-end gap-6">
+        <div class="mb-10 text-center lg-text-left flex flex-col lg-flex-row justify-between items-end gap-6">
             <div>
                 <h1 class="font-bold text-4xl mb-2 gradient-text" style="background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Discover Great Finds</h1>
                 <p class="text-muted text-lg">Browse items from students around your campus</p>
@@ -80,11 +80,22 @@ include '../includes/header.php';
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        <!-- Mobile Filter Toggle -->
+        <div class="lg-hidden mb-6">
+            <button id="filter-toggle-btn" class="btn btn-secondary w-full flex items-center justify-between py-4" style="border-radius: var(--radius-lg); font-weight: 700;">
+                <span class="flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    Filters & Categories
+                </span>
+                <svg id="filter-chevron" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg-grid-cols-5 gap-8 items-start">
             
             <!-- Sidebar Filters -->
-            <aside class="lg:col-span-1">
-                <div class="glass-panel p-5 sticky-desktop" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+            <aside class="lg-col-span-1">
+                <div id="filter-sidebar" class="hidden lg-block glass-panel p-5 sticky-desktop" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                     <div class="flex justify-between items-center mb-8 pb-4 border-b">
                         <h2 class="mb-0" style="font-size: 1.25rem;">Filters</h2>
                         <a href="browse.php" class="text-muted small font-bold uppercase tracking-wider hover:text-primary">Clear</a>
@@ -151,7 +162,7 @@ include '../includes/header.php';
             </aside>
 
             <!-- Results -->
-            <main class="lg:col-span-4">
+            <main class="lg-col-span-4">
                 <div class="mb-8 flex items-center justify-between gap-6" style="background: var(--bg-surface); padding: 1.1rem 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
                     <!-- Item Count -->
                     <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-lg); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
@@ -209,7 +220,7 @@ include '../includes/header.php';
                         <a href="browse.php" class="btn btn-primary mt-6 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Clear All Filters</a>
                     </div>
                 <?php else: ?>
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md-grid-cols-2 xl-grid-cols-3 gap-6">
                         <?php foreach ($products as $prod): ?>
                             <?php include '../includes/product_card_template.php'; ?>
                         <?php endforeach; ?>
@@ -219,5 +230,25 @@ include '../includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+    // Mobile Filter Toggle
+    const filterBtn = document.getElementById('filter-toggle-btn');
+    const filterSidebar = document.getElementById('filter-sidebar');
+    const filterChevron = document.getElementById('filter-chevron');
+
+    if (filterBtn && filterSidebar) {
+        filterBtn.addEventListener('click', () => {
+            const isHidden = filterSidebar.classList.contains('hidden');
+            if (isHidden) {
+                filterSidebar.classList.remove('hidden');
+                filterChevron.style.transform = 'rotate(180deg)';
+            } else {
+                filterSidebar.classList.add('hidden');
+                filterChevron.style.transform = 'rotate(0deg)';
+            }
+        });
+    }
+</script>
 
 <?php include '../includes/footer.php'; ?>

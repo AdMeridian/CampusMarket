@@ -45,7 +45,7 @@ $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
         <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize($product['category_name']); ?></a>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+    <div class="grid grid-cols-1 lg-grid-cols-2 gap-8 lg-gap-16">
         
         <!-- Gallery -->
         <div class="gallery-container sticky top-24" style="align-self: start;">
@@ -82,35 +82,29 @@ $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
         <div class="flex flex-col">
             <div class="mb-6 border-b border-gray-100 pb-6">
                 <p class="text-primary font-bold tracking-widest uppercase small mb-2" style="font-size: 0.8rem;"><?php echo sanitize($product['category_name']); ?></p>
-                <h1 class="mb-4 text-main font-bold" style="font-size: 2.75rem; line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
+                <h1 class="product-title mb-4 text-main font-bold" style="line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
                 <div class="flex items-center gap-4">
-                    <span style="font-size: 2.1rem; font-weight: 800; color: var(--primary); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                    <span class="product-price" style="font-weight: 800; color: var(--primary); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
                     <span class="text-muted small px-3 py-1 rounded-lg font-medium" style="background: var(--bg-main); border: 1px solid var(--border-light);">Listed <?php echo timeAgo($product['created_at']); ?></span>
                 </div>
             </div>
 
             <!-- Seller Card -->
-            <div class="glass-panel p-6 mb-8 flex items-center justify-between" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); background: rgba(99,102,241,0.04);">
-                <div class="flex items-center gap-4">
-                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; box-shadow: var(--shadow-md);">
+            <div class="glass-panel p-6 mb-8 flex flex-col sm-flex-row items-center justify-between gap-6" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); background: rgba(99,102,241,0.04);">
+                <div class="flex items-center gap-4 w-full">
+                    <div style="width: 60px; height: 60px; flex-shrink: 0; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; box-shadow: var(--shadow-md);">
                         <?php echo strtoupper(substr($product['seller_name'], 0, 1)); ?>
                     </div>
-                    <div>
+                    <div class="flex-grow">
                         <p class="text-muted small mb-0 uppercase tracking-wider font-bold" style="font-size: 0.7rem;">Seller</p>
                         <h4 class="mb-0 font-bold text-main" style="font-size: 1.2rem;">@<?php echo sanitize($product['seller_name']); ?></h4>
-                        <div class="flex items-center gap-2 text-sm mt-1">
+                        <div class="flex flex-wrap items-center gap-3 text-sm mt-1">
                             <span style="color: #f59e0b; font-weight: bold;">★ <?php echo $rating['avg']; ?></span>
                             <span class="text-muted">(<?php echo $rating['count']; ?> reviews)</span>
                         </div>
-                        <div class="flex items-center gap-2 text-xs mt-1">
-                            <span class="badge" style="background: rgba(16,185,129,0.14); color: #065f46; font-weight: 700; font-size: 0.68rem; padding: 0.15rem 0.5rem;">
-                                <?php echo sanitize($trust['tier']); ?>
-                            </span>
-                            <span class="text-muted">Trust Score: <?php echo (int)$trust['score']; ?>/100</span>
-                        </div>
                     </div>
                 </div>
-                <a href="profile.php?id=<?php echo $product['seller_id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View Profile</a>
+                <a href="profile.php?id=<?php echo $product['seller_id']; ?>" class="btn btn-secondary btn-sm w-full sm-w-auto hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View Profile</a>
             </div>
 
             <div class="glass-panel p-8 mb-8 flex-grow" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--bg-surface); border: 1px solid var(--border-light);">
