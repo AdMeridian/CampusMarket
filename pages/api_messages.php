@@ -293,11 +293,11 @@ if ($action === 'check_deal_status') {
         ];
     }
 
-    // If dismissed, hide the bar
-    if ($deal['status'] === 'dismissed') {
+    /* Dismissed status is no longer used to hide the bar, ensuring it remains persistent until completion */
+    /* if ($deal['status'] === 'dismissed') {
         echo json_encode(['show_handshake' => false]);
         exit;
-    }
+    } */
 
     // Fetch buyer username for display
     $stmtBuyerName = $pdo->prepare("SELECT username FROM users WHERE id = :id");
@@ -399,31 +399,6 @@ if ($action === 'confirm_deal') {
     exit;
 }
 
-// ─── Deal Handshake: Dismiss Deal ────────────────────────
-if ($action === 'dismiss_deal') {
-    $productId = (int)($_POST['product_id'] ?? 0);
-    $otherUserId = (int)($_POST['other_user_id'] ?? 0);
-
-    if (!$productId || !$otherUserId) {
-        echo json_encode(['error' => 'Missing parameters']);
-        exit;
-    }
-
-    $stmt = $pdo->prepare("SELECT user_id FROM products WHERE id = :pid");
-    $stmt->execute([':pid' => $productId]);
-    $sellerId = (int)$stmt->fetchColumn();
-    $isSeller = ($currentUserId === $sellerId);
-    $buyerId = $isSeller ? $otherUserId : $currentUserId;
-
-    $stmtUp = $pdo->prepare("
-        UPDATE deal_confirmations 
-        SET status = 'dismissed', dismissed_by = :uid, updated_at = NOW()
-        WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
-    ");
-    $stmtUp->execute([':uid' => $currentUserId, ':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
-
-    echo json_encode(['success' => true]);
-    exit;
-}
+// dismiss_deal action removed as handshake bar is now persistent until completion
 
 echo json_encode(['error' => 'Invalid action']);
