@@ -3,21 +3,27 @@
 // Central Database Connection using PDO
 
 // Database configuration with support for MySQL (Local) and PostgreSQL (Supabase)
-$type = getenv('DB_TYPE') ?: (getenv('POSTGRES_HOST') ? 'pgsql' : 'mysql');
+$databaseUrl = getenv('DATABASE_URL') ?: getenv('POSTGRES_URL') ?: getenv('POSTGRES_PRISMA_URL') ?: '';
+
+$type = getenv('DB_TYPE') ?: (getenv('POSTGRES_HOST') || $databaseUrl ? 'pgsql' : 'mysql');
 $host = getenv('DB_HOST') ?: getenv('POSTGRES_HOST') ?: 'localhost';
 $port = getenv('DB_PORT') ?: getenv('POSTGRES_PORT') ?: ($type === 'mysql' ? '3306' : '5432');
 $db   = getenv('DB_NAME') ?: getenv('POSTGRES_DATABASE') ?: 'campusmarket';
 $user = getenv('DB_USER') ?: getenv('POSTGRES_USER') ?: 'root';
 $pass = getenv('DB_PASS') ?: getenv('DB_Pass') ?: getenv('POSTGRES_PASSWORD') ?: '';
 
-// Auto-switch to Pooler if on Vercel for PostgreSQL
-if ($type === 'pgsql' && getenv('VERCEL')) {
-    $host = 'aws-0-ap-southeast-1.pooler.supabase.com';
-    $port = '6543'; // Transaction Mode
-    if (strpos($user, '.') === false) {
-        $user .= '.ghfzfzscpjlknooxxfjx'; // Append project ref for pooler
+if ($databaseUrl) {
+    $parsed = parse_url($databaseUrl);
+    if (is_array($parsed)) {
+        $type = 'pgsql';
+        $host = $parsed['host'] ?? $host;
+        $port = isset($parsed['port']) ? (string) $parsed['port'] : $port;
+        $db = isset($parsed['path']) ? ltrim($parsed['path'], '/') : $db;
+        $user = isset($parsed['user']) ? urldecode($parsed['user']) : $user;
+        $pass = isset($parsed['pass']) ? urldecode($parsed['pass']) : $pass;
     }
 }
+
 $charset = 'utf8mb4';
 
 // Select DSN based on type
@@ -36,11 +42,9 @@ $options = [
 try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-     if (getenv('VERCEL')) {
-         // Log the error internally
-         error_log("DB Connection Error: " . $e->getMessage());
-     }
-     throw new Exception("Database connection failed: " . $e->getMessage());
+     // Always log full error details internally, never expose them to users.
+     error_log("DB Connection Error: " . $e->getMessage());
+     throw new Exception("Database connection failed. Please try again later.");
 }
 
 // Global accessor for the database

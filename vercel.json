@@ -2,19 +2,12 @@
   "functions": {
     "api/index.php": {
       "runtime": "vercel-php@0.9.0"
-    },
-    "api/test-db.php": {
-      "runtime": "vercel-php@0.9.0"
     }
   },
   "routes": [
     {
       "src": "/public/(.*)",
       "dest": "/public/$1"
-    },
-    {
-      "src": "/test-db.php",
-      "dest": "/api/test-db.php"
     },
     {
       "src": "/(.*)",
