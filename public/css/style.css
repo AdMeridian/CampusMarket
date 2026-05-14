@@ -441,6 +441,7 @@ p {
 }
 
 .user-dropdown:hover .user-dropdown-content,
+.user-dropdown:focus-within .user-dropdown-content,
 .user-dropdown.active .user-dropdown-content {
   opacity: 1;
   visibility: visible;
