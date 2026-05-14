@@ -4,8 +4,10 @@
 // ============================================================
 
 require_once __DIR__ . '/../config/constants.php';
-session_name(SESSION_NAME);
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_name(SESSION_NAME);
+    session_start();
+}
 
 if (file_exists(ROOT_PATH . 'config/secrets.php')) {
     require_once ROOT_PATH . 'config/secrets.php';

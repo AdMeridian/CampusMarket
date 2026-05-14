@@ -1159,6 +1159,54 @@ body.dark-mode .input-invalid {
 }
 
 /* Authentication Pages */
+/* Authentication Layout Extensions */
+.auth-split-wrapper {
+    display: flex;
+    min-height: 100vh;
+    background: var(--bg-main);
+    overflow: hidden;
+}
+
+.auth-visual-side {
+    display: none;
+    flex: 1.1;
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    padding: 4rem;
+    flex-direction: column;
+    justify-content: space-between;
+    color: white;
+}
+
+.auth-visual-side::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(124, 58, 237, 0.7));
+    z-index: 1;
+}
+
+.auth-visual-content {
+    position: relative;
+    z-index: 2;
+}
+
+.auth-form-side {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: var(--bg-main);
+}
+
+@media (min-width: 1024px) {
+    .auth-visual-side {
+        display: flex;
+    }
+}
+
 .auth-page {
     background-color: var(--bg-main);
     min-height: calc(100vh - 200px);

@@ -27,6 +27,40 @@ if (!$product) {
     exit;
 }
 
+// Increment View Count (Unique per student)
+$canCountView = false;
+$currentUid = isLoggedIn() ? (int)currentUserId() : null;
+
+if ($currentUid) {
+    // Check if this student has already viewed this product
+    $viewCheck = $pdo->prepare("SELECT 1 FROM product_views WHERE product_id = ? AND user_id = ?");
+    $viewCheck->execute([$productId, $currentUid]);
+    if (!$viewCheck->fetch()) {
+        // First time viewing! Record it and increment the counter
+        $insView = $pdo->prepare("INSERT INTO product_views (product_id, user_id) VALUES (?, ?)");
+        $insView->execute([$productId, $currentUid]);
+        $canCountView = true;
+    }
+} else {
+    // For guests, use a persistent cookie to track views (survives logout/login)
+    $guestViews = [];
+    if (isset($_COOKIE['cm_pv'])) {
+        $guestViews = json_decode($_COOKIE['cm_pv'], true) ?: [];
+    }
+    
+    if (!in_array($productId, $guestViews)) {
+        $guestViews[] = $productId;
+        setcookie('cm_pv', json_encode($guestViews), time() + (86400 * 30), '/');
+        $canCountView = true;
+    }
+}
+
+if ($canCountView) {
+    $updateViews = $pdo->prepare("UPDATE products SET views = views + 1 WHERE id = ?");
+    $updateViews->execute([$productId]);
+    $product['views']++; 
+}
+
 $isOwner = isLoggedIn() && (int)currentUserId() === (int)$product['seller_id'];
 
 // Handle Price Update
@@ -42,21 +76,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     }
 }
 
-// Handle Mark as Sold
+// Handle Mark as Sold (Now moves to bin too)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'mark_sold') {
-    $stmt = $pdo->prepare("UPDATE products SET status = 'sold', updated_at = NOW() WHERE id = ?");
+    $stmt = $pdo->prepare("UPDATE products SET status = 'deleted', deleted_at = NOW(), updated_at = NOW() WHERE id = ?");
     if ($stmt->execute([$productId])) {
-        setFlash('success', 'Product marked as sold!');
-        redirect(BASE_URL . 'pages/profile.php');
+        setFlash('success', 'Product marked as sold and moved to Recycle Bin!');
+        redirect(BASE_URL . 'pages/recycle_bin.php');
     }
 }
 
-// Handle Delete Listing
+// Handle Delete Listing (Move to Recycle Bin)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'delete_listing') {
-    $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
+    $stmt = $pdo->prepare("UPDATE products SET status = 'deleted', deleted_at = NOW(), updated_at = NOW() WHERE id = ?");
     if ($stmt->execute([$productId])) {
-        setFlash('success', 'Listing deleted permanently.');
-        redirect(BASE_URL . 'pages/profile.php');
+        setFlash('success', 'Listing moved to Recycle Bin. You can restore it within 30 days.');
+        redirect(BASE_URL . 'pages/recycle_bin.php');
     }
 }
 
@@ -69,15 +103,47 @@ $images = $stmt->fetchAll();
 $rating = getSellerRating($pdo, $product['seller_id']);
 $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
 
-// Increment views if not the owner
-if (!isLoggedIn() || (int)currentUserId() !== (int)$product['seller_id']) {
-    $pdo->prepare("UPDATE products SET views = views + 1 WHERE id = ?")->execute([$productId]);
-}
+// Fetch REAL unique view count from product_views table
+$stmtViews = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ?");
+$stmtViews->execute([$productId]);
+$uniqueViewCount = (int)$stmtViews->fetchColumn();
 
 // Fetch Wishlist count
 $stmtWish = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ?");
 $stmtWish->execute([$productId]);
 $wishlistCount = (int)$stmtWish->fetchColumn();
+
+// CUMULATIVE view counts for graph — each point is total views up to that day
+// Points: [5 days ago, 4 days ago, 3 days ago, 2 days ago, yesterday, today]
+$viewCumPoints = [];
+$wishCumPoints = [];
+for ($d = 5; $d >= 0; $d--) {
+    $sv = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ? AND viewed_at <= DATE_SUB(NOW(), INTERVAL ? DAY)");
+    $sv->execute([$productId, $d]);
+    $viewCumPoints[] = (int)$sv->fetchColumn();
+
+    $sw = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= DATE_SUB(NOW(), INTERVAL ? DAY)");
+    $sw->execute([$productId, $d]);
+    $wishCumPoints[] = (int)$sw->fetchColumn();
+}
+
+// Map cumulative counts to SVG Y coordinates
+// SVG viewBox "0 0 100 40": Y=39 = bottom, Y=5 = near top
+// We cap the maximum visual rise at 28 units so even 1 event shows clearly
+function cumulToSvgY(array $points, float $bottom = 39.0, float $maxRise = 28.0): array {
+    $max = max($points) ?: 1; // avoid div by zero; if all zero, normalise to 1
+    $result = [];
+    foreach ($points as $v) {
+        $result[] = round($bottom - ($v / $max) * $maxRise, 2);
+    }
+    return $result;
+}
+
+$viewY = cumulToSvgY($viewCumPoints);
+$wishY = cumulToSvgY($wishCumPoints);
+
+// X positions for 6 evenly-spaced points
+$xPos = [0, 20, 40, 60, 80, 100];
 
 // Check if current user has this in wishlist
 $isSaved = false;
@@ -92,6 +158,21 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <style>
+/* Graph line draw animation */
+@keyframes drawLine {
+    from { stroke-dashoffset: 200; }
+    to   { stroke-dashoffset: 0; }
+}
+.graph-line {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 200;
+    animation: drawLine 1.4s ease-out forwards;
+}
+.graph-line-wish {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 200;
+    animation: drawLine 1.4s ease-out 0.2s forwards;
+}
 @media (min-width: 1024px) {
     .scc-wrapper {
         width: min(1060px, 100%);
@@ -260,8 +341,8 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <!-- Metrics Grid -->
                     <div class="grid grid-cols-1 md-grid-cols-2 gap-5 mb-7">
-                        <!-- Card 1 -->
-                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden flex items-center justify-between scc-metric-blue">
+                        <!-- Card 1: Total Reach -->
+                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden scc-metric-blue">
                             <div class="relative z-10">
                                 <div class="flex items-center gap-4 mb-4">
                                     <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
@@ -270,55 +351,69 @@ require_once __DIR__ . '/../includes/header.php';
                                     <span class="text-[0.95rem] font-bold text-slate-600">Total Reach</span>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-4xl font-black text-slate-800 m-0"><?php echo (int)($product['views'] ?? 0); ?></h2>
-                                    <span class="text-emerald-500 font-bold text-[1rem] flex items-center">↑ 12%</span>
+                                    <h2 class="text-4xl font-black text-slate-800 m-0 count-up" data-value="<?php echo $uniqueViewCount; ?>">0</h2>
                                 </div>
-                                <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1">vs last 7 days</p>
+                                <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1">Unique student views</p>
                             </div>
+                            <?php
+                                // Build SVG path from real daily data
+                                $vPath = '';
+                                $vFill = '';
+                                for ($i = 0; $i < 6; $i++) {
+                                    $cmd = $i === 0 ? 'M' : 'L';
+                                    $vPath .= "$cmd {$xPos[$i]} {$viewY[$i]} ";
+                                }
+                                $vFill = $vPath . "L 100 40 L 0 40 Z";
+                            ?>
                             <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
                                 <defs>
-                                    <linearGradient id="reachFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#2563eb" stop-opacity="0.4"/>
-                                        <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.25"/>
-                                        <stop offset="100%" stop-color="#22c55e" stop-opacity="0.3"/>
+                                    <linearGradient id="reachFill" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#2563eb" stop-opacity="0.25"/>
+                                        <stop offset="100%" stop-color="#2563eb" stop-opacity="0.02"/>
                                     </linearGradient>
                                 </defs>
-                                <path d="M0 34 C 12 24, 24 34, 36 30 C 48 26, 62 30, 74 18 C 84 8, 92 20, 100 6 L 100 40 L 0 40 Z" fill="url(#reachFill)"/>
-                                <path d="M0 34 C 12 24, 24 34, 36 30 C 48 26, 62 30, 74 18 C 84 8, 92 20, 100 6" stroke="#1d4ed8" stroke-width="2" fill="none"/>
+                                <path d="<?php echo $vFill; ?>" fill="url(#reachFill)"/>
+                                <path d="<?php echo $vPath; ?>" class="graph-line" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <!-- Card 2 -->
-                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden flex items-center justify-between scc-metric-violet">
+
+                        <!-- Card 2: Student Interest -->
+                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden scc-metric-violet">
                             <div class="relative z-10">
                                 <div class="flex items-center gap-4 mb-4">
-                                    <form action="../actions/toggle_wishlist.php" method="POST" style="margin: 0;">
-                                        <input type="hidden" name="product_id" value="<?php echo $productId; ?>">
-                                        <input type="hidden" name="redirect_to" value="<?php echo $_SERVER['REQUEST_URI']; ?>">
-                                        <button type="submit" class="w-12 h-12 rounded-full <?php echo $isSaved ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'; ?> flex items-center justify-center shadow-sm hover-scale" style="border: none; cursor: pointer; transition: all 0.2s;">
-                                            <svg class="w-6 h-6" fill="<?php echo $isSaved ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                                        </button>
-                                    </form>
+                                    <!-- Owner sees a read-only heart — not clickable, so they can't self-save -->
+                                    <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
+                                        <svg class="w-6 h-6" fill="<?php echo $wishlistCount > 0 ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                                    </div>
                                     <span class="text-[0.95rem] font-bold text-slate-600">Student Interest</span>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-4xl font-black text-slate-800 m-0"><?php echo $wishlistCount; ?></h2>
+                                    <h2 class="text-4xl font-black text-slate-800 m-0 count-up" data-value="<?php echo $wishlistCount; ?>">0</h2>
                                     <span class="text-emerald-500 font-black text-[0.8rem] flex items-center gap-1">
-                                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                        ACTIVE
+                                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                        LIVE
                                     </span>
                                 </div>
-                                <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1">Students showing interest</p>
+                                <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1">Students who saved this</p>
                             </div>
+                            <?php
+                                // Build SVG path from real daily wishlist data
+                                $wPath = '';
+                                for ($i = 0; $i < 6; $i++) {
+                                    $cmd = $i === 0 ? 'M' : 'L';
+                                    $wPath .= "$cmd {$xPos[$i]} {$wishY[$i]} ";
+                                }
+                                $wFill = $wPath . "L 100 40 L 0 40 Z";
+                            ?>
                             <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
                                 <defs>
-                                    <linearGradient id="interestFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.4"/>
-                                        <stop offset="55%" stop-color="#ec4899" stop-opacity="0.25"/>
-                                        <stop offset="100%" stop-color="#f97316" stop-opacity="0.3"/>
+                                    <linearGradient id="interestFill" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.25"/>
+                                        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.02"/>
                                     </linearGradient>
                                 </defs>
-                                <path d="M0 36 C 12 28, 24 36, 36 32 C 48 30, 60 34, 72 24 C 84 14, 92 24, 100 10 L 100 40 L 0 40 Z" fill="url(#interestFill)"/>
-                                <path d="M0 36 C 12 28, 24 36, 36 32 C 48 30, 60 34, 72 24 C 84 14, 92 24, 100 10" stroke="#9333ea" stroke-width="2" fill="none"/>
+                                <path d="<?php echo $wFill; ?>" fill="url(#interestFill)"/>
+                                <path d="<?php echo $wPath; ?>" class="graph-line-wish" stroke="#9333ea" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
                     </div>
@@ -405,6 +500,32 @@ function updateMainImage(src, element) {
     });
     element.classList.add('ring-2', 'ring-primary');
 }
+
+// Count-up animation
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.count-up').forEach(counter => {
+        const target = parseInt(counter.getAttribute('data-value')) || 0;
+
+        if (target === 0) {
+            counter.innerText = '0';
+            return;
+        }
+
+        let current = 0;
+        const steps = 40;
+        const increment = Math.max(1, Math.ceil(target / steps));
+
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                counter.innerText = target;
+                clearInterval(timer);
+            } else {
+                counter.innerText = current;
+            }
+        }, 30);
+    });
+});
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

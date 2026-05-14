@@ -65,6 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], 
                 $upd->execute([':price' => $newPrice, ':pid' => $productId]);
                 setFlash('success', 'Price updated successfully.');
             }
+        } elseif ($action === 'delete_listing') {
+            $upd = $pdo->prepare("UPDATE products SET status = 'deleted', deleted_at = NOW(), updated_at = NOW() WHERE id = :pid");
+            if ($upd->execute([':pid' => $productId])) {
+                setFlash('success', 'Listing moved to Recycle Bin.');
+            }
         }
     }
     redirect(BASE_URL . 'pages/profile.php?id=' . $viewId . '#listings');
@@ -646,6 +651,7 @@ body.dark-mode .btn-white-solid:hover {
             <!-- Action buttons -->
             <div class="profile-hero-actions">
                 <?php if ($isSelf): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/recycle_bin.php" class="btn btn-white">♻️ Recycle Bin</a>
                     <a href="<?php echo BASE_URL; ?>pages/edit_profile.php" class="btn btn-white">✏️ Edit Profile</a>
                     <a href="logout.php" class="btn btn-white" style="margin-left: 0.5rem; background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
                 <?php elseif (isLoggedIn()): ?>
@@ -746,6 +752,13 @@ body.dark-mode .btn-white-solid:hover {
                                                 </div>
                                             </form>
                                         <?php endif; ?>
+
+                                        <!-- Delete Form (Move to Bin) -->
+                                        <form method="post" onsubmit="return confirm('Move to Recycle Bin?')">
+                                            <input type="hidden" name="action" value="delete_listing">
+                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
+                                            <button type="submit" class="btn btn-danger btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: #fee2e2; color: #ef4444; border: none; font-weight: 700;">Delete Listing</button>
+                                        </form>
                                     </div>
                                 <?php endif; ?>
                             </div>

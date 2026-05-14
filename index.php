@@ -8,6 +8,24 @@ $pageTitle = "Home";
 // Data for homepage
 $recentProducts = getRecentProducts($pdo, 8);
 $topCategories = getTopCategories($pdo);
+
+// Fetch categories and their products (5 each) — done in PHP before HTML output
+$stmtCats = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC LIMIT 4");
+$displayCats = $stmtCats->fetchAll();
+foreach ($displayCats as &$dcat) {
+    $stmtCatP = $pdo->prepare("
+        SELECT p.*, c.name as category_name, i.image_path
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+        WHERE p.category_id = ? AND p.status = 'active'
+        ORDER BY p.created_at DESC
+        LIMIT 5
+    ");
+    $stmtCatP->execute([$dcat['id']]);
+    $dcat['products'] = $stmtCatP->fetchAll();
+}
+unset($dcat);
 ?>
 
 <!-- Hero Section with Background Carousel -->
@@ -125,34 +143,23 @@ if (!empty($featuredProducts)):
 </section>
 <?php endif; ?>
 
-<!-- Recent Products -->
-<section class="mt-16 mb-16">
+<!-- Category Highlights -->
+<section class="mt-20">
     <div class="container">
-        <div class="flex justify-between items-end mb-8">
-            <h2 class="mb-0">Recent Listings</h2>
-            <a href="pages/browse.php" class="btn btn-secondary btn-sm">See everything</a>
-        </div>
-
-        <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-4 gap-6">
-            <?php if (empty($recentProducts)): ?>
-                <div class="col-span-full text-center py-12 bg-white rounded-lg border">
-                    <p class="text-muted">No products listed yet. Be the first to sell something!</p>
-                    <?php if (isLoggedIn()): ?>
-                        <a href="pages/create_listing.php" class="btn btn-primary">Create Listing</a>
-                    <?php else: ?>
-                        <a href="pages/register.php" class="btn btn-primary">Join & Sell</a>
-                    <?php endif; ?>
+        <?php foreach ($displayCats as $cat): ?>
+            <?php if (empty($cat['products'])) continue; ?>
+            <div class="mb-16">
+                <div class="flex justify-between items-end mb-6" style="border-bottom: 2px solid #f1f5f9; padding-bottom: 1rem;">
+                    <h2 class="mb-0"><?php echo htmlspecialchars($cat['name']); ?></h2>
+                    <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="text-primary font-bold">See all <?php echo htmlspecialchars($cat['name']); ?> &rarr;</a>
                 </div>
-            <?php else: ?>
-                <?php foreach ($recentProducts as $prod): ?>
-                    <?php include 'includes/product_card_template.php'; ?>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-
-        <div class="mt-12 text-center">
-            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-lg); font-weight: 700; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">Explore All Listings</a>
-        </div>
+                <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-5 gap-6">
+                    <?php foreach ($cat['products'] as $prod): ?>
+                        <?php include 'includes/product_card_template.php'; ?>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
     </div>
 </section>
 

@@ -8,8 +8,8 @@
 /**
  * Sanitize user input to prevent XSS
  */
-function sanitize(string $input): string {
-    return strip_tags(trim($input));
+function sanitize(?string $input): string {
+    return strip_tags(trim((string)$input));
 }
 
 /**
@@ -149,7 +149,8 @@ function renderProductPrice(array $product): string {
 /**
  * Human-readable time ago (e.g., "3 hours ago")
  */
-function timeAgo(string $datetime): string {
+function timeAgo(?string $datetime): string {
+    if (!$datetime) return 'Recently';
     $now  = new DateTime();
     $ago  = new DateTime($datetime);
     $diff = $now->diff($ago);
@@ -165,7 +166,7 @@ function timeAgo(string $datetime): string {
 /**
  * Get a condition badge label and CSS class
  */
-function conditionBadge(string $condition): array {
+function conditionBadge(?string $condition): array {
     return match($condition) {
         'new'      => ['label' => 'New',      'class' => 'badge-new'],
         'like_new' => ['label' => 'Like New', 'class' => 'badge-like-new'],
@@ -451,7 +452,8 @@ function avatarUrl(?string $avatarPath): string {
 /**
  * Render star glyphs for a rating (0–5, half-star supported).
  */
-function renderStars(float $avg): string {
+function renderStars(?float $avg): string {
+    $avg = (float)($avg ?? 0);
     $full = (int) floor($avg);
     $half = ($avg - $full) >= 0.5;
     $html = '';

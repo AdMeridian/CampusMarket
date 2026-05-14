@@ -81,59 +81,54 @@ $pageTitle = 'Log in';
 require_once '../includes/header.php';
 ?>
 
-
 <div class="auth-page">
-  <div class="auth-card">
-  <h1>Log in</h1>
+    <div class="auth-card">
+        <div class="auth-head">
+            <h1>Log in to your account</h1>
+            <p>Enter your credentials to access the marketplace.</p>
+        </div>
 
-  <?php if (!empty($errors['form'])): ?>
-    <div class="<?php echo $unverified ? 'flash flash-warning' : 'flash flash-error'; ?>">
-      <?php echo sanitize($errors['form']); ?>
+        <?php if (!empty($errors['form'])): ?>
+            <div class="flash <?php echo $unverified ? 'flash-warning' : 'flash-error'; ?> mb-8" style="border-radius: 12px; font-weight: 600;">
+                <?php echo sanitize($errors['form']); ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="post" novalidate>
+            <div class="form-row mb-6">
+                <label for="identity" style="font-weight: 700; font-size: 0.9rem; margin-bottom: 0.6rem; display: block; color: var(--text-main);">Email or username</label>
+                <input type="text" id="identity" name="identity"
+                       value="<?php echo sanitize($identity); ?>"
+                       placeholder="you@std.neu.edu.tr"
+                       class="premium-input w-full"
+                       required autofocus autocomplete="username">
+            </div>
+
+            <div class="form-row mb-8">
+                <div class="flex justify-between items-center mb-1.5">
+                    <label for="password" style="font-weight: 700; font-size: 0.9rem; display: block; color: var(--text-main);">Password</label>
+                    <a href="#" style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">Forgot password?</a>
+                </div>
+                <div class="input-with-toggle">
+                    <input type="password" id="password" name="password"
+                           placeholder="••••••••"
+                           class="premium-input w-full"
+                           required autocomplete="current-password">
+                    <button type="button" class="password-toggle" data-target="password" aria-label="Show password" style="right: 12px;">
+                        <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg class="icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-6.5 0-10-7-10-7a19.8 19.8 0 015.06-5.94M9.9 4.24A10.94 10.94 0 0112 4c6.5 0 10 7 10 7a19.9 19.9 0 01-3.17 4.19M9.88 9.88a3 3 0 104.24 4.24M1 1l22 22"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-full py-4 shadow-lg hover-scale" style="border-radius: 14px; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.01em;">Log in</button>
+        </form>
+
+        <p class="auth-foot mt-10" style="font-weight: 500; font-size: 1rem; text-align: center;">
+            New to CampusMarket? 
+            <a href="<?php echo BASE_URL; ?>pages/register.php" style="font-weight: 800; color: var(--primary);">Create an account</a>
+        </p>
     </div>
-  <?php endif; ?>
-
-  <form method="post" novalidate>
-    <div class="form-row">
-      <label for="identity">Email or username</label>
-      <input type="text" id="identity" name="identity"
-             value="<?php echo sanitize($identity); ?>"
-             placeholder="you@std.neu.edu.tr or your username"
-             required autofocus autocomplete="username">
-    </div>
-
-    <div class="form-row">
-      <label for="password">Password</label>
-      <div class="password-wrap">
-        <input type="password" id="password" name="password"
-               placeholder="Your password"
-               required autocomplete="current-password">
-        <button type="button" class="password-toggle" data-target="password" aria-label="Show password">
-          <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          <svg class="icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6.5 0-10-7-10-7a19.8 19.8 0 0 1 5.06-5.94"/>
-            <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c6.5 0 10 7 10 7a19.9 19.9 0 0 1-3.17 4.19"/>
-            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-            <path d="M1 1l22 22"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <button type="submit" class="btn btn-primary w-full py-4 mt-4">Log in</button>
-  </form>
-
-  <p class="auth-foot">
-    New here?
-    <a href="<?php echo BASE_URL; ?>pages/register.php">Create an account</a>
-  </p>
-</div>
 </div>
 
 <script>
