@@ -7,34 +7,11 @@
   },
   "routes": [
     {
-      "src": "/public/css/(.*)",
-      "headers": { "Content-Type": "text/css", "Cache-Control": "public, max-age=31536000" },
-      "dest": "/public/css/$1"
+      "src": "/(.*\\.php)",
+      "dest": "/api/index.php"
     },
     {
-      "src": "/public/js/(.*)",
-      "headers": { "Content-Type": "application/javascript", "Cache-Control": "public, max-age=31536000" },
-      "dest": "/public/js/$1"
-    },
-    {
-      "src": "/public/images/(.*)",
-      "dest": "/public/images/$1"
-    },
-    {
-      "src": "/public/uploads/(.*)",
-      "dest": "/public/uploads/$1"
-    },
-    {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/manifest\\.webmanifest",
-      "dest": "/manifest.webmanifest"
-    },
-    {
-      "src": "/sw\\.js",
-      "dest": "/sw.js"
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
