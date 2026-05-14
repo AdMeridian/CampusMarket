@@ -25,7 +25,11 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <?php endif; ?>
     
     <!-- Member 5: Design System -->
-    <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/style.css?v=<?php echo filemtime(__DIR__ . '/../public/css/style.css'); ?>">
+    <?php 
+        $cssPath = __DIR__ . '/../public/css/style.css';
+        $cssVer = file_exists($cssPath) ? filemtime($cssPath) : '1';
+    ?>
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/style.css?v=<?php echo $cssVer; ?>">
     <?php if (isAdmin()): ?>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/admin.css">
     <?php endif; ?>
@@ -124,9 +128,14 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     </div>
 </nav>
 
-<script src="<?php echo BASE_URL; ?>public/js/theme.js?v=<?php echo filemtime(__DIR__ . '/../public/js/theme.js'); ?>"></script>
-<script src="<?php echo BASE_URL; ?>public/js/mobile-menu.js?v=<?php echo filemtime(__DIR__ . '/../public/js/mobile-menu.js'); ?>"></script>
-
+<?php
+    $themeJsPath = __DIR__ . '/../public/js/theme.js';
+    $themeJsVer = file_exists($themeJsPath) ? filemtime($themeJsPath) : '1';
+    $menuJsPath = __DIR__ . '/../public/js/mobile-menu.js';
+    $menuJsVer = file_exists($menuJsPath) ? filemtime($menuJsPath) : '1';
+?>
+<script src="<?php echo BASE_URL; ?>public/js/theme.js?v=<?php echo $themeJsVer; ?>"></script>
+<script src="<?php echo BASE_URL; ?>public/js/mobile-menu.js?v=<?php echo $menuJsVer; ?>"></script>
 <div class="container">
     <?php if ($flash = getFlash()): ?>
         <div class="mt-4 flex items-center flash flash-<?php echo sanitize($flash['type']); ?>">
