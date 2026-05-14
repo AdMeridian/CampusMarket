@@ -1,47 +1,46 @@
 <?php
-// api/index.php
-// Vercel Front Controller — routes PHP page requests only.
+// ============================================================
+// Vercel Front Controller
+// Routes all PHP requests to the correct file.
 // Static assets (CSS, JS, images) are served directly by Vercel CDN
 // via the explicit routes defined in vercel.json.
+// ============================================================
 
+$projectRoot = realpath(__DIR__ . '/..');
+
+// Parse the incoming request URI
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
-$parsedUrl  = parse_url($requestUri);
-$path       = $parsedUrl['path'] ?? '/';
+$path = parse_url($requestUri, PHP_URL_PATH);
+$path = rtrim($path, '/');
 
-// Normalize
-$path = ltrim($path, '/');
-
-// Default: homepage
-if ($path === '' || $path === 'index.php') {
-    require __DIR__ . '/../index.php';
-    exit;
+// Default to index.php for root
+if ($path === '' || $path === '/') {
+    $targetFile = $projectRoot . '/index.php';
+} else {
+    // Try exact path first (e.g., /pages/browse.php)
+    $targetFile = $projectRoot . $path;
 }
 
-// Security: block directory traversal
-if (str_contains($path, '..')) {
-    http_response_code(403);
-    exit('Forbidden');
+// Resolve and validate the target file
+$realFile = realpath($targetFile);
+
+// If exact path didn't work, try appending .php
+if (!$realFile || !is_file($realFile)) {
+    $realFile = realpath($targetFile . '.php');
 }
 
-// Resolve target file
-$targetFile = __DIR__ . '/../' . $path;
-
-// If it points to a directory, try its index.php
-if (is_dir($targetFile)) {
-    $targetFile = rtrim($targetFile, '/') . '/index.php';
+// Security: ensure file is within project root and is a PHP file
+if (
+    $realFile
+    && str_starts_with($realFile, $projectRoot)
+    && is_file($realFile)
+    && strtolower(pathinfo($realFile, PATHINFO_EXTENSION)) === 'php'
+) {
+    // Set working directory to the target file's directory
+    // This ensures relative require/include paths work correctly
+    chdir(dirname($realFile));
+    require $realFile;
+} else {
+    http_response_code(404);
+    echo '<!DOCTYPE html><html><head><title>404</title></head><body><h1>404 — Page Not Found</h1></body></html>';
 }
-
-// Only serve .php files through this handler
-if (file_exists($targetFile) && pathinfo($targetFile, PATHINFO_EXTENSION) === 'php') {
-    $_SERVER['SCRIPT_NAME']     = '/' . $path;
-    $_SERVER['SCRIPT_FILENAME'] = $targetFile;
-    $_SERVER['PHP_SELF']        = '/' . $path;
-
-    chdir(dirname($targetFile));
-    require $targetFile;
-    exit;
-}
-
-// Everything else: 404
-http_response_code(404);
-echo '404 Not Found';

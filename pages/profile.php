@@ -896,7 +896,7 @@ body.dark-mode .btn-white-solid:hover {
                         <div class="info-item" style="padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); margin-bottom: 0.75rem;">
                             <span class="info-value" style="font-size: 0.85rem; font-weight: 700;"><?php echo sanitize($fp['title']); ?></span>
                             <span class="info-label" style="text-transform: none; font-size: 0.75rem; color: var(--success); display: flex; align-items: center; gap: 0.3rem;">
-                                <span style="display:inline-block; width: 6px; height: 6px; background: currentColor; border-radius: 50%;"></span>
+                                <span style="display:inline-block; width: 6px; height: 6px; background: currentColor; border-radius: var(--radius-sm);"></span>
                                 Actively Promoted
                             </span>
                         </div>

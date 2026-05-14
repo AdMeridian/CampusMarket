@@ -71,7 +71,11 @@ $trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
 
 // Increment views if not the owner
 if (!isLoggedIn() || (int)currentUserId() !== (int)$product['seller_id']) {
-    $pdo->prepare("UPDATE products SET views = views + 1 WHERE id = ?")->execute([$productId]);
+    try {
+        $pdo->prepare("UPDATE products SET views = views + 1 WHERE id = ?")->execute([$productId]);
+    } catch (PDOException $e) {
+        // views column may not exist — silently skip
+    }
 }
 
 // Fetch Wishlist count
@@ -118,11 +122,20 @@ require_once __DIR__ . '/../includes/header.php';
 }
 
 .scc-colorful-shell {
-    background:
-        radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.10), transparent 34%),
-        radial-gradient(circle at 90% 15%, rgba(99, 102, 241, 0.09), transparent 32%),
-        radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.06), transparent 36%),
-        linear-gradient(180deg, #fbfdff 0%, #ffffff 56%, #f9fbff 100%);
+    background: var(--bg-surface);
+    position: relative;
+    overflow: hidden;
+}
+
+.scc-colorful-shell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%);
+    pointer-events: none;
 }
 
 .scc-metric-blue {
@@ -140,7 +153,7 @@ require_once __DIR__ . '/../includes/header.php';
     <?php if ($isOwner): ?>
         <div class="seller-management-banner" style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: white; padding: 1.25rem 2rem; border-radius: 20px; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.25); border: 1px solid rgba(255,255,255,0.1);">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">⚙️</div>
+                <div class="w-12 h-12 flex items-center justify-center text-2xl" style="border-radius: var(--radius-xl); background: rgba(255,255,255,0.2);">⚙️</div>
                 <div>
                     <h4 class="mb-0 font-bold" style="line-height: 1.2; font-size: 1.25rem; color: white;">Management Mode</h4>
                     <p class="mb-0 opacity-90 small" style="color: white; font-weight: 500;">You are viewing your own listing. Only you can see these controls.</p>
@@ -247,7 +260,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <!-- Insights Header -->
                     <div class="flex items-start justify-between mb-8">
                         <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                            <div class="w-10 h-10 flex items-center justify-center text-indigo-500" style="border-radius: var(--radius-xl); background: var(--bg-main);">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                             </div>
                             <div>
@@ -264,7 +277,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden flex items-center justify-between scc-metric-blue">
                             <div class="relative z-10">
                                 <div class="flex items-center gap-4 mb-4">
-                                    <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm">
+                                    <div class="flex items-center justify-center text-indigo-600 shadow-sm" style="width: 48px; height: 48px; border-radius: var(--radius-xl); background: var(--bg-main);">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     </div>
                                     <span class="text-[0.95rem] font-bold text-slate-600">Total Reach</span>
@@ -294,7 +307,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <form action="../actions/toggle_wishlist.php" method="POST" style="margin: 0;">
                                         <input type="hidden" name="product_id" value="<?php echo $productId; ?>">
                                         <input type="hidden" name="redirect_to" value="<?php echo $_SERVER['REQUEST_URI']; ?>">
-                                        <button type="submit" class="w-12 h-12 rounded-full <?php echo $isSaved ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'; ?> flex items-center justify-center shadow-sm hover-scale" style="border: none; cursor: pointer; transition: all 0.2s;">
+                                        <button type="submit" class="hover-scale" style="width: 48px; height: 48px; border-radius: var(--radius-xl); background: <?php echo $isSaved ? 'rgba(239, 68, 68, 0.1)' : 'rgba(124, 58, 237, 0.1)'; ?>; color: <?php echo $isSaved ? '#dc2626' : '#7c3aed'; ?>; border: none; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">
                                             <svg class="w-6 h-6" fill="<?php echo $isSaved ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                                         </button>
                                     </form>
@@ -303,7 +316,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="flex items-center gap-3">
                                     <h2 class="text-4xl font-black text-slate-800 m-0"><?php echo $wishlistCount; ?></h2>
                                     <span class="text-emerald-500 font-black text-[0.8rem] flex items-center gap-1">
-                                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                        <div class="w-2.5 h-2.5 rounded-sm bg-emerald-500"></div>
                                         ACTIVE
                                     </span>
                                 </div>
@@ -370,7 +383,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <!-- DESCRIPTION CARD (BOTTOM) -->
                 <div class="bg-white p-10 mt-8" style="border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.01); border: 1px solid #f1f5f9;">
                     <div class="flex items-center gap-4 mb-8">
-                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                        <div class="w-10 h-10 flex items-center justify-center text-blue-500" style="border-radius: var(--radius-xl); background: var(--bg-main);">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </div>
                         <h3 class="m-0 font-bold text-slate-800" style="font-size: 1.4rem;">Product Description</h3>

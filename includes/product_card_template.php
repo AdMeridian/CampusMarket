@@ -50,7 +50,7 @@ $cardBorder = $isOwner ? 'border: 2px solid var(--secondary);' : 'border: 1px so
             <?php if (!empty($prod['is_featured']) && (int)$prod['is_featured'] === 1): ?>
             <div style="position: absolute; top: 1rem; right: 1rem; z-index: 5;">
                 <span class="badge" style="background: var(--primary); color: white; font-size: 0.7rem; padding: 0.4rem 0.85rem; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); border: 1px solid rgba(255,255,255,0.2); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.25rem;">
-                    <span style="display:inline-block; width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                    <span style="display:inline-block; width: 6px; height: 6px; background: white; border-radius: var(--radius-sm); animation: pulse 2s infinite;"></span>
                     Featured
                 </span>
             </div>

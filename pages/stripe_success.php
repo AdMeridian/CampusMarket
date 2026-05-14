@@ -40,7 +40,7 @@ if ($httpCode === 200 && $response['payment_status'] === 'paid') {
                 INSERT INTO promotion_payments 
                     (user_id, product_id, payment_type, payment_method, amount, transaction_ref, status, approved_at, notes)
                 VALUES 
-                    (:uid, :pid, :ptype, "stripe", :amount, :tx, "approved", NOW(), "Automated Stripe Sandbox Payment")
+                    (:uid, :pid, :ptype, 'stripe', :amount, :tx, 'approved', NOW(), 'Automated Stripe Sandbox Payment')
             ');
             $ins->execute([
                 ':uid'    => $userId,

@@ -12,7 +12,7 @@ $currentUserId = currentUserId();
 $pageTitle = 'Promotions & Donations';
 $promoPaymentsTableExists = false;
 try {
-    $promoPaymentsTableExists = (bool)$pdo->query("SHOW TABLES LIKE 'promotion_payments'")->fetchColumn();
+    $promoPaymentsTableExists = (bool)$pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'promotion_payments' LIMIT 1")->fetchColumn();
 } catch (PDOException $e) {
     $promoPaymentsTableExists = false;
 }
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             INSERT INTO promotion_payments
                 (user_id, product_id, payment_type, payment_method, amount, transaction_ref, notes, status)
             VALUES
-                (:uid, :pid, :ptype, :pmethod, :amount, :tx, :notes, "pending")
+                (:uid, :pid, :ptype, :pmethod, :amount, :tx, :notes, 'pending')
         ');
 
         $insert->execute([

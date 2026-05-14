@@ -12,7 +12,7 @@ if (!isAdmin()) {
 $pageTitle = "Manage Listings";
 $promoPaymentsTableExists = false;
 try {
-    $promoPaymentsTableExists = (bool)$pdo->query("SHOW TABLES LIKE 'promotion_payments'")->fetchColumn();
+    $promoPaymentsTableExists = (bool)$pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'promotion_payments' LIMIT 1")->fetchColumn();
 } catch (PDOException $e) {
     $promoPaymentsTableExists = false;
 }

@@ -13,10 +13,10 @@ $topCategories = getTopCategories($pdo);
 <!-- Hero Section with Background Carousel -->
 <section class="hero">
     <div class="hero-carousel">
-        <div class="hero-slide active" style="background-image: url('public/images/hero/hero1.png');"></div>
-        <div class="hero-slide" style="background-image: url('public/images/hero/hero2.png');"></div>
-        <div class="hero-slide" style="background-image: url('public/images/hero/hero3.png');"></div>
-        <div class="hero-slide" style="background-image: url('public/images/hero/hero4.png');"></div>
+        <div class="hero-slide active" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero1.png');"></div>
+        <div class="hero-slide" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero2.png');"></div>
+        <div class="hero-slide" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero3.png');"></div>
+        <div class="hero-slide" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero4.png');"></div>
     </div>
     <div class="hero-overlay"></div>
     
@@ -182,7 +182,7 @@ if (!empty($donors)):
                             <img src="<?php echo avatarUrl($donor['avatar']); ?>" 
                                  alt="<?php echo sanitize($donor['username']); ?>"
                                  style="width: 80px; height: 80px; border-radius: 22px; border: 3px solid white; box-shadow: var(--shadow-lg); object-fit: cover; transform: rotate(-3deg); transition: var(--transition); background: white;">
-                            <div style="position: absolute; top: -8px; right: -8px; background: #fbbf24; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">
+                            <div style="position: absolute; top: -8px; right: -8px; background: #fbbf24; color: white; width: 26px; height: 26px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">
                                 ★
                             </div>
                         </div>
@@ -192,7 +192,7 @@ if (!empty($donors)):
             </div>
 
             <div class="mt-10" style="padding-bottom: 2rem;">
-                <a href="pages/donate.php" class="btn btn-primary" style="padding: 1rem 3.5rem; border-radius: var(--radius-full); font-weight: 800; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);">
+                <a href="pages/donate.php" class="btn btn-primary" style="padding: 1rem 3.5rem; border-radius: var(--radius-xl); font-weight: 800; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);">
                     Become a Supporter
                 </a>
             </div>
