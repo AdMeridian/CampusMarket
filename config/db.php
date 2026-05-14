@@ -28,11 +28,10 @@ try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
      if (getenv('VERCEL')) {
-         // Log the error internally but don't show to user
+         // Log the error internally
          error_log("DB Connection Error: " . $e->getMessage());
-         die("Database connection failed. Please check your environment variables.");
      }
-     die("Database connection failed: " . $e->getMessage());
+     throw new Exception("Database connection failed: " . $e->getMessage());
 }
 
 // Global accessor for the database
