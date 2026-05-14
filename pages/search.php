@@ -13,7 +13,7 @@ if ($query !== '' || $categoryId !== '') {
             FROM products p
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
-            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
             WHERE p.status = 'active'";
     $params = [];
 

@@ -280,7 +280,7 @@ function createNotification(PDO $pdo, int $userId, string $type, string $title, 
  * Count unread notifications for a user
  */
 function countUnreadNotifications(PDO $pdo, int $userId): int {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = 0");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = FALSE");
     $stmt->execute([':uid' => $userId]);
     return (int) $stmt->fetchColumn();
 }
@@ -289,7 +289,7 @@ function countUnreadNotifications(PDO $pdo, int $userId): int {
  * Count unread chat messages for a user.
  */
 function countUnreadMessages(PDO $pdo, int $userId): int {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE receiver_id = :uid AND is_read = 0");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE receiver_id = :uid AND is_read = FALSE");
     $stmt->execute([':uid' => $userId]);
     return (int) $stmt->fetchColumn();
 }
@@ -305,7 +305,7 @@ function getRecentProducts(PDO $pdo, int $limit = 8): array {
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
         WHERE p.status = 'active'
         ORDER BY p.created_at DESC
         LIMIT :limit
@@ -324,8 +324,8 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
-        WHERE p.status = 'active' AND p.is_featured = 1 AND (p.featured_until IS NULL OR p.featured_until > NOW())
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active' AND p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW())
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");

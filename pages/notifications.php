@@ -8,7 +8,7 @@ $currentUserId = currentUserId();
 // Handle specific actions like marking single/all as read
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'mark_all') {
-        $stmt = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = :uid");
+        $stmt = $pdo->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = :uid");
         $stmt->execute([':uid' => $currentUserId]);
         setFlash('success', 'All notifications marked as read.');
     }
@@ -25,7 +25,7 @@ $notifications = $stmt->fetchAll();
 $unreadIds = array_column(array_filter($notifications, fn($n) => $n['is_read'] == 0), 'id');
 if (!empty($unreadIds)) {
     $placeholders = str_repeat('?,', count($unreadIds) - 1) . '?';
-    $updateStmt = $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE id IN ($placeholders)");
+    $updateStmt = $pdo->prepare("UPDATE notifications SET is_read = TRUE WHERE id IN ($placeholders)");
     $updateStmt->execute($unreadIds);
 }
 

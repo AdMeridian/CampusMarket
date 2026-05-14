@@ -49,7 +49,7 @@ if (strtotime($row['expires_at']) < time()) {
 try {
     $pdo->beginTransaction();
 
-    $upd = $pdo->prepare('UPDATE users SET is_verified = 1 WHERE id = :id');
+    $upd = $pdo->prepare('UPDATE users SET is_verified = TRUE WHERE id = :id');
     $upd->execute([':id' => $row['user_id']]);
 
     $del = $pdo->prepare('DELETE FROM email_verifications WHERE user_id = :u');

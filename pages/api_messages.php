@@ -47,7 +47,7 @@ if ($action === 'fetch') {
     }
     
     // Mark messages sent to me as read
-    $stmtRead = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE receiver_id = :uid AND sender_id = :other AND product_id = :pid AND is_read = 0");
+    $stmtRead = $pdo->prepare("UPDATE messages SET is_read = TRUE WHERE receiver_id = :uid AND sender_id = :other AND product_id = :pid AND is_read = FALSE");
     $stmtRead->execute([
         ':uid' => $currentUserId,
         ':other' => $otherUserId,
@@ -57,11 +57,11 @@ if ($action === 'fetch') {
     // Keep notification badge in sync with read state in chat.
     $stmtNotifRead = $pdo->prepare("
         UPDATE notifications
-        SET is_read = 1
+        SET is_read = TRUE
         WHERE user_id = :uid
           AND type = 'message'
           AND reference_id = :pid
-          AND is_read = 0
+          AND is_read = FALSE
     ");
     $stmtNotifRead->execute([
         ':uid' => $currentUserId,

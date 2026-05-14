@@ -15,7 +15,7 @@ $stmt = $pdo->prepare("
     JOIN products p ON w.product_id = p.id
     JOIN categories c ON p.category_id = c.id
     JOIN users u ON p.user_id = u.id
-    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
     WHERE w.user_id = ?
     ORDER BY w.created_at DESC
 ");

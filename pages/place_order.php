@@ -23,7 +23,7 @@ $stmt = $pdo->prepare("
     FROM products p 
     JOIN users u ON p.user_id = u.id 
     JOIN categories c ON p.category_id = c.id
-    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
     WHERE p.id = :id AND p.status = 'active'
 ");
 $stmt->execute([':id' => $productId]);

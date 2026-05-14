@@ -80,7 +80,7 @@ $stmt = $pdo->prepare("
     SELECT p.*, c.name as category_name, i.image_path
     FROM products p
     JOIN categories c ON p.category_id = c.id
-    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
     WHERE p.user_id = :uid AND p.status = 'active'
     ORDER BY p.created_at DESC
 ");
@@ -93,7 +93,7 @@ $soldItems = $pdo->prepare("
            pi.image_path,
            dc.seller_confirmed_at
     FROM products p
-    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
+    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
     LEFT JOIN deal_confirmations dc ON dc.product_id = p.id AND dc.seller_id = p.user_id AND dc.status = 'completed'
     WHERE p.user_id = :uid AND p.status = 'sold'
     ORDER BY COALESCE(dc.seller_confirmed_at, p.updated_at, p.created_at) DESC
