@@ -5,7 +5,7 @@
 
   window.addEventListener("load", function () {
     navigator.serviceWorker
-      .register("/campusmarket/sw.js")
+      .register("/sw.js")
       .catch(function (error) {
         console.error("Service worker registration failed:", error);
       });

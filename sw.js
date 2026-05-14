@@ -1,14 +1,14 @@
 const CACHE_VERSION = "campusmarket-v1";
-const OFFLINE_URL = "/campusmarket/public/offline.html";
+const OFFLINE_URL = "/public/offline.html";
 
 const CORE_ASSETS = [
-  "/campusmarket/",
-  "/campusmarket/index.php",
-  "/campusmarket/manifest.webmanifest",
-  "/campusmarket/public/css/style.css",
-  "/campusmarket/public/js/theme.js",
-  "/campusmarket/public/js/pwa.js",
-  "/campusmarket/public/images/logo.png",
+  "/",
+  "/index.php",
+  "/manifest.webmanifest",
+  "/public/css/style.css",
+  "/public/js/theme.js",
+  "/public/js/pwa.js",
+  "/public/images/logo.png",
   OFFLINE_URL
 ];
 
@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
-  if (!requestUrl.pathname.startsWith("/campusmarket/")) {
+  if (!requestUrl.pathname.startsWith("/")) {
     return;
   }
 

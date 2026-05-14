@@ -2,10 +2,19 @@
   "functions": {
     "api/index.php": {
       "runtime": "vercel-php@0.9.0",
-      "includeFiles": "**/*.php"
+      "includeFiles": "{public/**,config/**,includes/**,pages/**,index.php,manifest.webmanifest,sw.js}"
     }
   },
   "routes": [
+    {
+      "src": "/public/(.*)",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "continue": true
+    },
+    {
+      "src": "/(manifest\\.webmanifest|sw\\.js|favicon\\.ico|robots\\.txt)",
+      "continue": true
+    },
     {
       "src": "/(.*\\.php)",
       "dest": "/api/index.php"
