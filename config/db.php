@@ -9,6 +9,15 @@ $port = getenv('DB_PORT') ?: getenv('POSTGRES_PORT') ?: ($type === 'mysql' ? '33
 $db   = getenv('DB_NAME') ?: getenv('POSTGRES_DATABASE') ?: 'campusmarket';
 $user = getenv('DB_USER') ?: getenv('POSTGRES_USER') ?: 'root';
 $pass = getenv('DB_PASS') ?: getenv('DB_Pass') ?: getenv('POSTGRES_PASSWORD') ?: '';
+
+// Auto-switch to Pooler if on Vercel for PostgreSQL
+if ($type === 'pgsql' && getenv('VERCEL')) {
+    $host = 'aws-0-ap-southeast-1.pooler.supabase.com';
+    $port = '6543'; // Transaction Mode
+    if (strpos($user, '.') === false) {
+        $user .= '.ghfzfzscpjlknooxxfjx'; // Append project ref for pooler
+    }
+}
 $charset = 'utf8mb4';
 
 // Select DSN based on type
