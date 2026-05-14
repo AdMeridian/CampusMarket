@@ -34,8 +34,9 @@ try {
         setFlash('success', 'Product saved to your wishlist!');
     }
 
-    // Redirect immediately to wishlist page as requested
-    redirect(BASE_URL . 'pages/wishlist.php');
+    // Redirect back if requested, otherwise to wishlist
+    $redirect = $_POST['redirect_to'] ?? (BASE_URL . 'pages/wishlist.php');
+    redirect($redirect);
 
 } catch (PDOException $e) {
     // Log error if needed and show message

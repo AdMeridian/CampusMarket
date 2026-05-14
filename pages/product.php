@@ -1,7 +1,6 @@
 <?php
 // pages/product.php
-require_once __DIR__ . '/../config/constants.php';
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/bootstrap.php';
 
 $productId = (int)($_GET['id'] ?? 0);
 
@@ -21,6 +20,8 @@ $stmt->execute([':id' => $productId]);
 $product = $stmt->fetch();
 
 if (!$product) {
+    $pageTitle = "Product Not Found";
+    require_once __DIR__ . '/../includes/header.php';
     echo '<div class="container mt-16 mb-20 text-center"><div class="glass-panel p-16" style="border-radius: var(--radius-xl);"><div class="text-6xl mb-4 opacity-50">🔍</div><h2 class="mb-2 font-bold text-main">Product not found</h2><p class="text-muted text-lg mb-6">This item may have been sold or removed.</p><a href="browse.php" class="btn btn-primary hover-scale" style="border-radius: var(--radius-lg);">Back to Browse</a></div></div>';
     include __DIR__ . '/../includes/footer.php';
     exit;
@@ -77,6 +78,17 @@ if (!isLoggedIn() || (int)currentUserId() !== (int)$product['seller_id']) {
 $stmtWish = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ?");
 $stmtWish->execute([$productId]);
 $wishlistCount = (int)$stmtWish->fetchColumn();
+
+// Check if current user has this in wishlist
+$isSaved = false;
+if (isLoggedIn()) {
+    $stmtSaved = $pdo->prepare("SELECT 1 FROM wishlists WHERE user_id = ? AND product_id = ?");
+    $stmtSaved->execute([currentUserId(), $productId]);
+    $isSaved = (bool)$stmtSaved->fetch();
+}
+
+$pageTitle = $product['title'];
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <style>
@@ -126,19 +138,17 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
 
 <div class="container mt-8 mb-20 relative">
     <?php if ($isOwner): ?>
-        <div class="seller-management-banner" style="background: linear-gradient(90deg, var(--secondary), var(--secondary-hover)); color: white; padding: 0.75rem 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-md);">
-            <div class="flex items-center gap-3">
-                <span style="font-size: 1.5rem;">⚙️</span>
+        <div class="seller-management-banner" style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: white; padding: 1.25rem 2rem; border-radius: 20px; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.25); border: 1px solid rgba(255,255,255,0.1);">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">⚙️</div>
                 <div>
-                    <h4 class="mb-0 font-bold" style="line-height: 1.2;">Management Mode</h4>
-                    <p class="mb-0 opacity-80 small">You are viewing your own listing. Only you can see these controls.</p>
+                    <h4 class="mb-0 font-bold" style="line-height: 1.2; font-size: 1.25rem; color: white;">Management Mode</h4>
+                    <p class="mb-0 opacity-90 small" style="color: white; font-weight: 500;">You are viewing your own listing. Only you can see these controls.</p>
                 </div>
             </div>
             <a href="profile.php" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">Go to Dashboard</a>
         </div>
     <?php endif; ?>
-    
-    <!-- Background Accents -->
 
     <!-- Breadcrumb -->
     <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
@@ -149,7 +159,7 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
         <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize($product['category_name']); ?></a>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+    <div class="grid grid-cols-1 lg-grid-cols-2 gap-12 lg-gap-16">
         
         <!-- Gallery -->
         <div class="gallery-container sticky top-24" style="align-self: start;">
@@ -189,6 +199,18 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
                 <h1 class="mb-4 text-main font-bold" style="font-size: 2.75rem; line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
                 <div class="flex items-center gap-4">
                     <span style="font-size: 2.1rem; font-weight: 800; color: var(--primary); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                    
+                    <form action="../actions/toggle_wishlist.php" method="POST" style="display: inline-block;">
+                        <input type="hidden" name="product_id" value="<?php echo $productId; ?>">
+                        <input type="hidden" name="redirect_to" value="<?php echo $_SERVER['REQUEST_URI']; ?>">
+                        <button type="submit" class="hover-scale" style="background: <?php echo $isSaved ? '#fff1f2' : 'var(--bg-main)'; ?>; border: 1px solid <?php echo $isSaved ? '#fecdd3' : 'var(--border-light)'; ?>; color: <?php echo $isSaved ? '#e11d48' : 'var(--text-muted)'; ?>; padding: 0.6rem 1rem; border-radius: var(--radius-lg); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; gap: 0.5rem; box-shadow: var(--shadow-sm);">
+                            <svg class="w-6 h-6" fill="<?php echo $isSaved ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24" style="width: 22px; height: 22px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                            </svg>
+                            <span style="font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;"><?php echo $isSaved ? 'Saved' : 'Save'; ?></span>
+                        </button>
+                    </form>
+
                     <span class="text-muted small px-3 py-1 rounded-lg font-medium" style="background: var(--bg-main); border: 1px solid var(--border-light);">Listed <?php echo timeAgo($product['created_at']); ?></span>
                 </div>
             </div>
@@ -237,7 +259,7 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
                     </div>
 
                     <!-- Metrics Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-7">
+                    <div class="grid grid-cols-1 md-grid-cols-2 gap-5 mb-7">
                         <!-- Card 1 -->
                         <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden flex items-center justify-between scc-metric-blue">
                             <div class="relative z-10">
@@ -253,25 +275,29 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
                                 </div>
                                 <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1">vs last 7 days</p>
                             </div>
-                            <svg class="absolute bottom-0 right-0 w-1/2 h-24 opacity-95" viewBox="0 0 100 40" preserveAspectRatio="none">
+                            <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
                                 <defs>
                                     <linearGradient id="reachFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#2563eb" stop-opacity="0.55"/>
-                                        <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.38"/>
-                                        <stop offset="100%" stop-color="#22c55e" stop-opacity="0.42"/>
+                                        <stop offset="0%" stop-color="#2563eb" stop-opacity="0.4"/>
+                                        <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.25"/>
+                                        <stop offset="100%" stop-color="#22c55e" stop-opacity="0.3"/>
                                     </linearGradient>
                                 </defs>
                                 <path d="M0 34 C 12 24, 24 34, 36 30 C 48 26, 62 30, 74 18 C 84 8, 92 20, 100 6 L 100 40 L 0 40 Z" fill="url(#reachFill)"/>
-                                <path d="M0 34 C 12 24, 24 34, 36 30 C 48 26, 62 30, 74 18 C 84 8, 92 20, 100 6" stroke="#1d4ed8" stroke-width="2.4" fill="none"/>
+                                <path d="M0 34 C 12 24, 24 34, 36 30 C 48 26, 62 30, 74 18 C 84 8, 92 20, 100 6" stroke="#1d4ed8" stroke-width="2" fill="none"/>
                             </svg>
                         </div>
                         <!-- Card 2 -->
                         <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden flex items-center justify-between scc-metric-violet">
                             <div class="relative z-10">
                                 <div class="flex items-center gap-4 mb-4">
-                                    <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                                    </div>
+                                    <form action="../actions/toggle_wishlist.php" method="POST" style="margin: 0;">
+                                        <input type="hidden" name="product_id" value="<?php echo $productId; ?>">
+                                        <input type="hidden" name="redirect_to" value="<?php echo $_SERVER['REQUEST_URI']; ?>">
+                                        <button type="submit" class="w-12 h-12 rounded-full <?php echo $isSaved ? 'bg-red-50 text-red-600' : 'bg-purple-50 text-purple-600'; ?> flex items-center justify-center shadow-sm hover-scale" style="border: none; cursor: pointer; transition: all 0.2s;">
+                                            <svg class="w-6 h-6" fill="<?php echo $isSaved ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                                        </button>
+                                    </form>
                                     <span class="text-[0.95rem] font-bold text-slate-600">Student Interest</span>
                                 </div>
                                 <div class="flex items-center gap-3">
@@ -283,16 +309,16 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
                                 </div>
                                 <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1">Students showing interest</p>
                             </div>
-                            <svg class="absolute bottom-0 right-0 w-1/2 h-24 opacity-95" viewBox="0 0 100 40" preserveAspectRatio="none">
+                            <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
                                 <defs>
                                     <linearGradient id="interestFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.52"/>
-                                        <stop offset="55%" stop-color="#ec4899" stop-opacity="0.38"/>
-                                        <stop offset="100%" stop-color="#f97316" stop-opacity="0.42"/>
+                                        <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.4"/>
+                                        <stop offset="55%" stop-color="#ec4899" stop-opacity="0.25"/>
+                                        <stop offset="100%" stop-color="#f97316" stop-opacity="0.3"/>
                                     </linearGradient>
                                 </defs>
                                 <path d="M0 36 C 12 28, 24 36, 36 32 C 48 30, 60 34, 72 24 C 84 14, 92 24, 100 10 L 100 40 L 0 40 Z" fill="url(#interestFill)"/>
-                                <path d="M0 36 C 12 28, 24 36, 36 32 C 48 30, 60 34, 72 24 C 84 14, 92 24, 100 10" stroke="#9333ea" stroke-width="2.4" fill="none"/>
+                                <path d="M0 36 C 12 28, 24 36, 36 32 C 48 30, 60 34, 72 24 C 84 14, 92 24, 100 10" stroke="#9333ea" stroke-width="2" fill="none"/>
                             </svg>
                         </div>
                     </div>
@@ -300,27 +326,26 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
                     <!-- PRICING STRATEGY -->
                     <div class="mb-8">
                         <h4 class="font-bold text-slate-800 mb-4" style="font-size: 1.15rem;">Current Pricing Strategy</h4>
-                        <form method="post" class="flex flex-wrap items-stretch gap-4">
+                        <form method="post" class="flex flex-wrap items-center gap-4">
                             <input type="hidden" name="action" value="update_price">
-                            <div class="flex-grow bg-white border border-slate-200 p-4 relative" style="border-radius: 14px; min-height: 76px;">
-                                <div class="text-slate-400 font-black text-[1rem]" style="position: absolute; top: 0.65rem; left: 1rem;">&#8377;</div>
+                            <div class="flex items-center bg-white border border-slate-200 px-4" style="border-radius: 10px; height: 38px; min-width: 120px;">
+                                <span class="text-slate-400 font-bold mr-1" style="font-size: 0.8rem;">&#8377;</span>
                                 <input type="number" name="new_price" step="0.01" value="<?php echo (float)$product['price']; ?>" 
-                                       style="width: 100%; background: transparent; border: none; font-size: 2rem; font-weight: 800; color: #1e293b; outline: none; padding-top: 0.8rem; letter-spacing: -0.01em;" required>
+                                       style="width: 100%; background: transparent; border: none; font-size: 0.95rem; font-weight: 800; color: #1e293b; outline: none;" required>
                             </div>
-                            <button type="submit" class="text-white font-black px-6 rounded-[12px] text-sm transition-all hover:brightness-110 active:scale-95 shadow-lg" style="height: 56px; min-width: 132px; background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28); cursor: pointer;">
-                                Update Price
+                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: #4f46e5; background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%); border: 1px solid #c7d2fe; padding: 0 1rem; border-radius: 10px; cursor: pointer;">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                UPDATE PRICE
                             </button>
                         </form>
                     </div>
 
-                    <!-- PROGRESS BAR ACTIONS (HORIZONTAL FLEX) -->
                     <div class="flex flex-wrap items-center gap-4">
-                        <form method="post" class="flex-grow" onsubmit="return confirm('Mark as sold?')">
+                        <form method="post" onsubmit="return confirm('Mark as sold?')">
                             <input type="hidden" name="action" value="mark_sold">
-                            <button type="submit" class="relative w-full h-[38px] bg-slate-100 rounded-full overflow-hidden border border-slate-50 group shadow-inner" style="cursor: pointer;">
-                                <div class="absolute top-0 left-0 h-full flex items-center justify-center transition-all duration-700 pointer-events-none" style="width: 58%; background: linear-gradient(90deg, #10b981 0%, #14b8a6 100%); box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.18);">
-                                    <span class="font-black text-white text-[0.72rem] tracking-[0.08em] whitespace-nowrap">MARK AS SOLD</span>
-                                </div>
+                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: #059669; background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #a7f3d0; padding: 0 1rem; border-radius: 10px; cursor: pointer;">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                MARK AS SOLD
                             </button>
                         </form>
                         
@@ -383,6 +408,3 @@ function updateMainImage(src, element) {
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
-
-
