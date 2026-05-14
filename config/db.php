@@ -3,12 +3,12 @@
 // Central Database Connection using PDO
 
 // Database configuration with support for MySQL (Local) and PostgreSQL (Supabase)
-$type = getenv('DB_TYPE') ?: 'mysql'; // Default to mysql for local XAMPP
-$host = getenv('DB_HOST') ?: 'localhost';
-$port = getenv('DB_PORT') ?: ($type === 'mysql' ? '3306' : '5432');
-$db   = getenv('DB_NAME') ?: 'campusmarket';
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASS') ?: '';
+$type = getenv('DB_TYPE') ?: (getenv('POSTGRES_HOST') ? 'pgsql' : 'mysql');
+$host = getenv('DB_HOST') ?: getenv('POSTGRES_HOST') ?: 'localhost';
+$port = getenv('DB_PORT') ?: getenv('POSTGRES_PORT') ?: ($type === 'mysql' ? '3306' : '5432');
+$db   = getenv('DB_NAME') ?: getenv('POSTGRES_DATABASE') ?: 'campusmarket';
+$user = getenv('DB_USER') ?: getenv('POSTGRES_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: getenv('DB_Pass') ?: getenv('POSTGRES_PASSWORD') ?: '';
 $charset = 'utf8mb4';
 
 // Select DSN based on type
