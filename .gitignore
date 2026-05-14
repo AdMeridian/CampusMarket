@@ -1,6 +1,9 @@
 # XAMPP / Local Server
-/config/db.php
 /config/private_keys.php
+config/secrets.php
+.env
+.env.*
+!.env.example
 
 # Operating System
 .DS_Store
@@ -14,10 +17,9 @@ Thumbs.db
 public/uploads/*
 !public/uploads/.gitkeep
 scratch/
-config/secrets.php
-.env
 *.local.php
 /vendor/
+envs.json
 
 # Node & Playwright Testing
 node_modules/
