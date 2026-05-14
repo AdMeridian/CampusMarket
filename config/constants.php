@@ -3,10 +3,44 @@
 // CampusMarket — App-Wide Constants
 // ============================================================
 
-// Base URL — Dynamic detection for Local vs Vercel
+// Base URL — Dynamic detection for Local vs Production
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$base_url = getenv('BASE_URL') ?: ($protocol . $host . '/');
+$envBaseUrl = getenv('BASE_URL');
+
+if ($envBaseUrl) {
+    $base_url = $envBaseUrl;
+} else {
+    $isLocalHost = in_array(strtolower($host), ['localhost', '127.0.0.1'], true)
+        || str_starts_with(strtolower($host), 'localhost:')
+        || str_starts_with($host, '127.0.0.1:');
+
+    if ($isLocalHost) {
+        // Resolve app base path from the current script path.
+        // Examples:
+        // /CampusMarket/index.php         -> /CampusMarket/
+        // /CampusMarket/pages/browse.php  -> /CampusMarket/
+        // /CampusMarket/admin/index.php   -> /CampusMarket/
+        $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/');
+        if (
+            str_contains($scriptName, '/pages/')
+            || str_contains($scriptName, '/admin/')
+            || str_contains($scriptName, '/actions/')
+        ) {
+            $appBasePath = dirname(dirname($scriptName));
+        } else {
+            $appBasePath = dirname($scriptName);
+        }
+
+        $appBasePath = '/' . trim(str_replace('\\', '/', $appBasePath), '/');
+        if ($appBasePath === '/.') {
+            $appBasePath = '';
+        }
+        $base_url = $protocol . $host . $appBasePath . '/';
+    } else {
+        $base_url = $protocol . $host . '/';
+    }
+}
 
 // Ensure trailing slash
 if (substr($base_url, -1) !== '/') {
