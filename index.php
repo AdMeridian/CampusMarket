@@ -25,7 +25,7 @@ $topCategories = getTopCategories($pdo);
         <p style="font-size: 1.5rem; max-width: 700px; margin: 0 auto 3rem; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.3); color: white; text-align: center;">
             The safest way to buy and sell within your university community.
         </p>
-        <div class="flex flex-col sm:flex-row justify-center items-center gap-6">
+        <div class="flex flex-col sm-flex-row justify-center items-center gap-6">
             <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); width: fit-content;">Start Browsing</a>
             <?php if (isLoggedIn()): ?>
                 <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); width: fit-content;">Sell an Item</a>
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <h2 class="mb-0">Shop by Category</h2>
             <a href="pages/categories.php" class="text-muted" style="font-weight: 500;">View all</a>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-3 md-grid-cols-3 lg-grid-cols-3 gap-6">
             <?php 
             // Hardcoded categories as requested
             $hardcodedCategories = [
