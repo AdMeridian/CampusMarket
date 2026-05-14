@@ -114,7 +114,7 @@ include '../includes/header.php';
 
 .profile-hero {
     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #7c3aed 100%);
-    padding: 3rem 0 0;
+    padding: calc(75px + 2.5rem) 0 0;
     margin-bottom: 0;
     position: relative;
     overflow: hidden;

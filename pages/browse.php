@@ -65,7 +65,7 @@ $pageTitle = "Browse Marketplace";
 include '../includes/header.php';
 ?>
 
-<div class="min-h-screen pt-8 pb-16 relative">
+<div class="min-h-screen pt-24 pb-16 relative">
 
     <div class="container">
         <!-- Browse Header -->

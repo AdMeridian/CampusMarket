@@ -226,7 +226,7 @@ require_once __DIR__ . '/../includes/header.php';
 }
 </style>
 
-<div class="container mt-8 mb-20 relative">
+<div class="container pt-24 mb-20 relative">
     <?php if ($isOwner): ?>
         <div class="seller-management-banner" style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: white; padding: 1.25rem 2rem; border-radius: 20px; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.25); border: 1px solid rgba(255,255,255,0.1);">
             <div class="flex items-center gap-4">
