@@ -278,9 +278,11 @@ p {
 
 /* Navigation (Glassmorphism) */
 .navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 50;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -426,26 +428,21 @@ p {
 .user-dropdown-content {
   position: absolute;
   right: 0;
-  top: calc(100% + 0.5rem);
+  top: 100%;
   width: 220px;
-  background: var(--bg-surface);
+  background: var(--bg-surface) !important;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: 0.5rem;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(10px);
-  transition: var(--transition);
-  z-index: 100;
+  display: none;
+  z-index: 10000 !important;
 }
 
 .user-dropdown:hover .user-dropdown-content,
 .user-dropdown:focus-within .user-dropdown-content,
 .user-dropdown.active .user-dropdown-content {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+  display: block !important;
 }
 
 .user-dropdown-content a {
@@ -950,7 +947,6 @@ body.dark-mode .flash-error {
     min-height: clamp(400px, 60vh, 800px);
     display: flex;
     align-items: center;
-    margin-top: -2rem;
     background: #0f172a; /* Fallback */
 }
 
@@ -1350,6 +1346,7 @@ body {
   position: relative;
   width: 100%;
   overflow-x: hidden;
+  padding-top: 70px; /* Offset for fixed navbar */
 }
 
 .container {

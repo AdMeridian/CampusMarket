@@ -3,8 +3,17 @@
 // CampusMarket — App-Wide Constants
 // ============================================================
 
-// Base URL — change if you rename the folder
-define('BASE_URL',    'http://localhost/campusmarket/');
+// Base URL — Dynamic detection for Local vs Vercel
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$base_url = getenv('BASE_URL') ?: ($protocol . $host . '/');
+
+// Ensure trailing slash
+if (substr($base_url, -1) !== '/') {
+    $base_url .= '/';
+}
+
+define('BASE_URL',    $base_url);
 
 // File Paths
 define('ROOT_PATH',   __DIR__ . '/../');
