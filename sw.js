@@ -1,14 +1,15 @@
 const CACHE_VERSION = "campusmarket-v1";
-const OFFLINE_URL = "/public/offline.html";
+const OFFLINE_URL = "public/offline.html";
 
 const CORE_ASSETS = [
-  "/",
-  "/index.php",
-  "/manifest.webmanifest",
-  "/public/css/style.css",
-  "/public/js/theme.js",
-  "/public/js/pwa.js",
-  "/public/images/logo.png",
+  "./",
+  "index.php",
+  "manifest.webmanifest",
+  "favicon.ico",
+  "public/css/style.css",
+  "public/js/theme.js",
+  "public/js/pwa.js",
+  "public/images/logo.png",
   OFFLINE_URL
 ];
 

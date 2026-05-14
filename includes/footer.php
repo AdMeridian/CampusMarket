@@ -47,6 +47,7 @@
     </div>
 </footer>
 
+<script>const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";</script>
 <script src="<?php echo BASE_URL; ?>public/js/pwa.js"></script>
 
 </body>
