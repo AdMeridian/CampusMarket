@@ -39,7 +39,9 @@ self.addEventListener("fetch", (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
-  // Optional: Add specific filters here if needed
+  if (!requestUrl.pathname.startsWith("/")) {
+    return;
+  }
 
   const isHtmlRequest = event.request.mode === "navigate";
 

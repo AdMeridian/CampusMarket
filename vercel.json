@@ -1,34 +1,23 @@
 {
-  "builds": [
-    {
-      "src": "api/index.php",
-      "use": "vercel-php@0.9.0",
-      "config": {
-        "includeFiles": "**/*.php"
-      }
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "sw.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "manifest.webmanifest",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "favicon.ico",
-      "use": "@vercel/static"
+  "functions": {
+    "api/index.php": {
+      "runtime": "vercel-php@0.9.0",
+      "includeFiles": "{public/**,config/**,includes/**,pages/**,index.php,manifest.webmanifest,sw.js,favicon.ico}"
     }
-  ],
+  },
   "routes": [
     { "src": "/manifest.webmanifest", "dest": "/manifest.webmanifest" },
     { "src": "/sw.js", "dest": "/sw.js" },
     { "src": "/favicon.ico", "dest": "/favicon.ico" },
-    { "src": "/public/(.*)", "dest": "/public/$1" },
+    {
+      "src": "/public/(.*)",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/(manifest\\.webmanifest|sw\\.js|favicon\\.ico|robots\\.txt)",
+      "continue": true
+    },
     {
       "src": "/(.*\\.php)",
       "dest": "/api/index.php"
