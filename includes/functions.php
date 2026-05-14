@@ -319,13 +319,31 @@ function getRecentProducts(PDO $pdo, int $limit = 8): array {
  * Fetch featured products for the homepage scroller
  */
 function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
+    static $hasFeaturedUntil = null;
+    if ($hasFeaturedUntil === null) {
+        $colStmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'products'
+              AND column_name = 'featured_until'
+            LIMIT 1
+        ");
+        $colStmt->execute();
+        $hasFeaturedUntil = (bool) $colStmt->fetchColumn();
+    }
+
+    $featuredWindowFilter = $hasFeaturedUntil
+        ? " AND (p.featured_until IS NULL OR p.featured_until > NOW())"
+        : "";
+
     $stmt = $pdo->prepare("
         SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active' AND p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW())
+        WHERE p.status = 'active' AND p.is_featured = TRUE{$featuredWindowFilter}
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
