@@ -5,19 +5,7 @@
     }
   },
   "routes": [
-    {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.php"
-    }
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.php" }
   ]
 }
