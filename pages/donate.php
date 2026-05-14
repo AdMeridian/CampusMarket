@@ -117,7 +117,7 @@ if (!empty($donors)):
                     <img src="<?php echo avatarUrl($donor['avatar']); ?>"
                          alt="<?php echo sanitize($donor['username']); ?>"
                          style="width: 64px; height: 64px; border-radius: 18px; border: 3px solid white; box-shadow: var(--shadow-md); object-fit: cover; transform: rotate(-3deg); transition: var(--transition); background: white;">
-                    <div style="position: absolute; top: -6px; right: -6px; background: #fbbf24; color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">★</div>
+                    <div style="position: absolute; top: -6px; right: -6px; background: #fbbf24; color: white; width: 22px; height: 22px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">★</div>
                 </div>
                 <p style="font-weight: 800; font-size: 0.8rem; color: var(--text-main);">@<?php echo sanitize($donor['username']); ?></p>
             </div>

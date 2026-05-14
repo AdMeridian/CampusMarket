@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payment_id'], $_POST[
     $adminNote = sanitize($_POST['admin_note'] ?? '');
 
     if ($paymentId > 0 && in_array($action, ['approve', 'reject'], true)) {
+        $newStatus = ($action === 'approve') ? 'approved' : 'rejected';
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare('
@@ -95,7 +96,7 @@ $rows = $pdo->query('
             <h1 class="gradient-text mb-0">Promotion & Donation Payments</h1>
             <p class="text-muted mb-2">Donations support CampusMarket generally and do not become promotion credits. Promotion requests can later be consumed to feature an approved listing.</p>
         </div>
-        <div class="badge" style="background: var(--primary-light); color: var(--primary-hover); font-size: 0.9rem; padding: 0.5rem 1rem;"><?php echo count($rows); ?> Requests</div>
+        <div class="badge" style="background: var(--primary-light); color: var(--primary-hover); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($rows); ?> Requests</div>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
