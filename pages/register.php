@@ -89,10 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
         $token = '';
         try {
-            $ins = $pdo->prepare('
+            $ins = $pdo->prepare("
                 INSERT INTO users (username, email, password_hash, role, phone, is_verified)
-                VALUES (:u, :e, :h, "user", :p, 0)
-            ');
+                VALUES (:u, :e, :h, 'user', :p, 0)
+            ");
             $ins->execute([
                 ':u' => $username,
                 ':e' => $email,
