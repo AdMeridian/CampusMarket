@@ -37,7 +37,6 @@ $activeTab = ($_GET['tab'] ?? 'listings') === 'about' ? 'about' : 'listings';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], $_POST['product_id'])) {
     $action = sanitize($_POST['action']);
     $productId = (int)($_POST['product_id'] ?? 0);
-    $discountPercent = (int)($_POST['discount_percent'] ?? 0);
 
     $ownStmt = $pdo->prepare("SELECT * FROM products WHERE id = :pid AND user_id = :uid");
     $ownStmt->execute([':pid' => $productId, ':uid' => $viewId]);
@@ -45,16 +44,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], 
 
     if (!$ownedProduct) {
         setFlash('error', 'Listing not found.');
-    } elseif (!isDiscountEligible($ownedProduct)) {
-        setFlash('error', 'Discounts are available only for active listings older than ' . LISTING_DISCOUNT_MIN_DAYS . ' days.');
     } else {
         if ($action === 'set_discount') {
-            if ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
+            $discountPercent = (int)($_POST['discount_percent'] ?? 0);
+            if (!isDiscountEligible($ownedProduct)) {
+                setFlash('error', 'Discounts are available only for active listings older than ' . LISTING_DISCOUNT_MIN_DAYS . ' days.');
+            } elseif ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
                 setFlash('error', 'Discount must be between 0 and ' . LISTING_DISCOUNT_MAX_PERCENT . ' percent.');
             } else {
                 $upd = $pdo->prepare("UPDATE products SET discount_percent = :dp, discount_set_at = NOW() WHERE id = :pid");
                 $upd->execute([':dp' => $discountPercent, ':pid' => $productId]);
                 setFlash('success', $discountPercent > 0 ? 'Discount updated.' : 'Discount removed.');
+            }
+        } elseif ($action === 'update_price') {
+            $newPrice = (float)($_POST['new_price'] ?? 0);
+            if ($newPrice <= 0) {
+                setFlash('error', 'Price must be greater than zero.');
+            } else {
+                $upd = $pdo->prepare("UPDATE products SET price = :price, updated_at = NOW() WHERE id = :pid");
+                $upd->execute([':price' => $newPrice, ':pid' => $productId]);
+                setFlash('success', 'Price updated successfully.');
             }
         }
     }
@@ -697,24 +706,47 @@ body.dark-mode .btn-white-solid:hover {
                             <div class="listing-card-body">
                                 <a href="product.php?id=<?php echo $prod['id']; ?>" style="text-decoration:none; color:inherit;">
                                     <p class="listing-card-title"><?php echo sanitize($prod['title']); ?></p>
-                                    <p class="listing-card-price"><?php echo renderProductPrice($prod); ?></p>
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex items-center gap-3">
+                                            <span class="listing-card-price" style="font-weight: 800; color: var(--primary); font-size: 1.15rem;"><?php echo renderProductPrice($prod); ?></span>
+                                            <span class="text-muted" style="font-size: 0.75rem; opacity: 0.7;">• Listed <?php echo timeAgo($prod['created_at']); ?></span>
+                                        </div>
+                                    </div>
                                 </a>
-                                <div class="listing-card-meta">
                                     <span class="listing-card-cat"><?php echo sanitize($prod['category_name']); ?></span>
                                 </div>
-                                <?php if ($isSelf && isDiscountEligible($prod)): ?>
-                                    <form method="post" class="discount-form">
-                                        <input type="hidden" name="action" value="set_discount">
-                                        <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
-                                        <select name="discount_percent" class="premium-input" style="padding: 0.35rem 0.45rem; font-size: 0.82rem;">
-                                            <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
-                                                <option value="<?php echo $d; ?>" <?php echo ((int)($prod['discount_percent'] ?? 0) === $d) ? 'selected' : ''; ?>>
-                                                    <?php echo $d === 0 ? 'No discount' : ('-' . $d . '%'); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.78rem;">Save Discount</button>
-                                    </form>
+
+                                <?php if ($isSelf): ?>
+                                    <div class="seller-controls" style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+                                        
+                                        <!-- Price Update Form -->
+                                        <form method="post" class="price-form">
+                                            <input type="hidden" name="action" value="update_price">
+                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
+                                            <div style="display: flex; gap: 0.25rem;">
+                                                <input type="number" name="new_price" step="0.01" value="<?php echo (float)$prod['price']; ?>" class="premium-input" style="flex: 1; padding: 0.35rem 0.45rem; font-size: 0.82rem;" placeholder="Price">
+                                                <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Update</button>
+                                            </div>
+                                        </form>
+
+                                        <!-- Discount Form -->
+                                        <?php if (isDiscountEligible($prod)): ?>
+                                            <form method="post" class="discount-form">
+                                                <input type="hidden" name="action" value="set_discount">
+                                                <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
+                                                <div style="display: flex; gap: 0.25rem;">
+                                                    <select name="discount_percent" class="premium-input" style="flex: 1; padding: 0.35rem 0.45rem; font-size: 0.82rem;">
+                                                        <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
+                                                            <option value="<?php echo $d; ?>" <?php echo ((int)($prod['discount_percent'] ?? 0) === $d) ? 'selected' : ''; ?>>
+                                                                <?php echo $d === 0 ? 'No discount' : ('-' . $d . '%'); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                    <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Apply</button>
+                                                </div>
+                                            </form>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </div>

@@ -80,7 +80,7 @@ $kitchen_data = [
     ['title'=>'Digital Air Fryer', 'price'=>2400, 'img'=>'../public/images/air.jpeg', 'desc'=>'XL capacity. Healthy cooking with little to no oil.'],
     ['title'=>'High-Speed Blender', 'price'=>850, 'img'=>'../public/images/blender.jpeg', 'desc'=>'Powerful motor for smoothies and shakes. Easy to clean.'],
     ['title'=>'Microwave Oven', 'price'=>1950, 'img'=>'../public/images/micriowave.jpeg', 'desc'=>'700W Compact Microwave. Perfect for dorm rooms.'],
-    ['title'=>'Mini Fridge', 'price'=>2600, 'img'=>'../public/images/minifrighe.jpeg', 'desc'=>'Energy-efficient mini fridge with freezer.'],
+    ['title'=>'Mini Fridge', 'price'=>2600, 'img'=>'../public/images/minifridge.jpeg', 'desc'=>'Energy-efficient mini fridge with freezer.'],
     ['title'=>'Professional Knife Set', 'price'=>450, 'img'=>'../public/images/knifs.jpeg', 'desc'=>'Stainless steel knife set. Very sharp and durable.'],
     ['title'=>'Set of Spoons', 'price'=>120, 'img'=>'../public/images/spoon.jpeg', 'desc'=>'Set of 6 high-quality stainless steel spoons.'],
     ['title'=>'Set of Forks', 'price'=>120, 'img'=>'../public/images/fork.jpeg', 'desc'=>'Set of 6 high-quality stainless steel forks.'],

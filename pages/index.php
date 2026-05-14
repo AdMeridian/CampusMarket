@@ -1,18 +1,31 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config/constants.php';
-include __DIR__ . '/../config/db.php';
-include __DIR__ . '/../includes/functions.php';
-include __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../includes/bootstrap.php';
 
-// Filter for products that have authentic local images (not placeholders)
-$authentic_products = array_filter($products, function($p) {
-    return strpos($p['img'], '../public/images/') === 0;
-});
+// Fetch latest 6 active products from database
+$stmt = $pdo->prepare("
+    SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    JOIN users u ON p.user_id = u.id
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+    WHERE p.status = 'active'
+    ORDER BY p.created_at DESC
+    LIMIT 6
+");
+$stmt->execute();
+$latest_products = $stmt->fetchAll();
 
-// Mix them up and take 6
-shuffle($authentic_products);
-$latest_products = array_slice($authentic_products, 0, 6);
+// Fetch categories for the grid
+$categories = $pdo->query("
+    SELECT c.*, COUNT(p.id) as product_count
+    FROM categories c
+    LEFT JOIN products p ON c.id = p.category_id AND p.status = 'active'
+    GROUP BY c.id
+    ORDER BY product_count DESC
+    LIMIT 12
+")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -54,19 +67,8 @@ $latest_products = array_slice($authentic_products, 0, 6);
     <a href="browse.php" class="view-all">View all →</a>
   </div>
   <div class="products-grid">
-    <?php foreach($latest_products as $p): ?>
-    <div class="product-card" onclick="window.location.href='product.php?id=<?= $p['id'] ?>'">
-      <img class="product-img" src="<?= $p['img'] ?>" alt="<?= htmlspecialchars($p['title']) ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="product-img-placeholder" style="display:none">📦</div>
-      <button class="heart-btn" type="button" id="heart-<?= $p['id'] ?>" onclick="event.stopPropagation();toggleWishlist(<?= $p['id'] ?>,<?= htmlspecialchars(json_encode($p),ENT_QUOTES) ?>)" aria-label="Add to wishlist">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
-      </button>
-      <div class="product-body">
-        <div class="product-title"><?= htmlspecialchars($p['title']) ?></div>
-        <div class="product-category"><?= $p['category'] ?></div>
-        <div class="product-price"><?= formatPrice($p['price']) ?></div>
-      </div>
-    </div>
+    <?php foreach($latest_products as $prod): ?>
+      <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
     <?php endforeach; ?>
   </div>
 </div>
@@ -80,10 +82,10 @@ $latest_products = array_slice($authentic_products, 0, 6);
   </div>
   <div class="categories-grid">
     <?php foreach($categories as $cat): ?>
-    <a href="browse.php?category=<?= urlencode($cat['name']) ?>" class="cat-card">
-      <span class="cat-icon"><?= $cat['icon'] ?></span>
-      <div class="cat-name"><?= $cat['name'] ?></div>
-      <div class="cat-count"><?= $cat['count'] ?></div>
+    <a href="browse.php?category=<?= $cat['id'] ?>" class="cat-card">
+      <span class="cat-icon"><?= $cat['icon'] ?? '📁' ?></span>
+      <div class="cat-name"><?= htmlspecialchars($cat['name']) ?></div>
+      <div class="cat-count"><?= $cat['product_count'] ?> items</div>
     </a>
     <?php endforeach; ?>
   </div>
