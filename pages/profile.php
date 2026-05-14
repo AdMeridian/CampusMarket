@@ -274,6 +274,13 @@ include '../includes/header.php';
     .profile-hero-actions { margin-left: 0; }
 }
 
+@media (min-width: 901px) {
+    .profile-sidebar {
+        position: sticky;
+        top: 100px;
+    }
+}
+
 /* ── Sidebar Card ─────────────────────────────────────── */
 
 .profile-sidebar .card {
@@ -597,6 +604,13 @@ include '../includes/header.php';
     box-shadow: 0 6px 14px rgba(99,102,241,0.2);
 }
 
+.premium-input:focus {
+    border-color: var(--primary);
+    background: var(--bg-surface);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    transform: translateY(-1px);
+}
+
 body.dark-mode .profile-stat-row {
     background: var(--bg-surface);
 }
@@ -667,11 +681,11 @@ body.dark-mode .btn-white-solid:hover {
 
         <!-- Tab bar -->
         <nav class="profile-tabs">
+            <a href="#about" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>" data-tab="about">About</a>
             <a href="#listings" class="profile-tab <?php echo $activeTab === 'listings' ? 'active' : ''; ?>" data-tab="listings">
                 Listings
                 <span class="tab-count"><?php echo $listingCount; ?></span>
             </a>
-            <a href="#about" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>" data-tab="about">About</a>
         </nav>
     </div>
 </div>
