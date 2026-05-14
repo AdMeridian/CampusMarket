@@ -19,12 +19,12 @@ echo "DB_USER: " . (getenv('DB_USER') ?: 'NOT SET') . "<br>";
 echo "VERCEL: " . (getenv('VERCEL') ?: 'NOT SET') . "<br>";
 echo "<hr>";
 
-$type = getenv('DB_TYPE') ?: 'mysql';
-$host = getenv('DB_HOST');
-$port = getenv('DB_PORT');
-$db   = getenv('DB_NAME');
-$user = getenv('DB_USER');
-$pass = getenv('DB_PASS');
+$type = getenv('DB_TYPE') ?: (getenv('POSTGRES_HOST') ? 'pgsql' : 'mysql');
+$host = getenv('DB_HOST') ?: getenv('POSTGRES_HOST');
+$port = getenv('DB_PORT') ?: getenv('POSTGRES_PORT');
+$db   = getenv('DB_NAME') ?: getenv('POSTGRES_DATABASE');
+$user = getenv('DB_USER') ?: getenv('POSTGRES_USER');
+$pass = getenv('DB_PASS') ?: getenv('DB_Pass') ?: getenv('POSTGRES_PASSWORD');
 
 echo "TYPE: $type\n";
 echo "HOST: $host\n";
