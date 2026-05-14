@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 $count = $stmt->fetchColumn();
             ?>
                 <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
-                    <div style="background: var(--bg-main); width: 56px; height: 56px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; font-size: 1.75rem;">
+                    <div style="background: var(--bg-main); width: 56px; height: 56px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; font-size: 1.75rem;">
                         <?php echo $cat['icon']; ?>
                     </div>
                     <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;"><?php echo $cat['name']; ?></strong>
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         
         <div class="mt-12 text-center">
-            <a href="pages/categories.php" class="btn btn-outline" style="padding: 0.8rem 2.5rem; border-radius: var(--radius-full); font-weight: 600; font-size: 1rem;">View All Categories</a>
+            <a href="pages/categories.php" class="btn btn-outline" style="padding: 0.8rem 2.5rem; border-radius: var(--radius-lg); font-weight: 600; font-size: 1rem;">View All Categories</a>
         </div>
     </div>
 </section>
@@ -151,7 +151,7 @@ if (!empty($featuredProducts)):
         </div>
 
         <div class="mt-12 text-center">
-            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-full); font-weight: 700; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">Explore All Listings</a>
+            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-lg); font-weight: 700; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">Explore All Listings</a>
         </div>
     </div>
 </section>

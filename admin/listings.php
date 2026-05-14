@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // admin/listings.php
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/header.php';
@@ -109,7 +109,7 @@ $listings = $stmt->fetchAll();
         </div>
         <div class="flex items-center gap-2">
             <a href="promotion_payments.php" class="btn btn-secondary btn-sm">Review Payments</a>
-            <div class="badge" style="background: var(--primary-light); color: var(--primary-hover); font-size: 0.9rem; padding: 0.5rem 1rem;"><?php echo count($listings); ?> Total Listings</div>
+            <div class="badge" style="background: var(--primary-light); color: var(--primary-hover); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($listings); ?> Total Listings</div>
         </div>
     </div>
 
@@ -134,16 +134,16 @@ $listings = $stmt->fetchAll();
                                     <?php echo sanitize($item['title']); ?>
                                 </div>
                                 <?php if ($item['is_featured']): ?>
-                                    <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.7rem; padding: 0.2rem 0.5rem;"><span class="animate-pulse inline-block mr-1">Featured</span></span>
+                                    <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><span class="animate-pulse inline-block mr-1">Featured</span></span>
                                 <?php endif; ?>
                                 <?php if ((int)$item['available_promo_credits'] > 0): ?>
-                                    <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.2rem 0.5rem;"><?php echo (int)$item['available_promo_credits']; ?> Promo Credit</span>
+                                    <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><?php echo (int)$item['available_promo_credits']; ?> Promo Credit</span>
                                 <?php endif; ?>
                             </div>
                             <div style="font-size: 0.78rem; color: var(--text-muted);">ID #<?php echo $item['id']; ?></div>
                         </td>
                         <td class="p-4 font-medium" style="border-bottom: 1px solid var(--border-light); color: var(--primary);">@<?php echo sanitize($item['seller_name']); ?></td>
-                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);"><span class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light);"><?php echo sanitize($item['category_name']); ?></span></td>
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);"><span class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); border-radius: var(--radius-lg);"><?php echo sanitize($item['category_name']); ?></span></td>
                         <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem;"><?php echo formatPrice($item['price']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <?php $badge = conditionBadge($item['condition']); ?>
@@ -152,14 +152,14 @@ $listings = $stmt->fetchAll();
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light);">
                             <div class="flex justify-end gap-2">
                                 <?php if ($item['is_featured']): ?>
-                                    <a href="?action=unfeature&id=<?php echo $item['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);" title="Unfeature">UNFEAT</a>
+                                    <a href="?action=unfeature&id=<?php echo $item['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Unfeature">UNFEAT</a>
                                 <?php elseif ((int)$item['available_promo_credits'] > 0): ?>
-                                    <a href="?action=feature&id=<?php echo $item['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);" title="Feature">FEAT</a>
+                                    <a href="?action=feature&id=<?php echo $item['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Feature">FEAT</a>
                                 <?php else: ?>
-                                    <span class="btn btn-secondary btn-sm opacity-50" style="border-radius: var(--radius-full);">No credits</span>
+                                    <span class="btn btn-secondary btn-sm opacity-50" style="border-radius: var(--radius-lg);">No credits</span>
                                 <?php endif; ?>
-                                <a href="../pages/product.php?id=<?php echo $item['id']; ?>" target="_blank" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);">View</a>
-                                <a href="?action=delete&id=<?php echo $item['id']; ?>" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);" onclick="return confirm('Delete this listing permanently?')">Delete</a>
+                                <a href="../pages/product.php?id=<?php echo $item['id']; ?>" target="_blank" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View</a>
+                                <a href="?action=delete&id=<?php echo $item['id']; ?>" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" onclick="return confirm('Delete this listing permanently?')">Delete</a>
                             </div>
                         </td>
                     </tr>

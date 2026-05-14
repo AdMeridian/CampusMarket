@@ -33,7 +33,7 @@ $orders = $stmt->fetchAll();
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Orders</div>
             <h1 class="mb-0 gradient-text">Marketplace Transactions</h1>
         </div>
-        <div class="badge" style="background: rgba(245,158,11,0.1); color: #d97706; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-full);"><?php echo count($orders); ?> Total Orders</div>
+        <div class="badge" style="background: rgba(245,158,11,0.1); color: #d97706; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($orders); ?> Total Orders</div>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">

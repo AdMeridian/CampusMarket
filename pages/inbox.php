@@ -71,7 +71,7 @@ require_once __DIR__ . '/../includes/header.php';
     font-size: 0.78rem;
     font-weight: 700;
     padding: 0.25rem 0.7rem;
-    border-radius: 9999px;
+    border-radius: var(--radius-lg);
     letter-spacing: 0.02em;
 }
 
@@ -289,7 +289,7 @@ body.dark-mode .convo-card.unread {
             </svg>
             <h3>Your inbox is empty</h3>
             <p>When you reach out to sellers or receive inquiries about your items, conversations will appear here.</p>
-            <a href="<?= BASE_URL ?>/pages/browse.php" class="btn btn-primary" style="border-radius: var(--radius-full); padding: 0.6rem 1.75rem; font-weight: 600; font-size: 0.9rem;">Browse Items</a>
+            <a href="<?= BASE_URL ?>/pages/browse.php" class="btn btn-primary" style="border-radius: var(--radius-lg); padding: 0.6rem 1.75rem; font-weight: 600; font-size: 0.9rem;">Browse Items</a>
         </div>
     <?php else: ?>
         <!-- Conversation List -->

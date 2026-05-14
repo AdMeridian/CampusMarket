@@ -358,7 +358,7 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
     color: #059669;
     background: rgba(16, 185, 129, 0.12);
     border: 1px solid rgba(16, 185, 129, 0.25);
-    border-radius: 9999px;
+    border-radius: var(--radius-lg);
     padding: 0.2rem 0.65rem;
 }
 

@@ -43,7 +43,7 @@ include '../includes/header.php';
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Users</div>
             <h1 class="mb-0 gradient-text">User Management</h1>
         </div>
-        <div class="badge" style="background: rgba(16,185,129,0.1); color: #059669; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-full);"><?php echo count($users); ?> Registered Users</div>
+        <div class="badge" style="background: rgba(16,185,129,0.1); color: #059669; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($users); ?> Registered Users</div>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
@@ -62,7 +62,7 @@ include '../includes/header.php';
                     <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.02)'" onmouseout="this.style.background='transparent'">
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <div class="flex items-center gap-4">
-                                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; box-shadow: var(--shadow-sm);">
+                                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; box-shadow: var(--shadow-sm);">
                                     <?php echo strtoupper(substr($u['username'], 0, 1)); ?>
                                 </div>
                                 <div style="display: flex; flex-direction: column; justify-content: center;">
@@ -83,11 +83,11 @@ include '../includes/header.php';
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light);">
                             <div class="flex justify-end gap-2">
                                 <?php if ($u['role'] === 'admin'): ?>
-                                    <a href="?action=remove_admin&id=<?php echo $u['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);">Demote</a>
+                                    <a href="?action=remove_admin&id=<?php echo $u['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Demote</a>
                                 <?php else: ?>
-                                    <a href="?action=make_admin&id=<?php echo $u['id']; ?>" class="btn btn-primary btn-sm hover-scale shadow-sm" style="background: var(--secondary); border-radius: var(--radius-full);">Make Admin</a>
+                                    <a href="?action=make_admin&id=<?php echo $u['id']; ?>" class="btn btn-primary btn-sm hover-scale shadow-sm" style="background: var(--secondary); border-radius: var(--radius-lg);">Make Admin</a>
                                 <?php endif; ?>
-                                <a href="?action=delete&id=<?php echo $u['id']; ?>" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);" onclick="return confirm('Delete this user account? This cannot be undone.')">Delete</a>
+                                <a href="?action=delete&id=<?php echo $u['id']; ?>" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" onclick="return confirm('Delete this user account? This cannot be undone.')">Delete</a>
                             </div>
                         </td>
                     </tr>

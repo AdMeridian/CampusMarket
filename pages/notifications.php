@@ -39,7 +39,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px; font-size: 2rem;">Activity <span class="gradient-text" style="background: linear-gradient(135deg, #ef4444, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Updates</span></h1>
                 <?php if (!empty($notifications)): ?>
                     <form method="post" class="m-0">
-                        <button type="submit" name="action" value="mark_all" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full); padding: 0.5rem 1rem; border: 1px solid var(--border-focus);"><svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Mark All Read</button>
+                        <button type="submit" name="action" value="mark_all" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus);"><svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Mark All Read</button>
                     </form>
                 <?php endif; ?>
             </div>
@@ -52,13 +52,13 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="text-5xl mb-4 opacity-50">📭</div>
                     <h3 class="mb-2 font-bold text-muted">All Caught Up</h3>
                     <p class="text-muted mb-6">You have no new notifications right now.</p>
-                    <a href="browse.php" class="btn btn-primary hover-scale shadow-sm" style="border-radius: var(--radius-full);">Explore CampusMarket</a>
+                    <a href="browse.php" class="btn btn-primary hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Explore CampusMarket</a>
                 </div>
             <?php else: ?>
                 <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
                     <?php foreach ($notifications as $n): ?>
                         <div class="p-5 flex gap-5 items-start hover-scale" style="background: <?php echo $n['is_read'] ? 'var(--bg-main)' : 'rgba(99,102,241,0.03)'; ?>; border: 1px solid var(--border-light); border-radius: var(--radius-md); transition: all 0.2s; border-left: 4px solid <?php echo $n['type'] === 'order' ? 'var(--primary)' : 'var(--secondary)'; ?>;">
-                            <div style="width: 44px; height: 44px; border-radius: var(--radius-full); background: <?php echo $n['is_read'] ? 'var(--bg-card)' : 'white'; ?>; border: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); flex-shrink: 0; font-size: 1.25rem;">
+                            <div style="width: 44px; height: 44px; border-radius: var(--radius-lg); background: <?php echo $n['is_read'] ? 'var(--bg-card)' : 'white'; ?>; border: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); flex-shrink: 0; font-size: 1.25rem;">
                                 <?php echo $n['type'] === 'order' ? '📦' : '✨'; ?>
                             </div>
                             <div class="flex-grow">
@@ -69,7 +69,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <p class="text-muted mb-0" style="font-size: 0.95rem; line-height: 1.5;"><?php echo sanitize($n['body']); ?></p>
                                 
                                 <?php if ($n['type'] === 'order'): ?>
-                                    <a href="my_orders.php" class="btn btn-secondary btn-sm mt-3 hover-scale shadow-sm" style="border-radius: var(--radius-full); background: white;">View Order Details →</a>
+                                    <a href="my_orders.php" class="btn btn-secondary btn-sm mt-3 hover-scale shadow-sm" style="border-radius: var(--radius-lg); background: white;">View Order Details →</a>
                                 <?php endif; ?>
                             </div>
                         </div>

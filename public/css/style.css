@@ -440,7 +440,9 @@ p {
   z-index: 100;
 }
 
-.user-dropdown:hover .user-dropdown-content {
+.user-dropdown:hover .user-dropdown-content,
+.user-dropdown:focus-within .user-dropdown-content,
+.user-dropdown.active .user-dropdown-content {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
@@ -466,7 +468,7 @@ p {
   display: flex;
   align-items: center;
   background: var(--bg-surface);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
   padding: 0 1.25rem; /* Increased padding to pull button away from boundary */
   border: 1px solid var(--border-light);
   width: 100%;
@@ -569,7 +571,7 @@ body.dark-mode .search-bar:focus-within {
   border: none;
   height: 36px;
   padding: 0 1.5rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -617,7 +619,7 @@ input:-webkit-autofill:active {
   border: none;
   padding: 0.4rem 1rem;
   margin-left: 0.75rem;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
   cursor: pointer;
   font-weight: 700;
   font-size: 0.8rem;
@@ -841,7 +843,7 @@ body.dark-mode .flash-error {
   text-align: center;
   white-space: nowrap;
   vertical-align: baseline;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
 }
 
 .badge-new { background: var(--success-bg); color: #065f46; }
@@ -990,6 +992,7 @@ body.dark-mode .flash-error {
 .hero .container {
     position: relative;
     z-index: 10;
+    padding-top: clamp(1rem, 3vh, 2rem);
 }
 
 .hero h1, .hero p {

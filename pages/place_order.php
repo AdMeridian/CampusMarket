@@ -121,7 +121,7 @@ require_once __DIR__ . '/../includes/header.php';
         <div>
             <div class="glass-panel p-8 shadow-xl relative" style="border-radius: var(--radius-xl); background: var(--bg-surface);">
                 <!-- Card Badge -->
-                <div style="position: absolute; top: -15px; left: 2rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-full); color: white; padding: 0.4rem 1.2rem; font-weight: bold; font-size: 0.85rem; box-shadow: var(--shadow-sm); letter-spacing: 0.5px; text-transform: uppercase;">
+                <div style="position: absolute; top: -15px; left: 2rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-lg); color: white; padding: 0.4rem 1.2rem; font-weight: bold; font-size: 0.85rem; box-shadow: var(--shadow-sm); letter-spacing: 0.5px; text-transform: uppercase;">
                     Final Step
                 </div>
 
@@ -149,7 +149,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
 
                     <div class="flex flex-col gap-4 border-t border-gray-100 pt-6">
-                        <button type="submit" class="btn btn-primary w-full shadow-lg hover-scale" style="padding: 1.25rem; border-radius: var(--radius-full); font-size: 1.15rem; font-weight: bold; position: relative; overflow: hidden;">
+                        <button type="submit" class="btn btn-primary w-full shadow-lg hover-scale" style="padding: 1.25rem; border-radius: var(--radius-lg); font-size: 1.15rem; font-weight: bold; position: relative; overflow: hidden;">
                             <!-- Button sheen -->
                             <div style="position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transform: skewX(-20deg); animation: shine 3s infinite;"></div>
                             Send Buy Request

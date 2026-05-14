@@ -118,7 +118,7 @@ require_once '../includes/header.php';
       <div style="background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(16,185,129,0.1)); padding: 2rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
         <div class="flex items-center justify-between">
             <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px;">Edit Profile</h1>
-            <a href="<?php echo BASE_URL; ?>/pages/profile.php" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-full);">Cancel</a>
+            <a href="<?php echo BASE_URL; ?>/pages/profile.php" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Cancel</a>
         </div>
         <p class="text-muted mt-2 mb-0">Update your public identity and contact details.</p>
       </div>
@@ -127,7 +127,7 @@ require_once '../includes/header.php';
         <form method="post" enctype="multipart/form-data" novalidate>
             <!-- Avatar Section -->
             <div class="flex items-center gap-6 mb-8 p-4" style="background: rgba(255,255,255,0.5); border-radius: var(--radius-md); border: 1px dashed var(--border-focus);">
-                <img src="<?php echo sanitize(avatarUrl($user['avatar'])); ?>" alt="Avatar" class="shadow-sm" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid white;">
+                <img src="<?php echo sanitize(avatarUrl($user['avatar'])); ?>" alt="Avatar" class="shadow-sm" style="width: 90px; height: 90px; border-radius: var(--radius-xl); object-fit: cover; border: 3px solid white;">
                 <div class="flex-grow">
                     <label class="form-label font-bold mb-2">Profile Picture</label>
                     <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control premium-input p-2 <?php echo isset($errors['avatar']) ? 'border-accent' : ''; ?>" style="font-size: 0.9rem;">
@@ -167,7 +167,7 @@ require_once '../includes/header.php';
             <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">
 
             <div class="flex justify-end">
-                <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg font-bold" style="border-radius: var(--radius-full);">Save Changes</button>
+                <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg font-bold" style="border-radius: var(--radius-lg);">Save Changes</button>
             </div>
         </form>
       </div>

@@ -60,7 +60,7 @@ if ($query !== '' || $categoryId !== '') {
             <div class="text-8xl mb-6 opacity-20" style="transform: rotate(-10deg);">🔦</div>
             <h3 class="font-bold text-main text-3xl mb-3">No items matched your search</h3>
             <p class="text-muted text-lg max-w-lg mx-auto mb-8">We couldn't find any listings matching "<strong class="text-primary"><?php echo $query; ?></strong>". Try using different keywords, checking for typos, or using broader terms.</p>
-            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-full); padding: 0.8rem 2rem; font-weight: bold;">Browse All Items</a>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;">Browse All Items</a>
         </div>
     <?php else: ?>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

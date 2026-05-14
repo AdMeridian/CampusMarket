@@ -154,7 +154,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 
                 <div class="flex justify-between items-center">
                     <a href="browse.php" class="text-muted font-medium hover:text-main transition-colors">Cancel</a>
-                    <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg" style="border-radius: var(--radius-full); font-weight: bold; font-size: 1.1rem;">Publish Listing ✨</button>
+                    <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg" style="border-radius: var(--radius-lg); font-weight: bold; font-size: 1.1rem;">Publish Listing ✨</button>
                 </div>
 
             </form>

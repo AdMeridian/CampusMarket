@@ -82,7 +82,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
                         <div class="text-4xl mb-4 opacity-50">🛍️</div>
                         <p class="text-muted font-medium mb-4">You haven't bought anything yet.</p>
-                        <a href="browse.php" class="btn btn-secondary shadow-sm hover-scale" style="border-radius: var(--radius-full);">Browse Market</a>
+                        <a href="browse.php" class="btn btn-secondary shadow-sm hover-scale" style="border-radius: var(--radius-lg);">Browse Market</a>
                     </div>
                 <?php else: ?>
                     <?php foreach ($buyingOrders as $order): ?>
@@ -105,7 +105,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <?php if ($order['status'] === 'pending'): ?>
                                 <form method="post" class="ml-2 m-0">
                                     <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
-                                    <button type="submit" name="action" value="cancel" class="btn btn-danger btn-sm shadow-sm hover-scale" style="border-radius: var(--radius-full); width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Cancel Order" onclick="return confirm('Cancel this purchase request?')">✕</button>
+                                    <button type="submit" name="action" value="cancel" class="btn btn-danger btn-sm shadow-sm hover-scale" style="border-radius: var(--radius-lg); width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Cancel Order" onclick="return confirm('Cancel this purchase request?')">✕</button>
                                 </form>
                             <?php endif; ?>
                         </div>
@@ -129,7 +129,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
                         <div class="text-4xl mb-4 opacity-50">💵</div>
                         <p class="text-muted font-medium mb-4">No incoming sales orders yet.</p>
-                        <a href="create_listing.php" class="btn btn-primary shadow-sm hover-scale" style="border-radius: var(--radius-full);">Create Listing</a>
+                        <a href="create_listing.php" class="btn btn-primary shadow-sm hover-scale" style="border-radius: var(--radius-lg);">Create Listing</a>
                     </div>
                 <?php else: ?>
                     <?php foreach ($sellingOrders as $order): ?>

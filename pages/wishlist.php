@@ -42,7 +42,7 @@ include '../includes/header.php';
                 <div class="text-8xl mb-6 opacity-20" style="transform: rotate(10deg);">💖</div>
                 <h3 class="font-bold text-main text-3xl mb-3">Your wishlist is empty</h3>
                 <p class="text-muted text-lg max-w-lg mx-auto mb-8">Start browsing and click the heart icon to save items you love.</p>
-                <a href="browse.php" class="btn btn-primary shadow-lg hover-scale" style="border-radius: var(--radius-full); padding: 0.8rem 2.5rem; font-weight: bold; font-size: 1.1rem;">Discover Items</a>
+                <a href="browse.php" class="btn btn-primary shadow-lg hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2.5rem; font-weight: bold; font-size: 1.1rem;">Discover Items</a>
             </div>
         <?php else: ?>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

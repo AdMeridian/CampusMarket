@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <textarea name="description" id="description" rows="5" class="form-control premium-input" required placeholder="Please provide details about the issue..." style="border-radius: var(--radius-md); padding: 0.75rem; border: 1px solid var(--border-light); width: 100%;"></textarea>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 hover-scale shadow-sm" style="border-radius: var(--radius-full); padding: 0.75rem; font-weight: 600;">Submit Report</button>
+            <button type="submit" class="btn btn-primary w-100 hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.75rem; font-weight: 600;">Submit Report</button>
         </form>
     </div>
 </div>

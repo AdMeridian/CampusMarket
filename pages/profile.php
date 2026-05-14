@@ -23,7 +23,7 @@ $user = $stmt->fetch();
 
 if (!$user) {
     include '../includes/header.php';
-    echo '<div class="container mt-12 text-center text-muted"><div class="text-6xl mb-4">👻</div><h2>User not found</h2><p>This user does not exist or has been deleted.</p><a href="' . BASE_URL . '/" class="btn btn-primary mt-4 hover-scale shadow-sm" style="border-radius: var(--radius-full);">Back Home</a></div>';
+    echo '<div class="container mt-12 text-center text-muted"><div class="text-6xl mb-4">👻</div><h2>User not found</h2><p>This user does not exist or has been deleted.</p><a href="' . BASE_URL . '/" class="btn btn-primary mt-4 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Back Home</a></div>';
     include '../includes/footer.php';
     exit;
 }
@@ -147,7 +147,7 @@ include '../includes/header.php';
 .profile-avatar {
     width: 130px;
     height: 130px;
-    border-radius: 50%;
+    border-radius: var(--radius-xl);
     object-fit: cover;
     border: 4px solid rgba(255,255,255,0.9);
     box-shadow: 0 8px 24px rgba(0,0,0,0.2);
@@ -165,7 +165,7 @@ include '../includes/header.php';
     font-weight: 800;
     letter-spacing: 0.05em;
     padding: 0.2rem 0.55rem;
-    border-radius: 9999px;
+    border-radius: var(--radius-lg);
     border: 2px solid white;
 }
 
@@ -247,7 +247,7 @@ include '../includes/header.php';
     color: #fff;
     font-size: 0.75rem;
     padding: 0.1rem 0.5rem;
-    border-radius: 9999px;
+    border-radius: var(--radius-lg);
     font-weight: 700;
 }
 
@@ -432,7 +432,7 @@ include '../includes/header.php';
     color: var(--text-muted);
     background: var(--bg-main);
     border: 1px solid var(--border-light);
-    border-radius: 9999px;
+    border-radius: var(--radius-lg);
     padding: 0.15rem 0.6rem;
     align-self: flex-start;
 }
@@ -498,7 +498,7 @@ include '../includes/header.php';
     font-weight: 700;
     font-size: 0.72rem;
     padding: 0.15rem 0.55rem;
-    border-radius: 9999px;
+    border-radius: var(--radius-lg);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -636,7 +636,7 @@ body.dark-mode .btn-white-solid:hover {
                     <?php endif; ?>
                 </div>
                 <div style="margin-top: 0.45rem; display: inline-flex; align-items: center; gap: 0.45rem;">
-                    <span class="badge" style="background: rgba(255,255,255,0.22); color: #fff; font-size: 0.72rem; padding: 0.18rem 0.55rem; border: 1px solid rgba(255,255,255,0.35);">
+                    <span class="badge" style="background: rgba(255,255,255,0.22); color: #fff; font-size: 0.72rem; padding: 0.18rem 0.55rem; border: 1px solid rgba(255,255,255,0.35); border-radius: var(--radius-lg);">
                         <?php echo sanitize($trust['tier']); ?>
                     </span>
                     <span style="font-size: 0.82rem; color: rgba(255,255,255,0.88);">Trust Score: <?php echo (int)$trust['score']; ?>/100</span>
