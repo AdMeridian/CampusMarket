@@ -5,11 +5,11 @@
  */
 
 function supabaseUrl(): string {
-    return defined('SUPABASE_URL') ? trim((string) SUPABASE_URL) : '';
+    return getenv('SUPABASE_URL') ?: (defined('SUPABASE_URL') ? trim((string) SUPABASE_URL) : '');
 }
 
 function supabaseAnonKey(): string {
-    return defined('SUPABASE_ANON_KEY') ? trim((string) SUPABASE_ANON_KEY) : '';
+    return getenv('SUPABASE_ANON_KEY') ?: (defined('SUPABASE_ANON_KEY') ? trim((string) SUPABASE_ANON_KEY) : '');
 }
 
 function isSupabaseConfigured(): bool {

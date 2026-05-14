@@ -10,7 +10,7 @@ This project now supports an optional Supabase link without replacing the existi
 
 ## Setup
 
-1. Copy `config/secrets.php.example` to `config/secrets.php`.
+1. Copy `.env.example` to `.env`.
 2. Fill in:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
@@ -25,7 +25,7 @@ If keys are present, `window.CampusMarketSupabase` is available in browser pages
 ## Files Added/Changed
 
 - `config/supabase.php` (helper functions)
-- `includes/bootstrap.php` (loads optional secrets + Supabase helper)
+- `includes/bootstrap.php` (loads .env + Supabase helper)
 - `includes/header.php` (injects Supabase meta/script when configured)
 - `public/js/supabase-client.js` (initializes Supabase client)
-- `config/secrets.php.example` (new Supabase keys)
+- `.env.example` (environment configuration template)
