@@ -46,12 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ord
 }
 
 // Fetch buying orders
-$stmtBuying = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as seller_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON p.user_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1 WHERE o.buyer_id = :uid ORDER BY o.created_at DESC");
+$stmtBuying = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as seller_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON p.user_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE o.buyer_id = :uid ORDER BY o.created_at DESC");
 $stmtBuying->execute([':uid' => $currentUserId]);
 $buyingOrders = $stmtBuying->fetchAll();
 
 // Fetch selling orders
-$stmtSelling = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as buyer_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON o.buyer_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1 WHERE p.user_id = :uid ORDER BY o.created_at DESC");
+$stmtSelling = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as buyer_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON o.buyer_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.user_id = :uid ORDER BY o.created_at DESC");
 $stmtSelling->execute([':uid' => $currentUserId]);
 $sellingOrders = $stmtSelling->fetchAll();
 
