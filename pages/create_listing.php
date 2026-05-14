@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $upload = handleUpload($fileData, 'products/');
                 if ($upload['success']) {
-                    $isPrimary = ($i === 0) ? 1 : 0;
+                    $isPrimary = ($i === 0);
                     $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (?, ?, ?)");
                     $stmtImg->execute([$productId, $upload['path'], $isPrimary]);
                 }

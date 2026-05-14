@@ -52,7 +52,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 
         try {
             $pdo->beginTransaction();
-            $pdo->prepare("UPDATE products SET is_featured = 1 WHERE id = ?")->execute([$id]);
+            $pdo->prepare("UPDATE products SET is_featured = TRUE WHERE id = ?")->execute([$id]);
             $pdo->prepare("UPDATE promotion_payments SET consumed_at = NOW(), consumed_for = 'feature' WHERE id = :id")
                 ->execute([':id' => $paymentId]);
             $pdo->commit();
@@ -64,7 +64,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             setFlash('error', 'Unable to feature listing right now.');
         }
     } elseif ($_GET['action'] === 'unfeature') {
-        $stmt = $pdo->prepare("UPDATE products SET is_featured = 0 WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE products SET is_featured = FALSE WHERE id = ?");
         $stmt->execute([$id]);
         setFlash('success', 'Listing unfeatured.');
     }

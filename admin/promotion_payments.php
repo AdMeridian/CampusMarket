@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payment_id'], $_POST[
                     else $days = max(1, floor($amount / 15)); // Linear ₺15 per day
 
                     // Automatically feature the product with expiration
-                    $updProd = $pdo->prepare("UPDATE products SET is_featured = 1, discount_set_at = NOW(), featured_until = NOW() + INTERVAL '1 day' * ? WHERE id = ?");
+                    $updProd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + INTERVAL '1 day' * ? WHERE id = ?");
                     $updProd->execute([$days, $payData['product_id']]);
                 }
             }

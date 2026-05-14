@@ -89,7 +89,7 @@ require_once '../includes/header.php';
                 <div class="card overflow-hidden flex flex-col" style="border-radius: 20px; border: 1px solid var(--border-light); transition: all 0.3s ease;">
                     <div class="relative h-48 bg-slate-100">
                         <?php 
-                        $imgStmt = $pdo->prepare("SELECT image_path FROM product_images WHERE product_id = ? AND is_primary = 1 LIMIT 1");
+                        $imgStmt = $pdo->prepare("SELECT image_path FROM product_images WHERE product_id = ? AND is_primary = TRUE LIMIT 1");
                         $imgStmt->execute([$prod['id']]);
                         $mainImg = $imgStmt->fetchColumn();
                         $imageSrc = $mainImg ? BASE_URL . 'public/' . ltrim($mainImg, '/') : BASE_URL . 'public/images/no-image.png';

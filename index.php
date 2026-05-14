@@ -17,7 +17,7 @@ foreach ($displayCats as &$dcat) {
         SELECT p.*, c.name as category_name, i.image_path
         FROM products p
         JOIN categories c ON p.category_id = c.id
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
         WHERE p.category_id = ? AND p.status = 'active'
         ORDER BY p.created_at DESC
         LIMIT 5
