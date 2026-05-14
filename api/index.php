@@ -1,7 +1,9 @@
 <?php
 // ============================================================
 // Vercel Front Controller
-// Routes all requests to the correct PHP file
+// Routes all PHP requests to the correct file.
+// Static assets (CSS, JS, images) are served directly by Vercel CDN
+// via the explicit routes defined in vercel.json.
 // ============================================================
 
 $projectRoot = realpath(__DIR__ . '/..');
@@ -36,7 +38,6 @@ if (
 ) {
     // Set working directory to the target file's directory
     // This ensures relative require/include paths work correctly
-    // (e.g., browse.php's `require '../includes/bootstrap.php'`)
     chdir(dirname($realFile));
     require $realFile;
 } else {
