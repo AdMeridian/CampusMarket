@@ -37,32 +37,35 @@ if (!$host || !$user) {
     die("CRITICAL: Essential environment variables (DB_HOST or DB_USER) are missing in Vercel settings!\n");
 }
 
-echo "Attempting connection with PDO...\n";
-
+$ref = 'ghfzfzscpjlknooxxfjx';
 $ports_to_test = [5432, 6543];
-$hosts_to_test = [$host];
+$host_variants = [
+    $host,
+    'aws-0-ap-southeast-1.pooler.supabase.com'
+];
+$user_variants = [
+    $user,
+    "$user.$ref"
+];
 
-// Also try the pooler host if it's ap-southeast-1
-if (strpos($host, 'ghfzfzscpjlknooxxfjx') !== false) {
-    $hosts_to_test[] = 'aws-0-ap-southeast-1.pooler.supabase.com';
-}
-
-foreach ($hosts_to_test as $current_host) {
-    foreach ($ports_to_test as $current_port) {
-        echo "Testing $current_host:$current_port...\n";
-        try {
-            $dsn = ($type === 'pgsql') 
-                ? "pgsql:host=$current_host;port=$current_port;dbname=$db;sslmode=require"
-                : "mysql:host=$current_host;port=$current_port;dbname=$db;charset=utf8mb4";
+foreach ($host_variants as $current_host) {
+    foreach ($user_variants as $current_user) {
+        foreach ($ports_to_test as $current_port) {
+            echo "Testing Host: $current_host | User: $current_user | Port: $current_port...\n";
+            try {
+                $dsn = "pgsql:host=$current_host;port=$current_port;dbname=$db;sslmode=require";
                 
-            $pdo = new PDO($dsn, $user, $pass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 5
-            ]);
-            echo "✅ SUCCESS: Connected to $current_host:$current_port!\n";
-            die(); // Stop on first success
-        } catch (PDOException $e) {
-            echo "❌ FAILED: " . $e->getMessage() . "\n";
+                $pdo = new PDO($dsn, $current_user, $pass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 3
+                ]);
+                echo "✅ SUCCESS: Connected!\n";
+                echo "DSN was: $dsn\n";
+                echo "User was: $current_user\n";
+                die();
+            } catch (PDOException $e) {
+                echo "❌ FAILED: " . $e->getMessage() . "\n";
+            }
         }
     }
 }
