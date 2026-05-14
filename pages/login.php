@@ -89,14 +89,14 @@ require_once '../includes/header.php';
         </div>
 
         <?php if (!empty($errors['form'])): ?>
-            <div class="flash <?php echo $unverified ? 'flash-warning' : 'flash-error'; ?> mb-8" style="border-radius: 12px; font-weight: 600;">
+            <div class="flash <?php echo $unverified ? 'flash-warning' : 'flash-error'; ?> mb-8">
                 <?php echo sanitize($errors['form']); ?>
             </div>
         <?php endif; ?>
 
         <form method="post" novalidate>
             <div class="form-row mb-6">
-                <label for="identity" style="font-weight: 700; font-size: 0.9rem; margin-bottom: 0.6rem; display: block; color: var(--text-main);">Email or username</label>
+                <label for="identity" class="form-label">Email or username</label>
                 <input type="text" id="identity" name="identity"
                        value="<?php echo sanitize($identity); ?>"
                        placeholder="you@std.neu.edu.tr"
@@ -106,8 +106,8 @@ require_once '../includes/header.php';
 
             <div class="form-row mb-8">
                 <div class="flex justify-between items-center mb-1.5">
-                    <label for="password" style="font-weight: 700; font-size: 0.9rem; display: block; color: var(--text-main);">Password</label>
-                    <a href="#" style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">Forgot password?</a>
+                    <label for="password" class="form-label">Password</label>
+                    <a href="#" style="font-size: 0.85rem; font-weight: 800; color: var(--primary);">Forgot password?</a>
                 </div>
                 <div class="input-with-toggle">
                     <input type="password" id="password" name="password"
@@ -124,9 +124,9 @@ require_once '../includes/header.php';
             <button type="submit" class="btn btn-primary w-full py-4 shadow-lg hover-scale" style="border-radius: 14px; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.01em;">Log in</button>
         </form>
 
-        <p class="auth-foot mt-10" style="font-weight: 500; font-size: 1rem; text-align: center;">
+        <p class="auth-foot mt-10">
             New to CampusMarket? 
-            <a href="<?php echo BASE_URL; ?>pages/register.php" style="font-weight: 800; color: var(--primary);">Create an account</a>
+            <a href="<?php echo BASE_URL; ?>pages/register.php" style="font-weight: 800;">Create an account</a>
         </p>
     </div>
 </div>

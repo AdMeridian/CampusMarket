@@ -148,21 +148,23 @@ require_once '../includes/header.php';
 
 <div class="auth-page">
   <div class="auth-card">
-  <h1>Create your account</h1>
-  <p style="color:#64748b; margin-top:-0.25rem;">University email required. We'll send you a link to verify it.</p>
+  <div class="auth-head text-center mb-8">
+    <h1>Create your account</h1>
+    <p>University email required. We'll send you a link to verify it.</p>
+  </div>
 
   <?php if (!empty($errors['form'])): ?>
     <div class="flash flash-error"><?php echo sanitize($errors['form']); ?></div>
   <?php endif; ?>
 
   <form method="post" novalidate>
-    <div class="form-row">
-      <label for="username">Username</label>
+    <div class="form-row mb-5">
+      <label for="username" class="form-label">Username</label>
       <input type="text" id="username" name="username"
              value="<?php echo sanitize($old['username']); ?>"
              placeholder="e.g. ahmet_yilmaz"
              maxlength="50" required autofocus autocomplete="username"
-             class="<?php echo isset($errors['username']) ? 'is-invalid' : ''; ?>">
+             class="premium-input <?php echo isset($errors['username']) ? 'input-invalid' : ''; ?>">
       <?php if (isset($errors['username'])): ?>
         <div class="error"><?php echo sanitize($errors['username']); ?></div>
       <?php else: ?>
@@ -170,13 +172,13 @@ require_once '../includes/header.php';
       <?php endif; ?>
     </div>
 
-    <div class="form-row">
-      <label for="email">University email</label>
+    <div class="form-row mb-5">
+      <label for="email" class="form-label">University email</label>
       <input type="email" id="email" name="email"
              value="<?php echo sanitize($old['email']); ?>"
              placeholder="you@std.neu.edu.tr"
              maxlength="100" required autocomplete="email"
-             class="<?php echo isset($errors['email']) ? 'is-invalid' : ''; ?>">
+             class="premium-input <?php echo isset($errors['email']) ? 'input-invalid' : ''; ?>">
       <?php if (isset($errors['email'])): ?>
         <div class="error"><?php echo sanitize($errors['email']); ?></div>
       <?php else: ?>
@@ -184,25 +186,25 @@ require_once '../includes/header.php';
       <?php endif; ?>
     </div>
 
-    <div class="form-row">
-      <label for="phone">Phone <span style="color:#94a3b8;font-weight:400;">(optional)</span></label>
+    <div class="form-row mb-5">
+      <label for="phone" class="form-label">Phone <span class="form-label--muted">(optional)</span></label>
       <input type="tel" id="phone" name="phone"
              value="<?php echo sanitize($old['phone']); ?>"
              placeholder="+90 555 123 4567"
              maxlength="20" autocomplete="tel"
-             class="<?php echo isset($errors['phone']) ? 'is-invalid' : ''; ?>">
+             class="premium-input <?php echo isset($errors['phone']) ? 'input-invalid' : ''; ?>">
       <?php if (isset($errors['phone'])): ?>
         <div class="error"><?php echo sanitize($errors['phone']); ?></div>
       <?php endif; ?>
     </div>
 
-    <div class="form-row">
-      <label for="password">Password</label>
-      <div class="password-wrap">
+    <div class="form-row mb-5">
+      <label for="password" class="form-label">Password</label>
+      <div class="input-with-toggle">
         <input type="password" id="password" name="password"
                placeholder="At least 8 characters"
                minlength="8" required autocomplete="new-password"
-               class="<?php echo isset($errors['password']) ? 'is-invalid' : ''; ?>">
+               class="premium-input <?php echo isset($errors['password']) ? 'input-invalid' : ''; ?>">
         <button type="button" class="password-toggle" data-target="password" aria-label="Show password">
           <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2"
@@ -227,13 +229,13 @@ require_once '../includes/header.php';
       <?php endif; ?>
     </div>
 
-    <div class="form-row">
-      <label for="password_confirm">Confirm password</label>
-      <div class="password-wrap">
+    <div class="form-row mb-6">
+      <label for="password_confirm" class="form-label">Confirm password</label>
+      <div class="input-with-toggle">
         <input type="password" id="password_confirm" name="password_confirm"
                placeholder="Re-enter your password"
                minlength="8" required autocomplete="new-password"
-               class="<?php echo isset($errors['password_confirm']) ? 'is-invalid' : ''; ?>">
+               class="premium-input <?php echo isset($errors['password_confirm']) ? 'input-invalid' : ''; ?>">
         <button type="button" class="password-toggle" data-target="password_confirm" aria-label="Show password">
           <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2"
@@ -256,22 +258,22 @@ require_once '../includes/header.php';
       <?php endif; ?>
     </div>
 
-    <div class="form-row" style="display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 1.5rem;">
-      <input type="checkbox" id="terms" name="terms" value="1" style="width: auto; margin-top: 0.25rem; transform: scale(1.1); cursor: pointer;" required <?php echo isset($_POST['terms']) ? 'checked' : ''; ?>>
-      <label for="terms" style="font-weight: 400; font-size: 0.9rem; color: #475569; margin: 0; line-height: 1.5; cursor: pointer;">
-        I agree to the <a href="<?php echo BASE_URL; ?>pages/terms.php" style="color: var(--primary); text-decoration: underline;" target="_blank">Terms of Service</a> and <a href="<?php echo BASE_URL; ?>pages/privacy.php" style="color: var(--primary); text-decoration: underline;" target="_blank">Privacy Policy</a>.
+    <div class="form-row" style="display: flex; align-items: flex-start; gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 2rem;">
+      <input type="checkbox" id="terms" name="terms" value="1" style="width: 20px; height: 20px; margin-top: 0.2rem; cursor: pointer;" required <?php echo isset($_POST['terms']) ? 'checked' : ''; ?>>
+      <label for="terms" style="font-weight: 500; font-size: 0.95rem; color: var(--text-muted); margin: 0; line-height: 1.5; cursor: pointer;">
+        I agree to the <a href="<?php echo BASE_URL; ?>pages/terms.php" style="font-weight: 700; text-decoration: underline;" target="_blank">Terms of Service</a> and <a href="<?php echo BASE_URL; ?>pages/privacy.php" style="font-weight: 700; text-decoration: underline;" target="_blank">Privacy Policy</a>.
       </label>
     </div>
     <?php if (isset($errors['terms'])): ?>
       <div class="error" style="margin-top: -1rem; margin-bottom: 1rem; color: #b91c1c; font-size: 0.85rem;"><?php echo sanitize($errors['terms']); ?></div>
     <?php endif; ?>
 
-    <button type="submit" class="btn btn-primary w-full py-4 mt-6">Create account</button>
+    <button type="submit" class="btn btn-primary w-full py-4 shadow-lg hover-scale" style="border-radius: 14px; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.01em;">Create account</button>
   </form>
 
-  <p class="auth-foot">
+  <p class="auth-foot mt-10">
     Already have an account?
-    <a href="<?php echo BASE_URL; ?>pages/login.php">Log in</a>
+    <a href="<?php echo BASE_URL; ?>pages/login.php" style="font-weight: 800;">Log in</a>
   </p>
 </div>
 </div>

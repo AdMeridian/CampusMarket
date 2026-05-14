@@ -436,7 +436,7 @@ p {
   box-shadow: var(--shadow-lg);
   padding: 0.5rem;
   display: none;
-  z-index: 10000 !important;
+  z-index: 10001 !important; /* Higher than fixed navbar */
 }
 
 .user-dropdown:hover .user-dropdown-content,
@@ -1047,23 +1047,87 @@ fieldset {
 }
 
 .premium-input {
-    background: var(--bg-main);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    transition: all 0.3s ease;
-    color: var(--text-main);
-    outline: none;
-}
-.premium-input:hover {
-    border-color: var(--text-light);
-}
-.premium-input:focus {
+    width: 100%;
     background: var(--bg-surface);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-    border-color: var(--primary);
+    border: 2px solid var(--border-light);
+    border-radius: 14px;
+    padding: 0.9rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-main);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    outline: none !important;
 }
 
-/* Form System */
+.premium-input::placeholder {
+    color: var(--text-light);
+    font-weight: 400;
+}
+
+.premium-input:hover {
+    border-color: var(--text-light);
+    background: var(--bg-main);
+}
+
+.premium-input:focus {
+    border-color: var(--primary);
+    background: var(--bg-surface);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12), 0 8px 16px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
+}
+
+body.dark-mode .premium-input {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .premium-input:focus {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.input-with-toggle {
+    position: relative;
+    width: 100%;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    z-index: 10;
+}
+
+.password-toggle:hover {
+    color: var(--primary);
+}
+
+.password-toggle .icon-hide {
+    display: none;
+}
+
+.password-toggle.is-shown .icon-show {
+    display: none;
+}
+
+.password-toggle.is-shown .icon-hide {
+    display: block;
+}
+
+.password-toggle svg {
+    width: 20px;
+    height: 20px;
+}
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -1214,12 +1278,30 @@ body.dark-mode .input-invalid {
 
 .auth-card {
     width: 100%;
-    max-width: 480px;
+    max-width: 500px;
     background: var(--bg-surface);
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-xl);
-    padding: clamp(1.5rem, 5vw, 3rem);
-    box-shadow: var(--shadow-lg);
+    border-radius: 28px;
+    padding: clamp(2rem, 8vw, 3.5rem);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+body.dark-mode .auth-card {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(20px);
 }
 
 .auth-card h1 {
