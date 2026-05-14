@@ -369,14 +369,34 @@ function getTopCategories(PDO $pdo): array {
  * Fetch top donors for the Hall of Fame
  */
 function getDonors(PDO $pdo, int $limit = 5): array {
-    return $pdo->query("
+    static $hasPromotionPayments = null;
+    if ($hasPromotionPayments === null) {
+        $tableStmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = 'promotion_payments'
+            LIMIT 1
+        ");
+        $tableStmt->execute();
+        $hasPromotionPayments = (bool) $tableStmt->fetchColumn();
+    }
+
+    if (!$hasPromotionPayments) {
+        return [];
+    }
+
+    $stmt = $pdo->prepare("
         SELECT DISTINCT u.username, u.avatar
         FROM promotion_payments pp
         JOIN users u ON u.id = pp.user_id
         WHERE pp.payment_type = 'donation' AND pp.status = 'approved'
         ORDER BY pp.approved_at DESC
-        LIMIT $limit
-    ")->fetchAll();
+        LIMIT :limit
+    ");
+    $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
 }
 
 /**
