@@ -51,6 +51,11 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     
     <!-- Vercel Web Analytics -->
     <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
+    <!-- Vercel Speed Insights -->
+    <script>
+        window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/speed-insights/script.js"></script>
     
 </head>
 <body>
