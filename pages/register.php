@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $ins = $pdo->prepare("
                 INSERT INTO users (username, email, password_hash, role, phone, is_verified)
-                VALUES (:u, :e, :h, 'user', :p, 0)
+                VALUES (:u, :e, :h, 'user', :p, FALSE)
             ");
             $ins->execute([
                 ':u' => $username,
