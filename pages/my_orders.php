@@ -88,7 +88,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php foreach ($buyingOrders as $order): ?>
                         <div class="glass-panel p-5 flex gap-5 items-center hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); transition: all 0.3s;">
                             <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
-                                <img src="<?php echo $order['image_path'] ? BASE_URL.'/public/'.$order['image_path'] : '../public/images/placeholder.png'; ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;">
                             </div>
                             <div class="flex-grow">
                                 <div class="flex justify-between items-start mb-1">
@@ -136,7 +136,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #f59e0b; transition: all 0.3s; <?php echo $order['status'] === 'pending' ? 'background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(252,211,77,0.05));' : ''; ?>">
                             <div class="flex gap-5 items-start mb-4">
                                 <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
-                                    <img src="<?php echo $order['image_path'] ? BASE_URL.'/public/'.$order['image_path'] : '../public/images/placeholder.png'; ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;">
                                 </div>
                                 <div class="flex-grow">
                                     <div class="flex justify-between items-start mb-1">

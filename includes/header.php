@@ -23,6 +23,9 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <meta name="supabase-url" content="<?php echo htmlspecialchars(supabaseUrl(), ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="supabase-anon-key" content="<?php echo htmlspecialchars(supabaseAnonKey(), ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>
+    <?php if (isLoggedIn()): ?>
+    <meta name="user-id" content="<?php echo currentUserId(); ?>">
+    <?php endif; ?>
     
     <!-- Member 5: Design System -->
     <?php 
@@ -98,9 +101,16 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                 <a href="<?php echo BASE_URL; ?>admin/index.php">Admin Panel</a>
                 <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>
             <?php elseif (isLoggedIn()): ?>
-                <?php $unreadMessages = countUnreadMessages($pdo, currentUserId()); ?>
-                <a href="<?php echo BASE_URL; ?>/pages/inbox.php" class="flex items-center gap-1">
-                    Inbox <?php if ($unreadMessages > 0): ?><span class="badge" style="background: var(--accent); color: white; padding: 0.1rem 0.4rem; font-size: 0.7rem; border-radius: var(--radius-lg);"><?php echo $unreadMessages; ?></span><?php endif; ?>
+                <?php 
+                    $unreadMessages = countUnreadMessages($pdo, currentUserId()); 
+                    $unreadNotifs = countUnreadNotifications($pdo, currentUserId());
+                ?>
+                <a href="<?php echo BASE_URL; ?>/pages/inbox.php" class="flex items-center gap-1" title="Messages">
+                    Inbox <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
+                </a>
+                <a href="<?php echo BASE_URL; ?>/pages/notifications.php" class="flex items-center gap-1" title="Notifications">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                 </a>
                 <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 600; color: var(--primary);">Sell Item</a>
                 
@@ -145,6 +155,9 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/theme.js?v=<?php echo $themeJsVer; ?>"></script>
 <script src="<?php echo BASE_URL; ?>public/js/mobile-menu.js?v=<?php echo $menuJsVer; ?>"></script>
+<?php if (isLoggedIn()): ?>
+<script src="<?php echo BASE_URL; ?>public/js/notifications-realtime.js"></script>
+<?php endif; ?>
 <div class="container">
     <?php if ($flash = getFlash()): ?>
         <div class="mt-4 flex items-center flash flash-<?php echo sanitize($flash['type']); ?>">

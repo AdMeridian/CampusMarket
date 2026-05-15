@@ -25,13 +25,7 @@ $cardBorder = $isOwner ? 'border: 2px solid var(--secondary);' : 'border: 1px so
         <!-- Product Image Container -->
         <div class="product-card-image-wrap" style="border-radius: var(--radius-md); margin-bottom: 1.5rem;">
             <?php 
-                $imgUrl = sanitize(rtrim(BASE_URL, '/') . '/public/images/default-product.png');
-                if (!empty($prod['image_path'])) {
-                    // Normalize path: if it starts with 'uploads/', it's already including the 'public/' relative root in some contexts
-                    // but usually it's stored relative to 'public/'
-                    $path = ltrim($prod['image_path'], '/');
-                    $imgUrl = sanitize(rtrim(BASE_URL, '/') . '/public/' . $path);
-                }
+                $imgUrl = getProductImage($prod['image_path'] ?? null);
             ?>
             <img src="<?php echo $imgUrl; ?>" alt="<?php echo sanitize($prod['title']); ?>">
             

@@ -13,11 +13,11 @@ if (!$productId || !$otherUserId) {
 }
 
 // Fetch context info
-$stmt = $pdo->prepare("SELECT title, price, discount_percent FROM products WHERE id = :id");
+$stmt = $pdo->prepare("SELECT title, price, discount_percent, image_path FROM products WHERE id = :id");
 $stmt->execute([':id' => $productId]);
 $product = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT username FROM users WHERE id = :id");
+$stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = :id");
 $stmt->execute([':id' => $otherUserId]);
 $otherUser = $stmt->fetch();
 
@@ -46,8 +46,14 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Chat Header Context -->
     <div class="glass-panel mb-4 p-4 flex justify-between items-center" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
         <div class="flex items-center gap-4">
-            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
-                <?php echo strtoupper(substr($otherUser['username'], 0, 2)); ?>
+            <div style="width: 50px; height: 50px; flex-shrink: 0;">
+                <?php if (!empty($otherUser['avatar'])): ?>
+                    <img src="<?= avatarUrl($otherUser['avatar']) ?>" alt="<?= htmlspecialchars($otherUser['username']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                <?php else: ?>
+                    <div style="width: 100%; height: 100%; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
+                        <?php echo strtoupper(substr($otherUser['username'], 0, 2)); ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <div>
                 <h3 class="mb-0 font-bold" style="line-height: 1.2;">@<?= htmlspecialchars($otherUser['username']) ?></h3>
@@ -56,12 +62,17 @@ require_once __DIR__ . '/../includes/header.php';
                 </p>
             </div>
         </div>
-        <div class="text-right hidden sm:block">
-            <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Regarding Item</p>
-            <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="font-bold text-main hover:text-primary transition-colors" style="text-decoration: none;">
-                <?= htmlspecialchars($product['title']) ?>
-            </a>
-            <p class="text-primary font-bold mb-0"><?= renderProductPrice($product) ?></p>
+        <div class="flex items-center gap-3 text-right hidden sm:flex">
+            <div>
+                <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Regarding Item</p>
+                <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="font-bold text-main hover:text-primary transition-colors" style="text-decoration: none; font-size: 0.9rem; display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <?= htmlspecialchars($product['title']) ?>
+                </a>
+                <p class="text-primary font-bold mb-0" style="font-size: 0.9rem;"><?= renderProductPrice($product) ?></p>
+            </div>
+            <div style="width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light);">
+                <img src="<?= getProductImage($product['image_path'] ?? null) ?>" alt="Product" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
         </div>
     </div>
     

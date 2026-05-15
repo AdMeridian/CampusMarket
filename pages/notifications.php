@@ -34,6 +34,28 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="container main-content mb-20" style="max-width: 800px; margin-top: 3rem;">
     <div class="glass-panel" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-lg);">
+        <!-- Inbox Tabs -->
+        <div class="flex gap-4 mb-8" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem; padding: 0 2rem;">
+            <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" style="font-weight: 500;">
+                <span>Messages</span>
+                <?php 
+                    $navUnreadMessages = countUnreadMessages($pdo, $currentUserId);
+                    if ($navUnreadMessages > 0): 
+                ?>
+                    <span class="badge badge-primary"><?= $navUnreadMessages ?></span>
+                <?php endif; ?>
+            </a>
+            <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2" style="font-weight: 700; border-bottom: 2px solid var(--accent); color: var(--accent);">
+                <span>Activity</span>
+                <?php 
+                    $navUnreadNotifs = countUnreadNotifications($pdo, $currentUserId);
+                    if ($navUnreadNotifs > 0): 
+                ?>
+                    <span class="badge badge-accent"><?= $navUnreadNotifs ?></span>
+                <?php endif; ?>
+            </a>
+        </div>
+
         <div style="background: linear-gradient(135deg, rgba(239,68,68,0.05), rgba(244,63,94,0.05)); padding: 2rem; border-bottom: 1px solid var(--border-light);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px; font-size: 2rem;">Activity <span class="gradient-text" style="background: linear-gradient(135deg, #ef4444, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Updates</span></h1>

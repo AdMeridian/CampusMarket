@@ -10,7 +10,7 @@ if ($productId <= 0) {
 
 // Fetch Product Details
 $stmt = $pdo->prepare("
-    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.created_at as seller_since
+    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since
     FROM products p
     JOIN categories c ON p.category_id = c.id
     JOIN users u ON p.user_id = u.id
@@ -99,9 +99,9 @@ $stmt = $pdo->prepare("SELECT * FROM product_images WHERE product_id = :id ORDER
 $stmt->execute([':id' => $productId]);
 $images = $stmt->fetchAll();
 
-// Seller Rating + Trust
-$rating = getSellerRating($pdo, $product['seller_id']);
-$trust = getSellerTrustScore($pdo, (int)$product['seller_id']);
+// Fetch Seller Stats (for SCC)
+$rating = getSellerRating($pdo, (int)$product['seller_id']);
+$trust  = getSellerTrustScore($pdo, (int)$product['seller_id']);
 
 // Fetch REAL unique view count from product_views table
 $stmtViews = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ?");
@@ -255,7 +255,7 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="gallery-container sticky top-24" style="align-self: start;">
             <div class="product-gallery-main relative group">
                 <?php if (!empty($images)): ?>
-                    <img src="<?php echo BASE_URL; ?>/public/<?php echo $images[0]['image_path']; ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
+                    <img src="<?php echo getProductImage($images[0]['image_path']); ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
                 <?php else: ?>
                     <div class="flex flex-col items-center justify-center text-muted">
                         <svg class="w-24 h-24 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -273,9 +273,9 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="flex gap-4 mt-6 overflow-x-auto pb-2 custom-scrollbar">
                     <?php foreach ($images as $index => $img): ?>
                         <div class="card p-1 cursor-pointer hover-scale flex-shrink-0 thumbnail-btn <?php echo $index === 0 ? 'ring-2 ring-primary' : ''; ?>" 
-                             onclick="updateMainImage('<?php echo BASE_URL; ?>/public/<?php echo $img['image_path']; ?>', this)"
+                             onclick="updateMainImage('<?php echo getProductImage($img['image_path']); ?>', this)"
                              style="width: 80px; height: 80px; overflow: hidden; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); transition: all 0.2s;">
-                            <img src="<?php echo BASE_URL; ?>/public/<?php echo $img['image_path']; ?>" alt="Thumb" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
+                            <img src="<?php echo getProductImage($img['image_path']); ?>" alt="Thumb" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -312,19 +312,21 @@ require_once __DIR__ . '/../includes/header.php';
                 <!-- TOP SELLER CARD -->
                 <div class="scc-seller-card" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid #dbe6f6; border-left: 4px solid #3b82f6; border-radius: 16px; padding: 1.2rem 1.4rem; background: #fff; margin-bottom: 1rem;">
                     <div class="flex items-center" style="gap: 14px;">
-                        <div style="width: 74px; height: 74px; background: #3155f6; color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 2rem; box-shadow: 0 8px 18px rgba(49, 85, 246, 0.25);">
-                            <?php echo strtoupper(substr($product['seller_name'], 0, 1)); ?>
-                        </div>
+                        <img src="<?php echo avatarUrl($product['seller_avatar']); ?>" 
+                             alt="<?php echo sanitize($product['seller_name']); ?>"
+                             style="width: 74px; height: 74px; border-radius: 16px; object-fit: cover; box-shadow: 0 8px 18px rgba(0,0,0,0.08); border: 2px solid white;">
                         <div style="margin-left: 4px;">
                             <h4 class="m-0 font-bold text-slate-900" style="font-size: 2.25rem; line-height: 1.05; letter-spacing: -0.01em;">@<?php echo sanitize($product['seller_name']); ?></h4>
                             <div class="flex items-center gap-3 text-[0.95rem] font-bold mt-1">
                                 <div class="flex items-center gap-1">
                                     <span style="color: #f59e0b;">&#9733;</span>
-                                    <span class="text-slate-800">0</span>
-                                    <span class="text-slate-400 font-medium">(0 reviews)</span>
+                                    <span class="text-slate-800"><?php echo number_format($rating['avg'], 1); ?></span>
+                                    <span class="text-slate-400 font-medium">(<?php echo $rating['count']; ?> review<?php echo $rating['count'] !== 1 ? 's' : ''; ?>)</span>
                                 </div>
-                                <span style="background: #ecfdf5; color: #10b981; padding: 0.2rem 0.75rem; border-radius: 10px; font-size: 0.78rem;">New Seller</span>
-                                <div class="text-slate-700">Trust Score: <span class="font-bold">0/100</span> <span style="opacity: 0.35; cursor: help;">&#9432;</span></div>
+                                <span style="background: #ecfdf5; color: #10b981; padding: 0.2rem 0.75rem; border-radius: 10px; font-size: 0.78rem;">
+                                    <?php echo $rating['count'] > 5 ? 'Trusted Seller' : 'New Seller'; ?>
+                                </span>
+                                <div class="text-slate-700">Trust Score: <span class="font-bold"><?php echo (int)$trust['score']; ?>/100</span> <span style="opacity: 0.35; cursor: help;" title="<?php echo sanitize($trust['tier']); ?>">&#9432;</span></div>
                             </div>
                         </div>
                     </div>

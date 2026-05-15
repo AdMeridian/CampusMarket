@@ -829,7 +829,7 @@ body.dark-mode .btn-white-solid:hover {
                             <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
                                 <img 
                                     class="listing-card-img" 
-                                    src="<?php echo $prod['image_path'] ? BASE_URL . 'public/' . ltrim($prod['image_path'], '/') : BASE_URL . 'public/images/placeholder.png'; ?>" 
+                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>" 
                                     alt="<?php echo sanitize($prod['title']); ?>"
                                     loading="lazy"
                                 />
@@ -907,7 +907,7 @@ body.dark-mode .btn-white-solid:hover {
                         <div class="sold-card">
                             <img
                                 class="sold-card-img"
-                                src="<?php echo $sold['image_path'] ? BASE_URL . 'public/' . ltrim($sold['image_path'], '/') : BASE_URL . 'public/images/placeholder.png'; ?>"
+                                src="<?php echo getProductImage($sold['image_path'] ?? null); ?>"
                                 alt="<?php echo sanitize($sold['title']); ?>"
                                 loading="lazy"
                             >

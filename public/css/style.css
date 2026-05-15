@@ -1513,3 +1513,23 @@ body {
 }
 
 
+
+/* Utility: Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
+.badge-primary { background: var(--primary); color: white; }
+.badge-accent { background: var(--accent); color: white; }
+.badge-secondary { background: var(--secondary); color: white; }

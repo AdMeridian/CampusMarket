@@ -198,23 +198,67 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
         return ['success' => false, 'error' => 'Invalid file type'];
     }
 
-    // Path setup
     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = uniqid('img_', true) . '.' . $ext;
-    $relPath = 'uploads/' . ltrim($subfolder, '/') . $filename;
-    $absPath = __DIR__ . '/../public/' . $relPath;
+    $subfolder = trim($subfolder, '/');
+    $objectName = $subfolder . '/' . $filename;
+    
+    // Check if Supabase env vars are set
+    require_once __DIR__ . '/../config/supabase.php';
+    $supabaseUrl = supabaseUrl();
+    $supabaseKey = supabaseAnonKey();
 
-    // Create directory
-    $dir = dirname($absPath);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+    if (empty($supabaseUrl) || empty($supabaseKey)) {
+        // Local upload fallback if Supabase not configured
+        $relPath = 'uploads/' . $objectName;
+        $absPath = __DIR__ . '/../public/' . $relPath;
+        $dir = dirname($absPath);
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        if (move_uploaded_file($file['tmp_name'], $absPath)) {
+            return ['success' => true, 'path' => $relPath];
+        }
+        return ['success' => false, 'error' => 'Failed to move file'];
     }
 
-    if (move_uploaded_file($file['tmp_name'], $absPath)) {
-        return ['success' => true, 'path' => $relPath];
+    // Upload to Supabase Storage
+    $bucket = 'marketplace';
+    $url = rtrim($supabaseUrl, '/') . '/storage/v1/object/' . $bucket . '/' . $objectName;
+    
+    $fileData = file_get_contents($file['tmp_name']);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $fileData);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer " . $supabaseKey,
+        "apikey: " . $supabaseKey,
+        "Content-Type: " . $file['type']
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode >= 200 && $httpCode < 300) {
+        // Return absolute URL so it works seamlessly on frontend
+        $publicUrl = rtrim($supabaseUrl, '/') . '/storage/v1/object/public/' . $bucket . '/' . $objectName;
+        return ['success' => true, 'path' => $publicUrl];
+    } else {
+        return ['success' => false, 'error' => 'Upload failed: ' . $response];
     }
+}
 
-    return ['success' => false, 'error' => 'Failed to move file'];
+/**
+ * Get product image URL
+ */
+function getProductImage(?string $path): string {
+    if (empty($path)) {
+        return BASE_URL . 'public/images/default-product.png';
+    }
+    if (strpos($path, 'http') === 0) {
+        return $path;
+    }
+    return rtrim(BASE_URL, '/') . '/public/' . ltrim($path, '/');
 }
 
 /**
@@ -482,10 +526,15 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
  * Build a public URL for a user avatar.
  */
 function avatarUrl(?string $avatarPath): string {
-    if (!empty($avatarPath)) {
-        return BASE_URL . 'public/' . ltrim($avatarPath, '/');
+    if (empty($avatarPath)) {
+        return 'https://www.gravatar.com/avatar/?d=mp&s=200';
     }
-    return 'https://www.gravatar.com/avatar/?d=mp&s=200';
+    // If it's already a full URL (e.g. Supabase Storage), return it as is
+    if (filter_var($avatarPath, FILTER_VALIDATE_URL)) {
+        return $avatarPath;
+    }
+    // Otherwise, return local path
+    return BASE_URL . 'public/' . ltrim($avatarPath, '/');
 }
 
 /**
