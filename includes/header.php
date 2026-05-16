@@ -125,7 +125,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                         <a href="<?php echo BASE_URL; ?>pages/wishlist.php">Wishlist</a>
                         <a href="<?php echo BASE_URL; ?>pages/promotions.php">Promotions</a>
                         <a href="<?php echo BASE_URL; ?>pages/profile.php">My Profile</a>
-                        <a href="<?php echo BASE_URL; ?>pages/recycle_bin.php">Recycle Bin</a>
+
                         <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" style="color: var(--secondary); font-weight: bold;">Contact Support</a>
                         <div style="border-top: 1px solid var(--border-light); margin: 0.5rem 0;"></div>
                         <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>
