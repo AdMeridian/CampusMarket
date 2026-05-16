@@ -12,7 +12,7 @@ $errors = [];
 $success = '';
 
 // Auto-cleanup: Delete items older than 30 days (PostgreSQL syntax)
-$cleanup = $pdo->prepare("DELETE FROM products WHERE status = 'deleted' AND deleted_at < NOW() - INTERVAL 30 DAY");
+$cleanup = $pdo->prepare("DELETE FROM products WHERE status = 'deleted' AND deleted_at < NOW() - INTERVAL '30 days'");
 $cleanup->execute();
 
 // Handle actions

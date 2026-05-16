@@ -118,11 +118,11 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
 $viewCumPoints = [];
 $wishCumPoints = [];
 for ($d = 5; $d >= 0; $d--) {
-    $sv = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ? AND viewed_at <= DATE_SUB(NOW(), INTERVAL ? DAY)");
+    $sv = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ? AND viewed_at <= NOW() - (CAST(? AS text) || ' days')::interval");
     $sv->execute([$productId, $d]);
     $viewCumPoints[] = (int)$sv->fetchColumn();
 
-    $sw = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= DATE_SUB(NOW(), INTERVAL ? DAY)");
+    $sw = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= NOW() - (CAST(? AS text) || ' days')::interval");
     $sw->execute([$productId, $d]);
     $wishCumPoints[] = (int)$sw->fetchColumn();
 }
