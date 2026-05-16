@@ -298,7 +298,7 @@ require_once __DIR__ . '/../includes/header.php';
             <!-- SELLER PROFILE CARD (Visible to Everyone) -->
             <div class="scc-wrapper mt-8">
                 <div class="scc-seller-card" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid #dbe6f6; border-left: 4px solid #3b82f6; border-radius: 16px; padding: 1.2rem 1.4rem; background: #fff; margin-bottom: 1rem;">
-                    <div class="flex items-center" style="gap: 14px;">
+                    <a href="profile.php?id=<?php echo $product['seller_id']; ?>" class="flex items-center" style="gap: 14px; text-decoration: none;">
                         <img src="<?php echo avatarUrl($product['seller_avatar']); ?>" 
                              alt="<?php echo sanitize($product['seller_name']); ?>"
                              style="width: 74px; height: 74px; border-radius: 16px; object-fit: cover; box-shadow: 0 8px 18px rgba(0,0,0,0.08); border: 2px solid white;">
@@ -316,8 +316,8 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="text-slate-700">Trust Score: <span class="font-bold"><?php echo (int)$trust['score']; ?>/100</span> <span style="opacity: 0.35; cursor: help;" title="<?php echo sanitize($trust['tier']); ?>">&#9432;</span></div>
                             </div>
                         </div>
-                    </div>
-                    <a href="profile.php" class="flex items-center gap-2 px-6 py-2.5 border border-slate-200 rounded-xl font-bold text-slate-600 text-sm hover:bg-slate-50 transition-all" style="min-width: 168px; justify-content: center;">
+                    </a>
+                    <a href="profile.php?id=<?php echo $product['seller_id']; ?>" class="flex items-center gap-2 px-6 py-2.5 border border-slate-200 rounded-xl font-bold text-slate-600 text-sm hover:bg-slate-50 transition-all" style="min-width: 168px; justify-content: center;">
                         View Profile <span style="opacity: 0.45; font-size: 0.8rem; margin-left: 4px;">&#10095;</span>
                     </a>
                 </div>
