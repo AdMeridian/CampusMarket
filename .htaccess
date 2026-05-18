@@ -16,7 +16,14 @@ Options -Indexes
 # Block access to config and includes from browser
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Block specific directories
     RewriteRule ^config/ - [F,L]
     RewriteRule ^includes/ - [F,L]
     RewriteRule ^database/ - [F,L]
+
+    # Enable extensionless PHP URLs (e.g. /pages/browse -> /pages/browse.php)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}\.php -f
+    RewriteRule ^(.*)$ $1.php [L]
 </IfModule>
