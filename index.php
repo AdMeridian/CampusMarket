@@ -143,6 +143,37 @@ if (!empty($featuredProducts)):
 </section>
 <?php endif; ?>
 
+<!-- Recent Products -->
+<section class="mt-16 mb-16">
+    <div class="container">
+        <div class="flex justify-between items-end mb-8">
+            <h2 class="mb-0">Recent Listings</h2>
+            <a href="pages/browse.php" class="btn btn-secondary btn-sm">See everything</a>
+        </div>
+
+        <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-4 gap-6">
+            <?php if (empty($recentProducts)): ?>
+                <div class="col-span-full text-center py-12 bg-white rounded-lg border">
+                    <p class="text-muted">No products listed yet. Be the first to sell something!</p>
+                    <?php if (isLoggedIn()): ?>
+                        <a href="pages/create_listing.php" class="btn btn-primary">Create Listing</a>
+                    <?php else: ?>
+                        <a href="pages/register.php" class="btn btn-primary">Join & Sell</a>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <?php foreach ($recentProducts as $prod): ?>
+                    <?php include 'includes/product_card_template.php'; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <div class="mt-12 text-center">
+            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-lg); font-weight: 700; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">Explore All Listings</a>
+        </div>
+    </div>
+</section>
+
 <!-- Category Highlights -->
 <section class="mt-20">
     <div class="container">

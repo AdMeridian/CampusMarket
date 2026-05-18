@@ -153,14 +153,68 @@ include '../includes/header.php';
 
             <!-- Results -->
             <main class="lg-col-span-4">
-                <div class="mb-8 flex items-center justify-between gap-6" style="background: var(--bg-surface); padding: 1.1rem 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
+                <style>
+                .browse-results-header {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                    background: var(--bg-surface);
+                    padding: 1.1rem 1.5rem;
+                    border-radius: var(--radius-lg);
+                    border: 1px solid var(--border-light);
+                    box-shadow: var(--shadow-sm);
+                }
+                .browse-results-header > .item-count-badge {
+                    order: 1;
+                    align-self: flex-start;
+                }
+                .browse-results-header > .search-form-el {
+                    order: 3;
+                    width: 100%;
+                    max-width: 100% !important;
+                }
+                .browse-results-header > .sort-dropdown-el {
+                    order: 2;
+                    align-self: flex-start;
+                    width: 100%;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                @media (min-width: 768px) {
+                    .browse-results-header {
+                        flex-direction: row;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 1.5rem;
+                    }
+                    .browse-results-header > .item-count-badge {
+                        order: 1;
+                        align-self: center;
+                    }
+                    .browse-results-header > .search-form-el {
+                        order: 2;
+                        flex: 1;
+                        max-width: 500px !important;
+                    }
+                    .browse-results-header > .sort-dropdown-el {
+                        order: 3;
+                        align-self: center;
+                        width: auto;
+                        justify-content: flex-start;
+                    }
+                }
+                </style>
+
+                <div class="mb-8 browse-results-header">
                     <!-- Item Count -->
-                    <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-lg); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
+                    <div class="item-count-badge" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-lg); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
                         <?php echo count($products); ?> Items
                     </div>
 
                     <!-- Search Bar (In Between) -->
-                    <form method="GET" action="" class="search-bar mb-0" style="flex: 1; max-width: 500px; height: 46px; position: relative; z-index: 50;">
+                    <form method="GET" action="" class="search-bar search-form-el mb-0" style="height: 46px; position: relative; z-index: 50;">
                         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -177,7 +231,7 @@ include '../includes/header.php';
                     </form>
 
                     <!-- Sort Dropdown -->
-                    <div class="flex items-center gap-3 flex-shrink-0">
+                    <div class="sort-dropdown-el flex items-center gap-3 flex-shrink-0">
                         <span class="text-muted small font-bold uppercase tracking-wider" style="font-size: 0.8rem;">Sort By</span>
                         <form method="GET" action="browse.php" id="sort-form" class="mb-0">
                             <?php if($search): ?><input type="hidden" name="q" value="<?php echo sanitize($search); ?>"><?php endif; ?>

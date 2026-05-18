@@ -55,6 +55,7 @@ CREATE TABLE products (
     status      ENUM('active', 'sold', 'flagged')       NOT NULL DEFAULT 'active',
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
+    views       INT            NOT NULL DEFAULT 0,
     created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
@@ -96,6 +97,18 @@ CREATE TABLE wishlists (
     UNIQUE KEY uq_wishlist (user_id, product_id),
     FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- 7b. product_views
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE TABLE product_views (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    user_id    INT NOT NULL,
+    viewed_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

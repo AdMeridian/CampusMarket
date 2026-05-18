@@ -74,8 +74,18 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
             <span>CampusMarket</span>
         </a>
         
+        <!-- Mobile Tools (Visible only on mobile next to the logo) -->
+        <div class="lg-hidden flex items-center gap-2" style="margin-left: auto;">
+            <button id="theme-toggle-mobile" class="theme-toggle" aria-label="Toggle dark mode">
+                <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
+            </button>
+            <button class="nav-mobile-toggle" id="mobile-menu-btn" aria-label="Toggle Menu">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </div>
+
         <!-- Shared Search Bar (Desktop) -->
-        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar group" style="flex: 1; max-width: 450px; margin: 0 auto;">
+        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar group lg-flex" style="flex: 1; max-width: 450px; margin: 0 auto;">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -87,17 +97,11 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 
         <!-- Navigation Links -->
         <div class="nav-links" id="nav-links">
-
             <div class="hidden lg-block">
                 <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
                     <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
                 </button>
             </div>
-
-            <!-- Mobile Theme Toggle -->
-            <button id="theme-toggle-mobile" class="theme-toggle lg-hidden" aria-label="Toggle dark mode">
-                <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
-            </button>
 
             <a href="<?php echo BASE_URL; ?>pages/browse.php">Browse</a>
             <?php if (isLoggedIn() && isAdmin()): ?>
@@ -128,7 +132,6 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                         <a href="<?php echo BASE_URL; ?>pages/wishlist.php">Wishlist</a>
                         <a href="<?php echo BASE_URL; ?>pages/promotions.php">Promotions</a>
                         <a href="<?php echo BASE_URL; ?>pages/profile.php">My Profile</a>
-
                         <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" style="color: var(--secondary); font-weight: bold;">Contact Support</a>
                         <div style="border-top: 1px solid var(--border-light); margin: 0.5rem 0;"></div>
                         <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>
@@ -138,18 +141,18 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                 <a href="<?php echo BASE_URL; ?>pages/login.php">Login</a>
                 <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn btn-primary btn-sm" style="color: white !important;">Sign Up</a>
             <?php endif; ?>
-        </div>
-
-        <!-- Mobile Menu Toggle -->
-        <button id="mobile-menu-btn" class="nav-mobile-toggle" aria-label="Toggle mobile menu">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-        </button>
     </div>
 </nav>
+
+<!-- Mobile Search Row (Visible only on mobile, pushed below the fixed navbar) -->
+<div class="lg-hidden" style="margin-top: 62px; background: var(--bg-surface); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light);">
+    <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar" style="width: 88%; max-width: 500px; margin: 0 auto;">
+        <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="Search items, books, tech..." class="search-input" style="padding: 0.6rem 1rem; font-size: 0.95rem;">
+        <button type="submit" class="search-btn" style="padding: 0.6rem 1.25rem;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+    </form>
+</div>
 
 <?php
     $themeJsPath = __DIR__ . '/../public/js/theme.js';
@@ -162,6 +165,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 <?php if (isLoggedIn()): ?>
 <script src="<?php echo BASE_URL; ?>public/js/notifications-realtime.js"></script>
 <?php endif; ?>
+
 <div class="container">
     <?php if ($flash = getFlash()): ?>
         <div class="mt-4 flex items-center flash flash-<?php echo sanitize($flash['type']); ?>">

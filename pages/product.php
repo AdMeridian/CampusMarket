@@ -120,12 +120,21 @@ $wishlistCount = (int)$stmtWish->fetchColumn();
 // Points: [5 days ago, 4 days ago, 3 days ago, 2 days ago, yesterday, today]
 $viewCumPoints = [];
 $wishCumPoints = [];
+$driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+$viewSql = $driver === 'pgsql' 
+    ? "SELECT COUNT(*) FROM product_views WHERE product_id = ? AND viewed_at <= NOW() - (CAST(? AS text) || ' days')::interval"
+    : "SELECT COUNT(*) FROM product_views WHERE product_id = ? AND viewed_at <= DATE_SUB(NOW(), INTERVAL ? DAY)";
+
+$wishSql = $driver === 'pgsql'
+    ? "SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= NOW() - (CAST(? AS text) || ' days')::interval"
+    : "SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= DATE_SUB(NOW(), INTERVAL ? DAY)";
+
 for ($d = 5; $d >= 0; $d--) {
-    $sv = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ? AND viewed_at <= NOW() - (CAST(? AS text) || ' days')::interval");
+    $sv = $pdo->prepare($viewSql);
     $sv->execute([$productId, $d]);
     $viewCumPoints[] = (int)$sv->fetchColumn();
 
-    $sw = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= NOW() - (CAST(? AS text) || ' days')::interval");
+    $sw = $pdo->prepare($wishSql);
     $sw->execute([$productId, $d]);
     $wishCumPoints[] = (int)$sw->fetchColumn();
 }

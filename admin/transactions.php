@@ -131,7 +131,7 @@ foreach ($deals as $d) {
     font-weight: 700;
     font-size: 0.78rem;
     padding: 0.25rem 0.7rem;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-full);
 }
 </style>
 
@@ -141,7 +141,7 @@ foreach ($deals as $d) {
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Transactions</div>
             <h1 class="mb-0 gradient-text">Verified Transactions</h1>
         </div>
-        <div class="badge" style="background: rgba(16,185,129,0.1); color: #059669; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);">🤝 <?php echo $totalCount; ?> Deals</div>
+        <div class="badge" style="background: rgba(16,185,129,0.1); color: #059669; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-full);">🤝 <?php echo $totalCount; ?> Deals</div>
     </div>
 
     <!-- Summary Bar -->
