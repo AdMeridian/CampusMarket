@@ -1,8 +1,7 @@
 <?php
 // pages/login.php — Member 2
-// Authenticate via email-or-username + password.
-// Blocks unverified accounts (is_verified = 0) until they click the
-// link in their verification email.
+// Authenticate via Supabase Auth using email-or-username + password.
+// Keeps local app sessions/users table for marketplace data.
 
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
@@ -25,56 +24,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($identity === '' || $password === '') {
         $errors['form'] = 'Please enter your email/username and password.';
     } else {
-        // Look up by email (case-insensitive) OR username.
-        // Note: named placeholders can't be reused when EMULATE_PREPARES=false,
-        // so :id_email and :id_user are bound separately to the same value.
-        $stmt = $pdo->prepare('
-            SELECT id, username, email, password_hash, role, is_verified
-            FROM users
-            WHERE LOWER(email) = LOWER(:id_email) OR username = :id_user
-            LIMIT 1
-        ');
-        $stmt->execute([
-            ':id_email' => $identity,
-            ':id_user'  => $identity,
+        $loginEmail = $identity;
+        if (!filter_var($loginEmail, FILTER_VALIDATE_EMAIL)) {
+            $lookup = $pdo->prepare('SELECT email FROM users WHERE username = :u LIMIT 1');
+            $lookup->execute([':u' => $identity]);
+            $foundEmail = $lookup->fetchColumn();
+            if (is_string($foundEmail) && $foundEmail !== '') {
+                $loginEmail = $foundEmail;
+            }
+        }
+
+        $auth = supabaseAuthRequest('POST', 'token?grant_type=password', [
+            'email' => $loginEmail,
+            'password' => $password,
         ]);
-        $user = $stmt->fetch();
 
-        // Same error message for "no such user" and "wrong password"
-        // prevents account enumeration.
-        $bad = 'Incorrect email/username or password.';
-
-        if (!$user || !password_verify($password, $user['password_hash'])) {
-            $errors['form'] = $bad;
-        } elseif ((int) $user['is_verified'] !== 1) {
-            // Correct credentials, but email not verified yet.
-            $unverified = true;
-            $errors['form'] = 'Please verify your email before logging in. '
-                            . 'Check your inbox at ' . sanitize($user['email']) . '.';
+        if (!$auth['ok']) {
+            $msg = strtolower((string) ($auth['error'] ?? ''));
+            if (strpos($msg, 'email not confirmed') !== false) {
+                $unverified = true;
+                $errors['form'] = 'Please verify your email before logging in. Check your inbox at ' . sanitize($loginEmail) . '.';
+            } else {
+                $errors['form'] = 'Incorrect email/username or password.';
+            }
         } else {
-            // Transparent rehash if default cost moved up since last login.
-            if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
-                $upd = $pdo->prepare('UPDATE users SET password_hash = :h WHERE id = :id');
-                $upd->execute([
-                    ':h'  => password_hash($password, PASSWORD_DEFAULT),
-                    ':id' => $user['id'],
+            $authUser = $auth['data']['user'] ?? [];
+            $authEmail = strtolower((string) ($authUser['email'] ?? $loginEmail));
+            $isVerified = !empty($authUser['email_confirmed_at']) ? 1 : 0;
+
+            $stmt = $pdo->prepare('
+                SELECT id, username, email, role, is_verified, phone
+                FROM users
+                WHERE LOWER(email) = LOWER(:email)
+                LIMIT 1
+            ');
+            $stmt->execute([':email' => $authEmail]);
+            $user = $stmt->fetch();
+
+            if (!$user) {
+                $baseUsername = preg_replace('/[^A-Za-z0-9_]/', '_', strstr($authEmail, '@', true) ?: 'user');
+                $baseUsername = trim((string) $baseUsername, '_');
+                if ($baseUsername === '') {
+                    $baseUsername = 'user';
+                }
+                $candidate = substr($baseUsername, 0, 40);
+                $suffix = 0;
+                while (true) {
+                    $tryUsername = $suffix > 0 ? substr($candidate, 0, 35) . '_' . $suffix : $candidate;
+                    $exists = $pdo->prepare('SELECT 1 FROM users WHERE username = :u LIMIT 1');
+                    $exists->execute([':u' => $tryUsername]);
+                    if (!$exists->fetchColumn()) {
+                        break;
+                    }
+                    $suffix++;
+                }
+
+                $ins = $pdo->prepare("
+                    INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified)
+                    VALUES (:u, :e, :s, :h, 'user', :p, :v)
+                ");
+                $studentId = null;
+                $parts = explode('@', $authEmail);
+                if (($parts[1] ?? '') === 'std.neu.edu.tr' && preg_match('/^\d+$/', $parts[0])) {
+                    $studentId = $parts[0];
+                }
+                $ins->execute([
+                    ':u' => $tryUsername,
+                    ':e' => $authEmail,
+                    ':s' => $studentId,
+                    ':h' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT),
+                    ':p' => null,
+                    ':v' => $isVerified,
                 ]);
+                $stmt->execute([':email' => $authEmail]);
+                $user = $stmt->fetch();
             }
 
-            // Fixation defense.
-            session_regenerate_id(true);
-            $_SESSION['user_id']  = (int) $user['id'];
-            $_SESSION['role']     = $user['role'];
-            $_SESSION['username'] = $user['username'];
+            if (!$user) {
+                $errors['form'] = 'Could not initialize your account profile.';
+            } elseif ($isVerified !== 1) {
+                // Should be rare if Supabase already returned a session.
+                $unverified = true;
+                $errors['form'] = 'Please verify your email before logging in. Check your inbox at ' . sanitize($authEmail) . '.';
+            } else {
+                if ((int) $user['is_verified'] !== 1) {
+                    $upd = $pdo->prepare('UPDATE users SET is_verified = TRUE WHERE id = :id');
+                    $upd->execute([':id' => $user['id']]);
+                }
 
-            setFlash('success', 'Welcome back, ' . sanitize($user['username']) . '!');
+                session_regenerate_id(true);
+                $_SESSION['user_id']  = (int) $user['id'];
+                $_SESSION['role']     = $user['role'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['supabase_access_token'] = (string) ($auth['data']['access_token'] ?? '');
+                $_SESSION['supabase_refresh_token'] = (string) ($auth['data']['refresh_token'] ?? '');
 
-            // Safe internal redirect: allow ?redirect=/pages/..., reject anything else.
-            $target = $_GET['redirect'] ?? '';
-            if ($target && strpos($target, '/') === 0 && strpos($target, '//') !== 0) {
-                redirect(BASE_URL . ltrim($target, '/'));
+                setFlash('success', 'Welcome back, ' . sanitize($user['username']) . '!');
+
+                $target = $_GET['redirect'] ?? '';
+                if ($target && strpos($target, '/') === 0 && strpos($target, '//') !== 0) {
+                    redirect(BASE_URL . ltrim($target, '/'));
+                }
+                redirect(BASE_URL . 'pages/profile.php');
             }
-            redirect(BASE_URL . 'pages/profile.php');
         }
     }
 }

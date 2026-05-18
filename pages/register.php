@@ -7,7 +7,6 @@
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
 require_once '../includes/functions_member2.php';
-require_once '../includes/mailer.php';
 
 if (isLoggedIn()) {
     redirect(BASE_URL . 'pages/profile.php');
@@ -89,12 +88,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Persist + send verification email (no auto-login)
+    // Persist with Supabase Auth + local app profile (no auto-login)
     if (!$errors) {
-        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $signup = supabaseAuthRequest('POST', 'signup', [
+            'email' => $email,
+            'password' => $password,
+            'data' => [
+                'username' => $username,
+                'phone' => $phone,
+            ],
+        ]);
+
+        if (!$signup['ok']) {
+            error_log('[register] Supabase signup error: ' . ($signup['error'] ?? 'unknown'));
+            $errors['form'] = 'Could not create account. Please try again.';
+        }
+    }
+
+    if (!$errors) {
+        $hash = password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT);
+        $supabaseUser = $signup['data']['user'] ?? [];
+        $isVerified = !empty($supabaseUser['email_confirmed_at']) ? 1 : 0;
 
         $pdo->beginTransaction();
-        $token = '';
         try {
             $studentId = null;
             $parts = explode('@', $email);
@@ -104,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $ins = $pdo->prepare("
                 INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified)
-                VALUES (:u, :e, :s, :h, 'user', :p, FALSE)
+                VALUES (:u, :e, :s, :h, 'user', :p, :v)
             ");
             $ins->execute([
                 ':u' => $username,
@@ -112,45 +128,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':s' => $studentId,
                 ':h' => $hash,
                 ':p' => $phone !== '' ? $phone : null,
+                ':v' => $isVerified,
             ]);
-            $newId = (int) $pdo->lastInsertId();
-
-            $token   = generateVerificationToken();
-            $expires = (new DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
-
-            $tok = $pdo->prepare('
-                INSERT INTO email_verifications (user_id, token, expires_at)
-                VALUES (:u, :t, :x)
-            ');
-            $tok->execute([':u' => $newId, ':t' => $token, ':x' => $expires]);
 
             $pdo->commit();
+            setFlash(
+                'success',
+                'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.'
+            );
+            redirect(BASE_URL . 'pages/login.php');
         } catch (Throwable $e) {
             $pdo->rollBack();
             error_log('[register] DB error: ' . $e->getMessage());
             $errors['form'] = 'Could not create account. Please try again.';
-        }
-
-        // Send the verification email outside the transaction (network call).
-        if (empty($errors)) {
-            $verifyUrl = BASE_URL . 'pages/verify_email.php?token=' . urlencode($token);
-            $result    = sendVerificationEmail($email, $username, $verifyUrl);
-
-            if (!$result['ok']) {
-                // Account exists but the email didn't go out. Tell the user;
-                // they can ask for a resend later (or you can re-register).
-                setFlash(
-                    'error',
-                    'Account created, but we couldn\'t send the verification email. '
-                    . 'Check the server log or contact support.'
-                );
-            } else {
-                setFlash(
-                    'success',
-                    'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.'
-                );
-            }
-            redirect(BASE_URL . 'pages/login.php');
         }
     }
 }
