@@ -89,11 +89,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Persist with Supabase Auth + local app profile (no auto-login)
     if (!$errors) {
+        $isSecureRequest = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+        );
+        $originHost = $_SERVER['HTTP_HOST'] ?? '';
+        $originScheme = $isSecureRequest ? 'https' : 'http';
+        $emailRedirectTo = $originHost !== ''
+            ? ($originScheme . '://' . $originHost . '/pages/verify_email.php?source=supabase')
+            : (BASE_URL . 'pages/verify_email.php?source=supabase');
+
         $signup = supabaseAuthRequest('POST', 'signup', [
             'email' => $email,
             'password' => $password,
             'options' => [
-                'emailRedirectTo' => BASE_URL . 'pages/verify_email.php?source=supabase',
+                'emailRedirectTo' => $emailRedirectTo,
             ],
             'data' => [
                 'username' => $username,
@@ -110,6 +121,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors['email'] = 'An account with that email already exists.';
             } elseif (str_contains($rawErr, 'redirect') || str_contains($rawErr, 'emailredirectto')) {
                 $errors['form'] = 'Signup is blocked by email redirect configuration. Please contact support.';
+            } elseif ($status === 429 || str_contains($rawErr, 'rate limit')) {
+                $errors['form'] = 'Too many signup attempts. Please wait a minute and try again.';
+            } elseif ($status === 403 || str_contains($rawErr, 'signup_disabled')) {
+                $errors['form'] = 'Signup is currently disabled by authentication settings.';
             } elseif (str_contains($rawErr, 'password') && (str_contains($rawErr, 'compromised') || str_contains($rawErr, 'leaked') || str_contains($rawErr, 'pwned'))) {
                 $errors['password'] = 'This password appears in known data breaches. Please choose a different password.';
             } elseif (str_contains($rawErr, 'password')) {
