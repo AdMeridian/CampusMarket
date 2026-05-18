@@ -77,7 +77,7 @@ require_once __DIR__ . '/../includes/header.php';
             <h1 class="mb-8 font-bold text-main" style="font-size: 2.5rem; letter-spacing: -0.5px;">Review Request</h1>
             
             <div class="glass-panel p-6 flex flex-col sm:flex-row gap-6 items-start shadow-md relative overflow-hidden" style="border-radius: var(--radius-xl); background: var(--bg-surface);">
-                <div style="position: absolute; top: 0; right: 0; bottom: 0; width: 6px; background: linear-gradient(to bottom, var(--primary), var(--secondary));"></div>
+                <div style="position: absolute; top: 0; right: 0; bottom: 0; width: 6px; background: var(--primary);"></div>
                 <div style="width: 140px; height: 140px; flex-shrink: 0; border-radius: var(--radius-lg); overflow: hidden; background: #e2e8f0; border: 1px solid rgba(0,0,0,0.05);">
                     <?php if ($product['image_path']): ?>
                         <img src="<?php echo getProductImage($product['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;">
@@ -122,7 +122,7 @@ require_once __DIR__ . '/../includes/header.php';
         <div>
             <div class="glass-panel p-8 shadow-xl relative" style="border-radius: var(--radius-xl); background: var(--bg-surface);">
                 <!-- Card Badge -->
-                <div style="position: absolute; top: -15px; left: 2rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-lg); color: white; padding: 0.4rem 1.2rem; font-weight: bold; font-size: 0.85rem; box-shadow: var(--shadow-sm); letter-spacing: 0.5px; text-transform: uppercase;">
+                <div style="position: absolute; top: -15px; left: 2rem; background: var(--primary); border-radius: var(--radius-lg); color: white; padding: 0.4rem 1.2rem; font-weight: bold; font-size: 0.85rem; box-shadow: var(--shadow-sm); letter-spacing: 0.5px; text-transform: uppercase;">
                     Final Step
                 </div>
 
@@ -152,8 +152,7 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <div class="flex flex-col gap-4 border-t border-gray-100 pt-6">
                         <button type="submit" class="btn btn-primary w-full shadow-lg hover-scale" style="padding: 1.25rem; border-radius: var(--radius-lg); font-size: 1.15rem; font-weight: bold; position: relative; overflow: hidden;">
-                            <!-- Button sheen -->
-                            <div style="position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transform: skewX(-20deg); animation: shine 3s infinite;"></div>
+
                             Send Buy Request
                         </button>
                         <a href="product.php?id=<?php echo $productId; ?>" class="text-center font-medium hover:text-primary transition-colors py-2 text-muted">Cancel and go back</a>
@@ -164,13 +163,7 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<style>
-@keyframes shine {
-    0% { left: -100%; }
-    20% { left: 200%; }
-    100% { left: 200%; }
-}
-</style>
+
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 

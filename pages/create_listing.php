@@ -78,7 +78,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 
     <div class="w-full max-w-3xl">
         <div class="text-center mb-8">
-            <h1 class="gradient-text mb-2" style="font-size: 2.75rem;">List an Item</h1>
+            <h1 class="mb-2" style="font-size: 2.75rem;">List an Item</h1>
             <p class="text-muted text-lg">Reach thousands of students instantly</p>
         </div>
 
@@ -144,7 +144,9 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);">Photos (Max 5)</label>
                     <div class="border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors" style="border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.03); padding: 3rem 2rem; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="document.getElementById('imgInput').click()" onmouseover="this.style.background='rgba(99,102,241,0.06)'" onmouseout="this.style.background='rgba(99,102,241,0.03)'">
-                        <div style="font-size: 3rem; margin-bottom: 0.75rem;">📸</div>
+                        <div class="mb-3 flex justify-center text-primary opacity-80">
+                            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </div>
                         <p class="font-bold mb-1" style="color: var(--primary); font-size: 1.05rem;">Click to Upload Images</p>
                         <p class="text-muted small">PNG, JPG up to 5MB &nbsp;·&nbsp; Max 5 photos</p>
                         <input type="file" id="imgInput" name="images[]" multiple accept="image/*" class="hidden">
@@ -156,7 +158,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 
                 <div class="flex justify-between items-center">
                     <a href="browse.php" class="text-muted font-medium hover:text-main transition-colors">Cancel</a>
-                    <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg" style="border-radius: var(--radius-lg); font-weight: bold; font-size: 1.1rem;">Publish Listing ✨</button>
+                    <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg" style="border-radius: var(--radius-lg); font-weight: bold; font-size: 1.1rem;">Publish Listing</button>
                 </div>
 
             </form>

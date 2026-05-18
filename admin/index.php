@@ -217,7 +217,7 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
 /* ── System Status Card ───────────────────────────────── */
 
 .system-card {
-    background: #4f46e5;
+    background: var(--primary);
     border-radius: var(--radius-lg);
     padding: 1.75rem;
     color: #fff;
@@ -253,15 +253,8 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
     width: 10px;
     height: 10px;
     border-radius: var(--radius-lg);
-    background: #34d399;
-    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.3);
+    background: var(--success);
     flex-shrink: 0;
-    animation: pulse-dot 2s infinite;
-}
-
-@keyframes pulse-dot {
-    0%, 100% { box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.3); }
-    50%       { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.1); }
 }
 
 .status-label {
@@ -399,7 +392,7 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
         <div>
             <h1>Admin Dashboard</h1>
             <div class="admin-breadcrumb">
-                🛡️ Administrator &rsaquo; Platform Overview
+                <svg style="width: 14px; height: 14px; display: inline-block; position: relative; top: -1px; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Administrator &rsaquo; Platform Overview
             </div>
         </div>
         <span style="font-size: 0.82rem; color: var(--text-muted);">
@@ -414,23 +407,23 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="stat-card-num"><?php echo $stats['listings']; ?></div>
             <div class="stat-card-sub"><?php echo $stats['active_listings']; ?> currently active</div>
         </div>
-        <div class="stat-card" style="border-left-color: #10b981;">
+        <div class="stat-card" style="border-left-color: var(--success);">
             <div class="stat-card-label">Registered Users</div>
             <div class="stat-card-num"><?php echo $stats['users']; ?></div>
             <div class="stat-card-sub">Students on platform</div>
         </div>
-        <div class="stat-card" style="border-left-color: #f59e0b;">
+        <div class="stat-card" style="border-left-color: var(--warning);">
             <div class="stat-card-label">Total Orders</div>
             <div class="stat-card-num"><?php echo $stats['orders']; ?></div>
             <div class="stat-card-sub"><?php echo $stats['pending_orders']; ?> pending</div>
         </div>
-        <div class="stat-card" style="border-left-color: #ef4444;">
+        <div class="stat-card" style="border-left-color: var(--error);">
             <div class="stat-card-label">Pending Reports</div>
             <div class="stat-card-num"><?php echo $stats['reports']; ?></div>
             <div class="stat-card-sub">Awaiting moderation</div>
         </div>
-        <div class="stat-card" style="border-left-color: #10b981;">
-            <div class="stat-card-label">🤝 Completed Deals</div>
+        <div class="stat-card" style="border-left-color: var(--success);">
+            <div class="stat-card-label"><svg style="width: 14px; height: 14px; display: inline-block; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Completed Deals</div>
             <div class="stat-card-num"><?php echo $stats['completed_deals']; ?></div>
             <div class="stat-card-sub">Verified transactions</div>
         </div>
@@ -444,7 +437,7 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
             <?php if ($stats['reports'] > 0): ?>
             <a href="reports.php" class="reports-alert">
                 <div>
-                    <div class="reports-alert-text">⚠️ Moderation Required</div>
+                    <div class="reports-alert-text"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Moderation Required</div>
                     <div class="reports-alert-sub">Reports are waiting for your review</div>
                 </div>
                 <div class="reports-alert-num"><?php echo $stats['reports']; ?></div>
@@ -456,40 +449,40 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <div class="section-label">Core</div>
                 <div class="module-grid" style="margin-bottom: 1.25rem;">
-                    <a href="listings.php" class="module-card" style="--module-color: #6366f1; --module-bg: #e0e7ff;">
-                        <div class="module-icon">📦</div>
+                    <a href="listings.php" class="module-card" style="--module-color: var(--primary); --module-bg: var(--primary-light);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Listings</div>
                             <div class="module-desc">Manage all products</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="users.php" class="module-card" style="--module-color: #10b981; --module-bg: #d1fae5;">
-                        <div class="module-icon">👥</div>
+                    <a href="users.php" class="module-card" style="--module-color: var(--primary); --module-bg: var(--primary-light);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Users</div>
                             <div class="module-desc">Promote, demote, remove</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="orders.php" class="module-card" style="--module-color: #f59e0b; --module-bg: #fef3c7;">
-                        <div class="module-icon">🧾</div>
+                    <a href="orders.php" class="module-card" style="--module-color: var(--warning); --module-bg: var(--warning-bg);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Orders</div>
                             <div class="module-desc">View all transactions</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="reports.php" class="module-card" style="--module-color: #ef4444; --module-bg: #fee2e2;">
-                        <div class="module-icon">🛡️</div>
+                    <a href="reports.php" class="module-card" style="--module-color: var(--error); --module-bg: var(--error-bg);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Moderation</div>
                             <div class="module-desc">Review flagged content</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="transactions.php" class="module-card" style="--module-color: #10b981; --module-bg: #d1fae5;">
-                        <div class="module-icon">🤝</div>
+                    <a href="transactions.php" class="module-card" style="--module-color: var(--success); --module-bg: var(--success-bg);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Transactions</div>
                             <div class="module-desc">Verified deal history</div>
@@ -500,16 +493,16 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <div class="section-label">Taxonomy</div>
                 <div class="module-grid">
-                    <a href="categories.php" class="module-card" style="--module-color: #8b5cf6; --module-bg: #ede9fe;">
-                        <div class="module-icon">🗂️</div>
+                    <a href="categories.php" class="module-card" style="--module-color: var(--primary); --module-bg: var(--primary-light);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Categories</div>
                             <div class="module-desc">Browse & edit</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="tags.php" class="module-card" style="--module-color: #06b6d4; --module-bg: #cffafe;">
-                        <div class="module-icon">🏷️</div>
+                    <a href="tags.php" class="module-card" style="--module-color: var(--primary); --module-bg: var(--primary-light);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Tags</div>
                             <div class="module-desc">Browse & edit</div>

@@ -139,9 +139,9 @@ foreach ($deals as $d) {
     <div class="flex justify-between items-end mb-8">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Transactions</div>
-            <h1 class="mb-0 gradient-text">Verified Transactions</h1>
+            <h1 class="mb-0">Verified Transactions</h1>
         </div>
-        <div class="badge" style="background: rgba(16,185,129,0.1); color: #059669; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-full);">🤝 <?php echo $totalCount; ?> Deals</div>
+        <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo $totalCount; ?> Deals</div>
     </div>
 
     <!-- Summary Bar -->
@@ -188,7 +188,7 @@ foreach ($deals as $d) {
             </thead>
             <tbody>
                 <?php foreach ($deals as $i => $deal): ?>
-                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.02)'" onmouseout="this.style.background='transparent'">
+                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                         <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); color: var(--text-muted);">#<?php echo $deal['id']; ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <div class="font-bold text-main"><?php echo sanitize($deal['product_title']); ?></div>
@@ -202,7 +202,7 @@ foreach ($deals as $d) {
                         </td>
                         <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #059669;"><?php echo formatPrice($deal['product_price']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                            <span class="badge-completed shadow-sm">✅ Completed</span>
+                            <span class="badge-completed shadow-sm">Completed</span>
                         </td>
                         <td class="p-4 text-right text-muted small" style="border-bottom: 1px solid var(--border-light); font-family: monospace;">
                             <?php echo $deal['seller_confirmed_at'] ? date('M d, Y • H:i', strtotime($deal['seller_confirmed_at'])) : '—'; ?>
@@ -214,7 +214,7 @@ foreach ($deals as $d) {
 
         <?php if (empty($deals)): ?>
             <div class="text-center p-8 text-muted">
-                <span class="text-4xl mb-4 block">🤝</span>
+                <span class="text-4xl mb-4 block"><svg style="width: 48px; height: 48px; display: inline-block; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
                 No verified transactions found<?php echo ($dateFrom || $dateTo) ? ' for the selected date range' : ''; ?>.
             </div>
         <?php endif; ?>

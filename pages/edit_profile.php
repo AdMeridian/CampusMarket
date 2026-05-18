@@ -117,7 +117,7 @@ require_once '../includes/header.php';
 
 <div class="container mt-12 mb-20 flex justify-center">
   <div class="glass-panel" style="width: 100%; max-width: 650px; border-radius: var(--radius-lg); overflow: hidden;">
-      <div style="background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(16,185,129,0.1)); padding: 2rem; border-bottom: 1px solid rgba(0,0,0,0.05);">
+      <div style="background: var(--bg-surface); padding: 2rem; border-bottom: 1px solid var(--border-light);">
         <div class="flex items-center justify-between">
             <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px;">Edit Profile</h1>
             <a href="<?php echo BASE_URL; ?>/pages/profile.php" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Cancel</a>

@@ -73,7 +73,6 @@ require_once '../includes/header.php';
 
         <?php if (empty($deletedProducts)): ?>
             <div class="glass-panel p-16 text-center" style="border-radius: 24px; border: 2px dashed var(--border-light); background: transparent;">
-                <div style="font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.5;">♻️</div>
                 <h2 class="mb-4" style="font-weight: 800;">Your bin is empty</h2>
                 <p class="text-muted max-w-md mx-auto mb-8" style="font-weight: 500;">When you delete a listing, it will stay here for 30 days before being permanently removed.</p>
                 <a href="browse.php" class="btn btn-primary" style="padding: 0.75rem 2rem; border-radius: 12px; font-weight: 700;">Browse Marketplace</a>

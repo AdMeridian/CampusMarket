@@ -58,7 +58,7 @@ require_once '../includes/header.php';
                         <tr>
                             <td colspan="3">
                                 <div class="admin-empty">
-                                    <span class="admin-empty-icon">🏷️</span>
+                                    <span class="admin-empty-icon"><svg style="width: 32px; height: 32px; display: inline-block; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
                                     No tags yet. Create the first one →
                                 </div>
                             </td>
@@ -98,9 +98,9 @@ require_once '../includes/header.php';
                 </div>
             </div>
 
-            <div style="margin-top: 1rem; padding: 1rem 1.25rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid var(--secondary); border-radius: var(--radius-md);">
-                <h4 style="font-size: 0.9rem; margin-bottom: 0.35rem; color: #166534;">Why use tags?</h4>
-                <p style="font-size: 0.82rem; color: #15803d; margin: 0;">
+            <div style="margin-top: 1rem; padding: 1rem 1.25rem; background: var(--bg-surface); border: 1px solid var(--border-light); border-left: 4px solid var(--secondary); border-radius: var(--radius-md);">
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.35rem; color: var(--text-main);">Why use tags?</h4>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
                     Tags help students filter beyond categories — e.g. a "Desk" in Furniture tagged <code>#study</code> shows up in study-related searches.
                 </p>
             </div>

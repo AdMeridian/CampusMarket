@@ -213,26 +213,28 @@ require_once __DIR__ . '/../includes/header.php';
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%);
+    background: var(--bg-surface);
     pointer-events: none;
 }
 
 .scc-metric-blue {
-    background: linear-gradient(145deg, #ffffff 0%, #f4f8ff 100%);
-    border-color: #e3ecff !important;
+    background: var(--bg-surface);
+    border-color: var(--border-light) !important;
 }
 
 .scc-metric-violet {
-    background: linear-gradient(145deg, #ffffff 0%, #f7f3ff 100%);
-    border-color: #ece5ff !important;
+    background: var(--bg-surface);
+    border-color: var(--border-light) !important;
 }
 </style>
 
 <div class="container pt-24 mb-20 relative">
     <?php if ($isOwner): ?>
-        <div class="seller-management-banner" style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: white; padding: 1.25rem 2rem; border-radius: 20px; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.25); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="seller-management-banner" style="background: var(--primary); color: white; padding: 1.25rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1);">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 flex items-center justify-center text-2xl" style="border-radius: var(--radius-xl); background: rgba(255,255,255,0.2);">⚙️</div>
+                <div class="w-12 h-12 flex items-center justify-center" style="border-radius: var(--radius-md); background: rgba(255,255,255,0.2);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </div>
                 <div>
                     <h4 class="mb-0 font-bold" style="line-height: 1.2; font-size: 1.25rem; color: white;">Management Mode</h4>
                     <p class="mb-0 opacity-90 small" style="color: white; font-weight: 500;">You are viewing your own listing. Only you can see these controls.</p>
@@ -290,17 +292,17 @@ require_once __DIR__ . '/../includes/header.php';
                 <p class="text-primary font-bold tracking-widest uppercase small mb-2" style="font-size: 0.8rem;"><?php echo sanitize($product['category_name']); ?></p>
                 <h1 class="mb-4 text-main font-bold" style="font-size: 2.75rem; line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
                 <div class="flex items-center gap-4">
-                    <span style="font-size: 2.1rem; font-weight: 800; color: var(--primary); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                    <span style="font-size: 2.1rem; font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
                     
                     <form action="../actions/toggle_wishlist.php" method="POST" style="display: inline-block;">
                         <?php echo csrfTokenField(); ?>
                         <input type="hidden" name="product_id" value="<?php echo $productId; ?>">
                         <input type="hidden" name="redirect_to" value="<?php echo $_SERVER['REQUEST_URI']; ?>">
-                        <button type="submit" class="hover-scale" style="background: <?php echo $isSaved ? '#fff1f2' : 'var(--bg-main)'; ?>; border: 1px solid <?php echo $isSaved ? '#fecdd3' : 'var(--border-light)'; ?>; color: <?php echo $isSaved ? '#e11d48' : 'var(--text-muted)'; ?>; padding: 0.6rem 1rem; border-radius: var(--radius-lg); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; gap: 0.5rem; box-shadow: var(--shadow-sm);">
+                        <button type="submit" class="hover-scale" style="background: <?php echo $isSaved ? '#fff1f2' : 'var(--bg-main)'; ?>; border: 1px solid <?php echo $isSaved ? '#fecdd3' : 'var(--border-light)'; ?>; color: <?php echo $isSaved ? '#e11d48' : 'var(--text-muted)'; ?>; padding: 0.6rem 1rem; border-radius: var(--radius-md); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; gap: 0.5rem;">
                             <svg class="w-6 h-6" fill="<?php echo $isSaved ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24" style="width: 22px; height: 22px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                             </svg>
-                            <span style="font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;"><?php echo $isSaved ? 'Saved' : 'Save'; ?></span>
+                            <span style="font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;"><?php echo $isSaved ? 'Saved' : 'Save'; ?></span>
                         </button>
                     </form>
 
@@ -310,11 +312,11 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- SELLER PROFILE CARD (Visible to Everyone) -->
             <div class="scc-wrapper mt-8">
-                <div class="scc-seller-card" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid #dbe6f6; border-left: 4px solid #3b82f6; border-radius: 16px; padding: 1.2rem 1.4rem; background: #fff; margin-bottom: 1rem;">
+                <div class="scc-seller-card" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid var(--border-light); border-left: 4px solid var(--primary); border-radius: var(--radius-lg); padding: 1.2rem 1.4rem; background: var(--bg-card); margin-bottom: 1rem;">
                     <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="flex items-center" style="gap: 14px; text-decoration: none;">
                         <img src="<?php echo avatarUrl($product['seller_avatar']); ?>" 
                              alt="<?php echo sanitize($product['seller_name']); ?>"
-                             style="width: 74px; height: 74px; border-radius: 16px; object-fit: cover; box-shadow: 0 8px 18px rgba(0,0,0,0.08); border: 2px solid white;">
+                             style="width: 74px; height: 74px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-light);">
                         <div style="margin-left: 4px;">
                             <h4 class="m-0 font-bold text-slate-900" style="font-size: 2.25rem; line-height: 1.05; letter-spacing: -0.01em;">@<?php echo sanitize($product['seller_name']); ?></h4>
                             <div class="flex items-center gap-3 text-[0.95rem] font-bold mt-1">
@@ -323,7 +325,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <span class="text-slate-800"><?php echo number_format($rating['avg'], 1); ?></span>
                                     <span class="text-slate-400 font-medium">(<?php echo $rating['count']; ?> review<?php echo $rating['count'] !== 1 ? 's' : ''; ?>)</span>
                                 </div>
-                                <span style="background: #ecfdf5; color: #10b981; padding: 0.2rem 0.75rem; border-radius: 10px; font-size: 0.78rem;">
+                                <span style="background: var(--bg-surface); border: 1px solid var(--border-light); color: var(--text-main); padding: 0.2rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.78rem;">
                                     <?php echo $rating['count'] > 5 ? 'Trusted Seller' : 'New Seller'; ?>
                                 </span>
                                 <div class="text-slate-700">Trust Score: <span class="font-bold"><?php echo (int)$trust['score']; ?>/100</span> <span style="opacity: 0.35; cursor: help;" title="<?php echo sanitize($trust['tier']); ?>">&#9432;</span></div>
@@ -340,7 +342,7 @@ require_once __DIR__ . '/../includes/header.php';
             <?php if ($isOwner): ?>
             <div class="scc-wrapper">
                 <!-- MAIN INSIGHTS BOX -->
-                <div class="bg-white scc-main-card scc-colorful-shell" style="padding: 2rem; margin-bottom: 2rem; margin-left: auto;">
+                <div class="scc-main-card" style="padding: 2rem; margin-bottom: 2rem; margin-left: auto; border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border-light);">
                     <!-- Insights Header -->
                     <div class="flex items-start justify-between mb-8">
                         <div class="flex items-center gap-4">
@@ -445,7 +447,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <input type="number" name="new_price" step="0.01" value="<?php echo (float)$product['price']; ?>" 
                                        style="width: 100%; background: transparent; border: none; font-size: 0.95rem; font-weight: 800; color: #1e293b; outline: none;" required>
                             </div>
-                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: #4f46e5; background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%); border: 1px solid #c7d2fe; padding: 0 1rem; border-radius: 10px; cursor: pointer;">
+                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: var(--primary); background: var(--bg-surface); border: 1px solid var(--border-light); padding: 0 1rem; border-radius: 10px; cursor: pointer;">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 UPDATE PRICE
                             </button>
@@ -456,8 +458,8 @@ require_once __DIR__ . '/../includes/header.php';
                         <form method="post" onsubmit="return confirm('Mark as sold?')">
                             <?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="mark_sold">
-                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: #059669; background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #a7f3d0; padding: 0 1rem; border-radius: 10px; cursor: pointer;">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            <button type="submit" class="flex items-center gap-2 font-bold text-[0.75rem] uppercase tracking-wider transition-all hover-scale" style="height: 38px; color: var(--primary); background: var(--bg-surface); border: 1px solid var(--border-light); padding: 0 1rem; border-radius: var(--radius-sm); cursor: pointer;">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 MARK AS SOLD
                             </button>
                         </form>
@@ -465,16 +467,16 @@ require_once __DIR__ . '/../includes/header.php';
                         <form method="post" onsubmit="return confirm('Delete listing?')">
                             <?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="delete_listing">
-                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95" style="height: 38px; color: #e11d48; background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%); border: 1px solid #fecdd3; padding: 0 0.75rem; border-radius: 10px; cursor: pointer;">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <button type="submit" class="flex items-center gap-2 font-bold text-[0.75rem] uppercase tracking-wider transition-all hover-scale" style="height: 38px; color: #ef4444; background: var(--bg-surface); border: 1px solid var(--border-light); padding: 0 0.75rem; border-radius: var(--radius-sm); cursor: pointer;">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 DELETE LISTING
                             </button>
                         </form>
                     </div>
 
                     <!-- FOOTER NAVIGATION -->
-                    <a href="<?php echo BASE_URL; ?>pages/profile.php" class="inline-flex items-center gap-2 text-indigo-500 font-bold text-[1rem] mt-12 hover:translate-x-[-4px] transition-transform">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="stroke-width: 3;"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    <a href="<?php echo BASE_URL; ?>pages/profile.php" class="inline-flex items-center gap-2 font-bold text-[1rem] mt-12 hover-scale" style="color: var(--primary);">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="stroke-width: 2;"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                         Return to Dashboard
                     </a>
                 </div>
@@ -482,9 +484,9 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
                 <!-- DESCRIPTION CARD (BOTTOM) -->
-                <div class="bg-white p-10 mt-8" style="border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.01); border: 1px solid #f1f5f9;">
+                <div class="mt-8 p-10" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border-light);">
                     <div class="flex items-center gap-4 mb-8">
-                        <div class="w-10 h-10 flex items-center justify-center text-blue-500" style="border-radius: var(--radius-xl); background: var(--bg-main);">
+                        <div class="w-10 h-10 flex items-center justify-center" style="border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary);">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </div>
                         <h3 class="m-0 font-bold text-slate-800" style="font-size: 1.4rem;">Product Description</h3>
@@ -496,8 +498,8 @@ require_once __DIR__ . '/../includes/header.php';
 
             <?php if (!$isOwner): ?>
             <!-- Action Buttons for Buyer -->
-            <div class="flex flex-col gap-4 sticky bottom-4 z-10 glass-panel p-4" style="border-radius: var(--radius-xl); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); background: color-mix(in srgb, var(--bg-surface) 95%, transparent); backdrop-filter: blur(10px); margin-top: 2rem;">
-                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg shadow-lg hover-scale" style="border-radius: var(--radius-lg); font-weight: bold;">
+            <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
+                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale">
                     Message Seller
                 </a>
             </div>

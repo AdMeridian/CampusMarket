@@ -110,7 +110,7 @@ require_once '../includes/header.php';
             <div class="form-row mb-8">
                 <div class="flex justify-between items-center mb-1.5">
                     <label for="password" class="form-label">Password</label>
-                    <a href="#" style="font-size: 0.85rem; font-weight: 800; color: var(--primary);">Forgot password?</a>
+                    <a href="#" style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">Forgot password?</a>
                 </div>
                 <div class="input-with-toggle">
                     <input type="password" id="password" name="password"
@@ -124,12 +124,12 @@ require_once '../includes/header.php';
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-full py-4 shadow-lg hover-scale" style="border-radius: 14px; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.01em;">Log in</button>
+            <button type="submit" class="btn btn-primary w-full py-4 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600; font-size: 1.1rem; letter-spacing: 0.01em;">Log in</button>
         </form>
 
         <p class="auth-foot mt-10">
             New to CampusMarket? 
-            <a href="<?php echo BASE_URL; ?>pages/register.php" style="font-weight: 800;">Create an account</a>
+            <a href="<?php echo BASE_URL; ?>pages/register.php" style="font-weight: 600;">Create an account</a>
         </p>
     </div>
 </div>

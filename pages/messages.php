@@ -13,16 +13,7 @@ if (!$otherUserId) {
 }
 
 // Special Case: Support Chat (product_id = 0)
-// Check if one of the participants is an admin
-if ($productId === 0) {
-    $stmt = $pdo->prepare("SELECT role FROM users WHERE id IN (:uid1, :uid2)");
-    $stmt->execute([':uid1' => $currentUserId, ':uid2' => $otherUserId]);
-    $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('admin', $roles)) {
-        setFlash('error', 'Invalid conversation context.');
-        redirect(BASE_URL . '/pages/inbox.php');
-    }
-}
+// Allowed for any valid users (will be treated as Support if either is Admin, else standard Direct Message)
 
 if ($productId > 0) {
     // Fetch context info
@@ -52,18 +43,25 @@ if ($productId > 0) {
         redirect(BASE_URL . '/pages/inbox.php');
     }
 } else {
-    // Support Context
-    $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = :id");
+    // Support or Direct Message Context
+    $stmt = $pdo->prepare("SELECT username, avatar, role FROM users WHERE id = :id");
     $stmt->execute([':id' => $otherUserId]);
     $otherUser = $stmt->fetch();
     
     if (!$otherUser) {
-        setFlash('error', 'Support user no longer exists.');
+        setFlash('error', 'User no longer exists.');
         redirect(BASE_URL . '/pages/inbox.php');
     }
     
+    // Check if either current user or other user is admin
+    $stmtMe = $pdo->prepare("SELECT role FROM users WHERE id = :id");
+    $stmtMe->execute([':id' => $currentUserId]);
+    $myRole = $stmtMe->fetchColumn();
+    
+    $isSupport = ($otherUser['role'] === 'admin' || $myRole === 'admin');
+    
     $product = [
-        'title' => 'CampusMarket Support',
+        'title' => $isSupport ? 'CampusMarket Support' : 'Direct Message',
         'price' => 0,
         'discount_percent' => 0,
         'image_path' => null
@@ -82,7 +80,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <?php if (!empty($otherUser['avatar'])): ?>
                     <img src="<?= avatarUrl($otherUser['avatar']) ?>" alt="<?= htmlspecialchars($otherUser['username']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                 <?php else: ?>
-                    <div style="width: 100%; height: 100%; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
+                    <div style="width: 100%; height: 100%; background: var(--bg-surface); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
                         <?php echo strtoupper(substr($otherUser['username'], 0, 2)); ?>
                     </div>
                 <?php endif; ?>
@@ -109,13 +107,19 @@ require_once __DIR__ . '/../includes/header.php';
             <?php else: ?>
                 <div>
                     <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Conversation</p>
-                    <span class="font-bold text-main" style="font-size: 0.9rem;">General Support</span>
-                    <p class="text-secondary font-bold mb-0" style="font-size: 0.9rem;">Official Help</p>
+                    <span class="font-bold text-main" style="font-size: 0.9rem;"><?= htmlspecialchars($product['title']) ?></span>
+                    <p class="text-secondary font-bold mb-0" style="font-size: 0.9rem;"><?= $product['title'] === 'CampusMarket Support' ? 'Official Help' : 'Private DM' ?></p>
                 </div>
                 <div style="width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light); background: var(--secondary-light); display: flex; align-items: center; justify-content: center; color: var(--secondary);">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
+                    <?php if ($product['title'] === 'CampusMarket Support'): ?>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    <?php else: ?>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -141,7 +145,7 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- Action area -->
         <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
             <!-- Buyer's context: showing order proposal button -->
-            <div class="purchase-cta-bar p-3 border-t flex justify-between items-center" style="background: linear-gradient(to right, var(--bg-surface), var(--primary-light)); border-color: var(--border-light); opacity: 0.95;">
+            <div class="purchase-cta-bar p-3 border-t flex justify-between items-center" style="background: var(--bg-surface); border-color: var(--border-light); opacity: 0.95;">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
                         <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -165,17 +169,28 @@ require_once __DIR__ . '/../includes/header.php';
                 </form>
             </div>
         <?php elseif ($productId === 0): ?>
-            <!-- Support context: greeting -->
-            <div class="p-3 border-t flex justify-between items-center" style="background: linear-gradient(to right, var(--bg-surface), var(--secondary-light)); border-color: var(--border-light); opacity: 0.95;">
+            <!-- Support / Direct Message context -->
+            <div class="p-3 border-t flex justify-between items-center" style="background: var(--bg-surface); border-color: var(--border-light); opacity: 0.95;">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
+                        <?php if ($isSupport): ?>
                         <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
+                        <?php else: ?>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <?php endif; ?>
                     </div>
                     <div>
+                        <?php if ($isSupport): ?>
                         <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;">CampusMarket Support</h4>
                         <p class="text-xs text-muted mb-0">Our team usually responds within 24 hours.</p>
+                        <?php else: ?>
+                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;">Direct Message</h4>
+                        <p class="text-xs text-muted mb-0">Private conversation with @<?= htmlspecialchars($otherUser['username']) ?></p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -419,7 +434,7 @@ function renderHandshakeBar(deal) {
     let borderStyle = '';
 
     if (status === 'pending') {
-        borderStyle = 'border-left: 4px solid var(--primary); background: linear-gradient(to right, var(--bg-surface), var(--primary-light)); opacity: 0.95;';
+        borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
         html = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -455,7 +470,7 @@ function renderHandshakeBar(deal) {
             </div>
         `;
     } else if (status === 'buyer_confirmed' && isSeller) {
-        borderStyle = 'border-left: 4px solid var(--secondary); background: linear-gradient(to right, var(--bg-surface), rgba(16,185,129,0.1));';
+        borderStyle = 'border-left: 4px solid var(--secondary); background: var(--bg-surface);';
         html = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -476,7 +491,7 @@ function renderHandshakeBar(deal) {
             </div>
         `;
     } else if (status === 'completed') {
-        borderStyle = 'border-left: 4px solid var(--secondary); background: linear-gradient(to right, var(--bg-surface), rgba(16,185,129,0.1));';
+        borderStyle = 'border-left: 4px solid var(--secondary); background: var(--bg-surface);';
         html = `
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">

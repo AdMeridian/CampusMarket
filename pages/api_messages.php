@@ -23,13 +23,10 @@ function isValidConversation(PDO $pdo, int $productId, int $currentUserId, int $
         return false;
     }
 
-    // Special Case: Support Chat (product_id = 0)
-    // Allowed if one of the participants is an admin
+    // Special Case: Support / Direct Message Chat (product_id = 0)
+    // Allowed for any valid registered users
     if ($productId === 0) {
-        $stmt = $pdo->prepare("SELECT role FROM users WHERE id IN (:uid1, :uid2)");
-        $stmt->execute([':uid1' => $currentUserId, ':uid2' => $otherUserId]);
-        $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        return in_array('admin', $roles);
+        return true;
     }
 
     // Standard Product Chat
@@ -39,6 +36,41 @@ function isValidConversation(PDO $pdo, int $productId, int $currentUserId, int $
 
     return $sellerId > 0
         && ($currentUserId === $sellerId || $otherUserId === $sellerId);
+}
+
+if ($action === 'search_users') {
+    $query = sanitize($_GET['q'] ?? '');
+    if (strlen($query) < 1) {
+        ob_clean();
+        echo json_encode(['success' => true, 'users' => []]);
+        exit;
+    }
+    
+    // Search users by username, excluding the current logged-in user
+    $stmt = $pdo->prepare("
+        SELECT id, username, avatar 
+        FROM users 
+        WHERE username LIKE :q AND id != :my_id 
+        LIMIT 10
+    ");
+    $stmt->execute([
+        ':q' => '%' . $query . '%',
+        ':my_id' => $currentUserId
+    ]);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $results = [];
+    foreach ($users as $u) {
+        $results[] = [
+            'id' => $u['id'],
+            'username' => $u['username'],
+            'avatar_url' => avatarUrl($u['avatar'])
+        ];
+    }
+    
+    ob_clean();
+    echo json_encode(['success' => true, 'users' => $results]);
+    exit;
 }
 
 if ($action === 'fetch') {
@@ -57,11 +89,12 @@ if ($action === 'fetch') {
     }
     
     // Mark messages sent to me as read
-    $stmtRead = $pdo->prepare("UPDATE messages SET is_read = TRUE WHERE receiver_id = :uid AND sender_id = :other AND product_id = :pid AND is_read = FALSE");
+    $stmtRead = $pdo->prepare("UPDATE messages SET is_read = TRUE WHERE receiver_id = :uid AND sender_id = :other AND (product_id = :pid1 OR (:pid2 = 0 AND product_id IS NULL)) AND is_read = FALSE");
     $stmtRead->execute([
         ':uid' => $currentUserId,
         ':other' => $otherUserId,
-        ':pid' => $productId
+        ':pid1' => $productId,
+        ':pid2' => $productId
     ]);
 
     // Keep notification badge in sync with read state in chat.
@@ -70,12 +103,13 @@ if ($action === 'fetch') {
         SET is_read = TRUE
         WHERE user_id = :uid
           AND type = 'message'
-          AND reference_id = :pid
+          AND (reference_id = :pid1 OR (:pid2 = 0 AND reference_id IS NULL))
           AND is_read = FALSE
     ");
     $stmtNotifRead->execute([
         ':uid' => $currentUserId,
-        ':pid' => $productId
+        ':pid1' => $productId,
+        ':pid2' => $productId
     ]);
     
     // Fetch messages
@@ -83,7 +117,7 @@ if ($action === 'fetch') {
         SELECT m.*, u.username as sender_name 
         FROM messages m 
         JOIN users u ON m.sender_id = u.id
-        WHERE m.product_id = :pid
+        WHERE (m.product_id = :pid1 OR (:pid2 = 0 AND m.product_id IS NULL))
           AND (
               (m.sender_id = :uid1 AND m.receiver_id = :other1) OR
               (m.sender_id = :other2 AND m.receiver_id = :uid2)
@@ -91,7 +125,8 @@ if ($action === 'fetch') {
         ORDER BY m.created_at ASC
     ");
     $stmt->execute([
-        ':pid' => $productId,
+        ':pid1' => $productId,
+        ':pid2' => $productId,
         ':uid1' => $currentUserId,
         ':other1' => $otherUserId,
         ':other2' => $otherUserId,
@@ -145,12 +180,12 @@ if ($action === 'send') {
         $stmt->execute([
             ':sid' => $currentUserId,
             ':rid' => $receiverId,
-            ':pid' => $productId,
+            ':pid' => $productId > 0 ? $productId : null,
             ':body' => $body
         ]);
         
         // Notify receiver
-        createNotification($pdo, $receiverId, 'message', "New Message", "You received a new message.", $productId);
+        createNotification($pdo, $receiverId, 'message', "New Message", "You received a new message.", $productId > 0 ? $productId : null);
         
         $pdo->commit();
         ob_clean();

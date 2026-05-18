@@ -71,13 +71,13 @@ include '../includes/header.php';
         <!-- Browse Header -->
         <div class="mb-10 flex justify-between items-end gap-6">
             <div class="text-left">
-                <h1 class="font-bold text-4xl mb-2 gradient-text" style="background: linear-gradient(135deg, var(--text-main), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Discover Great Finds</h1>
+                <h1 class="font-bold text-4xl mb-2" style="color: var(--text-main);">Discover Great Finds</h1>
                 <p class="text-muted text-lg">Browse items from students around your campus</p>
             </div>
             
             <div class="flex items-center gap-2 text-muted font-medium">
-                <span class="w-2.5 h-2.5 rounded-sm bg-secondary animate-pulse"></span>
-                Live Marketplace
+                <span class="w-2 h-2 rounded-full" style="background: var(--primary);"></span>
+                Marketplace
             </div>
         </div>
 
@@ -209,7 +209,7 @@ include '../includes/header.php';
 
                 <div class="mb-8 browse-results-header">
                     <!-- Item Count -->
-                    <div class="item-count-badge" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 0.4rem 1.25rem; border-radius: var(--radius-lg); font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(99,102,241,0.2); flex-shrink: 0;">
+                    <div class="item-count-badge" style="background: var(--bg-card); color: var(--text-main); padding: 0.4rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border-light); flex-shrink: 0;">
                         <?php echo count($products); ?> Items
                     </div>
 
@@ -257,11 +257,13 @@ include '../includes/header.php';
                 <?php endif; ?>
 
                 <?php if (empty($products)): ?>
-                    <div class="glass-panel p-16 text-center shadow-sm" style="border-radius: var(--radius-xl); border: 2px dashed rgba(0,0,0,0.05);">
-                        <div class="mb-4 text-6xl opacity-30">🔍</div>
+                    <div class="glass-panel p-16 text-center shadow-sm" style="border-radius: var(--radius-lg); border: 2px dashed var(--border-light); background: var(--bg-card);">
+                        <div class="mb-4 text-muted flex justify-center">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </div>
                         <h3 class="font-bold text-main text-2xl mb-2">No items found</h3>
                         <p class="text-muted text-lg max-w-md mx-auto">We couldn't find any items matching your current filters. Try adjusting your search criteria or clearing filters.</p>
-                        <a href="browse.php" class="btn btn-primary mt-6 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Clear All Filters</a>
+                        <a href="browse.php" class="btn btn-primary mt-6 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600;">Clear All Filters</a>
                     </div>
                 <?php else: ?>
                     <div class="grid grid-cols-1 md-grid-cols-2 xl-grid-cols-3 gap-6">
