@@ -475,7 +475,7 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
             COUNT(*) AS total_orders,
             SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) AS completed_orders,
             SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_orders,
-            AVG(CASE WHEN o.status = 'completed' THEN EXTRACT(EPOCH FROM (o.updated_at - p.created_at)) / 3600 END) AS avg_hours_to_sell
+            AVG(CASE WHEN o.status = 'completed' THEN TIMESTAMPDIFF(SECOND, p.created_at, o.updated_at) / 3600 END) AS avg_hours_to_sell
         FROM orders o
         JOIN products p ON p.id = o.product_id
         WHERE p.user_id = :sid

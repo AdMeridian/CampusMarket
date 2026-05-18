@@ -119,7 +119,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                     <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                 </a>
-                <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 600; color: var(--primary);">Sell Item</a>
+                <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 700; color: var(--primary);">Sell Item</a>
                 
                 <!-- User Account Dropdown -->
                 <div class="user-dropdown">

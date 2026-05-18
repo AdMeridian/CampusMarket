@@ -105,11 +105,11 @@ $listings = $stmt->fetchAll();
     <div class="flex justify-between items-end mb-8">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> > Listings</div>
-            <h1 class="mb-0 gradient-text">Listing Management</h1>
+            <h1 class="mb-0">Listing Management</h1>
         </div>
         <div class="flex items-center gap-2">
             <a href="promotion_payments.php" class="btn btn-secondary btn-sm">Review Payments</a>
-            <div class="badge" style="background: var(--primary-light); color: var(--primary-hover); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($listings); ?> Total Listings</div>
+            <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($listings); ?> Total Listings</div>
         </div>
     </div>
 
@@ -127,14 +127,14 @@ $listings = $stmt->fetchAll();
             </thead>
             <tbody>
                 <?php foreach ($listings as $item): ?>
-                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.02)'" onmouseout="this.style.background='transparent'">
+                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <div class="flex items-center gap-3">
                                 <div class="font-bold flex items-center gap-2">
                                     <?php echo sanitize($item['title']); ?>
                                 </div>
                                 <?php if ($item['is_featured']): ?>
-                                    <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><span class="animate-pulse inline-block mr-1">Featured</span></span>
+                                    <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><span>Featured</span></span>
                                 <?php endif; ?>
                                 <?php if ((int)$item['available_promo_credits'] > 0): ?>
                                     <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><?php echo (int)$item['available_promo_credits']; ?> Promo Credit</span>

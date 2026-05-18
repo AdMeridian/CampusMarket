@@ -7,17 +7,15 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: 4rem 0;">
-    <!-- Subtle Background Glows -->
-    <div style="position: absolute; top: 10%; left: 15%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(255, 255, 255, 0) 70%); filter: blur(60px); z-index: -1;"></div>
-    <div style="position: absolute; bottom: 10%; right: 15%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, rgba(255, 255, 255, 0) 70%); filter: blur(60px); z-index: -1;"></div>
+    <!-- Background removed for flat aesthetic -->
 
     <div class="container" style="max-width: 1000px; padding: 0 1.5rem;">
         <!-- Header -->
         <div class="text-center mb-16">
             <div class="inline-flex items-center gap-2 mb-4 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
-                <span style="font-size: 1.2rem;">✨</span> Small Gift • Big Change
+                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Small Gift • Big Change
             </div>
-            <h1 class="font-bold mb-6 text-main hero-title" style="font-size: 4rem; letter-spacing: -0.03em; line-height: 1.1;">Building the <br><span class="gradient-text">Future Together</span></h1>
+            <h1 class="font-bold mb-6 text-main hero-title" style="font-size: 4rem; letter-spacing: -0.03em; line-height: 1.1;">Building the <br><span>Future Together</span></h1>
             <p class="text-main mx-auto" style="font-size: 1.1rem; line-height: 1.6; font-weight: 500; opacity: 0.8; text-align: center; width: 100%;">
                 Your contributions help us maintain a safe, student-first marketplace. <br class="hidden lg:block"> 100% of donations go directly into platform improvements and community events.
             </p>
@@ -70,7 +68,7 @@ require_once __DIR__ . '/../includes/header.php';
             <!-- Right: Impact & Trust -->
             <div style="flex: 0.8; display: flex; flex-direction: column; justify-content: center; gap: 1.5rem; padding: 0.5rem;">
                 <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
-                    <div class="perk-icon">🚀</div>
+                    <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
                     <div>
                         <h5 class="font-bold text-xl mb-1">100% Ad-Free</h5>
                         <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;">We never sell your data or display intrusive ads. Your support keeps it that way.</p>
@@ -78,7 +76,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
                 
                 <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
-                    <div class="perk-icon">🛡️</div>
+                    <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></div>
                     <div>
                         <h5 class="font-bold text-xl mb-1">Community Safety</h5>
                         <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;">Funding the verification tools and moderation that keep our campus marketplace safe.</p>
@@ -86,7 +84,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
 
                 <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
-                    <div class="perk-icon">💎</div>
+                    <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg></div>
                     <div>
                         <h5 class="font-bold text-xl mb-1">Supporter Status</h5>
                         <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;">Every donor receives a permanent star on their profile and a place in the Hall of Fame.</p>
@@ -105,7 +103,7 @@ if (!empty($donors)):
 <div class="container mt-16 mb-24" style="max-width: 950px; padding: 0 1rem;">
     <div class="text-center mb-8">
         <div class="inline-flex items-center gap-2 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase;">
-            <span style="animation: pulse 2s infinite;">❤️</span> Wall of Supporters
+            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg> Wall of Supporters
         </div>
         <h2 class="font-bold text-2xl mt-2 mb-2" style="color: var(--text-main); letter-spacing: -0.02em;">Community Hall of Fame</h2>
         <p class="text-muted" style="font-size: 0.9rem; opacity: 0.7;">Thank you to everyone who has supported CampusMarket.</p>
@@ -155,7 +153,7 @@ if (!empty($donors)):
 .amount-pill.active span { color: var(--primary); }
 
 .cta-button {
-    background: linear-gradient(135deg, #635bff 0%, #8b5cf6 100%);
+    background: var(--primary);
     color: white;
     padding: 0.9rem 2rem;
     font-size: 1.05rem;
@@ -172,7 +170,7 @@ if (!empty($donors)):
 .cta-button:hover {
     transform: translateY(-5px);
     box-shadow: 0 22px 45px rgba(99, 91, 255, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .perk-icon {

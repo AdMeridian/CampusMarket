@@ -41,9 +41,9 @@ include '../includes/header.php';
     <div class="flex justify-between items-end mb-8">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Users</div>
-            <h1 class="mb-0 gradient-text">User Management</h1>
+            <h1 class="mb-0">User Management</h1>
         </div>
-        <div class="badge" style="background: rgba(16,185,129,0.1); color: #059669; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($users); ?> Registered Users</div>
+        <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($users); ?> Registered Users</div>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
@@ -59,10 +59,10 @@ include '../includes/header.php';
             </thead>
             <tbody>
                 <?php foreach ($users as $u): ?>
-                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.02)'" onmouseout="this.style.background='transparent'">
+                    <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <div class="flex items-center gap-4">
-                                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; box-shadow: var(--shadow-sm);">
+                                <div style="width: 44px; height: 44px; background: var(--primary-light); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); flex-shrink: 0;">
                                     <?php echo strtoupper(substr($u['username'], 0, 1)); ?>
                                 </div>
                                 <div style="display: flex; flex-direction: column; justify-content: center;">
@@ -74,7 +74,7 @@ include '../includes/header.php';
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light); font-weight: 500;"><?php echo sanitize($u['email']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <?php if ($u['role'] === 'admin'): ?>
-                                <span class="badge badge-primary shadow-sm" style="background: linear-gradient(135deg, var(--primary), #818cf8);">Admin</span>
+                                <span class="badge badge-primary shadow-sm">Admin</span>
                             <?php else: ?>
                                 <span class="badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);">Member</span>
                             <?php endif; ?>

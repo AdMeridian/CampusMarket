@@ -57,9 +57,9 @@ require_once __DIR__ . '/../includes/header.php';
             </a>
         </div>
 
-        <div style="background: linear-gradient(135deg, rgba(239,68,68,0.05), rgba(244,63,94,0.05)); padding: 2rem; border-bottom: 1px solid var(--border-light);">
+        <div style="background: var(--bg-surface); padding: 2rem; border-bottom: 1px solid var(--border-light);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px; font-size: 2rem;">Activity <span class="gradient-text" style="background: linear-gradient(135deg, #ef4444, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Updates</span></h1>
+                <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px; font-size: 2rem;">Activity Updates</h1>
                 <?php if (!empty($notifications)): ?>
                     <form method="post" class="m-0">
                         <?php echo csrfTokenField(); ?>
@@ -73,7 +73,7 @@ require_once __DIR__ . '/../includes/header.php';
         <div style="padding: 1rem 2rem 2rem 2rem;">
             <?php if (empty($notifications)): ?>
                 <div class="text-center py-16">
-                    <div class="text-5xl mb-4 opacity-50">📭</div>
+                    <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
                     <h3 class="mb-2 font-bold text-muted">All Caught Up</h3>
                     <p class="text-muted mb-6">You have no new notifications right now.</p>
                     <a href="browse.php" class="btn btn-primary hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Explore CampusMarket</a>
@@ -81,9 +81,13 @@ require_once __DIR__ . '/../includes/header.php';
             <?php else: ?>
                 <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
                     <?php foreach ($notifications as $n): ?>
-                        <div class="p-5 flex gap-5 items-start hover-scale" style="background: <?php echo $n['is_read'] ? 'var(--bg-main)' : 'rgba(99,102,241,0.03)'; ?>; border: 1px solid var(--border-light); border-radius: var(--radius-md); transition: all 0.2s; border-left: 4px solid <?php echo $n['type'] === 'order' ? 'var(--primary)' : 'var(--secondary)'; ?>;">
-                            <div style="width: 44px; height: 44px; border-radius: var(--radius-lg); background: <?php echo $n['is_read'] ? 'var(--bg-card)' : 'white'; ?>; border: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); flex-shrink: 0; font-size: 1.25rem;">
-                                <?php echo $n['type'] === 'order' ? '📦' : '✨'; ?>
+                        <div class="p-5 flex gap-5 items-start hover-scale" style="background: <?php echo $n['is_read'] ? 'var(--bg-main)' : 'rgba(0,0,0,0.02)'; ?>; border: 1px solid var(--border-light); border-radius: var(--radius-md); transition: all 0.2s; border-left: 4px solid <?php echo $n['type'] === 'order' ? 'var(--primary)' : 'var(--secondary)'; ?>;">
+                            <div style="width: 44px; height: 44px; border-radius: var(--radius-lg); background: <?php echo $n['is_read'] ? 'var(--bg-card)' : 'var(--bg-main)'; ?>; border: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); flex-shrink: 0; color: var(--text-muted);">
+                                <?php if ($n['type'] === 'order'): ?>
+                                    <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                <?php else: ?>
+                                    <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                <?php endif; ?>
                             </div>
                             <div class="flex-grow">
                                 <div class="flex justify-between items-start mb-1">

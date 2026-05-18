@@ -62,7 +62,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="container mt-24 mb-20 relative">
     <div class="text-center mb-12">
-        <h1 class="gradient-text mb-2" style="font-size: 2.75rem;">Transaction Hub</h1>
+        <h1 class="mb-2" style="font-size: 2.75rem;">Transaction Hub</h1>
         <p class="text-muted text-lg">Track your purchases and manage your sales</p>
     </div>
 
@@ -71,7 +71,7 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- My Purchases -->
         <div>
             <div class="flex items-center gap-4 mb-6 pb-2 border-b">
-                <div class="p-3 shadow-md" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 12px; color: white;">
+                <div class="p-3 shadow-md" style="background: var(--primary); border-radius: 12px; color: white;">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                 </div>
                 <h2 class="mb-0" style="font-size: 1.5rem;">My Purchases</h2>
@@ -81,7 +81,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="flex flex-col gap-5">
                 <?php if (empty($buyingOrders)): ?>
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
-                        <div class="text-4xl mb-4 opacity-50">🛍️</div>
+                        <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
                         <p class="text-muted font-medium mb-4">You haven't bought anything yet.</p>
                         <a href="browse.php" class="btn btn-secondary shadow-sm hover-scale" style="border-radius: var(--radius-lg);">Browse Market</a>
                     </div>
@@ -119,7 +119,7 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- My Sales -->
         <div>
             <div class="flex items-center gap-4 mb-6 pb-2 border-b">
-                <div class="p-3 shadow-md" style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 12px; color: white;">
+                <div class="p-3 shadow-md" style="background: #f59e0b; border-radius: 12px; color: white;">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
                 <h2 class="mb-0" style="font-size: 1.5rem;">My Sales</h2>
@@ -129,13 +129,13 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="flex flex-col gap-5">
                 <?php if (empty($sellingOrders)): ?>
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
-                        <div class="text-4xl mb-4 opacity-50">💵</div>
+                        <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
                         <p class="text-muted font-medium mb-4">No incoming sales orders yet.</p>
                         <a href="create_listing.php" class="btn btn-primary shadow-sm hover-scale" style="border-radius: var(--radius-lg);">Create Listing</a>
                     </div>
                 <?php else: ?>
                     <?php foreach ($sellingOrders as $order): ?>
-                        <div class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #f59e0b; transition: all 0.3s; <?php echo $order['status'] === 'pending' ? 'background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(252,211,77,0.05));' : ''; ?>">
+                        <div class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #f59e0b; transition: all 0.3s; <?php echo $order['status'] === 'pending' ? 'background: rgba(245, 158, 11, 0.05);' : ''; ?>">
                             <div class="flex gap-5 items-start mb-4">
                                 <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
                                     <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;">

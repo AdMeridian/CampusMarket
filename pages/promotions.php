@@ -106,16 +106,15 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: 4rem 0;">
     <!-- Subtle Background Glows -->
-    <div style="position: absolute; top: 10%; left: 15%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, rgba(255, 255, 255, 0) 70%); filter: blur(60px); z-index: -1;"></div>
-    <div style="position: absolute; bottom: 10%; right: 15%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(168, 85, 247, 0.06) 0%, rgba(255, 255, 255, 0) 70%); filter: blur(60px); z-index: -1;"></div>
+    <!-- Background removed for flat aesthetic -->
 
     <div class="container" style="max-width: 1000px;">
         <!-- Header -->
         <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 mb-3 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
-                <span style="font-size: 1.2rem;">🚀</span> Seller Spotlight • Boost Sales
+                <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Seller Spotlight • Boost Sales
             </div>
-            <h1 class="font-bold text-6xl mb-4 text-main" style="letter-spacing: -0.03em; line-height: 1.1;">Elevate Your Listings <br><span class="gradient-text">Reach More Buyers</span></h1>
+            <h1 class="font-bold text-6xl mb-4 text-main" style="letter-spacing: -0.03em; line-height: 1.1;">Elevate Your Listings <br><span>Reach More Buyers</span></h1>
             <p class="text-main" style="font-size: 1.1rem; line-height: 1.6; font-weight: 500; opacity: 0.8; text-align: center; width: 100%;">
                 Promoted items stay at the top of search results and categories. Increase your visibility by up to 10x with a featured boost.
             </p>
@@ -179,7 +178,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div style="flex: 0.7; display: flex; flex-direction: column; gap: 1.5rem;">
                 <div class="glass-panel" style="padding: 1.75rem; border-radius: 28px; background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.03);">
                     <h4 class="font-bold mb-4" style="font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.2rem;">⏱️</span> Boost Status
+                        <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Boost Status
                     </h4>
                     
                     <?php if (empty($payments)): ?>
@@ -204,7 +203,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php endif; ?>
                 </div>
 
-                <div class="glass-panel" style="padding: 1.75rem; border-radius: 28px; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);">
+                <div class="glass-panel" style="padding: 1.75rem; border-radius: 28px; background: var(--primary); color: white; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);">
                     <h4 class="font-bold mb-2" style="color: white; font-size: 1.1rem;">Seller Tip</h4>
                     <p style="font-size: 0.95rem; color: #f8fafc; font-weight: 500; opacity: 1; line-height: 1.6; margin-bottom: 0;">Boosted items receive <strong>300% more clicks</strong> on average. For best results, use high-quality photos!</p>
                 </div>
@@ -267,7 +266,7 @@ require_once __DIR__ . '/../includes/header.php';
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 .cta-button {
-    background: linear-gradient(135deg, var(--primary), #818cf8);
+    background: var(--primary);
     color: white;
     border: none;
     border-radius: 18px;

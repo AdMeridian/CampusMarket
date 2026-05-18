@@ -23,7 +23,7 @@ $user = $stmt->fetch();
 
 if (!$user) {
     include '../includes/header.php';
-    echo '<div class="container mt-12 text-center text-muted"><div class="text-6xl mb-4">👻</div><h2>User not found</h2><p>This user does not exist or has been deleted.</p><a href="' . BASE_URL . '/" class="btn btn-primary mt-4 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Back Home</a></div>';
+    echo '<div class="container mt-12 text-center text-muted"><div class="mb-4 opacity-50 flex justify-center"><svg style="width: 64px; height: 64px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div><h2>User not found</h2><p>This user does not exist or has been deleted.</p><a href="' . BASE_URL . '/" class="btn btn-primary mt-4 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Back Home</a></div>';
     include '../includes/footer.php';
     exit;
 }
@@ -114,7 +114,7 @@ include '../includes/header.php';
 /* ── Profile Page Styles ─────────────────────────────── */
 
 .profile-hero {
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #7c3aed 100%);
+    background: var(--primary);
     padding: calc(75px + 2.5rem) 0 0;
     margin-bottom: 0;
     position: relative;
@@ -670,11 +670,11 @@ body.dark-mode .btn-white-solid:hover {
             <!-- Action buttons -->
             <div class="profile-hero-actions">
                 <?php if ($isSelf): ?>
-                    <a href="<?php echo BASE_URL; ?>pages/recycle_bin.php" class="btn btn-white">♻️ Recycle Bin</a>
-                    <a href="<?php echo BASE_URL; ?>pages/edit_profile.php" class="btn btn-white">✏️ Edit Profile</a>
+                    <a href="<?php echo BASE_URL; ?>pages/recycle_bin.php" class="btn btn-white"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Recycle Bin</a>
+                    <a href="<?php echo BASE_URL; ?>pages/edit_profile.php" class="btn btn-white"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Edit Profile</a>
                     <a href="logout.php" class="btn btn-white" style="margin-left: 0.5rem; background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
                 <?php elseif (isLoggedIn()): ?>
-                    <a href="messages.php?to=<?php echo $user['id']; ?>" class="btn btn-white-solid">💬 Message</a>
+                    <a href="messages.php?to=<?php echo $user['id']; ?>" class="btn btn-white-solid"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
                 <?php endif; ?>
             </div>
 
@@ -765,7 +765,7 @@ body.dark-mode .btn-white-solid:hover {
                 <div class="info-divider"></div>
                 <div class="info-item">
                     <span class="info-label">Role</span>
-                    <span class="badge" style="background: #fee2e2; color: #991b1b; font-size: 0.8rem; padding: 0.3rem 0.75rem; width: fit-content;">🛡️ Platform Administrator</span>
+                    <span class="badge" style="background: #fee2e2; color: #991b1b; font-size: 0.8rem; padding: 0.3rem 0.75rem; width: fit-content; display: inline-flex; align-items: center; gap: 0.3rem;"><svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Platform Administrator</span>
                 </div>
                 <?php endif; ?>
 
@@ -804,8 +804,8 @@ body.dark-mode .btn-white-solid:hover {
         <!-- ── Listings Section ────────────────────────────────── -->
         <section id="listings">
             <div class="listings-header">
-                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0;">
-                    🛍️ Active Listings (<?php echo count($userProducts); ?>)
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; items-center; gap: 0.5rem;">
+                    <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg> Active Listings (<?php echo count($userProducts); ?>)
                 </h2>
                 <?php if ($isSelf): ?>
                     <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem;">
@@ -816,7 +816,7 @@ body.dark-mode .btn-white-solid:hover {
 
             <?php if (empty($userProducts)): ?>
                 <div class="empty-state">
-                    <span class="empty-state-icon">🛍️</span>
+                    <span class="empty-state-icon"><svg class="w-12 h-12 text-primary mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg></span>
                     <h3>No active listings</h3>
                     <p><?php echo $isSelf ? "You haven't listed anything for sale yet." : "This user doesn't have any active listings."; ?></p>
                     <?php if ($isSelf): ?>
@@ -902,7 +902,7 @@ body.dark-mode .btn-white-solid:hover {
 
             <?php if (empty($soldProducts)): ?>
                 <div class="sold-empty">
-                    <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">📦</span>
+                    <div class="mb-2 flex justify-center"><svg class="w-12 h-12 text-primary opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
                     <?php echo $isSelf ? 'No items sold yet.' : sanitize($user['username']) . ' has no confirmed sold items yet.'; ?>
                 </div>
             <?php else: ?>

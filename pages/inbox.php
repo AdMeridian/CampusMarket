@@ -12,7 +12,8 @@ $stmt = $pdo->prepare("
         COALESCE(p.title, 'General Support') as product_title,
         CASE WHEN m.sender_id = :uid1 THEN m.receiver_id ELSE m.sender_id END as other_user_id,
         u.username as other_username,
-        u.avatar as other_avatar
+        u.avatar as other_avatar,
+        u.role as other_role
     FROM messages m
     LEFT JOIN products p ON m.product_id = p.id
     JOIN users u ON u.id = (CASE WHEN m.sender_id = :uid2 THEN m.receiver_id ELSE m.sender_id END)
@@ -20,7 +21,7 @@ $stmt = $pdo->prepare("
         SELECT MAX(id)
         FROM messages 
         WHERE sender_id = :uid3 OR receiver_id = :uid4
-        GROUP BY product_id, (CASE WHEN sender_id = :uid5 THEN receiver_id ELSE sender_id END)
+        GROUP BY COALESCE(product_id, 0), (CASE WHEN sender_id = :uid5 THEN receiver_id ELSE sender_id END)
     )
     ORDER BY m.created_at DESC
 ");
@@ -305,6 +306,29 @@ body.dark-mode .convo-card.unread {
         <?php endif; ?>
     </div>
 
+    <!-- Direct Message User Search Bar -->
+    <div class="glass-panel mb-6 p-4" style="border-radius: var(--radius-lg); position: relative; z-index: 10;">
+        <div class="relative" style="position: relative;">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted" style="position: absolute; top: 50%; transform: translateY(-50%); left: 0.75rem; color: var(--text-muted); display: flex; align-items: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </span>
+            <input type="text" id="user-search-input" placeholder="Search username to start a direct message..." 
+                   class="w-full bg-surface border-light py-3 pl-10 pr-4 text-main transition-all duration-200" 
+                   style="width: 100%; border-radius: var(--radius-md); font-size: 0.95rem; border: 1px solid var(--border-light); outline: none; background: var(--bg-surface); padding: 0.75rem 1rem 0.75rem 2.75rem; box-sizing: border-box;" 
+                   autocomplete="off">
+        </div>
+        
+        <!-- Suggestions dropdown -->
+        <div id="search-suggestions" class="absolute w-full left-0 mt-2 bg-surface glass-panel hidden" 
+             style="position: absolute; left: 0; width: 100%; margin-top: 0.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); overflow: hidden; border: 1px solid var(--border-light); max-height: 300px; overflow-y: auto; background: var(--bg-surface); z-index: 999; box-sizing: border-box;">
+            <div id="suggestions-container" style="display: flex; flex-direction: column;">
+                <!-- Dynamic items will be injected here -->
+            </div>
+        </div>
+    </div>
+
     <?php if (empty($conversations)): ?>
         <!-- Empty State -->
         <div class="inbox-empty">
@@ -342,8 +366,14 @@ body.dark-mode .convo-card.unread {
                             <span class="convo-username"><?= htmlspecialchars($conv['other_username']) ?></span>
                             <span class="convo-time"><?= timeAgo($conv['created_at']) ?></span>
                         </div>
+                        <?php 
+                            $isSupport = ($conv['product_id'] == 0 && ($conv['other_role'] === 'admin' || isAdmin()));
+                            $convoLabel = $conv['product_id'] == 0 
+                                ? ($isSupport ? 'CampusMarket Support' : 'Direct Message') 
+                                : 'Re: ' . htmlspecialchars($conv['product_title']);
+                        ?>
                         <div class="convo-product" style="<?= $conv['product_id'] == 0 ? 'color: var(--secondary);' : '' ?>">
-                            <?= $conv['product_id'] == 0 ? 'Support Inquiry' : 'Re: ' . htmlspecialchars($conv['product_title']) ?>
+                            <?= $convoLabel ?>
                         </div>
                         <p class="convo-body">
                             <?php if ($conv['sender_id'] == $currentUserId): ?>
@@ -366,5 +396,108 @@ body.dark-mode .convo-card.unread {
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('user-search-input');
+    const suggestionsPanel = document.getElementById('search-suggestions');
+    const suggestionsContainer = document.getElementById('suggestions-container');
+    let debounceTimer;
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = searchInput.value.trim();
+
+        if (query.length < 1) {
+            suggestionsPanel.classList.add('hidden');
+            suggestionsContainer.innerHTML = '';
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch(`<?= BASE_URL ?>/pages/api_messages.php?action=search_users&q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderSuggestions(data.users, query);
+                    }
+                })
+                .catch(err => console.error('Search error:', err));
+        }, 250);
+    });
+
+    function renderSuggestions(users, query) {
+        suggestionsContainer.innerHTML = '';
+        suggestionsPanel.classList.remove('hidden');
+
+        if (users.length === 0) {
+            suggestionsContainer.innerHTML = `
+                <div class="p-4 text-center text-muted small" style="color: var(--text-muted);">
+                    No users found matching "@${escapeHtml(query)}"
+                </div>
+            `;
+            return;
+        }
+
+        users.forEach(user => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center gap-3 p-3 cursor-pointer hover-bg-light transition-colors';
+            item.style.borderBottom = '1px solid var(--border-light)';
+            item.style.padding = '0.75rem 1rem';
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.gap = '0.75rem';
+            item.style.cursor = 'pointer';
+            
+            // Custom hover state utilizing active styles dynamically
+            item.addEventListener('mouseenter', () => {
+                item.style.background = 'rgba(99,102,241,0.08)';
+            });
+            item.addEventListener('mouseleave', () => {
+                item.style.background = 'transparent';
+            });
+
+            const avatarHTML = user.avatar_url 
+                ? `<img src="${user.avatar_url}" style="width: 36px; height: 36px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-light);">`
+                : `<div style="width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; border: 1px solid var(--border-light);">${user.username.substring(0, 2).toUpperCase()}</div>`;
+
+            item.innerHTML = `
+                <div style="flex-shrink: 0;">${avatarHTML}</div>
+                <div style="flex-grow: 1; min-width: 0;">
+                    <span class="font-bold text-main" style="display: block; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Outfit', sans-serif;">@${escapeHtml(user.username)}</span>
+                    <span class="text-muted small" style="font-size: 0.75rem; color: var(--text-muted);">Start conversation</span>
+                </div>
+                <div style="flex-shrink: 0; color: var(--primary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </div>
+            `;
+
+            item.addEventListener('click', function() {
+                window.location.href = `<?= BASE_URL ?>/pages/messages.php?product_id=0&other_user_id=${user.id}`;
+            });
+
+            suggestionsContainer.appendChild(item);
+        });
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !suggestionsPanel.contains(e.target)) {
+            suggestionsPanel.classList.add('hidden');
+        }
+    });
+
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+});
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

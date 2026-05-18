@@ -58,7 +58,7 @@ require_once '../includes/header.php';
                         <tr>
                             <td colspan="3">
                                 <div class="admin-empty">
-                                    <span class="admin-empty-icon">🗂️</span>
+                                    <span class="admin-empty-icon"><svg style="width: 32px; height: 32px; display: inline-block; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
                                     No categories yet. Add the first one →
                                 </div>
                             </td>
@@ -96,9 +96,10 @@ require_once '../includes/header.php';
                 </div>
             </div>
 
-            <div style="margin-top: 1rem; padding: 1rem 1.25rem; background: var(--primary-light); border: 1px solid #c7d2fe; border-radius: var(--radius-md);">
-                <p style="font-size: 0.85rem; color: var(--primary-hover); margin: 0;">
-                    💡 <strong>Tip:</strong> Categories help students browse and filter listings by topic.
+            <div style="margin-top: 1rem; padding: 1rem 1.25rem; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg style="width: 16px; height: 16px; color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <strong>Tip:</strong> Categories help students browse and filter listings by topic.
                 </p>
             </div>
         </div>

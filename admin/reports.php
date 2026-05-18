@@ -49,9 +49,9 @@ $reports = $stmt->fetchAll();
     <div class="flex justify-between items-end mb-8">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Moderation</div>
-            <h1 class="mb-0 gradient-text" style="background: linear-gradient(135deg, #ef4444, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Safety & Moderation Queue</h1>
+            <h1 class="mb-0">Safety & Moderation Queue</h1>
         </div>
-        <div class="badge" style="background: rgba(239,68,68,0.1); color: #b91c1c; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><span class="animate-pulse inline-block mr-2" style="color: #ef4444;">●</span><?php echo count($reports); ?> Pending Reviews</div>
+        <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($reports); ?> Pending Reviews</div>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
@@ -69,14 +69,14 @@ $reports = $stmt->fetchAll();
                 <?php if (empty($reports)): ?>
                     <tr>
                         <td colspan="5" class="p-16 text-center text-muted" style="border-bottom: none;">
-                            <div class="text-5xl mb-4 opacity-70">🛡️</div>
+                            <div class="mb-4 opacity-70"><svg style="width: 48px; height: 48px; display: inline-block; color: var(--success);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
                             <h3 style="color: var(--success); font-weight: 600;">System Clear</h3>
                             <p>All items comply with community standards.<br>No pending reports in the queue!</p>
                         </td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($reports as $r): ?>
-                        <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.02)'" onmouseout="this.style.background='transparent'">
+                        <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                             <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                                 <div class="font-bold text-main"><?php echo sanitize($r['product_title']); ?></div>
                                 <a href="../pages/product.php?id=<?php echo $r['product_id']; ?>" target="_blank" class="small text-primary hover-scale inline-block mt-1" style="text-decoration: none; font-weight: 600;">View Live Item ↗</a>

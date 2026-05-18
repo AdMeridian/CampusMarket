@@ -276,19 +276,19 @@ require_once '../includes/header.php';
     <div class="form-row" style="display: flex; align-items: flex-start; gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 2rem;">
       <input type="checkbox" id="terms" name="terms" value="1" style="width: 20px; height: 20px; margin-top: 0.2rem; cursor: pointer;" required <?php echo isset($_POST['terms']) ? 'checked' : ''; ?>>
       <label for="terms" style="font-weight: 500; font-size: 0.95rem; color: var(--text-muted); margin: 0; line-height: 1.5; cursor: pointer;">
-        I agree to the <a href="<?php echo BASE_URL; ?>pages/terms.php" style="font-weight: 700; text-decoration: underline;" target="_blank">Terms of Service</a> and <a href="<?php echo BASE_URL; ?>pages/privacy.php" style="font-weight: 700; text-decoration: underline;" target="_blank">Privacy Policy</a>.
+        I agree to the <a href="<?php echo BASE_URL; ?>pages/terms.php" style="font-weight: 600; text-decoration: underline;" target="_blank">Terms of Service</a> and <a href="<?php echo BASE_URL; ?>pages/privacy.php" style="font-weight: 600; text-decoration: underline;" target="_blank">Privacy Policy</a>.
       </label>
     </div>
     <?php if (isset($errors['terms'])): ?>
       <div class="error" style="margin-top: -1rem; margin-bottom: 1rem; color: #b91c1c; font-size: 0.85rem;"><?php echo sanitize($errors['terms']); ?></div>
     <?php endif; ?>
 
-    <button type="submit" class="btn btn-primary w-full py-4 shadow-lg hover-scale" style="border-radius: 14px; font-weight: 800; font-size: 1.1rem; letter-spacing: 0.01em;">Create account</button>
+    <button type="submit" class="btn btn-primary w-full py-4 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600; font-size: 1.1rem; letter-spacing: 0.01em;">Create account</button>
   </form>
 
   <p class="auth-foot mt-10">
     Already have an account?
-    <a href="<?php echo BASE_URL; ?>pages/login.php" style="font-weight: 800;">Log in</a>
+    <a href="<?php echo BASE_URL; ?>pages/login.php" style="font-weight: 600;">Log in</a>
   </p>
 </div>
 </div>

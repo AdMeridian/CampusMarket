@@ -39,16 +39,16 @@ unset($dcat);
     <div class="hero-overlay"></div>
     
     <div class="container text-center">
-        <h1 style="font-size: 4rem; font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 4px 12px rgba(0,0,0,0.3); color: white;">The Campus Marketplace</h1>
-        <p style="font-size: 1.5rem; max-width: 700px; margin: 0 auto 3rem; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.3); color: white; text-align: center;">
+        <h1 style="font-size: 4rem; font-weight: 700; margin-bottom: 1.5rem; color: white;">The Campus Marketplace</h1>
+        <p style="font-size: 1.5rem; max-width: 700px; margin: 0 auto 3rem; font-weight: 400; color: white; text-align: center;">
             The safest way to buy and sell within your university community.
         </p>
         <div class="flex flex-col sm-flex-row justify-center items-center gap-6">
-            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); width: fit-content;">Start Browsing</a>
+            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;">Start Browsing</a>
             <?php if (isLoggedIn()): ?>
-                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); width: fit-content;">Sell an Item</a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;">Sell an Item</a>
             <?php else: ?>
-                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/register.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); width: fit-content;">Join to Sell</a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/register.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;">Join to Sell</a>
             <?php endif; ?>
         </div>
     </div>
@@ -82,12 +82,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <?php 
             // Hardcoded categories as requested
             $hardcodedCategories = [
-                ['id' => 5,  'name' => 'Kitchen essentials',            'icon' => '🍳'],
-                ['id' => 1,  'name' => 'Electronics and accessories',    'icon' => '💻'],
-                ['id' => 4,  'name' => 'Clothing and fashion',          'icon' => '👕'],
-                ['id' => 3,  'name' => 'Dorms and living essentials',   'icon' => '🪑'],
-                ['id' => 10, 'name' => 'Transportation (bikes and scooter)', 'icon' => '🚲'],
-                ['id' => 2,  'name' => 'Books and study materials',     'icon' => '📚']
+                ['id' => 5,  'name' => 'Kitchen essentials',            'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>'],
+                ['id' => 1,  'name' => 'Electronics and accessories',    'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'],
+                ['id' => 4,  'name' => 'Clothing and fashion',          'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a8 8 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>'],
+                ['id' => 3,  'name' => 'Dorms and living essentials',   'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'],
+                ['id' => 10, 'name' => 'Transportation',                'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>'],
+                ['id' => 2,  'name' => 'Books and study materials',     'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>']
             ];
 
             foreach ($hardcodedCategories as $cat): 
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 $count = $stmt->fetchColumn();
             ?>
                 <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
-                    <div style="background: var(--bg-main); width: 56px; height: 56px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; font-size: 1.75rem;">
+                    <div style="color: var(--text-muted); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
                         <?php echo $cat['icon']; ?>
                     </div>
                     <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;"><?php echo $cat['name']; ?></strong>
@@ -122,9 +122,7 @@ if (!empty($featuredProducts)):
         <div class="flex justify-between items-center mb-8">
             <div>
                 <h2 class="mb-1" style="display: flex; align-items: center; gap: 0.75rem;">
-                    <span style="background: var(--primary); color: white; padding: 0.4rem; border-radius: var(--radius-md); display: flex;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                    </span>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="color: var(--primary)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                     Featured Spotlight
                 </h2>
                 <p class="text-muted mb-0">Premium listings currently being promoted by our community</p>
@@ -169,7 +167,7 @@ if (!empty($featuredProducts)):
         </div>
 
         <div class="mt-12 text-center">
-            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-lg); font-weight: 700; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);">Explore All Listings</a>
+            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-md); font-weight: 600;">Explore All Listings</a>
         </div>
     </div>
 </section>
@@ -201,15 +199,15 @@ if (!empty($donors)):
 ?>
 <section class="mb-24">
     <div class="container">
-        <div class="glass-panel py-16 px-8 text-center" style="border-radius: var(--radius-3xl); background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(168, 85, 247, 0.04)); border: 1px solid rgba(0,0,0,0.03); position: relative; overflow: hidden; text-align: center;">
+        <div class="glass-panel py-16 px-8 text-center" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border-light); position: relative; overflow: hidden; text-align: center;">
             
-            <div class="inline-flex items-center gap-2 mb-6 font-bold" style="font-size: 0.9rem; color: var(--primary); letter-spacing: 0.05em; text-transform: uppercase;">
-                <span style="font-size: 1.1rem; animation: pulse 2s infinite;">❤️</span>
+            <div class="inline-flex items-center gap-2 mb-6 font-bold" style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 Wall of Supporters
             </div>
             
-            <h2 class="font-bold text-4xl mb-4" style="color: var(--text-main); letter-spacing: -0.02em;">Community Hall of Fame</h2>
-            <p class="text-muted text-lg mb-8" style="line-height: 1.6; opacity: 0.8; text-align: center; width: 100%;">
+            <h2 class="font-bold text-4xl mb-4" style="color: var(--text-main);">Community Hall of Fame</h2>
+            <p class="text-muted text-lg mb-8" style="line-height: 1.6; text-align: center; width: 100%;">
                 Our platform thrives because of the generosity of our students. Join these incredible individuals in keeping CampusMarket free for everyone.
             </p>
             
@@ -230,7 +228,7 @@ if (!empty($donors)):
             </div>
 
             <div class="mt-10" style="padding-bottom: 2rem;">
-                <a href="pages/donate.php" class="btn btn-primary" style="padding: 1rem 3.5rem; border-radius: var(--radius-xl); font-weight: 800; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);">
+                <a href="pages/donate.php" class="btn btn-primary" style="padding: 1rem 3.5rem; border-radius: var(--radius-md); font-weight: 600;">
                     Become a Supporter
                 </a>
             </div>
