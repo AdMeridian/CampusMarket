@@ -102,8 +102,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         if (!$signup['ok']) {
-            error_log('[register] Supabase signup error: ' . ($signup['error'] ?? 'unknown'));
-            $errors['form'] = 'Could not create account. Please try again.';
+            $rawErr = strtolower(trim((string)($signup['error'] ?? 'unknown')));
+            $status = (int)($signup['status'] ?? 0);
+            error_log('[register] Supabase signup error status=' . $status . ' error=' . $rawErr);
+
+            if (str_contains($rawErr, 'already registered') || str_contains($rawErr, 'user already registered')) {
+                $errors['email'] = 'An account with that email already exists.';
+            } elseif (str_contains($rawErr, 'redirect') || str_contains($rawErr, 'emailredirectto')) {
+                $errors['form'] = 'Signup is blocked by email redirect configuration. Please contact support.';
+            } elseif (str_contains($rawErr, 'password') && (str_contains($rawErr, 'compromised') || str_contains($rawErr, 'leaked') || str_contains($rawErr, 'pwned'))) {
+                $errors['password'] = 'This password appears in known data breaches. Please choose a different password.';
+            } elseif (str_contains($rawErr, 'password')) {
+                $errors['password'] = 'Password was rejected by the auth provider. Please choose a stronger password.';
+            } elseif (str_contains($rawErr, 'email') && str_contains($rawErr, 'invalid')) {
+                $errors['email'] = 'Please enter a valid email address.';
+            } else {
+                $errors['form'] = 'Could not create account right now. Please try again.';
+            }
         }
     }
 
