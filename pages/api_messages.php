@@ -18,11 +18,21 @@ if (!isLoggedIn()) {
 $currentUserId = currentUserId();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-function isValidProductConversation(PDO $pdo, int $productId, int $currentUserId, int $otherUserId): bool {
-    if ($productId <= 0 || $currentUserId <= 0 || $otherUserId <= 0 || $currentUserId === $otherUserId) {
+function isValidConversation(PDO $pdo, int $productId, int $currentUserId, int $otherUserId): bool {
+    if ($currentUserId <= 0 || $otherUserId <= 0 || $currentUserId === $otherUserId) {
         return false;
     }
 
+    // Special Case: Support Chat (product_id = 0)
+    // Allowed if one of the participants is an admin
+    if ($productId === 0) {
+        $stmt = $pdo->prepare("SELECT role FROM users WHERE id IN (:uid1, :uid2)");
+        $stmt->execute([':uid1' => $currentUserId, ':uid2' => $otherUserId]);
+        $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return in_array('admin', $roles);
+    }
+
+    // Standard Product Chat
     $stmt = $pdo->prepare("SELECT user_id FROM products WHERE id = :pid");
     $stmt->execute([':pid' => $productId]);
     $sellerId = (int) $stmt->fetchColumn();
@@ -36,18 +46,18 @@ if ($action === 'fetch') {
         $productId = (int)($_GET['product_id'] ?? 0);
     $otherUserId = (int)($_GET['other_user_id'] ?? 0);
     
-    if (!$productId || !$otherUserId) {
+    if ($otherUserId <= 0) {
         echo json_encode(['error' => 'Missing parameters']);
         exit;
     }
 
-    if (!isValidProductConversation($pdo, $productId, $currentUserId, $otherUserId)) {
+    if (!isValidConversation($pdo, $productId, $currentUserId, $otherUserId)) {
         echo json_encode(['error' => 'Invalid conversation context']);
         exit;
     }
     
     // Mark messages sent to me as read
-    $stmtRead = $pdo->prepare("UPDATE messages SET is_read = 1 WHERE receiver_id = :uid AND sender_id = :other AND product_id = :pid AND is_read = 0");
+    $stmtRead = $pdo->prepare("UPDATE messages SET is_read = TRUE WHERE receiver_id = :uid AND sender_id = :other AND product_id = :pid AND is_read = FALSE");
     $stmtRead->execute([
         ':uid' => $currentUserId,
         ':other' => $otherUserId,
@@ -57,11 +67,11 @@ if ($action === 'fetch') {
     // Keep notification badge in sync with read state in chat.
     $stmtNotifRead = $pdo->prepare("
         UPDATE notifications
-        SET is_read = 1
+        SET is_read = TRUE
         WHERE user_id = :uid
           AND type = 'message'
           AND reference_id = :pid
-          AND is_read = 0
+          AND is_read = FALSE
     ");
     $stmtNotifRead->execute([
         ':uid' => $currentUserId,
@@ -117,12 +127,12 @@ if ($action === 'send') {
     $receiverId = (int)($_POST['receiver_id'] ?? 0);
     $body = sanitize($_POST['body'] ?? '');
     
-    if (!$productId || !$receiverId || empty($body)) {
+    if ($receiverId <= 0 || empty($body)) {
         echo json_encode(['success' => false, 'error' => 'Missing or empty parameters']);
         exit;
     }
 
-    if (!isValidProductConversation($pdo, $productId, $currentUserId, $receiverId)) {
+    if (!isValidConversation($pdo, $productId, $currentUserId, $receiverId)) {
         echo json_encode(['success' => false, 'error' => 'Invalid conversation context']);
         exit;
     }
@@ -173,7 +183,7 @@ if ($action === 'propose') {
     
     $receiverId = $product['user_id'];
     
-    if (!isValidProductConversation($pdo, $productId, $currentUserId, $receiverId)) {
+    if (!isValidConversation($pdo, $productId, $currentUserId, $receiverId)) {
         echo json_encode(['error' => 'Invalid conversation context']);
         exit;
     }
@@ -225,7 +235,7 @@ if ($action === 'get_propose') {
     
     $receiverId = $product['user_id'];
     
-    if (!isValidProductConversation($pdo, $productId, $currentUserId, $receiverId)) {
+    if (!isValidConversation($pdo, $productId, $currentUserId, $receiverId)) {
         echo json_encode(['error' => 'Invalid conversation context']);
         exit;
     }

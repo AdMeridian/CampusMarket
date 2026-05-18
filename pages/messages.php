@@ -7,47 +7,85 @@ $productId = (int)($_GET['product_id'] ?? 0);
 $otherUserId = (int)($_GET['other_user_id'] ?? 0);
 $currentUserId = currentUserId();
 
-if (!$productId || !$otherUserId) {
+if (!$otherUserId) {
     setFlash('error', 'Invalid conversation context.');
     redirect(BASE_URL . '/pages/inbox.php');
 }
 
-// Fetch context info
-$stmt = $pdo->prepare("SELECT title, price, discount_percent FROM products WHERE id = :id");
-$stmt->execute([':id' => $productId]);
-$product = $stmt->fetch();
-
-$stmt = $pdo->prepare("SELECT username FROM users WHERE id = :id");
-$stmt->execute([':id' => $otherUserId]);
-$otherUser = $stmt->fetch();
-
-if (!$product || !$otherUser) {
-    setFlash('error', 'Product or User no longer exists.');
-    redirect(BASE_URL . '/pages/inbox.php');
+// Special Case: Support Chat (product_id = 0)
+// Check if one of the participants is an admin
+if ($productId === 0) {
+    $stmt = $pdo->prepare("SELECT role FROM users WHERE id IN (:uid1, :uid2)");
+    $stmt->execute([':uid1' => $currentUserId, ':uid2' => $otherUserId]);
+    $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('admin', $roles)) {
+        setFlash('error', 'Invalid conversation context.');
+        redirect(BASE_URL . '/pages/inbox.php');
+    }
 }
 
-// Keep product chat context valid: conversations should involve the seller for this product.
-$stmt = $pdo->prepare("SELECT user_id FROM products WHERE id = :pid");
-$stmt->execute([':pid' => $productId]);
-$sellerId = (int) $stmt->fetchColumn();
-$isValidConversation = $sellerId > 0
-    && ($currentUserId === $sellerId || $otherUserId === $sellerId)
-    && ($currentUserId !== $otherUserId);
+if ($productId > 0) {
+    // Fetch context info
+    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
+    $stmt->execute([':id' => $productId]);
+    $product = $stmt->fetch();
 
-if (!$isValidConversation) {
-    setFlash('error', 'Invalid chat context for this product.');
-    redirect(BASE_URL . '/pages/inbox.php');
+    $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = :id");
+    $stmt->execute([':id' => $otherUserId]);
+    $otherUser = $stmt->fetch();
+
+    if (!$product || !$otherUser) {
+        setFlash('error', 'Product or User no longer exists.');
+        redirect(BASE_URL . '/pages/inbox.php');
+    }
+
+    // Keep product chat context valid: conversations should involve the seller for this product.
+    $stmt = $pdo->prepare("SELECT user_id FROM products WHERE id = :pid");
+    $stmt->execute([':pid' => $productId]);
+    $sellerId = (int) $stmt->fetchColumn();
+    $isValidConversation = $sellerId > 0
+        && ($currentUserId === $sellerId || $otherUserId === $sellerId)
+        && ($currentUserId !== $otherUserId);
+
+    if (!$isValidConversation) {
+        setFlash('error', 'Invalid chat context for this product.');
+        redirect(BASE_URL . '/pages/inbox.php');
+    }
+} else {
+    // Support Context
+    $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = :id");
+    $stmt->execute([':id' => $otherUserId]);
+    $otherUser = $stmt->fetch();
+    
+    if (!$otherUser) {
+        setFlash('error', 'Support user no longer exists.');
+        redirect(BASE_URL . '/pages/inbox.php');
+    }
+    
+    $product = [
+        'title' => 'CampusMarket Support',
+        'price' => 0,
+        'discount_percent' => 0,
+        'image_path' => null
+    ];
+    $sellerId = -1; // Not a seller conversation
 }
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container main-content mb-20" style="max-width: 900px; margin-top: 2rem;">
+<div class="container main-content mb-20" style="max-width: 900px; margin-top: 6rem;">
     <!-- Chat Header Context -->
     <div class="glass-panel mb-4 p-4 flex justify-between items-center" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
         <div class="flex items-center gap-4">
-            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
-                <?php echo strtoupper(substr($otherUser['username'], 0, 2)); ?>
+            <div style="width: 50px; height: 50px; flex-shrink: 0;">
+                <?php if (!empty($otherUser['avatar'])): ?>
+                    <img src="<?= avatarUrl($otherUser['avatar']) ?>" alt="<?= htmlspecialchars($otherUser['username']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                <?php else: ?>
+                    <div style="width: 100%; height: 100%; background: linear-gradient(135deg, var(--secondaryLight), var(--primaryLight)); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; color: var(--primary);">
+                        <?php echo strtoupper(substr($otherUser['username'], 0, 2)); ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <div>
                 <h3 class="mb-0 font-bold" style="line-height: 1.2;">@<?= htmlspecialchars($otherUser['username']) ?></h3>
@@ -56,12 +94,30 @@ require_once __DIR__ . '/../includes/header.php';
                 </p>
             </div>
         </div>
-        <div class="text-right hidden sm:block">
-            <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Regarding Item</p>
-            <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="font-bold text-main hover:text-primary transition-colors" style="text-decoration: none;">
-                <?= htmlspecialchars($product['title']) ?>
-            </a>
-            <p class="text-primary font-bold mb-0"><?= renderProductPrice($product) ?></p>
+        <div class="flex items-center gap-3 text-right hidden sm:flex">
+            <?php if ($productId > 0): ?>
+                <div>
+                    <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Regarding Item</p>
+                    <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="font-bold text-main hover:text-primary transition-colors" style="text-decoration: none; font-size: 0.9rem; display: block; max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <?= htmlspecialchars($product['title']) ?>
+                    </a>
+                    <p class="text-primary font-bold mb-0" style="font-size: 0.9rem;"><?= renderProductPrice($product) ?></p>
+                </div>
+                <div style="width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light);">
+                    <img src="<?= getProductImage($product['image_path'] ?? null) ?>" alt="Product" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+            <?php else: ?>
+                <div>
+                    <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Conversation</p>
+                    <span class="font-bold text-main" style="font-size: 0.9rem;">General Support</span>
+                    <p class="text-secondary font-bold mb-0" style="font-size: 0.9rem;">Official Help</p>
+                </div>
+                <div style="width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light); background: var(--secondary-light); display: flex; align-items: center; justify-content: center; color: var(--secondary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
     
@@ -83,7 +139,7 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
         
         <!-- Action area -->
-        <?php if ($currentUserId !== $sellerId): ?>
+        <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
             <!-- Buyer's context: showing order proposal button -->
             <div class="purchase-cta-bar p-3 border-t flex justify-between items-center" style="background: linear-gradient(to right, var(--bg-surface), var(--primary-light)); border-color: var(--border-light); opacity: 0.95;">
                 <div class="flex items-center gap-3">
@@ -106,6 +162,21 @@ require_once __DIR__ . '/../includes/header.php';
                         Propose Order
                     </button>
                 </form>
+            </div>
+        <?php elseif ($productId === 0): ?>
+            <!-- Support context: greeting -->
+            <div class="p-3 border-t flex justify-between items-center" style="background: linear-gradient(to right, var(--bg-surface), var(--secondary-light)); border-color: var(--border-light); opacity: 0.95;">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;">CampusMarket Support</h4>
+                        <p class="text-xs text-muted mb-0">Our team usually responds within 24 hours.</p>
+                    </div>
+                </div>
             </div>
         <?php endif; ?>
 

@@ -37,7 +37,6 @@ $activeTab = ($_GET['tab'] ?? 'listings') === 'about' ? 'about' : 'listings';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], $_POST['product_id'])) {
     $action = sanitize($_POST['action']);
     $productId = (int)($_POST['product_id'] ?? 0);
-    $discountPercent = (int)($_POST['discount_percent'] ?? 0);
 
     $ownStmt = $pdo->prepare("SELECT * FROM products WHERE id = :pid AND user_id = :uid");
     $ownStmt->execute([':pid' => $productId, ':uid' => $viewId]);
@@ -45,16 +44,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], 
 
     if (!$ownedProduct) {
         setFlash('error', 'Listing not found.');
-    } elseif (!isDiscountEligible($ownedProduct)) {
-        setFlash('error', 'Discounts are available only for active listings older than ' . LISTING_DISCOUNT_MIN_DAYS . ' days.');
     } else {
         if ($action === 'set_discount') {
-            if ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
+            $discountPercent = (int)($_POST['discount_percent'] ?? 0);
+            if (!isDiscountEligible($ownedProduct)) {
+                setFlash('error', 'Discounts are available only for active listings older than ' . LISTING_DISCOUNT_MIN_DAYS . ' days.');
+            } elseif ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
                 setFlash('error', 'Discount must be between 0 and ' . LISTING_DISCOUNT_MAX_PERCENT . ' percent.');
             } else {
                 $upd = $pdo->prepare("UPDATE products SET discount_percent = :dp, discount_set_at = NOW() WHERE id = :pid");
                 $upd->execute([':dp' => $discountPercent, ':pid' => $productId]);
                 setFlash('success', $discountPercent > 0 ? 'Discount updated.' : 'Discount removed.');
+            }
+        } elseif ($action === 'update_price') {
+            $newPrice = (float)($_POST['new_price'] ?? 0);
+            if ($newPrice <= 0) {
+                setFlash('error', 'Price must be greater than zero.');
+            } else {
+                $upd = $pdo->prepare("UPDATE products SET price = :price, updated_at = NOW() WHERE id = :pid");
+                $upd->execute([':price' => $newPrice, ':pid' => $productId]);
+                setFlash('success', 'Price updated successfully.');
+            }
+        } elseif ($action === 'delete_listing') {
+            $upd = $pdo->prepare("UPDATE products SET status = 'deleted', deleted_at = NOW(), updated_at = NOW() WHERE id = :pid");
+            if ($upd->execute([':pid' => $productId])) {
+                setFlash('success', 'Listing moved to Recycle Bin.');
             }
         }
     }
@@ -71,7 +85,7 @@ $stmt = $pdo->prepare("
     SELECT p.*, c.name as category_name, i.image_path
     FROM products p
     JOIN categories c ON p.category_id = c.id
-    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
     WHERE p.user_id = :uid AND p.status = 'active'
     ORDER BY p.created_at DESC
 ");
@@ -84,7 +98,7 @@ $soldItems = $pdo->prepare("
            pi.image_path,
            dc.seller_confirmed_at
     FROM products p
-    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
+    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
     LEFT JOIN deal_confirmations dc ON dc.product_id = p.id AND dc.seller_id = p.user_id AND dc.status = 'completed'
     WHERE p.user_id = :uid AND p.status = 'sold'
     ORDER BY COALESCE(dc.seller_confirmed_at, p.updated_at, p.created_at) DESC
@@ -100,7 +114,7 @@ include '../includes/header.php';
 
 .profile-hero {
     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #7c3aed 100%);
-    padding: 3rem 0 0;
+    padding: calc(75px + 2.5rem) 0 0;
     margin-bottom: 0;
     position: relative;
     overflow: hidden;
@@ -249,7 +263,7 @@ include '../includes/header.php';
     margin: 2.5rem auto;
     padding: 0 1.5rem;
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 300px 1fr;
     gap: 2.5rem;
     align-items: start;
 }
@@ -258,6 +272,13 @@ include '../includes/header.php';
     .profile-body { grid-template-columns: 1fr; }
     .profile-hero-body { flex-direction: column; align-items: flex-start; }
     .profile-hero-actions { margin-left: 0; }
+}
+
+@media (min-width: 901px) {
+    .profile-sidebar {
+        position: sticky;
+        top: 100px;
+    }
 }
 
 /* ── Sidebar Card ─────────────────────────────────────── */
@@ -356,8 +377,8 @@ include '../includes/header.php';
 
 .listing-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
 }
 
 .listing-card {
@@ -370,6 +391,8 @@ include '../includes/header.php';
     transition: var(--transition);
     display: flex;
     flex-direction: column;
+    height: 100%; /* Ensure cards in the same row match height */
+    max-width: 380px; /* Prevent excessive stretching on large screens */
 }
 
 .listing-card:hover {
@@ -381,10 +404,11 @@ include '../includes/header.php';
 
 .listing-card-img {
     width: 100%;
-    height: 160px;
+    aspect-ratio: 4 / 3; /* Standardized aspect ratio */
     object-fit: cover;
     display: block;
     background: var(--bg-main);
+    border-bottom: 1px solid var(--border-light);
 }
 
 .listing-card-body {
@@ -467,11 +491,12 @@ include '../includes/header.php';
 
 .sold-card-img {
     width: 100%;
-    height: 140px;
+    aspect-ratio: 4 / 3;
     object-fit: cover;
     display: block;
     background: var(--bg-main);
     filter: grayscale(30%);
+    border-bottom: 1px solid var(--border-light);
 }
 
 .sold-card-body {
@@ -579,6 +604,13 @@ include '../includes/header.php';
     box-shadow: 0 6px 14px rgba(99,102,241,0.2);
 }
 
+.premium-input:focus {
+    border-color: var(--primary);
+    background: var(--bg-surface);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    transform: translateY(-1px);
+}
+
 body.dark-mode .profile-stat-row {
     background: var(--bg-surface);
 }
@@ -637,6 +669,7 @@ body.dark-mode .btn-white-solid:hover {
             <!-- Action buttons -->
             <div class="profile-hero-actions">
                 <?php if ($isSelf): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/recycle_bin.php" class="btn btn-white">♻️ Recycle Bin</a>
                     <a href="<?php echo BASE_URL; ?>pages/edit_profile.php" class="btn btn-white">✏️ Edit Profile</a>
                     <a href="logout.php" class="btn btn-white" style="margin-left: 0.5rem; background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
                 <?php elseif (isLoggedIn()): ?>
@@ -648,127 +681,17 @@ body.dark-mode .btn-white-solid:hover {
 
         <!-- Tab bar -->
         <nav class="profile-tabs">
+            <a href="#about" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>" data-tab="about">About</a>
             <a href="#listings" class="profile-tab <?php echo $activeTab === 'listings' ? 'active' : ''; ?>" data-tab="listings">
                 Listings
                 <span class="tab-count"><?php echo $listingCount; ?></span>
             </a>
-            <a href="#about" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>" data-tab="about">About</a>
         </nav>
     </div>
 </div>
 
 <!-- ═══ Profile Body ═══════════════════════════════════════════════ -->
 <div class="profile-body">
-
-    <!-- ── Main Column (Listings & Sold Items) ────────────────── -->
-    <div class="profile-main-content" style="display: flex; flex-direction: column; gap: 3rem;">
-        
-        <!-- ── Listings ─────────────────────────────────────────────── -->
-        <section id="listings">
-            <div class="listings-header">
-                <h2 style="margin: 0; font-size: 1.25rem;">Active Listings</h2>
-                <?php if ($isSelf): ?>
-                    <a href="create_listing.php" class="btn btn-primary btn-sm">+ New Listing</a>
-                <?php endif; ?>
-            </div>
-
-            <?php if (empty($userProducts)): ?>
-                <div class="empty-state">
-                    <span class="empty-state-icon">🛍️</span>
-                    <h3><?php echo $isSelf ? "You haven't listed anything yet" : sanitize($user['username']) . " has no active listings"; ?></h3>
-                    <p><?php echo $isSelf ? "Start selling your unused campus items today." : "Check back later for new items."; ?></p>
-                    <?php if ($isSelf): ?>
-                        <a href="create_listing.php" class="btn btn-primary">Create Your First Listing</a>
-                    <?php endif; ?>
-                </div>
-
-            <?php else: ?>
-                <div class="listing-grid">
-                    <?php foreach ($userProducts as $prod): ?>
-                        <div class="listing-card">
-                            <a href="product.php?id=<?php echo $prod['id']; ?>" style="text-decoration:none; color:inherit;">
-                                <img
-                                    class="listing-card-img"
-                                    src="<?php echo $prod['image_path'] ? BASE_URL . 'public/' . ltrim($prod['image_path'], '/') : BASE_URL . 'public/images/placeholder.png'; ?>"
-                                    alt="<?php echo sanitize($prod['title']); ?>"
-                                    loading="lazy"
-                                >
-                            </a>
-                            <div class="listing-card-body">
-                                <a href="product.php?id=<?php echo $prod['id']; ?>" style="text-decoration:none; color:inherit;">
-                                    <p class="listing-card-title"><?php echo sanitize($prod['title']); ?></p>
-                                    <p class="listing-card-price"><?php echo renderProductPrice($prod); ?></p>
-                                </a>
-                                <div class="listing-card-meta">
-                                    <span class="listing-card-cat"><?php echo sanitize($prod['category_name']); ?></span>
-                                </div>
-                                <?php if ($isSelf && isDiscountEligible($prod)): ?>
-                                    <form method="post" class="discount-form">
-                                        <input type="hidden" name="action" value="set_discount">
-                                        <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
-                                        <select name="discount_percent" class="premium-input" style="padding: 0.35rem 0.45rem; font-size: 0.82rem;">
-                                            <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
-                                                <option value="<?php echo $d; ?>" <?php echo ((int)($prod['discount_percent'] ?? 0) === $d) ? 'selected' : ''; ?>>
-                                                    <?php echo $d === 0 ? 'No discount' : ('-' . $d . '%'); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.78rem;">Save Discount</button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </section>
-
-        <!-- ── Sold Items Section ──────────────────────────────── -->
-        <section id="sold-items">
-            <h2 class="sold-section-title" style="margin: 0 0 1.25rem;">
-                ✅ Sold Items (<?php echo count($soldProducts); ?>)
-            </h2>
-
-            <?php if (empty($soldProducts)): ?>
-                <div class="sold-empty">
-                    <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">📦</span>
-                    <?php echo $isSelf ? 'No items sold yet.' : sanitize($user['username']) . ' has no confirmed sold items yet.'; ?>
-                </div>
-            <?php else: ?>
-                <div class="listing-grid">
-                    <?php foreach ($soldProducts as $sold): ?>
-                        <div class="sold-card">
-                            <img
-                                class="sold-card-img"
-                                src="<?php echo $sold['image_path'] ? BASE_URL . 'public/' . ltrim($sold['image_path'], '/') : BASE_URL . 'public/images/placeholder.png'; ?>"
-                                alt="<?php echo sanitize($sold['title']); ?>"
-                                loading="lazy"
-                            >
-                            <div class="sold-card-body">
-                                <p style="font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                    <?php echo sanitize($sold['title']); ?>
-                                </p>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem;"><?php echo formatPrice($sold['price']); ?></span>
-                                    <span class="sold-badge">SOLD</span>
-                                </div>
-                                <div class="sold-date">
-                                    <?php
-                                    if (!empty($sold['seller_confirmed_at'])) {
-                                        echo 'Sold on ' . date('M d, Y', strtotime($sold['seller_confirmed_at']));
-                                    } else {
-                                        echo 'Sold';
-                                    }
-                                    ?>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </section>
-
-    </div>
 
     <!-- ── Sidebar (About) ────────────────────────────────────── -->
     <aside class="profile-sidebar" id="about">
@@ -864,7 +787,7 @@ body.dark-mode .btn-white-solid:hover {
                         <div class="info-item" style="padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); margin-bottom: 0.75rem;">
                             <span class="info-value" style="font-size: 0.85rem; font-weight: 700;"><?php echo sanitize($fp['title']); ?></span>
                             <span class="info-label" style="text-transform: none; font-size: 0.75rem; color: var(--success); display: flex; align-items: center; gap: 0.3rem;">
-                                <span style="display:inline-block; width: 6px; height: 6px; background: currentColor; border-radius: 50%;"></span>
+                                <span style="display:inline-block; width: 6px; height: 6px; background: currentColor; border-radius: var(--radius-sm);"></span>
                                 Actively Promoted
                             </span>
                         </div>
@@ -875,6 +798,143 @@ body.dark-mode .btn-white-solid:hover {
         <?php endif; endif; ?>
 
     </aside>
+
+    <div class="profile-main">
+        <!-- ── Listings Section ────────────────────────────────── -->
+        <section id="listings">
+            <div class="listings-header">
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0;">
+                    🛍️ Active Listings (<?php echo count($userProducts); ?>)
+                </h2>
+                <?php if ($isSelf): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem;">
+                        + New Listing
+                    </a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($userProducts)): ?>
+                <div class="empty-state">
+                    <span class="empty-state-icon">🛍️</span>
+                    <h3>No active listings</h3>
+                    <p><?php echo $isSelf ? "You haven't listed anything for sale yet." : "This user doesn't have any active listings."; ?></p>
+                    <?php if ($isSelf): ?>
+                        <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn btn-primary btn-sm" style="border-radius: var(--radius-lg);">Create Your First Listing</a>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="listing-grid">
+                    <?php foreach ($userProducts as $prod): ?>
+                        <div class="listing-card">
+                            <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
+                                <img 
+                                    class="listing-card-img" 
+                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>" 
+                                    alt="<?php echo sanitize($prod['title']); ?>"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <div class="listing-card-body">
+                                <div class="listing-card-meta">
+                                    <span class="listing-card-cat"><?php echo sanitize($prod['category_name']); ?></span>
+                                    <span class="listing-card-price"><?php echo formatPrice($prod['price']); ?></span>
+                                </div>
+                                <h3 class="listing-card-title">
+                                    <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit;">
+                                        <?php echo sanitize($prod['title']); ?>
+                                    </a>
+                                </h3>
+
+                                <?php if ($isSelf): ?>
+                                    <div class="mt-4" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <!-- Price Update Form -->
+                                        <form method="post" style="margin: 0;">
+                                            <input type="hidden" name="action" value="update_price">
+                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
+                                            <div style="display: flex; gap: 0.25rem;">
+                                                <input type="number" name="new_price" step="0.01" value="<?php echo (float)$prod['price']; ?>" class="premium-input" style="flex: 1; padding: 0.35rem 0.45rem; font-size: 0.82rem;" placeholder="Price">
+                                                <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Update</button>
+                                            </div>
+                                        </form>
+
+                                        <!-- Discount Form -->
+                                        <?php if (isDiscountEligible($prod)): ?>
+                                            <form method="post" class="discount-form">
+                                                <input type="hidden" name="action" value="set_discount">
+                                                <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
+                                                <div style="display: flex; gap: 0.25rem;">
+                                                    <select name="discount_percent" class="premium-input" style="flex: 1; padding: 0.35rem 0.45rem; font-size: 0.82rem;">
+                                                        <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
+                                                            <option value="<?php echo $d; ?>" <?php echo ((int)($prod['discount_percent'] ?? 0) === $d) ? 'selected' : ''; ?>>
+                                                                <?php echo $d === 0 ? 'No discount' : ('-' . $d . '%'); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                    <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Apply</button>
+                                                </div>
+                                            </form>
+                                        <?php endif; ?>
+
+                                        <!-- Delete Form (Move to Bin) -->
+                                        <form method="post" onsubmit="return confirm('Move to Recycle Bin?')">
+                                            <input type="hidden" name="action" value="delete_listing">
+                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
+                                            <button type="submit" class="btn btn-danger btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: #fee2e2; color: #ef4444; border: none; font-weight: 700;">Delete Listing</button>
+                                        </form>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+
+        <!-- ── Sold Items Section ──────────────────────────────── -->
+        <section id="sold-items">
+            <h2 class="sold-section-title" style="margin: 2.5rem 0 1.25rem;">
+                ✅ Sold Items (<?php echo count($soldProducts); ?>)
+            </h2>
+
+            <?php if (empty($soldProducts)): ?>
+                <div class="sold-empty">
+                    <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">📦</span>
+                    <?php echo $isSelf ? 'No items sold yet.' : sanitize($user['username']) . ' has no confirmed sold items yet.'; ?>
+                </div>
+            <?php else: ?>
+                <div class="listing-grid">
+                    <?php foreach ($soldProducts as $sold): ?>
+                        <div class="sold-card">
+                            <img
+                                class="sold-card-img"
+                                src="<?php echo getProductImage($sold['image_path'] ?? null); ?>"
+                                alt="<?php echo sanitize($sold['title']); ?>"
+                                loading="lazy"
+                            >
+                            <div class="sold-card-body">
+                                <p style="font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    <?php echo sanitize($sold['title']); ?>
+                                </p>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem;"><?php echo formatPrice($sold['price']); ?></span>
+                                    <span class="sold-badge">SOLD</span>
+                                </div>
+                                <div class="sold-date">
+                                    <?php
+                                    if (!empty($sold['seller_confirmed_at'])) {
+                                        echo 'Sold on ' . date('M d, Y', strtotime($sold['seller_confirmed_at']));
+                                    } else {
+                                        echo 'Sold';
+                                    }
+                                    ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+    </div>
 
 </div>
 

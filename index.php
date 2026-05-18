@@ -8,29 +8,47 @@ $pageTitle = "Home";
 // Data for homepage
 $recentProducts = getRecentProducts($pdo, 8);
 $topCategories = getTopCategories($pdo);
+
+// Fetch categories and their products (5 each) — done in PHP before HTML output
+$stmtCats = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC LIMIT 4");
+$displayCats = $stmtCats->fetchAll();
+foreach ($displayCats as &$dcat) {
+    $stmtCatP = $pdo->prepare("
+        SELECT p.*, c.name as category_name, i.image_path
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.category_id = ? AND p.status = 'active'
+        ORDER BY p.created_at DESC
+        LIMIT 5
+    ");
+    $stmtCatP->execute([$dcat['id']]);
+    $dcat['products'] = $stmtCatP->fetchAll();
+}
+unset($dcat);
 ?>
 
 <!-- Hero Section with Background Carousel -->
 <section class="hero">
     <div class="hero-carousel">
-        <div class="hero-slide active" style="background-image: url('public/images/hero/hero1.png');"></div>
-        <div class="hero-slide" style="background-image: url('public/images/hero/hero2.png');"></div>
-        <div class="hero-slide" style="background-image: url('public/images/hero/hero3.png');"></div>
-        <div class="hero-slide" style="background-image: url('public/images/hero/hero4.png');"></div>
+        <div class="hero-slide active" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero1.png');"></div>
+        <div class="hero-slide" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero2.png');"></div>
+        <div class="hero-slide" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero3.png');"></div>
+        <div class="hero-slide" style="background-image: url('<?php echo BASE_URL; ?>public/images/hero/hero4.png');"></div>
     </div>
     <div class="hero-overlay"></div>
     
-    <div class="container">
-        <h1 class="hero-title" style="font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 4px 12px rgba(0,0,0,0.3); color: white;">The Campus Marketplace</h1>
-        <p class="hero-subtitle" style="max-width: 700px; margin: 0 auto 3rem; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.3); color: white;">
+    <div class="container text-center">
+        <h1 style="font-size: 4rem; font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 4px 12px rgba(0,0,0,0.3); color: white;">The Campus Marketplace</h1>
+        <p style="font-size: 1.5rem; max-width: 700px; margin: 0 auto 3rem; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.3); color: white; text-align: center;">
             The safest way to buy and sell within your university community.
         </p>
-        <div class="flex justify-center gap-4 md:gap-6">
-            <a href="pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); white-space: nowrap;">Start Browsing</a>
+        <div class="flex flex-col sm-flex-row justify-center items-center gap-6">
+            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); width: fit-content;">Start Browsing</a>
             <?php if (isLoggedIn()): ?>
-                <a href="pages/create_listing.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); white-space: nowrap;">Sell an Item</a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); width: fit-content;">Sell an Item</a>
             <?php else: ?>
-                <a href="pages/register.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); white-space: nowrap;">Join to Sell</a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/register.php" class="btn btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 700; border-radius: 1rem; backdrop-filter: blur(8px); width: fit-content;">Join to Sell</a>
             <?php endif; ?>
         </div>
     </div>
@@ -60,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <h2 class="mb-0">Shop by Category</h2>
             <a href="pages/categories.php" class="text-muted" style="font-weight: 500;">View all</a>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-3 md-grid-cols-3 lg-grid-cols-3 gap-6">
             <?php 
             // Hardcoded categories as requested
             $hardcodedCategories = [
@@ -156,6 +174,26 @@ if (!empty($featuredProducts)):
     </div>
 </section>
 
+<!-- Category Highlights -->
+<section class="mt-20">
+    <div class="container">
+        <?php foreach ($displayCats as $cat): ?>
+            <?php if (empty($cat['products'])) continue; ?>
+            <div class="mb-16">
+                <div class="flex justify-between items-end mb-6" style="border-bottom: 2px solid #f1f5f9; padding-bottom: 1rem;">
+                    <h2 class="mb-0"><?php echo htmlspecialchars($cat['name']); ?></h2>
+                    <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="text-primary font-bold">See all <?php echo htmlspecialchars($cat['name']); ?> &rarr;</a>
+                </div>
+                <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-5 gap-6">
+                    <?php foreach ($cat['products'] as $prod): ?>
+                        <?php include 'includes/product_card_template.php'; ?>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</section>
+
 <!-- Donation Hall of Fame -->
 <?php 
 $donors = getDonors($pdo, 12);
@@ -182,7 +220,7 @@ if (!empty($donors)):
                             <img src="<?php echo avatarUrl($donor['avatar']); ?>" 
                                  alt="<?php echo sanitize($donor['username']); ?>"
                                  style="width: 80px; height: 80px; border-radius: 22px; border: 3px solid white; box-shadow: var(--shadow-lg); object-fit: cover; transform: rotate(-3deg); transition: var(--transition); background: white;">
-                            <div style="position: absolute; top: -8px; right: -8px; background: #fbbf24; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">
+                            <div style="position: absolute; top: -8px; right: -8px; background: #fbbf24; color: white; width: 26px; height: 26px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; border: 2px solid white; box-shadow: var(--shadow-sm); z-index: 2;">
                                 ★
                             </div>
                         </div>
@@ -192,7 +230,7 @@ if (!empty($donors)):
             </div>
 
             <div class="mt-10" style="padding-bottom: 2rem;">
-                <a href="pages/donate.php" class="btn btn-primary" style="padding: 1rem 3.5rem; border-radius: var(--radius-full); font-weight: 800; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);">
+                <a href="pages/donate.php" class="btn btn-primary" style="padding: 1rem 3.5rem; border-radius: var(--radius-xl); font-weight: 800; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);">
                     Become a Supporter
                 </a>
             </div>

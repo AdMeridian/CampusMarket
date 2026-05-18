@@ -36,12 +36,12 @@ if ($httpCode === 200 && $response['payment_status'] === 'paid') {
         $pdo->beginTransaction();
         try {
             // Insert approved payment
-            $ins = $pdo->prepare('
+            $ins = $pdo->prepare("
                 INSERT INTO promotion_payments 
                     (user_id, product_id, payment_type, payment_method, amount, transaction_ref, status, approved_at, notes)
                 VALUES 
-                    (:uid, :pid, :ptype, "stripe", :amount, :tx, "approved", NOW(), "Automated Stripe Sandbox Payment")
-            ');
+                    (:uid, :pid, :ptype, 'stripe', :amount, :tx, 'approved', NOW(), 'Automated Stripe Sandbox Payment')
+            ");
             $ins->execute([
                 ':uid'    => $userId,
                 ':pid'    => $productId,
@@ -52,7 +52,7 @@ if ($httpCode === 200 && $response['payment_status'] === 'paid') {
             
             // If it's a promotion, feature the product immediately
             if ($paymentType === 'promotion' && $productId) {
-                $upd = $pdo->prepare('UPDATE products SET is_featured = 1, discount_set_at = NOW() WHERE id = ?');
+                $upd = $pdo->prepare('UPDATE products SET is_featured = TRUE, discount_set_at = NOW() WHERE id = ?');
                 $upd->execute([$productId]);
             }
             

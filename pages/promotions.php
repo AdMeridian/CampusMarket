@@ -12,7 +12,7 @@ $currentUserId = currentUserId();
 $pageTitle = 'Promotions & Donations';
 $promoPaymentsTableExists = false;
 try {
-    $promoPaymentsTableExists = (bool)$pdo->query("SHOW TABLES LIKE 'promotion_payments'")->fetchColumn();
+    $promoPaymentsTableExists = (bool)$pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'promotion_payments' LIMIT 1")->fetchColumn();
 } catch (PDOException $e) {
     $promoPaymentsTableExists = false;
 }
@@ -64,12 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productId = $productIdRaw;
         }
 
-        $insert = $pdo->prepare('
+        $insert = $pdo->prepare("
             INSERT INTO promotion_payments
                 (user_id, product_id, payment_type, payment_method, amount, transaction_ref, notes, status)
             VALUES
-                (:uid, :pid, :ptype, :pmethod, :amount, :tx, :notes, "pending")
-        ');
+                (:uid, :pid, :ptype, :pmethod, :amount, :tx, :notes, 'pending')
+        ");
 
         $insert->execute([
             ':uid' => $currentUserId,
@@ -90,13 +90,13 @@ $myProductsStmt = $pdo->prepare("SELECT id, title, status, is_featured FROM prod
 $myProductsStmt->execute([':uid' => $currentUserId]);
 $myProducts = $myProductsStmt->fetchAll();
 
-$paymentsStmt = $pdo->prepare('
+$paymentsStmt = $pdo->prepare("
     SELECT pp.*, p.title AS product_title
     FROM promotion_payments pp
     LEFT JOIN products p ON p.id = pp.product_id
-    WHERE pp.user_id = :uid AND pp.payment_type = "promotion"
+    WHERE pp.user_id = :uid AND pp.payment_type = 'promotion'
     ORDER BY pp.created_at DESC
-');
+");
 $paymentsStmt->execute([':uid' => $currentUserId]);
 $payments = $paymentsStmt->fetchAll();
 

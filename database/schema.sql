@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- CampusMarket â€” Full Database Schema (ERD v2)
 -- Run this in phpMyAdmin or MySQL CLI
 -- ============================================================
@@ -12,6 +12,7 @@ USE campusmarket;
 CREATE TABLE users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
+    student_id    VARCHAR(20)  NULL,
     email         VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role          ENUM('user', 'admin') NOT NULL DEFAULT 'user',
@@ -53,6 +54,8 @@ CREATE TABLE products (
     `condition`   ENUM('new', 'like_new', 'used', 'poor') NOT NULL DEFAULT 'used',
     status      ENUM('active', 'sold', 'flagged')       NOT NULL DEFAULT 'active',
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
+    featured_until DATETIME    NULL,
+    views       INT            NOT NULL DEFAULT 0,
     created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
@@ -94,6 +97,18 @@ CREATE TABLE wishlists (
     UNIQUE KEY uq_wishlist (user_id, product_id),
     FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- 7b. product_views
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE TABLE product_views (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    user_id    INT NOT NULL,
+    viewed_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

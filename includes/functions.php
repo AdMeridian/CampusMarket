@@ -8,8 +8,8 @@
 /**
  * Sanitize user input to prevent XSS
  */
-function sanitize(string $input): string {
-    return strip_tags(trim($input));
+function sanitize(?string $input): string {
+    return strip_tags(trim((string)$input));
 }
 
 /**
@@ -149,7 +149,8 @@ function renderProductPrice(array $product): string {
 /**
  * Human-readable time ago (e.g., "3 hours ago")
  */
-function timeAgo(string $datetime): string {
+function timeAgo(?string $datetime): string {
+    if (!$datetime) return 'Recently';
     $now  = new DateTime();
     $ago  = new DateTime($datetime);
     $diff = $now->diff($ago);
@@ -165,7 +166,7 @@ function timeAgo(string $datetime): string {
 /**
  * Get a condition badge label and CSS class
  */
-function conditionBadge(string $condition): array {
+function conditionBadge(?string $condition): array {
     return match($condition) {
         'new'      => ['label' => 'New',      'class' => 'badge-new'],
         'like_new' => ['label' => 'Like New', 'class' => 'badge-like-new'],
@@ -197,23 +198,67 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
         return ['success' => false, 'error' => 'Invalid file type'];
     }
 
-    // Path setup
     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = uniqid('img_', true) . '.' . $ext;
-    $relPath = 'uploads/' . ltrim($subfolder, '/') . $filename;
-    $absPath = __DIR__ . '/../public/' . $relPath;
+    $subfolder = trim($subfolder, '/');
+    $objectName = $subfolder . '/' . $filename;
+    
+    // Check if Supabase env vars are set
+    require_once __DIR__ . '/../config/supabase.php';
+    $supabaseUrl = supabaseUrl();
+    $supabaseKey = supabaseAnonKey();
 
-    // Create directory
-    $dir = dirname($absPath);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+    if (empty($supabaseUrl) || empty($supabaseKey)) {
+        // Local upload fallback if Supabase not configured
+        $relPath = 'uploads/' . $objectName;
+        $absPath = __DIR__ . '/../public/' . $relPath;
+        $dir = dirname($absPath);
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        if (move_uploaded_file($file['tmp_name'], $absPath)) {
+            return ['success' => true, 'path' => $relPath];
+        }
+        return ['success' => false, 'error' => 'Failed to move file'];
     }
 
-    if (move_uploaded_file($file['tmp_name'], $absPath)) {
-        return ['success' => true, 'path' => $relPath];
+    // Upload to Supabase Storage
+    $bucket = 'marketplace';
+    $url = rtrim($supabaseUrl, '/') . '/storage/v1/object/' . $bucket . '/' . $objectName;
+    
+    $fileData = file_get_contents($file['tmp_name']);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $fileData);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer " . $supabaseKey,
+        "apikey: " . $supabaseKey,
+        "Content-Type: " . $file['type']
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode >= 200 && $httpCode < 300) {
+        // Return absolute URL so it works seamlessly on frontend
+        $publicUrl = rtrim($supabaseUrl, '/') . '/storage/v1/object/public/' . $bucket . '/' . $objectName;
+        return ['success' => true, 'path' => $publicUrl];
+    } else {
+        return ['success' => false, 'error' => 'Upload failed: ' . $response];
     }
+}
 
-    return ['success' => false, 'error' => 'Failed to move file'];
+/**
+ * Get product image URL
+ */
+function getProductImage(?string $path): string {
+    if (empty($path)) {
+        return BASE_URL . 'public/images/default-product.png';
+    }
+    if (strpos($path, 'http') === 0) {
+        return $path;
+    }
+    return rtrim(BASE_URL, '/') . '/public/' . ltrim($path, '/');
 }
 
 /**
@@ -280,7 +325,7 @@ function createNotification(PDO $pdo, int $userId, string $type, string $title, 
  * Count unread notifications for a user
  */
 function countUnreadNotifications(PDO $pdo, int $userId): int {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = 0");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = :uid AND is_read = FALSE");
     $stmt->execute([':uid' => $userId]);
     return (int) $stmt->fetchColumn();
 }
@@ -289,7 +334,7 @@ function countUnreadNotifications(PDO $pdo, int $userId): int {
  * Count unread chat messages for a user.
  */
 function countUnreadMessages(PDO $pdo, int $userId): int {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE receiver_id = :uid AND is_read = 0");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE receiver_id = :uid AND is_read = FALSE");
     $stmt->execute([':uid' => $userId]);
     return (int) $stmt->fetchColumn();
 }
@@ -305,7 +350,7 @@ function getRecentProducts(PDO $pdo, int $limit = 8): array {
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
         WHERE p.status = 'active'
         ORDER BY p.created_at DESC
         LIMIT :limit
@@ -319,13 +364,31 @@ function getRecentProducts(PDO $pdo, int $limit = 8): array {
  * Fetch featured products for the homepage scroller
  */
 function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
+    static $hasFeaturedUntil = null;
+    if ($hasFeaturedUntil === null) {
+        $colStmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'products'
+              AND column_name = 'featured_until'
+            LIMIT 1
+        ");
+        $colStmt->execute();
+        $hasFeaturedUntil = (bool) $colStmt->fetchColumn();
+    }
+
+    $featuredWindowFilter = $hasFeaturedUntil
+        ? " AND (p.featured_until IS NULL OR p.featured_until > NOW())"
+        : "";
+
     $stmt = $pdo->prepare("
         SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
-        WHERE p.status = 'active' AND p.is_featured = 1 AND (p.featured_until IS NULL OR p.featured_until > NOW())
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active' AND p.is_featured = TRUE{$featuredWindowFilter}
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
@@ -351,14 +414,35 @@ function getTopCategories(PDO $pdo): array {
  * Fetch top donors for the Hall of Fame
  */
 function getDonors(PDO $pdo, int $limit = 5): array {
-    return $pdo->query("
-        SELECT DISTINCT u.username, u.avatar
+    static $hasPromotionPayments = null;
+    if ($hasPromotionPayments === null) {
+        $tableStmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = 'promotion_payments'
+            LIMIT 1
+        ");
+        $tableStmt->execute();
+        $hasPromotionPayments = (bool) $tableStmt->fetchColumn();
+    }
+
+    if (!$hasPromotionPayments) {
+        return [];
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT u.username, u.avatar
         FROM promotion_payments pp
         JOIN users u ON u.id = pp.user_id
         WHERE pp.payment_type = 'donation' AND pp.status = 'approved'
-        ORDER BY pp.approved_at DESC
-        LIMIT $limit
-    ")->fetchAll();
+        GROUP BY u.id, u.username, u.avatar
+        ORDER BY MAX(pp.approved_at) DESC
+        LIMIT :limit
+    ");
+    $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
 }
 
 /**
@@ -391,7 +475,7 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
             COUNT(*) AS total_orders,
             SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) AS completed_orders,
             SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_orders,
-            AVG(CASE WHEN o.status = 'completed' THEN TIMESTAMPDIFF(HOUR, p.created_at, o.updated_at) END) AS avg_hours_to_sell
+            AVG(CASE WHEN o.status = 'completed' THEN EXTRACT(EPOCH FROM (o.updated_at - p.created_at)) / 3600 END) AS avg_hours_to_sell
         FROM orders o
         JOIN products p ON p.id = o.product_id
         WHERE p.user_id = :sid
@@ -442,16 +526,22 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
  * Build a public URL for a user avatar.
  */
 function avatarUrl(?string $avatarPath): string {
-    if (!empty($avatarPath)) {
-        return BASE_URL . 'public/' . ltrim($avatarPath, '/');
+    if (empty($avatarPath)) {
+        return 'https://www.gravatar.com/avatar/?d=mp&s=200';
     }
-    return 'https://www.gravatar.com/avatar/?d=mp&s=200';
+    // If it's already a full URL (e.g. Supabase Storage), return it as is
+    if (filter_var($avatarPath, FILTER_VALIDATE_URL)) {
+        return $avatarPath;
+    }
+    // Otherwise, return local path
+    return BASE_URL . 'public/' . ltrim($avatarPath, '/');
 }
 
 /**
  * Render star glyphs for a rating (0–5, half-star supported).
  */
-function renderStars(float $avg): string {
+function renderStars(?float $avg): string {
+    $avg = (float)($avg ?? 0);
     $full = (int) floor($avg);
     $half = ($avg - $full) >= 0.5;
     $html = '';

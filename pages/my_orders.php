@@ -46,12 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ord
 }
 
 // Fetch buying orders
-$stmtBuying = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as seller_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON p.user_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1 WHERE o.buyer_id = :uid ORDER BY o.created_at DESC");
+$stmtBuying = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as seller_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON p.user_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE o.buyer_id = :uid ORDER BY o.created_at DESC");
 $stmtBuying->execute([':uid' => $currentUserId]);
 $buyingOrders = $stmtBuying->fetchAll();
 
 // Fetch selling orders
-$stmtSelling = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as buyer_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON o.buyer_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1 WHERE p.user_id = :uid ORDER BY o.created_at DESC");
+$stmtSelling = $pdo->prepare("SELECT o.*, p.title as product_title, p.price, u.username as buyer_name, i.image_path FROM orders o JOIN products p ON o.product_id = p.id JOIN users u ON o.buyer_id = u.id LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.user_id = :uid ORDER BY o.created_at DESC");
 $stmtSelling->execute([':uid' => $currentUserId]);
 $sellingOrders = $stmtSelling->fetchAll();
 
@@ -59,7 +59,7 @@ $pageTitle = "My Transactions";
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container mt-12 mb-20 relative">
+<div class="container mt-24 mb-20 relative">
     <div class="text-center mb-12">
         <h1 class="gradient-text mb-2" style="font-size: 2.75rem;">Transaction Hub</h1>
         <p class="text-muted text-lg">Track your purchases and manage your sales</p>
@@ -88,7 +88,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php foreach ($buyingOrders as $order): ?>
                         <div class="glass-panel p-5 flex gap-5 items-center hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); transition: all 0.3s;">
                             <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
-                                <img src="<?php echo $order['image_path'] ? BASE_URL.'/public/'.$order['image_path'] : '../public/images/placeholder.png'; ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;">
                             </div>
                             <div class="flex-grow">
                                 <div class="flex justify-between items-start mb-1">
@@ -136,7 +136,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #f59e0b; transition: all 0.3s; <?php echo $order['status'] === 'pending' ? 'background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(252,211,77,0.05));' : ''; ?>">
                             <div class="flex gap-5 items-start mb-4">
                                 <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
-                                    <img src="<?php echo $order['image_path'] ? BASE_URL.'/public/'.$order['image_path'] : '../public/images/placeholder.png'; ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;">
                                 </div>
                                 <div class="flex-grow">
                                     <div class="flex justify-between items-start mb-1">

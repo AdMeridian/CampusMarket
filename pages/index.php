@@ -1,51 +1,71 @@
 <?php
-session_start();
 require_once __DIR__ . '/../config/constants.php';
-include __DIR__ . '/../config/db.php';
-include __DIR__ . '/../includes/functions.php';
-include __DIR__ . '/../includes/data.php';
+require_once __DIR__ . '/../includes/bootstrap.php';
 
-// Filter for products that have authentic local images (not placeholders)
-$authentic_products = array_filter($products, function($p) {
-    return strpos($p['img'], '../public/images/') === 0;
-});
+// Fetch latest 6 active products from database
+$stmt = $pdo->prepare("
+    SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    JOIN users u ON p.user_id = u.id
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+    WHERE p.status = 'active'
+    ORDER BY p.created_at DESC
+    LIMIT 6
+");
+$stmt->execute();
+$latest_products = $stmt->fetchAll();
 
-// Mix them up and take 6
-shuffle($authentic_products);
-$latest_products = array_slice($authentic_products, 0, 6);
+// Fetch popular categories (PostgreSQL-compatible)
+$categories = $pdo->query("
+    SELECT c.*, COUNT(p.id) as product_count
+    FROM categories c
+    LEFT JOIN products p ON c.id = p.category_id AND p.status = 'active'
+    GROUP BY c.id
+    ORDER BY product_count DESC
+    LIMIT 4
+")->fetchAll();
+
+// Fetch 5 products for each of these categories
+foreach ($categories as &$cat) {
+    $stmt = $pdo->prepare("
+        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active' AND p.category_id = ?
+        ORDER BY p.created_at DESC
+        LIMIT 5
+    ");
+    $stmt->execute([$cat['id']]);
+    $cat['products'] = $stmt->fetchAll();
+}
+unset($cat);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>CampusMarket – Buy &amp; Sell on Campus</title>
-<meta name="description" content="The student marketplace to buy, sell, and connect on campus.">
+<?php
+$pageTitle = "CampusMarket – Buy & Sell on Campus";
+require_once __DIR__ . '/../includes/header.php';
+?>
 
-</head>
-<body>
-
-<nav aria-label="Catalog" style="padding:.5rem 1rem;font-size:.95rem;">
-  <a href="browse.php">Browse</a> ·
-  <a href="search.php">Search</a> ·
-  <a href="create_listing.php">Create listing</a> ·
-  <a href="wishlist.php">Wishlist</a>
-</nav>
-
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-inner" style="display:block;text-align:center;max-width:700px;margin:0 auto;">
-    <div class="hero-text">
-      <p style="font-size:.85rem;opacity:.7;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem;">Buy. Sell. Connect.</p>
-      <h1>Everything students need, all in one place.</h1>
-      <p>Find great deals on books, gadgets, furniture, notes and more — from students, for students.</p>
-      <a href="browse.php" class="btn-hero">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-        Start Browsing
-      </a>
+<!-- HERO SECTION -->
+<div class="hero-wrap" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 5rem 0; margin-bottom: 4rem; color: white; position: relative; overflow: hidden; border-radius: 0 0 40px 40px;">
+    <div class="container relative z-10 text-center">
+        <p class="text-indigo-100 font-bold uppercase tracking-widest mb-4" style="font-size: 0.85rem;">Buy. Sell. Connect.</p>
+        <h1 class="font-black mb-6" style="font-size: 3.5rem; line-height: 1.1; letter-spacing: -2px;">Everything students need, <br>all in one place.</h1>
+        <p class="text-xl text-indigo-50 mb-10 max-w-2xl mx-auto" style="opacity: 0.9;">Find great deals on books, gadgets, furniture, notes and more — from students, for students.</p>
+        <div class="flex justify-center gap-4">
+            <a href="browse.php" class="btn btn-white-solid px-8 py-4 text-lg shadow-xl hover-scale" style="border-radius: 16px; font-weight: 800; color: #4f46e5 !important;">
+                Start Browsing
+            </a>
+            <a href="create_listing.php" class="btn btn-outline border-white text-white px-8 py-4 text-lg hover-scale" style="border-radius: 16px; font-weight: 800; border-width: 2px;">
+                Sell Something
+            </a>
+        </div>
     </div>
-  </div>
-</section>
+</div>
+
+<div class="container">
 
 <!-- LATEST LISTINGS -->
 <div class="section">
@@ -54,19 +74,8 @@ $latest_products = array_slice($authentic_products, 0, 6);
     <a href="browse.php" class="view-all">View all →</a>
   </div>
   <div class="products-grid">
-    <?php foreach($latest_products as $p): ?>
-    <div class="product-card" onclick="window.location.href='product.php?id=<?= $p['id'] ?>'">
-      <img class="product-img" src="<?= $p['img'] ?>" alt="<?= htmlspecialchars($p['title']) ?>" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <div class="product-img-placeholder" style="display:none">📦</div>
-      <button class="heart-btn" type="button" id="heart-<?= $p['id'] ?>" onclick="event.stopPropagation();toggleWishlist(<?= $p['id'] ?>,<?= htmlspecialchars(json_encode($p),ENT_QUOTES) ?>)" aria-label="Add to wishlist">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/></svg>
-      </button>
-      <div class="product-body">
-        <div class="product-title"><?= htmlspecialchars($p['title']) ?></div>
-        <div class="product-category"><?= $p['category'] ?></div>
-        <div class="product-price"><?= formatPrice($p['price']) ?></div>
-      </div>
-    </div>
+    <?php foreach($latest_products as $prod): ?>
+      <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
     <?php endforeach; ?>
   </div>
 </div>
@@ -78,24 +87,26 @@ $latest_products = array_slice($authentic_products, 0, 6);
     <h2 class="section-title">Popular Categories</h2>
     <a href="browse.php?view=categories" class="view-all">View all →</a>
   </div>
-  <div class="categories-grid">
+  <div class="space-y-12">
     <?php foreach($categories as $cat): ?>
-    <a href="browse.php?category=<?= urlencode($cat['name']) ?>" class="cat-card">
-      <span class="cat-icon"><?= $cat['icon'] ?></span>
-      <div class="cat-name"><?= $cat['name'] ?></div>
-      <div class="cat-count"><?= $cat['count'] ?></div>
-    </a>
+      <div class="category-section">
+        <div class="section-header">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl"><?= $cat['icon'] ?? '📦' ?></span>
+            <h2 class="section-title"><?= htmlspecialchars($cat['name']) ?></h2>
+          </div>
+          <a href="browse.php?category=<?= $cat['id'] ?>" class="view-all">See more in <?= htmlspecialchars($cat['name']) ?> →</a>
+        </div>
+        <div class="products-grid">
+          <?php foreach($cat['products'] as $prod): ?>
+            <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
+          <?php endforeach; ?>
+        </div>
+      </div>
     <?php endforeach; ?>
   </div>
 </div>
 </div>
 
-<style>
-  .product-card { position: relative; }
-  .heart-btn { position: absolute; top: 8px; right: 8px; z-index: 2; width: 36px; height: 36px; border: none; border-radius: var(--radius-lg); background: rgba(255,255,255,.95); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.12); color: #64748b; }
-  .heart-btn.active { color: #dc2626; }
-</style>
-<script src="../public/js/wishlist.js"></script>
-<script>updateWishlistUI();</script>
-</body>
-</html>
+</div>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

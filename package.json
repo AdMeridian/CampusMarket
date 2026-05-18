@@ -20,5 +20,9 @@
   "homepage": "https://github.com/Carlm832/CampusMarket#readme",
   "devDependencies": {
     "@playwright/test": "^1.60.0"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0"
   }
 }

@@ -28,14 +28,22 @@ try {
         $stmt->execute([$user_id, $product_id]);
         setFlash('success', 'Product removed from your wishlist.');
     } else {
+        // Block owner from saving their own product
+        $ownerCheck = $pdo->prepare("SELECT 1 FROM products WHERE id = ? AND user_id = ?");
+        $ownerCheck->execute([$product_id, $user_id]);
+        if ($ownerCheck->fetch()) {
+            setFlash('error', 'You cannot save your own listing.');
+            redirect($_POST['redirect_to'] ?? (BASE_URL . 'pages/wishlist.php'));
+        }
         // Add it
         $stmt = $pdo->prepare("INSERT INTO wishlists (user_id, product_id) VALUES (?, ?)");
         $stmt->execute([$user_id, $product_id]);
         setFlash('success', 'Product saved to your wishlist!');
     }
 
-    // Redirect immediately to wishlist page as requested
-    redirect(BASE_URL . 'pages/wishlist.php');
+    // Redirect back if requested, otherwise to wishlist
+    $redirect = $_POST['redirect_to'] ?? (BASE_URL . 'pages/wishlist.php');
+    redirect($redirect);
 
 } catch (PDOException $e) {
     // Log error if needed and show message

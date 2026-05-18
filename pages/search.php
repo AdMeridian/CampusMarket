@@ -13,7 +13,7 @@ if ($query !== '' || $categoryId !== '') {
             FROM products p
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
-            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
             WHERE p.status = 'active'";
     $params = [];
 
@@ -67,14 +67,10 @@ if ($query !== '' || $categoryId !== '') {
             <?php foreach ($results as $prod): ?>
                 <a href="product.php?id=<?php echo $prod['id']; ?>" class="glass-panel hover-scale relative" style="display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-lg); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(255,255,255,0.5); text-decoration: none;">
                     <div style="height: 200px; background: #e2e8f0; position: relative; overflow: hidden;">
-                        <?php if ($prod['image_path']): ?>
-                            <img src="<?php echo BASE_URL; ?>/public/<?php echo $prod['image_path']; ?>" alt="<?php echo sanitize($prod['title']); ?>" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                        <?php else: ?>
-                            <div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #94a3b8;">
-                                <svg class="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                <span class="text-sm font-medium">No Image Provided</span>
-                            </div>
-                        <?php endif; ?>
+                        <?php 
+                            $searchImg = getProductImage($prod['image_path'] ?? null);
+                        ?>
+                        <img src="<?php echo $searchImg; ?>" alt="<?php echo sanitize($prod['title']); ?>" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                         
                         <div style="position: absolute; top: 0.75rem; right: 0.75rem;">
                             <?php $badge = conditionBadge($prod['condition']); ?>
@@ -85,11 +81,16 @@ if ($query !== '' || $categoryId !== '') {
                         <p class="text-primary font-bold small tracking-wider uppercase mb-1" style="font-size: 0.7rem;"><?php echo sanitize($prod['category_name']); ?></p>
                         <h4 class="mb-3 text-main font-bold" style="font-size: 1.1rem; line-height: 1.4; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?php echo sanitize($prod['title']); ?></h4>
                         
-                        <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
-                            <span style="font-weight: 800; color: var(--text-main); font-size: 1.05rem; font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($prod); ?></span>
-                            <div class="flex items-center gap-2">
-                                <div style="min-width: 24px; min-height: 24px; border-radius: var(--radius-md); background: var(--primaryLight); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: bold; padding:0.2rem;"><?php echo strtoupper(substr($prod['seller_name'],0,2)); ?></div>
-                                <span class="text-muted font-medium text-sm truncate" style="max-width: 80px;">@<?php echo sanitize($prod['seller_name']); ?></span>
+                        <div class="flex flex-col gap-2 mt-auto pt-4 border-t border-gray-100">
+                            <div class="flex justify-between items-center">
+                                <div class="flex flex-col">
+                                    <span style="font-weight: 800; color: var(--text-main); font-size: 1.05rem; font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($prod); ?></span>
+                                    <span class="text-muted" style="font-size: 0.7rem; opacity: 0.7;">Listed <?php echo timeAgo($prod['created_at']); ?></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div style="min-width: 24px; min-height: 24px; border-radius: var(--radius-md); background: var(--primaryLight); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: bold; padding:0.2rem;"><?php echo strtoupper(substr($prod['seller_name'],0,2)); ?></div>
+                                    <span class="text-muted font-medium text-sm truncate" style="max-width: 80px;">@<?php echo sanitize($prod['seller_name']); ?></span>
+                                </div>
                             </div>
                         </div>
                     </div>

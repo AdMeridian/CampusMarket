@@ -15,7 +15,7 @@ $stmt = $pdo->prepare("
     JOIN products p ON w.product_id = p.id
     JOIN categories c ON p.category_id = c.id
     JOIN users u ON p.user_id = u.id
-    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = 1
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
     WHERE w.user_id = ?
     ORDER BY w.created_at DESC
 ");
@@ -26,7 +26,7 @@ $pageTitle = "My Wishlist";
 include '../includes/header.php';
 ?>
 
-<div class="container min-h-screen pt-12 pb-20 relative">
+<div class="container min-h-screen pt-24 pb-20 relative">
     <!-- Background Accents -->
 
     <div class="mb-10 text-center lg:text-left flex flex-col md:flex-row justify-between items-center gap-6">

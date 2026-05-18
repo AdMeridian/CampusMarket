@@ -11,7 +11,10 @@
  *   sendVerificationEmail($to, $username, $verifyUrl)
  */
 
-require_once __DIR__ . '/../config/secrets.php';
+$secretsFile = __DIR__ . '/../config/secrets.php';
+if (file_exists($secretsFile)) {
+    require_once $secretsFile;
+}
 
 if (!function_exists('sendEmail')) {
     /**
@@ -19,13 +22,16 @@ if (!function_exists('sendEmail')) {
      * Errors are logged via error_log() so they show up in the XAMPP Apache log.
      */
     function sendEmail(string $to, string $subject, string $html): array {
-        if (!defined('RESEND_API_KEY') || RESEND_API_KEY === '') {
-            error_log('[mailer] RESEND_API_KEY not set in config/secrets.php');
+        $resendApiKey = defined('RESEND_API_KEY') ? RESEND_API_KEY : getenv('RESEND_API_KEY');
+        if (empty($resendApiKey)) {
+            error_log('[mailer] RESEND_API_KEY not set in config/secrets.php or environment');
             return ['ok' => false, 'error' => 'Mail service not configured.'];
         }
 
-        $from = (defined('RESEND_FROM_NAME') ? RESEND_FROM_NAME . ' ' : '')
-              . '<' . (defined('RESEND_FROM_EMAIL') ? RESEND_FROM_EMAIL : 'onboarding@resend.dev') . '>';
+        $resendFromName = defined('RESEND_FROM_NAME') ? RESEND_FROM_NAME : (getenv('RESEND_FROM_NAME') ?: '');
+        $resendFromEmail = defined('RESEND_FROM_EMAIL') ? RESEND_FROM_EMAIL : (getenv('RESEND_FROM_EMAIL') ?: 'onboarding@resend.dev');
+
+        $from = ($resendFromName ? $resendFromName . ' ' : '') . '<' . $resendFromEmail . '>';
 
         $payload = [
             'from'    => $from,
@@ -40,7 +46,7 @@ if (!function_exists('sendEmail')) {
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => json_encode($payload),
             CURLOPT_HTTPHEADER     => [
-                'Authorization: Bearer ' . RESEND_API_KEY,
+                'Authorization: Bearer ' . $resendApiKey,
                 'Content-Type: application/json',
             ],
             CURLOPT_TIMEOUT        => 10,

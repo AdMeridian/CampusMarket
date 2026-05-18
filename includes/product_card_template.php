@@ -8,19 +8,31 @@
  */
 global $pdo; // Ensure PDO is available if included inside a function scope
 ?>
-<div class="card card-hover flex flex-col h-full" style="position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); overflow: hidden; padding: 1.5rem; transition: var(--transition);">
+<?php
+$isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
+$cardBorder = 'border: 2px solid var(--secondary);';
+?>
+<div class="card card-hover flex flex-col h-full" style="position: relative; border-radius: var(--radius-lg); <?php echo $cardBorder; ?> background: var(--bg-surface); overflow: hidden; padding: 1.5rem; transition: var(--transition);">
+    
+    <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(to right, var(--primary), var(--secondary)); z-index: 20;"></div>
+    
+    <?php if ($isOwner): ?>
+        <div style="position: absolute; top: 1rem; right: 1rem; background: white; color: var(--primary); padding: 0.35rem 0.6rem; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; border-radius: 8px; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border-light); display: flex; align-items: center; gap: 1.5px;">
+            <svg class="w-2 h-2" fill="currentColor" viewBox="0 0 20 20" style="width: 8px; height: 8px;"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
+            Your Listing
+        </div>
+    <?php elseif (!empty($prod['seller_name'])): ?>
+        <div style="position: absolute; top: 1rem; right: 1rem; background: white; color: var(--primary); padding: 0.35rem 0.6rem; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; border-radius: 8px; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border-light); display: flex; align-items: center; gap: 3px; backdrop-filter: blur(4px);">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 10px; height: 10px; opacity: 0.7;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            @<?php echo sanitize($prod['seller_name']); ?>
+        </div>
+    <?php endif; ?>
     <!-- Main Product Link -->
     <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/product.php?id=<?php echo $prod['id']; ?>" style="text-decoration: none; display: flex; flex-direction: column; height: 100%;">
         <!-- Product Image Container -->
         <div class="product-card-image-wrap" style="border-radius: var(--radius-md); margin-bottom: 1.5rem;">
             <?php 
-                $imgUrl = sanitize(rtrim(BASE_URL, '/') . '/public/images/default-product.png');
-                if (!empty($prod['image_path'])) {
-                    // Normalize path: if it starts with 'uploads/', it's already including the 'public/' relative root in some contexts
-                    // but usually it's stored relative to 'public/'
-                    $path = ltrim($prod['image_path'], '/');
-                    $imgUrl = sanitize(rtrim(BASE_URL, '/') . '/public/' . $path);
-                }
+                $imgUrl = getProductImage($prod['image_path'] ?? null);
             ?>
             <img src="<?php echo $imgUrl; ?>" alt="<?php echo sanitize($prod['title']); ?>">
             
@@ -39,7 +51,7 @@ global $pdo; // Ensure PDO is available if included inside a function scope
             <?php if (!empty($prod['is_featured']) && (int)$prod['is_featured'] === 1): ?>
             <div style="position: absolute; top: 1rem; right: 1rem; z-index: 5;">
                 <span class="badge" style="background: var(--primary); color: white; font-size: 0.7rem; padding: 0.4rem 0.85rem; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); border: 1px solid rgba(255,255,255,0.2); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.25rem;">
-                    <span style="display:inline-block; width: 6px; height: 6px; background: white; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                    <span style="display:inline-block; width: 6px; height: 6px; background: white; border-radius: var(--radius-sm); animation: pulse 2s infinite;"></span>
                     Featured
                 </span>
             </div>
@@ -51,9 +63,12 @@ global $pdo; // Ensure PDO is available if included inside a function scope
             <p class="mb-2" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.25rem;">(<?php echo sanitize($prod['category_name'] ?? ($prod['category'] ?? 'General')); ?>)</p>
             <h4 class="mb-3 text-main" style="font-size: 1.15rem; font-weight: 700; line-height: 1.3; margin-bottom: 1rem; flex-grow: 1;"><?php echo sanitize($prod['title']); ?></h4>
             
-            <div class="mt-auto flex items-center gap-4">
-                <span style="font-weight: 800; color: var(--text-main); font-size: 1.15rem; white-space: nowrap;"><?php echo renderProductPrice($prod); ?></span>
-                <div style="height: 4px; width: 32px; background: var(--primary); border-radius: 3px;"></div>
+            <div class="mt-auto flex flex-col gap-1">
+                <div class="flex items-center gap-3">
+                    <span style="font-weight: 800; color: var(--text-main); font-size: 1.15rem; white-space: nowrap;"><?php echo renderProductPrice($prod); ?></span>
+                    <span class="text-muted" style="font-size: 0.75rem; opacity: 0.7;">• Listed <?php echo timeAgo($prod['created_at']); ?></span>
+                </div>
+                <div style="height: 3px; width: 32px; background: var(--primary); border-radius: 3px; margin-top: 2px;"></div>
             </div>
         </div>
     </a>

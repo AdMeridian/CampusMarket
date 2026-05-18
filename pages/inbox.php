@@ -9,18 +9,18 @@ $currentUserId = currentUserId();
 $stmt = $pdo->prepare("
     SELECT 
         m.id, m.sender_id, m.receiver_id, m.product_id, m.body, m.is_read, m.created_at,
-        p.title as product_title,
-        IF(m.sender_id = :uid1, m.receiver_id, m.sender_id) as other_user_id,
+        COALESCE(p.title, 'General Support') as product_title,
+        CASE WHEN m.sender_id = :uid1 THEN m.receiver_id ELSE m.sender_id END as other_user_id,
         u.username as other_username,
         u.avatar as other_avatar
     FROM messages m
-    JOIN products p ON m.product_id = p.id
-    JOIN users u ON u.id = IF(m.sender_id = :uid2, m.receiver_id, m.sender_id)
+    LEFT JOIN products p ON m.product_id = p.id
+    JOIN users u ON u.id = (CASE WHEN m.sender_id = :uid2 THEN m.receiver_id ELSE m.sender_id END)
     WHERE m.id IN (
         SELECT MAX(id)
         FROM messages 
         WHERE sender_id = :uid3 OR receiver_id = :uid4
-        GROUP BY product_id, IF(sender_id = :uid5, receiver_id, sender_id)
+        GROUP BY product_id, (CASE WHEN sender_id = :uid5 THEN receiver_id ELSE sender_id END)
     )
     ORDER BY m.created_at DESC
 ");
@@ -34,7 +34,7 @@ $stmt->execute([
 $conversations = $stmt->fetchAll();
 
 $unreadCount = array_reduce($conversations, function($carry, $item) use ($currentUserId) {
-    return $carry + ($item['receiver_id'] == $currentUserId && $item['is_read'] == 0 ? 1 : 0);
+    return $carry + ($item['receiver_id'] == $currentUserId && empty($item['is_read']) ? 1 : 0);
 }, 0);
 
 require_once __DIR__ . '/../includes/header.php';
@@ -44,7 +44,7 @@ require_once __DIR__ . '/../includes/header.php';
 /* ── Inbox Styles ─────────────────────────────────────── */
 .inbox-wrap {
     max-width: 820px;
-    margin: 2.5rem auto 5rem;
+    margin: 6rem auto 5rem;
     padding: 0 1.25rem;
 }
 
@@ -148,6 +148,8 @@ require_once __DIR__ . '/../includes/header.php';
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
 }
 
 .convo-card.unread .convo-username {
@@ -268,10 +270,32 @@ body.dark-mode .convo-card.unread {
 
 <div class="inbox-wrap">
 
+    <!-- Inbox Tabs -->
+    <div class="flex gap-4 mb-8" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+        <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2" style="font-weight: 700; border-bottom: 2px solid var(--primary); color: var(--primary);">
+            <span>Messages</span>
+            <?php 
+                $tabUnreadMessages = countUnreadMessages($pdo, $currentUserId);
+                if ($tabUnreadMessages > 0): 
+            ?>
+                <span class="badge badge-primary"><?= $tabUnreadMessages ?></span>
+            <?php endif; ?>
+        </a>
+        <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" style="font-weight: 500;">
+            <span>Activity</span>
+            <?php 
+                $navUnreadNotifs = countUnreadNotifications($pdo, $currentUserId);
+                if ($navUnreadNotifs > 0): 
+            ?>
+                <span class="badge badge-accent"><?= $navUnreadNotifs ?></span>
+            <?php endif; ?>
+        </a>
+    </div>
+
     <!-- Header -->
     <div class="inbox-header">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <h1>Messages</h1>
+            <h1>Direct Messages</h1>
             <?php if ($unreadCount > 0): ?>
                 <span class="inbox-unread-count"><?= $unreadCount ?> new</span>
             <?php endif; ?>
@@ -296,7 +320,7 @@ body.dark-mode .convo-card.unread {
         <div class="convo-list">
             <?php foreach ($conversations as $conv): ?>
                 <?php
-                    $isUnread = ($conv['receiver_id'] == $currentUserId && $conv['is_read'] == 0);
+                    $isUnread = ($conv['receiver_id'] == $currentUserId && empty($conv['is_read']));
                     $initials = strtoupper(substr($conv['other_username'], 0, 2));
                     $hasAvatar = !empty($conv['other_avatar']);
                 ?>
@@ -318,7 +342,9 @@ body.dark-mode .convo-card.unread {
                             <span class="convo-username"><?= htmlspecialchars($conv['other_username']) ?></span>
                             <span class="convo-time"><?= timeAgo($conv['created_at']) ?></span>
                         </div>
-                        <div class="convo-product">Re: <?= htmlspecialchars($conv['product_title']) ?></div>
+                        <div class="convo-product" style="<?= $conv['product_id'] == 0 ? 'color: var(--secondary);' : '' ?>">
+                            <?= $conv['product_id'] == 0 ? 'Support Inquiry' : 'Re: ' . htmlspecialchars($conv['product_title']) ?>
+                        </div>
                         <p class="convo-body">
                             <?php if ($conv['sender_id'] == $currentUserId): ?>
                                 <span class="convo-body-prefix">You:</span>
