@@ -60,6 +60,69 @@ require_once ROOT_PATH . 'config/supabase.php';
 require_once ROOT_PATH . 'config/db.php';
 require_once ROOT_PATH . 'includes/functions.php';
 
+// ─── Stateless Cookie-Based Session Replication (Vercel Serverless Compatibility) ───
+$isSecureRequest = (
+    !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+    || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+    || (isset($isSecure) && $isSecure)
+);
+
+if (empty($_SESSION['user_id']) && !empty($_COOKIE['campusmarket_sess_stateless'])) {
+    $parts = explode('.', $_COOKIE['campusmarket_sess_stateless'], 2);
+    if (count($parts) === 2) {
+        $json = base64_decode($parts[0], true);
+        $signature = $parts[1];
+        $secret = supabaseAnonKey() ?: 'campusmarket_fallback_secret_key_12345';
+        if ($json !== false && hash_equals(hash_hmac('sha256', $json, $secret), $signature)) {
+            $data = json_decode($json, true);
+            if (is_array($data) && !empty($data['user_id'])) {
+                $_SESSION['user_id'] = (int)$data['user_id'];
+                $_SESSION['role'] = $data['role'] ?? 'user';
+                $_SESSION['username'] = $data['username'] ?? '';
+                $_SESSION['supabase_access_token'] = $data['supabase_access_token'] ?? '';
+                $_SESSION['supabase_refresh_token'] = $data['supabase_refresh_token'] ?? '';
+            }
+        }
+    }
+}
+
+// Register a shutdown function to automatically sync any session changes back to the secure cookie
+register_shutdown_function(function() use ($isSecureRequest) {
+    if (!headers_sent()) {
+        if (!empty($_SESSION['user_id'])) {
+            $sessionData = [
+                'user_id' => $_SESSION['user_id'],
+                'role' => $_SESSION['role'] ?? 'user',
+                'username' => $_SESSION['username'] ?? '',
+                'supabase_access_token' => $_SESSION['supabase_access_token'] ?? '',
+                'supabase_refresh_token' => $_SESSION['supabase_refresh_token'] ?? '',
+            ];
+            $json = json_encode($sessionData);
+            $secret = supabaseAnonKey() ?: 'campusmarket_fallback_secret_key_12345';
+            $signature = hash_hmac('sha256', $json, $secret);
+            $cookieValue = base64_encode($json) . '.' . $signature;
+            
+            setcookie('campusmarket_sess_stateless', $cookieValue, [
+                'expires' => time() + 86400 * 30, // 30 days
+                'path' => '/',
+                'secure' => $isSecureRequest,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+        } else {
+            // Delete the stateless session cookie if the session was cleared
+            setcookie('campusmarket_sess_stateless', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'secure' => $isSecureRequest,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+        }
+    }
+});
+
 // Session Validation (Prevent stale sessions after re-seeds)
 if (isLoggedIn()) {
     $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
