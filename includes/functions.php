@@ -418,14 +418,26 @@ function getTopCategories(PDO $pdo): array {
 function getDonors(PDO $pdo, int $limit = 5): array {
     static $hasPromotionPayments = null;
     if ($hasPromotionPayments === null) {
-        $tableStmt = $pdo->prepare("
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_schema = 'public'
-              AND table_name = 'promotion_payments'
-            LIMIT 1
-        ");
-        $tableStmt->execute();
+        $isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
+        if ($isPostgres) {
+            $tableStmt = $pdo->prepare("
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_name = 'promotion_payments'
+                LIMIT 1
+            ");
+            $tableStmt->execute();
+        } else {
+            $tableStmt = $pdo->prepare("
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'promotion_payments'
+                LIMIT 1
+            ");
+            $tableStmt->execute();
+        }
         $hasPromotionPayments = (bool) $tableStmt->fetchColumn();
     }
 
