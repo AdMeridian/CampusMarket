@@ -22,10 +22,23 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// CSRF token — generated once per session, validated on every POST
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+// CSRF token — double-submit cookie pattern (stateless, works on Vercel serverless).
+// The browser sends the cookie back on every POST, so no server-side session is needed.
+if (empty($_COOKIE['csrf_token'])) {
+    $csrfToken = bin2hex(random_bytes(32));
+    setcookie('csrf_token', $csrfToken, [
+        'expires'  => time() + 7200,
+        'path'     => '/',
+        'secure'   => $isSecureRequest,
+        'samesite' => 'Lax',
+        'httponly' => false, // Must be JS-readable for AJAX X-CSRF-Token header
+    ]);
+    $_COOKIE['csrf_token'] = $csrfToken; // Available for this request's PHP code
+} else {
+    $csrfToken = $_COOKIE['csrf_token'];
 }
+// Mirror into session for pages/environments that still rely on it
+$_SESSION['csrf_token'] = $csrfToken;
 
 // Simple .env parser for local development
 $envFile = ROOT_PATH . '.env';
