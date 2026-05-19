@@ -13,6 +13,22 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $path = parse_url($requestUri, PHP_URL_PATH);
 $path = rtrim($path, '/');
 
+// Elegant URL cleaner: automatically redirect explicit .php requests to extensionless URIs for a premium feel
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && substr($path, -4) === '.php') {
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+    $isJson = str_contains($accept, 'application/json');
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    $isApi = str_contains($path, 'api') || str_contains($path, '/api/');
+    
+    if (!$isJson && !$isAjax && !$isApi) {
+        $cleanPath = substr($path, 0, -4);
+        $queryString = $_SERVER['QUERY_STRING'] ?? '';
+        $redirectUrl = $cleanPath . ($queryString !== '' ? '?' . $queryString : '');
+        header('Location: ' . $redirectUrl, true, 301);
+        exit;
+    }
+}
+
 // Static fallback: if a static request reaches this front controller,
 // serve the file directly instead of returning 404.
 $normalizedPath = $path === '' ? '/' : $path;
