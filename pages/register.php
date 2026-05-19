@@ -107,8 +107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'emailRedirectTo' => $emailRedirectTo,
             ],
             'data' => [
-                'username' => $username,
-                'phone' => $phone,
+                'username'  => $username,
+                'full_name' => $username, // shown as display name in Supabase Auth dashboard
+                'phone'     => $phone,
             ],
         ]);
 
