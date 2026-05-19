@@ -59,7 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
         $success = true;
         setFlash('success', 'Your listing is live!');
-        redirect('browse.php');
+        
+        // Redirect to promotions page to offer an up-sell
+        redirect('promotions.php?product_id=' . $productId . '&new_listing=1');
 
     } catch (Exception $e) {
         $pdo->rollBack();

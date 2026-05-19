@@ -878,6 +878,13 @@ body.dark-mode .btn-white-solid:hover {
                                             </form>
                                         <?php endif; ?>
 
+                                        <!-- Promote Button -->
+                                        <?php if ((int)$prod['is_featured'] === 0): ?>
+                                        <a href="<?php echo BASE_URL; ?>pages/promotions.php?product_id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); font-weight: 700; text-align: center; border-radius: var(--radius-md); display: block;">Boost Listing</a>
+                                        <?php else: ?>
+                                        <button disabled class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: rgba(34, 197, 94, 0.1); color: #15803d; border: 1px solid rgba(34, 197, 94, 0.2); font-weight: 700; cursor: not-allowed; border-radius: var(--radius-md);">Already Promoted</button>
+                                        <?php endif; ?>
+
                                         <!-- Delete Form (Move to Bin) -->
                                         <form method="post" onsubmit="return confirm('Move to Recycle Bin?')">
                                             <?php echo csrfTokenField(); ?>

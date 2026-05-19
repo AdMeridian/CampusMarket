@@ -109,6 +109,14 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Background removed for flat aesthetic -->
 
     <div class="container" style="max-width: 1000px;">
+        <?php if (isset($_GET['new_listing']) && $_GET['new_listing'] == '1'): ?>
+            <div class="mb-8 p-4 text-center" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: var(--radius-lg);">
+                <h2 style="color: #15803d; font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem;">🎉 Your listing is live!</h2>
+                <p style="color: #166534; font-size: 0.95rem; margin-bottom: 0.5rem;">Want to get up to 10x more visibility right away? Boost your listing below.</p>
+                <a href="<?php echo BASE_URL; ?>pages/profile.php" style="color: #166534; text-decoration: underline; font-size: 0.85rem; font-weight: 600;">No thanks, take me to my profile</a>
+            </div>
+        <?php endif; ?>
+
         <!-- Header -->
         <div class="text-center mb-12">
             <div class="inline-flex items-center gap-2 mb-3 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
@@ -350,6 +358,12 @@ document.addEventListener('DOMContentLoaded', function() {
         stripeProduct.value = this.value;
         manualProduct.value = this.value;
     });
+
+    // Initialize if pre-selected
+    if (productPicker.value) {
+        stripeProduct.value = productPicker.value;
+        manualProduct.value = productPicker.value;
+    }
 
     // Stripe Validation
     document.getElementById('pay-stripe-btn').addEventListener('click', function() {
