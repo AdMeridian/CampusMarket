@@ -184,6 +184,26 @@ if ($action === 'send') {
             ':body' => $body
         ]);
         
+        // Auto-create order if a product is involved
+        if ($productId > 0) {
+            $stmtProd = $pdo->prepare("SELECT user_id, price FROM products WHERE id = ?");
+            $stmtProd->execute([$productId]);
+            $prod = $stmtProd->fetch();
+            if ($prod) {
+                $sellerId = (int)$prod['user_id'];
+                $buyerId = ($currentUserId === $sellerId) ? $receiverId : $currentUserId;
+                
+                // Check if a pending order already exists for this buyer and product
+                $stmtCheck = $pdo->prepare("SELECT id FROM orders WHERE product_id = ? AND buyer_id = ? AND status = 'pending'");
+                $stmtCheck->execute([$productId, $buyerId]);
+                if (!$stmtCheck->fetch()) {
+                    // Create pending order
+                    $stmtOrder = $pdo->prepare("INSERT INTO orders (product_id, buyer_id, amount, status, notes) VALUES (?, ?, ?, 'pending', ?)");
+                    $stmtOrder->execute([$productId, $buyerId, $prod['price'], 'Auto-created from direct message inquiry.']);
+                }
+            }
+        }
+        
         // Notify receiver
         createNotification($pdo, $receiverId, 'message', "New Message", "You received a new message.", $productId > 0 ? $productId : null);
         
@@ -491,6 +511,21 @@ if ($action === 'confirm_deal') {
             // Mark product as sold
             $stmtProd = $pdo->prepare("UPDATE products SET status = 'sold' WHERE id = :pid");
             $stmtProd->execute([':pid' => $productId]);
+
+            // Update order status to completed and insert transaction
+            $stmtOrderCheck = $pdo->prepare("SELECT id, amount FROM orders WHERE product_id = :pid AND buyer_id = :bid AND status = 'pending'");
+            $stmtOrderCheck->execute([':pid' => $productId, ':bid' => $buyerId]);
+            $order = $stmtOrderCheck->fetch();
+            
+            if ($order) {
+                // Mark order completed
+                $stmtUpdateOrder = $pdo->prepare("UPDATE orders SET status = 'completed' WHERE id = :id");
+                $stmtUpdateOrder->execute([':id' => $order['id']]);
+                
+                // Insert transaction
+                $stmtTrans = $pdo->prepare("INSERT INTO transactions (order_id, amount, status) VALUES (:oid, :amount, 'success')");
+                $stmtTrans->execute([':oid' => $order['id'], ':amount' => $order['amount']]);
+            }
 
             // Notify buyer
             createNotification($pdo, $buyerId, 'order', 'Deal Confirmed!',
