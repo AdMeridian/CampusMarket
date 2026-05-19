@@ -45,9 +45,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $unverified = true;
                 $errors['form'] = 'Please verify your email before logging in. Check your inbox at ' . sanitize($loginEmail) . '.';
             } else {
-                $errors['form'] = 'Incorrect email/username or password.';
+                // Local Fallback: Check local MySQL database if Supabase fails
+                $stmt = $pdo->prepare('SELECT id, password_hash, is_verified FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1');
+                $stmt->execute([':email' => $loginEmail]);
+                $localUser = $stmt->fetch();
+                if ($localUser && password_verify($password, $localUser['password_hash'])) {
+                    $auth['ok'] = true;
+                    $auth['data']['user'] = [
+                        'email' => $loginEmail,
+                        'email_confirmed_at' => $localUser['is_verified'] ? date('Y-m-d H:i:s') : null
+                    ];
+                } else {
+                    $errors['form'] = 'Incorrect email/username or password.';
+                }
             }
-        } else {
+        }
+        
+        if ($auth['ok']) {
             $authUser = $auth['data']['user'] ?? [];
             $authEmail = strtolower((string) ($authUser['email'] ?? $loginEmail));
             $isVerified = !empty($authUser['email_confirmed_at']) ? 1 : 0;

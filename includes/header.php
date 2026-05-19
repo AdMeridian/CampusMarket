@@ -86,7 +86,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
         </div>
 
         <!-- Shared Search Bar (Desktop) -->
-        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar group lg-flex" style="flex: 1; max-width: 450px; margin: 0 auto;">
+        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar group lg-flex" style="flex: 1; max-width: 450px; margin: 0 2rem;">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>

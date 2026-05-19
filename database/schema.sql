@@ -181,7 +181,7 @@ CREATE TABLE ratings (
 CREATE TABLE reports (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     reporter_id INT  NOT NULL,
-    product_id  INT  NOT NULL,
+    product_id  INT  NULL,
     reason      TEXT NOT NULL,
     status      ENUM('pending', 'reviewed', 'dismissed') NOT NULL DEFAULT 'pending',
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

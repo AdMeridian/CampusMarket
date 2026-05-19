@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bookwormGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#1d4ed8" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#bookwormGrad)" filter="url(#shadow)" />
+  <g fill="#ffffff" transform="translate(25, 25) scale(0.58)">
+    <!-- Book Stack / Open Book Icon -->
+    <path d="M12 24 C12 17.4 17.4 12 24 12 H96 V84 H24 C17.4 84 12 89.4 12 96 V24 Z M36 30 H84 V42 H36 V30 Z M36 54 H84 V66 H36 V54 Z M24 96 C24 92.7 26.7 90 30 90 H96 V102 H30 C26.7 102 24 99.3 24 96 Z" />
+  </g>
+</svg>

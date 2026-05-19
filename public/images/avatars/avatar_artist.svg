@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="artistGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#db2777" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#db2777" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#artistGrad)" filter="url(#shadow)" />
+  <g fill="#ffffff" transform="translate(25, 25) scale(0.58)">
+    <!-- Palette Icon -->
+    <path d="M60 12 C33.5 12 12 33.5 12 60 C12 86.5 33.5 108 60 108 C68.3 108 75 101.3 75 93 C75 89.2 73.4 85.8 70.9 83.3 C70.4 82.8 70 82 70 81.2 C70 79.5 81.4 78 83 78 C96.8 78 108 66.8 108 53 C108 30.4 86.5 12 60 12 Z M33 51 C29.7 51 27 48.3 27 45 C27 41.7 29.7 39 33 39 C36.3 39 39 41.7 39 45 C39 48.3 36.3 51 33 51 Z M51 33 C47.7 33 45 30.3 45 27 C45 23.7 47.7 21 51 21 C54.3 21 57 23.7 57 27 C57 30.3 54.3 33 51 33 Z M75 39 C71.7 39 69 36.3 69 33 C69 29.7 71.7 27 75 27 C78.3 27 81 29.7 81 33 C81 36.3 78.3 39 75 39 Z M87 57 C83.7 57 81 54.3 81 51 C81 47.7 83.7 45 87 45 C90.3 45 93 47.7 93 51 C93 54.3 90.3 57 87 57 Z" />
+  </g>
+</svg>

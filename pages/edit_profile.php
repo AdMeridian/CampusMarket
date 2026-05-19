@@ -65,13 +65,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $newAvatar = $uploaded;
         }
+    } elseif (!empty($_POST['selected_preset'])) {
+        $preset = sanitize($_POST['selected_preset']);
+        $validPresets = [
+            'images/avatars/avatar_scholar.svg',
+            'images/avatars/avatar_coder.svg',
+            'images/avatars/avatar_artist.svg',
+            'images/avatars/avatar_athlete.svg',
+            'images/avatars/avatar_gamer.svg',
+            'images/avatars/avatar_bookworm.svg'
+        ];
+        if (in_array($preset, $validPresets, true)) {
+            $newAvatar = $preset;
+        }
     }
 
     // Persist
     if (!$errors) {
         if ($newAvatar !== null) {
-            // Best-effort cleanup of the old avatar file.
-            if (!empty($user['avatar'])) {
+            // Best-effort cleanup of old uploaded files (skip preset SVGs).
+            if (!empty($user['avatar']) && strpos($user['avatar'], 'uploads/') === 0) {
                 $oldAbs = ROOT_PATH . 'public/' . $user['avatar'];
                 if (is_file($oldAbs)) @unlink($oldAbs);
             }
@@ -129,16 +142,46 @@ require_once '../includes/header.php';
         <form method="post" enctype="multipart/form-data" novalidate>
             <?php echo csrfTokenField(); ?>
             <!-- Avatar Section -->
-            <div class="flex items-center gap-6 mb-8 p-4" style="background: rgba(255,255,255,0.5); border-radius: var(--radius-md); border: 1px dashed var(--border-focus);">
-                <img src="<?php echo sanitize(avatarUrl($user['avatar'])); ?>" alt="Avatar" class="shadow-sm" style="width: 90px; height: 90px; border-radius: var(--radius-xl); object-fit: cover; border: 3px solid white;">
-                <div class="flex-grow">
-                    <label class="form-label font-bold mb-2">Profile Picture</label>
-                    <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control premium-input p-2 <?php echo isset($errors['avatar']) ? 'border-accent' : ''; ?>" style="font-size: 0.9rem;">
-                    <?php if (isset($errors['avatar'])): ?>
-                        <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['avatar']); ?></div>
-                    <?php else: ?>
-                        <div class="text-muted small mt-2">JPEG, PNG, WebP, or GIF · Max 5MB</div>
-                    <?php endif; ?>
+            <div class="flex flex-col gap-6 mb-8 p-6" style="background: rgba(255,255,255,0.5); border-radius: var(--radius-md); border: 1px dashed var(--border-focus);">
+                <div class="flex items-center gap-6">
+                    <img id="avatar-preview" src="<?php echo sanitize(avatarUrl($user['avatar'])); ?>" alt="Avatar" class="shadow-sm" style="width: 90px; height: 90px; border-radius: var(--radius-xl); object-fit: cover; border: 3px solid white; transition: var(--transition);">
+                    <div class="flex-grow">
+                        <label class="form-label font-bold mb-2">Upload Profile Picture</label>
+                        <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control premium-input p-2 <?php echo isset($errors['avatar']) ? 'border-accent' : ''; ?>" style="font-size: 0.9rem;">
+                        <?php if (isset($errors['avatar'])): ?>
+                            <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['avatar']); ?></div>
+                        <?php else: ?>
+                            <div class="text-muted small mt-2">JPEG, PNG, WebP, or GIF · Max 5MB</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-light); padding-top: 1.5rem;">
+                    <label class="form-label font-bold mb-3 block text-main">Or Choose a Student Avatar Preset</label>
+                    <input type="hidden" id="selected-preset" name="selected_preset" value="">
+                    
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                        <?php
+                        $presets = [
+                            ['path' => 'images/avatars/avatar_scholar.svg', 'name' => 'Scholar'],
+                            ['path' => 'images/avatars/avatar_coder.svg', 'name' => 'Coder'],
+                            ['path' => 'images/avatars/avatar_artist.svg', 'name' => 'Artist'],
+                            ['path' => 'images/avatars/avatar_athlete.svg', 'name' => 'Athlete'],
+                            ['path' => 'images/avatars/avatar_gamer.svg', 'name' => 'Gamer'],
+                            ['path' => 'images/avatars/avatar_bookworm.svg', 'name' => 'Bookworm']
+                        ];
+                        foreach ($presets as $preset):
+                            $isActive = ($user['avatar'] === $preset['path']);
+                        ?>
+                            <div class="avatar-preset-option flex flex-col items-center gap-2 <?php echo $isActive ? 'active' : ''; ?>" 
+                                 data-path="<?php echo $preset['path']; ?>" 
+                                 data-url="<?php echo avatarUrl($preset['path']); ?>"
+                                 style="cursor: pointer; border: 3px solid <?php echo $isActive ? 'var(--primary)' : 'transparent'; ?>; border-radius: var(--radius-lg); padding: 0.5rem; transition: all 0.3s ease; background: <?php echo $isActive ? 'white' : '#f8fafc'; ?>; text-align: center; box-shadow: <?php echo $isActive ? '0 4px 12px rgba(99, 102, 241, 0.15)' : 'none'; ?>;">
+                                <img src="<?php echo avatarUrl($preset['path']); ?>" alt="<?php echo $preset['name']; ?>" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                                <span class="font-bold text-main" style="font-size: 0.75rem;"><?php echo $preset['name']; ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
 
@@ -176,5 +219,61 @@ require_once '../includes/header.php';
       </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const presetOptions = document.querySelectorAll('.avatar-preset-option');
+    const selectedPresetInput = document.getElementById('selected-preset');
+    const avatarFileInput = document.getElementById('avatar');
+    const avatarPreview = document.getElementById('avatar-preview');
+
+    presetOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove active styles from all presets
+            presetOptions.forEach(opt => {
+                opt.classList.remove('active');
+                opt.style.borderColor = 'transparent';
+                opt.style.background = '#f8fafc';
+                opt.style.boxShadow = 'none';
+            });
+
+            // Set active style for this preset
+            this.classList.add('active');
+            this.style.borderColor = 'var(--primary)';
+            this.style.background = 'white';
+            this.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.15)';
+
+            // Update hidden input & preview
+            const path = this.dataset.path;
+            const url = this.dataset.url;
+            selectedPresetInput.value = path;
+            avatarPreview.src = url;
+
+            // Clear file input
+            avatarFileInput.value = '';
+        });
+    });
+
+    // If they choose a file, clear selected preset active styling
+    avatarFileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            presetOptions.forEach(opt => {
+                opt.classList.remove('active');
+                opt.style.borderColor = 'transparent';
+                opt.style.background = '#f8fafc';
+                opt.style.boxShadow = 'none';
+            });
+            selectedPresetInput.value = '';
+            
+            // Show local preview of uploaded file
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                avatarPreview.src = e.target.result;
+            }
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

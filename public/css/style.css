@@ -292,7 +292,7 @@ p {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-light);
-  padding: max(0.6rem, var(--safe-top)) 0 0.6rem;
+  padding: max(1rem, var(--safe-top)) 0 1rem;
   transition: var(--transition);
   overflow: visible !important;
   max-height: none !important;
@@ -390,7 +390,7 @@ p {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .nav-links a {
@@ -1490,7 +1490,7 @@ body {
 }
 
 .page-content-offset {
-  padding-top: 85px;
+  padding-top: 120px;
 }
 
 .container {

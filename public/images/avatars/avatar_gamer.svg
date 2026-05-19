@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="gamerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#d946ef" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#8b5cf6" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#gamerGrad)" filter="url(#shadow)" />
+  <g fill="#ffffff" transform="translate(25, 25) scale(0.58)">
+    <!-- Gamepad Controller Icon -->
+    <path d="M96 24 H24 C17.4 24 12 29.4 12 36 V84 C12 90.6 17.4 96 24 96 H96 C102.6 96 108 90.6 108 84 V36 C108 29.4 102.6 24 96 24 Z M39 66 H33 V72 H27 V66 H21 V60 H27 V54 H33 V60 H39 V66 Z M81 72 C76 72 72 68 72 63 C72 58 76 54 81 54 C86 54 90 58 90 63 C90 68 86 72 81 72 Z M96 54 C92.7 54 90 51.3 90 48 C90 44.7 92.7 42 96 42 C99.3 42 102 44.7 102 48 C102 51.3 99.3 54 96 54 Z" />
+  </g>
+</svg>
