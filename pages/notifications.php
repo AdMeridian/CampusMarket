@@ -33,79 +33,280 @@ if (!empty($unreadIds)) {
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container main-content mb-20" style="max-width: 800px; margin-top: 6rem;">
-    <div class="glass-panel" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-lg);">
-        <!-- Inbox Tabs -->
-        <div class="flex gap-4 mb-8" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem; padding: 0 2rem;">
-            <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" style="font-weight: 500;">
-                <span>Messages</span>
-                <?php 
-                    $navUnreadMessages = countUnreadMessages($pdo, $currentUserId);
-                    if ($navUnreadMessages > 0): 
-                ?>
-                    <span class="badge badge-primary"><?= $navUnreadMessages ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2" style="font-weight: 700; border-bottom: 2px solid var(--accent); color: var(--accent);">
-                <span>Activity</span>
-                <?php 
-                    $navUnreadNotifs = countUnreadNotifications($pdo, $currentUserId);
-                    if ($navUnreadNotifs > 0): 
-                ?>
-                    <span class="badge badge-accent"><?= $navUnreadNotifs ?></span>
-                <?php endif; ?>
-            </a>
-        </div>
+<style>
+/* ── Inbox/Activity Styles ─────────────────────────────────────── */
+.inbox-wrap {
+    max-width: 820px;
+    margin: 6rem auto 5rem;
+    padding: 0 1.25rem;
+}
 
-        <div style="background: var(--bg-surface); padding: 2rem; border-bottom: 1px solid var(--border-light);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px; font-size: 2rem;">Activity Updates</h1>
-                <?php if (!empty($notifications)): ?>
-                    <form method="post" class="m-0">
-                        <?php echo csrfTokenField(); ?>
-                        <button type="submit" name="action" value="mark_all" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus);"><svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Mark All Read</button>
-                    </form>
-                <?php endif; ?>
-            </div>
-            <p class="text-muted mt-2 mb-0">Stay up to date with your orders, messages, and account security.</p>
-        </div>
-        
-        <div style="padding: 1rem 2rem 2rem 2rem;">
-            <?php if (empty($notifications)): ?>
-                <div class="text-center py-16">
-                    <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-                    <h3 class="mb-2 font-bold text-muted">All Caught Up</h3>
-                    <p class="text-muted mb-6">You have no new notifications right now.</p>
-                    <a href="browse.php" class="btn btn-primary hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Explore CampusMarket</a>
-                </div>
-            <?php else: ?>
-                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
-                    <?php foreach ($notifications as $n): ?>
-                        <div class="p-5 flex gap-5 items-start hover-scale" style="background: <?php echo $n['is_read'] ? 'var(--bg-main)' : 'rgba(0,0,0,0.02)'; ?>; border: 1px solid var(--border-light); border-radius: var(--radius-md); transition: all 0.2s; border-left: 4px solid <?php echo $n['type'] === 'order' ? 'var(--primary)' : 'var(--secondary)'; ?>;">
-                            <div style="width: 44px; height: 44px; border-radius: var(--radius-lg); background: <?php echo $n['is_read'] ? 'var(--bg-card)' : 'var(--bg-main)'; ?>; border: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center; box-shadow: var(--shadow-sm); flex-shrink: 0; color: var(--text-muted);">
-                                <?php if ($n['type'] === 'order'): ?>
-                                    <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                                <?php else: ?>
-                                    <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                                <?php endif; ?>
-                            </div>
-                            <div class="flex-grow">
-                                <div class="flex justify-between items-start mb-1">
-                                    <h4 class="mb-0 font-bold <?php echo !$n['is_read'] ? 'text-main' : 'text-muted'; ?>" style="font-size: 1.05rem; line-height: 1.4;"><?php echo sanitize($n['title']); ?></h4>
-                                    <span class="text-muted small" style="white-space: nowrap; font-size: 0.75rem; background: var(--bg-card); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light);"><?php echo timeAgo($n['created_at']); ?></span>
-                                </div>
-                                <p class="text-muted mb-0" style="font-size: 0.95rem; line-height: 1.5;"><?php echo sanitize($n['body']); ?></p>
-                                
-                                <?php if ($n['type'] === 'order'): ?>
-                                    <a href="my_orders.php" class="btn btn-secondary btn-sm mt-3 hover-scale shadow-sm" style="border-radius: var(--radius-lg); background: white;">View Order Details →</a>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </ul>
+.inbox-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.inbox-header h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0;
+}
+
+/* Card layout */
+.convo-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    position: relative;
+}
+
+.convo-card.unread {
+    background: rgba(99,102,241,0.02);
+}
+
+body.dark-mode .convo-card.unread {
+    background: rgba(99,102,241,0.04);
+}
+
+/* Avatar / Icon */
+.convo-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+}
+
+/* Content */
+.convo-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.convo-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.15rem;
+}
+
+.convo-username {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.convo-card.unread .convo-username {
+    font-weight: 800;
+}
+
+.convo-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.convo-card.unread .convo-time {
+    font-weight: 600;
+}
+
+.convo-product {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.convo-body {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.convo-card.unread .convo-body {
+    color: var(--text-main);
+    font-weight: 500;
+}
+
+/* Unread dot */
+.convo-unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* List */
+.convo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* Empty state */
+.inbox-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-light);
+    border-radius: var(--radius-lg);
+}
+
+.inbox-empty-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1.25rem;
+    color: var(--text-muted);
+    opacity: 0.35;
+}
+
+.inbox-empty h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.4rem;
+}
+
+.inbox-empty p {
+    font-size: 0.9rem;
+    max-width: 380px;
+    margin: 0 auto 1.5rem;
+    line-height: 1.5;
+}
+</style>
+
+<div class="inbox-wrap">
+    <!-- Inbox Tabs -->
+    <div class="flex gap-4 mb-8" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
+        <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" style="font-weight: 500;">
+            <span>Messages</span>
+            <?php 
+                $navUnreadMessages = countUnreadMessages($pdo, $currentUserId);
+                if ($navUnreadMessages > 0): 
+            ?>
+                <span class="badge badge-primary"><?= $navUnreadMessages ?></span>
             <?php endif; ?>
-        </div>
+        </a>
+        <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2" style="font-weight: 700; border-bottom: 2px solid var(--accent); color: var(--accent);">
+            <span>Activity</span>
+            <?php 
+                $navUnreadNotifs = countUnreadNotifications($pdo, $currentUserId);
+                if ($navUnreadNotifs > 0): 
+            ?>
+                <span class="badge badge-accent"><?= $navUnreadNotifs ?></span>
+            <?php endif; ?>
+        </a>
     </div>
+
+    <!-- Header -->
+    <div class="inbox-header">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <h1>Activity Updates</h1>
+        </div>
+        <?php if (!empty($notifications)): ?>
+            <form method="post" class="m-0">
+                <?php echo csrfTokenField(); ?>
+                <button type="submit" name="action" value="mark_all" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus); display: flex; align-items: center; gap: 0.35rem;">
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Mark All Read
+                </button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <?php if (empty($notifications)): ?>
+        <!-- Empty State -->
+        <div class="inbox-empty">
+            <svg class="inbox-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+            </svg>
+            <h3>All caught up</h3>
+            <p>You have no new updates or activity notifications at this time.</p>
+            <a href="<?= BASE_URL ?>/pages/browse.php" class="btn btn-primary" style="border-radius: var(--radius-lg); padding: 0.6rem 1.75rem; font-weight: 600; font-size: 0.9rem;">Explore CampusMarket</a>
+        </div>
+    <?php else: ?>
+        <!-- Notification List -->
+        <div class="convo-list">
+            <?php foreach ($notifications as $n): ?>
+                <?php 
+                    $isUnread = !$n['is_read'];
+                    $isOrder = ($n['type'] === 'order');
+                    $accentColor = $isOrder ? 'var(--primary)' : 'var(--secondary)';
+                ?>
+                <div class="convo-card <?= $isUnread ? 'unread' : '' ?>" style="border-left: 3px solid <?= $accentColor ?>;">
+                    <!-- Icon Avatar -->
+                    <div class="convo-avatar" style="color: var(--text-muted);">
+                        <?php if ($isOrder): ?>
+                            <svg style="width: 20px; height: 20px; color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        <?php else: ?>
+                            <svg style="width: 20px; height: 20px; color: var(--secondary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="convo-content">
+                        <div class="convo-top">
+                            <span class="convo-username" style="font-weight: 700;"><?= htmlspecialchars($n['title']) ?></span>
+                            <span class="convo-time" style="<?= $isUnread ? 'color: ' . $accentColor . ';' : '' ?>"><?= timeAgo($n['created_at']) ?></span>
+                        </div>
+                        
+                        <div class="convo-product" style="color: <?= $accentColor ?>;">
+                            <?= $isOrder ? 'Order Update' : 'System Update' ?>
+                        </div>
+                        
+                        <p class="convo-body" style="white-space: normal; line-height: 1.5; color: var(--text-main);">
+                            <?= htmlspecialchars($n['body']) ?>
+                        </p>
+                        
+                        <?php if ($isOrder): ?>
+                            <div style="margin-top: 0.75rem;">
+                                <a href="my_orders.php" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-light); font-size: 0.8rem; padding: 0.35rem 0.8rem;">View Order Details →</a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Indicators -->
+                    <?php if ($isUnread): ?>
+                        <div class="convo-unread-dot" style="background: <?= $accentColor ?>;"></div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
