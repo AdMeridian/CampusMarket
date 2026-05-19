@@ -424,7 +424,10 @@ function checkDealStatus() {
         });
 }
 
+window.currentDeal = null;
+
 function renderHandshakeBar(deal) {
+    window.currentDeal = deal;
     const status = deal.status;
     const isSeller = deal.is_seller;
     const buyerName = deal.buyer_username || 'Buyer';
@@ -433,7 +436,39 @@ function renderHandshakeBar(deal) {
     let html = '';
     let borderStyle = '';
 
-    if (status === 'pending') {
+    if (status === 'choose_product') {
+        borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
+        html = `
+            <div id="choose-product-initial" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">Did a transaction happen?</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Select the item to confirm the deal and delist it.</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                    <button onclick="openProductSelector()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes</button>
+                    <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">No</button>
+                </div>
+            </div>
+            <div id="choose-product-selector" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; width: 100%;">
+                <div style="flex-grow: 1;">
+                    <select id="deal-product-select" class="premium-input" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); background: var(--bg-surface); color: var(--text-main);">
+                        <option value="">Loading items...</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                    <button onclick="submitChosenProduct()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Confirm</button>
+                    <button onclick="cancelChooseProduct()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Cancel</button>
+                </div>
+            </div>
+        `;
+    } else if (status === 'pending') {
         borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
         html = `
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
@@ -449,7 +484,7 @@ function renderHandshakeBar(deal) {
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes, deal is done!</button>
+                    <button onclick="confirmDeal(deal.product_id)" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes, deal is done!</button>
                     <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">Not yet</button>
                 </div>
             </div>
@@ -485,7 +520,7 @@ function renderHandshakeBar(deal) {
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">Confirm & Delist Item</button>
+                    <button onclick="confirmDeal(deal.product_id)" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">Confirm & Delist Item</button>
                     <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">Not done yet</button>
                 </div>
             </div>
@@ -514,10 +549,61 @@ function renderHandshakeBar(deal) {
     handshakeBar.innerHTML = html;
 }
 
-function confirmDeal() {
+function openProductSelector() {
+    document.getElementById('choose-product-initial').style.display = 'none';
+    document.getElementById('choose-product-selector').style.display = 'flex';
+    
+    const select = document.getElementById('deal-product-select');
+    
+    fetch('api_messages.php?action=get_active_products&other_user_id=' + otherUserId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.products.length > 0) {
+                let options = '<option value="">Select an item...</option>';
+                data.products.forEach(p => {
+                    options += `<option value="${p.id}" data-is-mine="${p.is_mine}">${p.title} - ${p.price}</option>`;
+                });
+                select.innerHTML = options;
+            } else {
+                select.innerHTML = '<option value="">No active items found</option>';
+            }
+        })
+        .catch(err => {
+            select.innerHTML = '<option value="">Error loading items</option>';
+        });
+}
+
+function cancelChooseProduct() {
+    document.getElementById('choose-product-selector').style.display = 'none';
+    document.getElementById('choose-product-initial').style.display = 'flex';
+}
+
+function submitChosenProduct() {
+    const select = document.getElementById('deal-product-select');
+    if (select.selectedIndex <= 0) return;
+    
+    const option = select.options[select.selectedIndex];
+    const prodId = option.value;
+    const isSeller = option.getAttribute('data-is-mine') === 'true';
+    
+    confirmDeal(prodId, isSeller);
+}
+
+function confirmDeal(prodId = null, isSellerOverride = null) {
+    const finalProductId = prodId || productId || (window.currentDeal && window.currentDeal.product_id) || 0;
+    if (!finalProductId) return;
+
+    const isSeller = isSellerOverride !== null ? isSellerOverride : (window.currentDeal && window.currentDeal.is_seller);
+
+    if (isSeller) {
+        if (!confirm("Are you sure you want to mark this item as sold? It will be delisted immediately.")) {
+            return;
+        }
+    }
+
     const formData = new FormData();
     formData.append('action', 'confirm_deal');
-    formData.append('product_id', productId);
+    formData.append('product_id', finalProductId);
     formData.append('other_user_id', otherUserId);
     formData.append('csrf_token', window.__csrfToken || '');
 
