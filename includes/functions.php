@@ -237,7 +237,9 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    if (PHP_VERSION_ID < 80000) {
+        curl_close($ch);
+    }
     
     if ($httpCode >= 200 && $httpCode < 300) {
         // Return absolute URL so it works seamlessly on frontend
