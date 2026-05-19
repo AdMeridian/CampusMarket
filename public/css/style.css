@@ -1517,3 +1517,36 @@ body {
 .badge-primary { background: var(--primary); color: white; }
 .badge-accent { background: var(--accent); color: white; }
 .badge-secondary { background: var(--secondary); color: white; }
+
+/* Premium Floating Flash Toast */
+.flash-toast-container {
+  position: fixed;
+  top: max(95px, calc(var(--safe-top) + 95px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  width: 90%;
+  max-width: 480px;
+  pointer-events: none;
+  animation: slideDownFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDownFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.flash-toast-container .flash {
+  pointer-events: auto;
+  margin-bottom: 0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
+}
+

@@ -164,6 +164,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':v' => $isVerified,
             ]);
 
+            $newUserId = (int)$pdo->lastInsertId();
+            if ($newUserId > 0) {
+                // Find an admin to send the welcome message
+                $adminStmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+                $adminId = $adminStmt->fetchColumn();
+                if (!$adminId) {
+                    $adminId = 1; // Fallback to 1
+                }
+
+                $welcomeMsg = "Welcome to CampusMarket, " . $username . "! 🎉\n\nWe are absolutely thrilled to have you join our campus marketplace! Here you can safely trade books, electronics, notes, and other items with your fellow university students.\n\nHere are a few quick tips to get you started:\n• 💻 **Browse listings** directly from the homepage or search by category.\n• 📦 **List an item** you want to sell by clicking \"Sell Item\" at the top.\n• 🛡️ **Stay safe:** Always arrange your deals in public campus locations (like the library, student union, or cafeteria).\n\nIf you have any questions, need technical support, or want to report an issue, simply reply directly to this chat. Our admin support team is always here to help you!\n\nHappy trading!\n— The CampusMarket Team";
+
+                $msgStmt = $pdo->prepare("
+                    INSERT INTO messages (sender_id, receiver_id, product_id, body)
+                    VALUES (:sid, :rid, NULL, :body)
+                ");
+                $msgStmt->execute([
+                    ':sid' => $adminId,
+                    ':rid' => $newUserId,
+                    ':body' => $welcomeMsg
+                ]);
+
+                // Notify user of the welcome message
+                createNotification($pdo, $newUserId, 'message', 'Welcome to CampusMarket', 'You received a welcome message from Support.', null);
+            }
+
             $pdo->commit();
             setFlash('success', 'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.');
             redirect(BASE_URL . 'pages/login.php');
