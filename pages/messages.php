@@ -76,6 +76,11 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Chat Header Context -->
     <div class="glass-panel mb-4 p-4 flex justify-between items-center" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
         <div class="flex items-center gap-4">
+            <button onclick="goBackOrInbox()" class="flex items-center justify-center cursor-pointer hover-scale transition-all duration-200" style="width: 40px; height: 40px; border-radius: var(--radius-md); border: 1px solid var(--border-light); background: var(--bg-surface); color: var(--text-main); margin-right: 0.25rem;" title="Go Back">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
             <div style="width: 50px; height: 50px; flex-shrink: 0;">
                 <?php if (!empty($otherUser['avatar'])): ?>
                     <img src="<?= avatarUrl($otherUser['avatar']) ?>" alt="<?= htmlspecialchars($otherUser['username']) ?>" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
@@ -213,6 +218,19 @@ require_once __DIR__ . '/../includes/header.php';
 </style>
 
 <script>
+function goBackOrInbox() {
+    if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
+        const ref = document.referrer;
+        if (ref.includes('login.php') || ref.includes('register.php') || ref.includes('messages.php')) {
+            window.location.href = 'inbox.php';
+        } else {
+            window.history.back();
+        }
+    } else {
+        window.location.href = 'inbox.php';
+    }
+}
+
 const productId = <?= $productId ?>;
 const otherUserId = <?= $otherUserId ?>;
 const chatBox = document.getElementById('chat-box');

@@ -152,10 +152,14 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <div class="flex flex-col gap-4 border-t border-gray-100 pt-6">
                         <button type="submit" class="btn btn-primary w-full shadow-lg hover-scale" style="padding: 1.25rem; border-radius: var(--radius-lg); font-size: 1.15rem; font-weight: bold; position: relative; overflow: hidden;">
-
                             Send Buy Request
                         </button>
-                        <a href="product.php?id=<?php echo $productId; ?>" class="text-center font-medium hover:text-primary transition-colors py-2 text-muted">Cancel and go back</a>
+                        <a href="product.php?id=<?php echo $productId; ?>" class="btn btn-secondary w-full hover-scale shadow-sm flex items-center justify-center gap-2" style="padding: 1rem; border-radius: var(--radius-lg); font-size: 1rem; font-weight: bold;">
+                            <svg xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Cancel and Go Back
+                        </a>
                     </div>
                 </form>
             </div>

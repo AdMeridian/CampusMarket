@@ -133,7 +133,12 @@ require_once '../includes/header.php';
       <div style="background: var(--bg-surface); padding: 2rem; border-bottom: 1px solid var(--border-light);">
         <div class="flex items-center justify-between">
             <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px;">Edit Profile</h1>
-            <a href="<?php echo BASE_URL; ?>/pages/profile.php" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Cancel</a>
+            <a href="<?php echo BASE_URL; ?>/pages/profile.php" class="btn btn-secondary btn-sm hover-scale shadow-sm flex items-center gap-1" style="border-radius: var(--radius-lg); display: inline-flex;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Cancel
+            </a>
         </div>
         <p class="text-muted mt-2 mb-0">Update your public identity and contact details.</p>
       </div>

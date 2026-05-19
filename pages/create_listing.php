@@ -159,7 +159,12 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
                 <hr style="border-color: rgba(0,0,0,0.05); margin: 1rem 0;">
 
                 <div class="flex justify-between items-center">
-                    <a href="browse.php" class="text-muted font-medium hover:text-main transition-colors">Cancel</a>
+                    <a href="browse.php" class="btn btn-secondary hover-scale shadow-sm flex items-center gap-2" style="padding: 0.75rem 1.5rem; border-radius: var(--radius-lg); font-weight: bold; font-size: 1.1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Cancel
+                    </a>
                     <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg" style="border-radius: var(--radius-lg); font-weight: bold; font-size: 1.1rem;">Publish Listing</button>
                 </div>
 
