@@ -126,7 +126,7 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
     
     <!-- Chat Container -->
-    <div class="glass-panel" style="border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-lg); background: var(--bg-surface);">
+    <div class="glass-panel" style="position: relative; border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-lg); background: var(--bg-surface);">
         
         <!-- Messages Area -->
         <div id="chat-box" style="height: 400px; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; background: var(--bg-main); scroll-behavior: smooth;">
@@ -425,6 +425,25 @@ function checkDealStatus() {
 }
 
 window.currentDeal = null;
+window.handshakeCollapsed = false;
+window.handshakeTimeout = null;
+
+function collapseHandshake() {
+    window.handshakeCollapsed = true;
+    renderHandshakeBar(window.currentDeal);
+    
+    if (window.handshakeTimeout) clearTimeout(window.handshakeTimeout);
+    window.handshakeTimeout = setTimeout(() => {
+        window.handshakeCollapsed = false;
+        renderHandshakeBar(window.currentDeal);
+    }, 60000);
+}
+
+function expandHandshake() {
+    window.handshakeCollapsed = false;
+    if (window.handshakeTimeout) clearTimeout(window.handshakeTimeout);
+    renderHandshakeBar(window.currentDeal);
+}
 
 function renderHandshakeBar(deal) {
     window.currentDeal = deal;
@@ -435,6 +454,19 @@ function renderHandshakeBar(deal) {
 
     let html = '';
     let borderStyle = '';
+
+    if (window.handshakeCollapsed) {
+        handshakeBar.setAttribute('style', `display:block; position:absolute; right: 0; top: 1rem; padding: 0.5rem 1rem; background: var(--primary); color: white; border-radius: 20px 0 0 20px; cursor: pointer; z-index: 100; box-shadow: -2px 2px 10px rgba(0,0,0,0.1); transition: all 0.2s ease;`);
+        handshakeBar.innerHTML = `
+            <div onclick="expandHandshake()" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span style="font-size: 0.8rem; font-weight: 600;">Deal Info</span>
+            </div>
+        `;
+        return;
+    }
 
     if (status === 'choose_product') {
         borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
@@ -453,7 +485,7 @@ function renderHandshakeBar(deal) {
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
                     <button onclick="openProductSelector()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes</button>
-                    <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">No</button>
+                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">No</button>
                 </div>
             </div>
             <div id="choose-product-selector" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; width: 100%;">
@@ -484,8 +516,8 @@ function renderHandshakeBar(deal) {
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal(deal.product_id)" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes, deal is done!</button>
-                    <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">Not yet</button>
+                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes, deal is done!</button>
+                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">Not yet</button>
                 </div>
             </div>
         `;
@@ -520,8 +552,8 @@ function renderHandshakeBar(deal) {
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal(deal.product_id)" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">Confirm & Delist Item</button>
-                    <button class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7; cursor: default;">Not done yet</button>
+                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">Confirm & Delist Item</button>
+                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">Not done yet</button>
                 </div>
             </div>
         `;
