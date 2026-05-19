@@ -105,14 +105,14 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
             </div>
 
             <a href="<?php echo BASE_URL; ?>pages/browse.php">Browse</a>
-            <?php if (isLoggedIn() && isAdmin()): ?>
-                <a href="<?php echo BASE_URL; ?>admin/index.php">Admin Panel</a>
-                <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>
-            <?php elseif (isLoggedIn()): ?>
+            <?php if (isLoggedIn()): ?>
                 <?php 
                     $unreadMessages = countUnreadMessages($pdo, currentUserId()); 
                     $unreadNotifs = countUnreadNotifications($pdo, currentUserId());
                 ?>
+                <?php if (isAdmin()): ?>
+                    <a href="<?php echo BASE_URL; ?>admin/index.php" style="color: var(--secondary); font-weight: bold;">Admin Panel</a>
+                <?php endif; ?>
                 <a href="<?php echo BASE_URL; ?>/pages/inbox.php" class="flex items-center gap-1" title="Messages">
                     Inbox <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                 </a>
@@ -129,6 +129,9 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                         <svg viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                     </button>
                     <div class="user-dropdown-content">
+                        <?php if (isAdmin()): ?>
+                            <a href="<?php echo BASE_URL; ?>admin/index.php" style="font-weight: bold; color: var(--secondary);">Admin Panel</a>
+                        <?php endif; ?>
                         <a href="<?php echo BASE_URL; ?>pages/my_orders.php">My Orders</a>
                         <a href="<?php echo BASE_URL; ?>pages/wishlist.php">Wishlist</a>
                         <a href="<?php echo BASE_URL; ?>pages/promotions.php">Promotions</a>

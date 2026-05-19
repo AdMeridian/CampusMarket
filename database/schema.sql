@@ -149,7 +149,7 @@ CREATE TABLE messages (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     sender_id   INT     NOT NULL,
     receiver_id INT     NOT NULL,
-    product_id  INT     NOT NULL,
+    product_id  INT     NULL,
     body        TEXT    NOT NULL,
     is_read     BOOLEAN NOT NULL DEFAULT 0,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

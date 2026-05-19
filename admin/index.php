@@ -489,6 +489,14 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
+                    <a href="../pages/inbox.php" class="module-card" style="--module-color: var(--secondary); --module-bg: var(--secondary-light);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
+                        <div class="module-info">
+                            <div class="module-name">Support Chat</div>
+                            <div class="module-desc">Reply to student messages</div>
+                        </div>
+                        <span class="module-arrow">›</span>
+                    </a>
                 </div>
 
                 <div class="section-label">Taxonomy</div>
