@@ -290,10 +290,74 @@ if ($action === 'check_deal_status') {
     $productId = (int)($_GET['product_id'] ?? 0);
     $otherUserId = (int)($_GET['other_user_id'] ?? 0);
 
-    if (!$productId || !$otherUserId) {
+    if (!$otherUserId) {
         echo json_encode(['error' => 'Missing parameters']);
         exit;
     }
+
+    if ($productId === 0) {
+        // Special logic for product_id = 0
+        $stmtBuyer = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE sender_id = :me AND receiver_id = :other AND (product_id = 0 OR product_id IS NULL)");
+        $stmtBuyer->execute([':me' => $currentUserId, ':other' => $otherUserId]);
+        $myMsgCount = (int)$stmtBuyer->fetchColumn();
+
+        $stmtSeller = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE sender_id = :other AND receiver_id = :me AND (product_id = 0 OR product_id IS NULL)");
+        $stmtSeller->execute([':other' => $otherUserId, ':me' => $currentUserId]);
+        $otherMsgCount = (int)$stmtSeller->fetchColumn();
+
+        if ($myMsgCount < 1 || $otherMsgCount < 1) {
+            echo json_encode(['show_handshake' => false]);
+            exit;
+        }
+
+        // Check if there is an active buyer_confirmed deal
+        $stmtDeal = $pdo->prepare("
+            SELECT d.*, p.title as product_title, p.user_id as seller_id, u.username as buyer_username
+            FROM deal_confirmations d
+            JOIN products p ON d.product_id = p.id
+            JOIN users u ON d.buyer_id = u.id
+            WHERE ((d.buyer_id = :me AND d.seller_id = :other) OR (d.buyer_id = :other AND d.seller_id = :me))
+            AND d.status = 'buyer_confirmed'
+            LIMIT 1
+        ");
+        $stmtDeal->execute([':me' => $currentUserId, ':other' => $otherUserId]);
+        $deal = $stmtDeal->fetch(PDO::FETCH_ASSOC);
+
+        if ($deal) {
+            $isSeller = ($currentUserId === (int)$deal['seller_id']);
+            echo json_encode([
+                'show_handshake' => true,
+                'deal' => [
+                    'id' => $deal['id'],
+                    'status' => $deal['status'],
+                    'buyer_confirmed_at' => $deal['buyer_confirmed_at'],
+                    'seller_confirmed_at' => $deal['seller_confirmed_at'],
+                    'is_seller' => $isSeller,
+                    'buyer_username' => $deal['buyer_username'],
+                    'product_title' => $deal['product_title'],
+                    'product_id' => $deal['product_id']
+                ]
+            ]);
+            exit;
+        }
+
+        // Check if there are active products between them
+        $stmtProds = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id IN (:me, :other) AND status = 'active'");
+        $stmtProds->execute([':me' => $currentUserId, ':other' => $otherUserId]);
+        if ((int)$stmtProds->fetchColumn() > 0) {
+            echo json_encode([
+                'show_handshake' => true,
+                'deal' => [
+                    'status' => 'choose_product'
+                ]
+            ]);
+            exit;
+        }
+
+        echo json_encode(['show_handshake' => false]);
+        exit;
+    }
+
 
     // Determine seller
     $stmt = $pdo->prepare("SELECT user_id FROM products WHERE id = :pid");
@@ -406,6 +470,16 @@ if ($action === 'confirm_deal') {
         $pdo->beginTransaction();
 
         if ($isSeller) {
+            // Check if deal confirmation exists, if not create it
+            $stmtCheck = $pdo->prepare("SELECT id FROM deal_confirmations WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid");
+            $stmtCheck->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            $exists = $stmtCheck->fetchColumn();
+            
+            if (!$exists) {
+                $stmtIns = $pdo->prepare("INSERT INTO deal_confirmations (product_id, buyer_id, seller_id, status) VALUES (:pid, :bid, :sid, 'pending')");
+                $stmtIns->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            }
+
             // Seller confirms → mark completed and delist product
             $stmtUp = $pdo->prepare("
                 UPDATE deal_confirmations 
@@ -425,6 +499,16 @@ if ($action === 'confirm_deal') {
             $pdo->commit();
             echo json_encode(['success' => true, 'action' => 'delisted']);
         } else {
+            // Check if deal confirmation exists, if not create it
+            $stmtCheck = $pdo->prepare("SELECT id FROM deal_confirmations WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid");
+            $stmtCheck->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            $exists = $stmtCheck->fetchColumn();
+            
+            if (!$exists) {
+                $stmtIns = $pdo->prepare("INSERT INTO deal_confirmations (product_id, buyer_id, seller_id, status) VALUES (:pid, :bid, :sid, 'pending')");
+                $stmtIns->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            }
+
             // Buyer confirms → awaiting seller
             $stmtUp = $pdo->prepare("
                 UPDATE deal_confirmations 
@@ -447,6 +531,27 @@ if ($action === 'confirm_deal') {
     exit;
 }
 
-// dismiss_deal action removed as handshake bar is now persistent until completion
+// ─── Get Active Products ────────────────────────
+if ($action === 'get_active_products') {
+    $otherUserId = (int)($_GET['other_user_id'] ?? 0);
+    $stmt = $pdo->prepare("SELECT id, title, user_id, price FROM products WHERE user_id IN (:me, :other) AND status = 'active' ORDER BY created_at DESC");
+    $stmt->execute([':me' => $currentUserId, ':other' => $otherUserId]);
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Format products
+    $results = [];
+    foreach ($products as $p) {
+        $results[] = [
+            'id' => $p['id'],
+            'title' => $p['title'],
+            'user_id' => $p['user_id'],
+            'price' => formatPrice($p['price']),
+            'is_mine' => $p['user_id'] == $currentUserId
+        ];
+    }
+    
+    echo json_encode(['success' => true, 'products' => $results]);
+    exit;
+}
 
 echo json_encode(['error' => 'Invalid action']);
