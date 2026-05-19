@@ -13,9 +13,11 @@ $paymentType = sanitize($_POST['payment_type'] ?? '');
 $productId   = (int)($_POST['product_id'] ?? 0);
 $amount      = (float)($_POST['amount'] ?? 0);
 
+$redirectPath = ($paymentType === 'donation') ? 'pages/donate.php' : 'pages/promotions.php';
+
 if (!in_array($paymentType, ['promotion', 'donation'], true) || $amount <= 0) {
     setFlash('error', 'Invalid payment details.');
-    redirect(BASE_URL . 'pages/promotions.php');
+    redirect(BASE_URL . $redirectPath);
 }
 
 if ($paymentType === 'promotion' && $productId <= 0) {
@@ -29,8 +31,8 @@ $unitAmount = (int)($amount * 100);
 // Use cURL for Stripe API (no SDK required)
 $ch = curl_init();
 
-$successUrl = BASE_URL . 'pages/stripe_success.php?session_id={CHECKOUT_SESSION_ID}';
-$cancelUrl  = BASE_URL . 'pages/promotions.php';
+$successUrl = BASE_URL . 'pages/stripe_success.php?session_id={CHECKOUT_SESSION_ID}&type=' . $paymentType;
+$cancelUrl  = BASE_URL . (($paymentType === 'donation') ? 'pages/donate.php' : 'pages/promotions.php');
 
 $postFields = [
     'success_url' => $successUrl,
@@ -67,5 +69,5 @@ if ($httpCode === 200 && isset($response['url'])) {
 } else {
     $errorMsg = $response['error']['message'] ?? 'Stripe communication error.';
     setFlash('error', 'Could not initiate Stripe session: ' . $errorMsg);
-    redirect(BASE_URL . 'pages/promotions.php');
+    redirect(BASE_URL . $redirectPath);
 }
