@@ -30,4 +30,9 @@ playwright/.cache/
 # Debug & test artifacts (never commit)
 test-*.php
 *-debug.php
+debug_*.php
+test_*.py
+
+# Logs (local only — use Vercel dashboard / error_log() in production)
+*.log
 
