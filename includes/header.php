@@ -112,35 +112,41 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                 ?>
                 <?php if (isAdmin()): ?>
                     <a href="<?php echo BASE_URL; ?>admin/index.php" style="color: var(--secondary); font-weight: bold;">Admin Panel</a>
-                <?php endif; ?>
-                <a href="<?php echo BASE_URL; ?>/pages/inbox.php" class="flex items-center gap-1" title="Messages">
-                    Inbox <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
-                </a>
-                <a href="<?php echo BASE_URL; ?>/pages/notifications.php" class="flex items-center gap-1" title="Notifications">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
-                </a>
-                <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 700; color: var(--primary);">Sell Item</a>
-                
-                <!-- User Account Dropdown -->
-                <div class="user-dropdown">
-                    <button type="button" class="user-dropdown-btn" aria-expanded="false" aria-haspopup="true">
-                        <span><?php echo sanitize($_SESSION['username'] ?? 'Account'); ?></span>
-                        <svg viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                    </button>
-                    <div class="user-dropdown-content">
-                        <?php if (isAdmin()): ?>
-                            <a href="<?php echo BASE_URL; ?>admin/index.php" style="font-weight: bold; color: var(--secondary);">Admin Panel</a>
-                        <?php endif; ?>
-                        <a href="<?php echo BASE_URL; ?>pages/my_orders.php">My Orders</a>
-                        <a href="<?php echo BASE_URL; ?>pages/wishlist.php">Wishlist</a>
-                        <a href="<?php echo BASE_URL; ?>pages/promotions.php">Promotions</a>
-                        <a href="<?php echo BASE_URL; ?>pages/profile.php">My Profile</a>
-                        <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" style="color: var(--secondary); font-weight: bold;">Contact Support</a>
-                        <div style="border-top: 1px solid var(--border-light); margin: 0.5rem 0;"></div>
-                        <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>
+                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="flex items-center gap-1" title="Messages">
+                        Inbox <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" class="flex items-center gap-1" title="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error); font-weight: 500;">Logout</a>
+                <?php else: ?>
+                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="flex items-center gap-1" title="Messages">
+                        Inbox <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" class="flex items-center gap-1" title="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 700; color: var(--primary);">Sell Item</a>
+                    
+                    <!-- User Account Dropdown -->
+                    <div class="user-dropdown">
+                        <button type="button" class="user-dropdown-btn" aria-expanded="false" aria-haspopup="true">
+                            <span><?php echo sanitize($_SESSION['username'] ?? 'Account'); ?></span>
+                            <svg viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <div class="user-dropdown-content">
+                            <a href="<?php echo BASE_URL; ?>pages/my_orders.php">My Orders</a>
+                            <a href="<?php echo BASE_URL; ?>pages/wishlist.php">Wishlist</a>
+                            <a href="<?php echo BASE_URL; ?>pages/promotions.php">Promotions</a>
+                            <a href="<?php echo BASE_URL; ?>pages/profile.php">My Profile</a>
+                            <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" style="color: var(--secondary); font-weight: bold;">Contact Support</a>
+                            <div style="border-top: 1px solid var(--border-light); margin: 0.5rem 0;"></div>
+                            <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);">Logout</a>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
             <?php else: ?>
                 <a href="<?php echo BASE_URL; ?>pages/login.php">Login</a>
                 <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn btn-primary btn-sm" style="color: white !important;">Sign Up</a>
