@@ -29,6 +29,7 @@
                     </a></li>
                     <li><a href="<?php echo BASE_URL; ?>/pages/safety.php">Safety Guidelines</a></li>
                     <li><a href="<?php echo BASE_URL; ?>/pages/report.php">Report an Issue</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/pages/messages.php?other_user_id=1&product_id=0">Contact Us</a></li>
                 </ul>
             </div>
 
