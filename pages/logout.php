@@ -5,6 +5,8 @@
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
 
+unset($_SESSION['supabase_access_token'], $_SESSION['supabase_refresh_token']);
+
 // Clear all session data.
 $_SESSION = [];
 

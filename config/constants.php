@@ -13,8 +13,20 @@ $envBaseUrl = getenv('BASE_URL');
 
 if ($envBaseUrl) {
     $base_url = rtrim($envBaseUrl, '/');
-    // Guard against misconfigured BASE_URL values like .../pages or .../api.
-    $base_url = preg_replace('#/(pages|admin|actions|api)$#i', '', $base_url) ?: $base_url;
+    // Guard against misconfigured BASE_URL values like .../pages or .../api (with/without trailing slash).
+    $base_url = preg_replace('#/(pages|admin|actions|api)/?$#i', '', $base_url) ?: $base_url;
+
+    // On production hosts, force root-level app base to avoid broken static paths.
+    // This prevents env values such as https://domain.tld/pages from breaking /public assets.
+    $parsedEnv = parse_url($base_url);
+    $envHost = strtolower((string)($parsedEnv['host'] ?? ''));
+    $currentHost = strtolower((string)$host);
+    $isLocalHost = in_array($currentHost, ['localhost', '127.0.0.1'], true)
+        || str_starts_with($currentHost, 'localhost:')
+        || str_starts_with($currentHost, '127.0.0.1:');
+    if (!$isLocalHost && $envHost === $currentHost) {
+        $base_url = $protocol . $host;
+    }
 } else {
     $isLocalHost = in_array(strtolower($host), ['localhost', '127.0.0.1'], true)
         || str_starts_with(strtolower($host), 'localhost:')

@@ -13,6 +13,40 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $path = parse_url($requestUri, PHP_URL_PATH);
 $path = rtrim($path, '/');
 
+// Static fallback: if a static request reaches this front controller,
+// serve the file directly instead of returning 404.
+$normalizedPath = $path === '' ? '/' : $path;
+$isAllowedStaticPath =
+    str_starts_with($normalizedPath, '/public/')
+    || in_array($normalizedPath, ['/manifest.webmanifest', '/sw.js', '/robots.txt', '/favicon.ico', '/favicon.png'], true);
+
+if ($isAllowedStaticPath) {
+    $staticTarget = $projectRoot . $normalizedPath;
+    $realStatic = realpath($staticTarget);
+    if ($realStatic && str_starts_with($realStatic, $projectRoot) && is_file($realStatic)) {
+        $ext = strtolower(pathinfo($realStatic, PATHINFO_EXTENSION));
+        $mimeMap = [
+            'css' => 'text/css; charset=utf-8',
+            'js' => 'application/javascript; charset=utf-8',
+            'json' => 'application/json; charset=utf-8',
+            'webmanifest' => 'application/manifest+json; charset=utf-8',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+            'webp' => 'image/webp',
+            'ico' => 'image/x-icon',
+            'txt' => 'text/plain; charset=utf-8',
+        ];
+        if (isset($mimeMap[$ext])) {
+            header('Content-Type: ' . $mimeMap[$ext]);
+        }
+        readfile($realStatic);
+        exit;
+    }
+}
+
 // Default to index.php for root
 if ($path === '' || $path === '/') {
     $targetFile = $projectRoot . '/index.php';

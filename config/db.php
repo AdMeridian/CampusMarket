@@ -36,15 +36,18 @@ if ($type === 'pgsql') {
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
+    // Must be TRUE for Supabase/PgBouncer (transaction-mode pooling).
+    // PgBouncer does not persist server-side prepared statements across
+    // connections, so we emulate them client-side instead.
+    PDO::ATTR_EMULATE_PREPARES   => true,
 ];
 
 try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-     // Always log full error details internally, never expose them to users.
-     error_log("DB Connection Error: " . $e->getMessage());
-     throw new Exception("Database connection failed. Please try again later.");
+     // Log full details internally — never expose DSN or credentials to users.
+     error_log("DB Connection Error: " . $e->getMessage() . " DSN: " . $dsn);
+     throw new \RuntimeException('Database connection failed. Please try again later.');
 }
 
 // Global accessor for the database

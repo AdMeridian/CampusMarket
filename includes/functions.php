@@ -580,9 +580,14 @@ function csrfTokenField(): string {
  */
 function verifyCsrfToken(): void {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-    $token = $_POST['csrf_token']
-        ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+    $submitted = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    // Double-submit cookie (stateless — works on Vercel serverless): compare the
+    // submitted field/header against the cookie the browser echoes back.
+    $cookieToken   = $_COOKIE['csrf_token'] ?? '';
+    $sessionToken  = $_SESSION['csrf_token'] ?? '';
+    $valid = ($cookieToken  !== '' && hash_equals($cookieToken,  $submitted))
+          || ($sessionToken !== '' && hash_equals($sessionToken, $submitted));
+    if (!$valid) {
         http_response_code(403);
         die('403 Forbidden — Invalid or missing CSRF token.');
     }
@@ -593,9 +598,12 @@ function verifyCsrfToken(): void {
  */
 function verifyCsrfTokenJson(): void {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-    $token = $_POST['csrf_token']
-        ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+    $submitted = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    $cookieToken  = $_COOKIE['csrf_token'] ?? '';
+    $sessionToken = $_SESSION['csrf_token'] ?? '';
+    $valid = ($cookieToken  !== '' && hash_equals($cookieToken,  $submitted))
+          || ($sessionToken !== '' && hash_equals($sessionToken, $submitted));
+    if (!$valid) {
         http_response_code(403);
         echo json_encode(['error' => 'Invalid or missing CSRF token.']);
         exit;

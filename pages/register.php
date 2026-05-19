@@ -1,13 +1,12 @@
 <?php
 // pages/register.php — Member 2
 // Create a CampusMarket account with university-email allowlist
-// and email verification via Resend. No auto-login: user must verify
+// and email verification via Supabase Auth. No auto-login: user must verify
 // before they can sign in.
 
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
 require_once '../includes/functions_member2.php';
-require_once '../includes/mailer.php';
 
 if (isLoggedIn()) {
     redirect(BASE_URL . 'pages/profile.php');
@@ -19,7 +18,6 @@ $old    = ['username' => '', 'email' => '', 'phone' => ''];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     verifyCsrfToken();
-
     // Gather + normalize
     $username = trim($_POST['username'] ?? '');
     $email    = trim(strtolower($_POST['email'] ?? ''));
@@ -89,12 +87,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Persist + send verification email (no auto-login)
+    // Persist with Supabase Auth + local app profile (no auto-login)
     if (!$errors) {
-        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $isSecureRequest = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+        );
+        $originHost = $_SERVER['HTTP_HOST'] ?? '';
+        $originScheme = $isSecureRequest ? 'https' : 'http';
+        $emailRedirectTo = $originHost !== ''
+            ? ($originScheme . '://' . $originHost . '/pages/verify_email.php?source=supabase')
+            : (BASE_URL . 'pages/verify_email.php?source=supabase');
+
+        $signup = supabaseAuthRequest('POST', 'signup', [
+            'email' => $email,
+            'password' => $password,
+            'options' => [
+                'emailRedirectTo' => $emailRedirectTo,
+            ],
+            'data' => [
+                'username'  => $username,
+                'full_name' => $username, // shown as display name in Supabase Auth dashboard
+                'phone'     => $phone,
+            ],
+        ]);
+
+        if (!$signup['ok']) {
+            $rawErr = strtolower(trim((string)($signup['error'] ?? 'unknown')));
+            $status = (int)($signup['status'] ?? 0);
+            error_log('[register] Supabase signup error status=' . $status . ' error=' . $rawErr);
+
+            if (str_contains($rawErr, 'already registered') || str_contains($rawErr, 'user already registered')) {
+                $errors['email'] = 'An account with that email already exists.';
+            } elseif (str_contains($rawErr, 'redirect') || str_contains($rawErr, 'emailredirectto')) {
+                $errors['form'] = 'Signup is blocked by email redirect configuration. Please contact support.';
+            } elseif ($status === 429 || str_contains($rawErr, 'rate limit')) {
+                $errors['form'] = 'Too many signup attempts. Please wait a minute and try again.';
+            } elseif ($status === 403 || str_contains($rawErr, 'signup_disabled')) {
+                $errors['form'] = 'Signup is currently disabled by authentication settings.';
+            } elseif (str_contains($rawErr, 'password') && (str_contains($rawErr, 'compromised') || str_contains($rawErr, 'leaked') || str_contains($rawErr, 'pwned'))) {
+                $errors['password'] = 'This password appears in known data breaches. Please choose a different password.';
+            } elseif (str_contains($rawErr, 'password')) {
+                $errors['password'] = 'Password was rejected by the auth provider. Please choose a stronger password.';
+            } elseif (str_contains($rawErr, 'email') && str_contains($rawErr, 'invalid')) {
+                $errors['email'] = 'Please enter a valid email address.';
+            } else {
+                $errors['form'] = 'Could not create account. Please try again or contact support.';
+            }
+        }
+    }
+
+    if (!$errors) {
+        $hash = password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT);
+        $supabaseUser = $signup['data']['user'] ?? [];
+        $isVerified = !empty($supabaseUser['email_confirmed_at']) ? 1 : 0;
 
         $pdo->beginTransaction();
-        $token = '';
         try {
             $studentId = null;
             $parts = explode('@', $email);
@@ -104,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $ins = $pdo->prepare("
                 INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified)
-                VALUES (:u, :e, :s, :h, 'user', :p, FALSE)
+                VALUES (:u, :e, :s, :h, 'user', :p, :v)
             ");
             $ins->execute([
                 ':u' => $username,
@@ -112,45 +161,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':s' => $studentId,
                 ':h' => $hash,
                 ':p' => $phone !== '' ? $phone : null,
+                ':v' => $isVerified,
             ]);
-            $newId = (int) $pdo->lastInsertId();
-
-            $token   = generateVerificationToken();
-            $expires = (new DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
-
-            $tok = $pdo->prepare('
-                INSERT INTO email_verifications (user_id, token, expires_at)
-                VALUES (:u, :t, :x)
-            ');
-            $tok->execute([':u' => $newId, ':t' => $token, ':x' => $expires]);
 
             $pdo->commit();
+            setFlash('success', 'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.');
+            redirect(BASE_URL . 'pages/login.php');
         } catch (Throwable $e) {
             $pdo->rollBack();
+            $dbErr = strtolower($e->getMessage());
             error_log('[register] DB error: ' . $e->getMessage());
-            $errors['form'] = 'Could not create account. Please try again.';
-        }
-
-        // Send the verification email outside the transaction (network call).
-        if (empty($errors)) {
-            $verifyUrl = BASE_URL . 'pages/verify_email.php?token=' . urlencode($token);
-            $result    = sendVerificationEmail($email, $username, $verifyUrl);
-
-            if (!$result['ok']) {
-                // Account exists but the email didn't go out. Tell the user;
-                // they can ask for a resend later (or you can re-register).
-                setFlash(
-                    'error',
-                    'Account created, but we couldn\'t send the verification email. '
-                    . 'Check the server log or contact support.'
-                );
+            if (str_contains($dbErr, 'duplicate key') || str_contains($dbErr, 'unique') || str_contains($dbErr, 'already exists')) {
+                // Supabase signup already succeeded; duplicate local insert can happen
+                // due to retries/race conditions. Continue with verification flow.
+                setFlash('success', 'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.');
+                redirect(BASE_URL . 'pages/login.php');
             } else {
-                setFlash(
-                    'success',
-                    'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.'
-                );
+                $errors['form'] = 'Could not save your account. Please try again or contact support.';
             }
-            redirect(BASE_URL . 'pages/login.php');
         }
     }
 }

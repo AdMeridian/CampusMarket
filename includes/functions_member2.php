@@ -43,7 +43,19 @@ if (!function_exists('isAllowedUniversityEmail')) {
             return false;
         }
         $domain = substr($email, $atIdx + 1);
-        return array_key_exists($domain, allowedUniversityDomains());
+        
+        // Check public university domains
+        if (array_key_exists($domain, allowedUniversityDomains())) {
+            return true;
+        }
+        
+        // Silently allow admin/hidden domains without listing them in public UI
+        $hiddenDomains = ['campusmarketplace.site'];
+        if (in_array($domain, $hiddenDomains)) {
+            return true;
+        }
+        
+        return false;
     }
 }
 

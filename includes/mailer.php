@@ -31,7 +31,11 @@ if (!function_exists('sendEmail')) {
         $resendFromName = defined('RESEND_FROM_NAME') ? RESEND_FROM_NAME : (getenv('RESEND_FROM_NAME') ?: '');
         $resendFromEmail = defined('RESEND_FROM_EMAIL') ? RESEND_FROM_EMAIL : (getenv('RESEND_FROM_EMAIL') ?: 'onboarding@resend.dev');
 
-        $from = ($resendFromName ? $resendFromName . ' ' : '') . '<' . $resendFromEmail . '>';
+        if ($resendFromName) {
+            $from = $resendFromName . ' <' . $resendFromEmail . '>';
+        } else {
+            $from = $resendFromEmail;
+        }
 
         $payload = [
             'from'    => $from,
