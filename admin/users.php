@@ -14,18 +14,99 @@ $pageTitle = "Manage Users";
 // Handle Actions
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
+    
+    // Fetch email of target user to match in Supabase
+    $emailStmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+    $emailStmt->execute([$id]);
+    $userEmail = $emailStmt->fetchColumn();
+
+    $supabaseUserUuid = null;
+    $supabaseConfigured = false;
+    $serviceRoleKey = supabaseServiceRoleKey();
+    if (supabaseUrl() !== '' && $serviceRoleKey !== '') {
+        $supabaseConfigured = true;
+    }
+
+    if ($userEmail && $supabaseConfigured) {
+        // Query the list of users from Supabase Auth admin API (limit to 1000)
+        $authResponse = supabaseAdminRequest('GET', 'admin/users?per_page=1000');
+        if ($authResponse['ok'] && isset($authResponse['data']['users'])) {
+            foreach ($authResponse['data']['users'] as $su) {
+                if (isset($su['email']) && strtolower($su['email']) === strtolower($userEmail)) {
+                    $supabaseUserUuid = $su['id'];
+                    break;
+                }
+            }
+        }
+    }
+
     if ($_GET['action'] === 'make_admin') {
         $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
         $stmt->execute([$id]);
-        setFlash('success', 'User promoted to Admin.');
+        
+        $syncMsg = '';
+        if ($supabaseConfigured) {
+            if ($supabaseUserUuid) {
+                $res = supabaseAdminRequest('PUT', 'admin/users/' . $supabaseUserUuid, [
+                    'app_metadata' => ['role' => 'admin']
+                ]);
+                if (!$res['ok']) {
+                    $syncMsg = ' (Warning: Supabase sync failed: ' . ($res['error'] ?? 'Unknown error') . ')';
+                }
+            } else {
+                $syncMsg = ' (Warning: User not found in Supabase Auth)';
+            }
+        }
+        
+        if ($syncMsg !== '') {
+            setFlash('warning', 'User promoted to Admin locally' . $syncMsg);
+        } else {
+            setFlash('success', 'User promoted to Admin.');
+        }
     } elseif ($_GET['action'] === 'remove_admin') {
         $stmt = $pdo->prepare("UPDATE users SET role = 'user' WHERE id = ?");
         $stmt->execute([$id]);
-        setFlash('success', 'Admin privileges removed.');
+        
+        $syncMsg = '';
+        if ($supabaseConfigured) {
+            if ($supabaseUserUuid) {
+                $res = supabaseAdminRequest('PUT', 'admin/users/' . $supabaseUserUuid, [
+                    'app_metadata' => ['role' => 'user']
+                ]);
+                if (!$res['ok']) {
+                    $syncMsg = ' (Warning: Supabase sync failed: ' . ($res['error'] ?? 'Unknown error') . ')';
+                }
+            } else {
+                $syncMsg = ' (Warning: User not found in Supabase Auth)';
+            }
+        }
+        
+        if ($syncMsg !== '') {
+            setFlash('warning', 'Admin privileges removed locally' . $syncMsg);
+        } else {
+            setFlash('success', 'Admin privileges removed.');
+        }
     } elseif ($_GET['action'] === 'delete') {
         $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
         $stmt->execute([$id]);
-        setFlash('success', 'User account deleted.');
+        
+        $syncMsg = '';
+        if ($supabaseConfigured) {
+            if ($supabaseUserUuid) {
+                $res = supabaseAdminRequest('DELETE', 'admin/users/' . $supabaseUserUuid);
+                if (!$res['ok']) {
+                    $syncMsg = ' (Warning: Supabase delete failed: ' . ($res['error'] ?? 'Unknown error') . ')';
+                }
+            } else {
+                $syncMsg = ' (Warning: User not found in Supabase Auth)';
+            }
+        }
+        
+        if ($syncMsg !== '') {
+            setFlash('warning', 'User account deleted locally' . $syncMsg);
+        } else {
+            setFlash('success', 'User account deleted.');
+        }
     }
     redirect('users.php');
 }
