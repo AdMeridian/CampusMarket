@@ -43,7 +43,7 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
 
 .admin-wrap {
     max-width: var(--container-max);
-    margin: 2.5rem auto 5rem;
+    margin: 120px auto 5rem;
     padding: 0 1.5rem;
 }
 
