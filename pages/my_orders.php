@@ -34,7 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ord
                 createNotification($pdo, $order['buyer_id'], 'order', "Order Confirmed!", "Your order for '{$order['product_title']}' was confirmed.", $orderId);
                 setFlash('success', 'Order confirmed and product marked as sold.');
             } elseif ($action === 'cancel' && ($isSeller || $isBuyer) && $order['status'] === 'pending') {
-                $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
+                $newStatus = $isBuyer ? 'not taken' : 'cancelled';
+                $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?")->execute([$newStatus, $orderId]);
+                
+                // If buyer cancels, reset the deal process so they can message again later
+                if ($isBuyer) {
+                    $pdo->prepare("DELETE FROM deal_confirmations WHERE product_id = ? AND buyer_id = ?")->execute([$order['product_id'], $order['buyer_id']]);
+                }
+                
                 $notifyId = $isSeller ? $order['buyer_id'] : $order['seller_id'];
                 $cancelerRole = $isSeller ? "Seller" : "Buyer";
                 createNotification($pdo, $notifyId, 'system', "Order Cancelled", "The $cancelerRole cancelled the order for '{$order['product_title']}'.", $orderId);
@@ -94,7 +101,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <div class="flex-grow">
                                 <div class="flex justify-between items-start mb-1">
                                     <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($order['product_title']); ?></h4>
-                                    <span class="badge badge-<?php echo $order['status']; ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
+                                    <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
                                 </div>
                                 <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price']); ?></p>
                                 <p class="text-muted small mb-0 flex items-center gap-2">
@@ -143,7 +150,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="flex-grow">
                                     <div class="flex justify-between items-start mb-1">
                                         <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($order['product_title']); ?></h4>
-                                        <span class="badge badge-<?php echo $order['status']; ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
+                                        <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
                                     </div>
                                     <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price']); ?> <span class="text-muted font-normal" style="font-size: 0.85rem;">payment</span></p>
                                     

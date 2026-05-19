@@ -56,6 +56,7 @@
 .badge-pending   { background: var(--warning-bg); color: #b45309; }
 .badge-completed { background: var(--success-bg); color: #065f46; }
 .badge-cancelled { background: var(--error-bg);  color: #991b1b; }
+.badge-not-taken { background: #e2e8f0; color: #64748b; border: 1px solid #cbd5e1; }
 
 /* ── Admin data table ────────────────────────────────────── */
 .admin-table-wrap { overflow-x: auto; }

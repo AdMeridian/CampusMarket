@@ -65,7 +65,7 @@ $orders = $stmt->fetchAll();
                         </td>
                         <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #d97706;"><?php echo formatPrice($order['amount']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                            <span class="badge badge-<?php echo $order['status']; ?> shadow-sm"><?php echo ucfirst($order['status']); ?></span>
+                            <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm"><?php echo ucfirst($order['status']); ?></span>
                         </td>
                         <td class="p-4 text-right text-muted small" style="border-bottom: 1px solid var(--border-light); font-family: monospace;">
                             <?php echo date('M d, Y • H:i', strtotime($order['created_at'])); ?>
