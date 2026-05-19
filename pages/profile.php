@@ -536,33 +536,7 @@ include '../includes/header.php';
     font-size: 0.9rem;
 }
 
-/* Empty state */
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: var(--text-muted);
-    background: var(--bg-main);
-    border: 2px dashed var(--border-light);
-    border-radius: var(--radius-lg);
-}
 
-.empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    display: block;
-}
-
-.empty-state h3 {
-    color: var(--text-muted);
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.empty-state p {
-    font-size: 0.9rem;
-    margin-bottom: 1.25rem;
-}
 
 /* btn-white for the hero */
 .btn-white {
@@ -815,14 +789,7 @@ body.dark-mode .btn-white-solid:hover {
             </div>
 
             <?php if (empty($userProducts)): ?>
-                <div class="empty-state">
-                    <span class="empty-state-icon"><svg class="w-12 h-12 text-primary mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg></span>
-                    <h3>No active listings</h3>
-                    <p><?php echo $isSelf ? "You haven't listed anything for sale yet." : "This user doesn't have any active listings."; ?></p>
-                    <?php if ($isSelf): ?>
-                        <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn btn-primary btn-sm" style="border-radius: var(--radius-lg);">Create Your First Listing</a>
-                    <?php endif; ?>
-                </div>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">No active listings</p>
             <?php else: ?>
                 <div class="listing-grid">
                     <?php foreach ($userProducts as $prod): ?>
