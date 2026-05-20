@@ -98,6 +98,9 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </div>
         <div class="flex items-center gap-3 text-right hidden sm:flex">
+            <button id="translate-toggle" type="button" class="btn btn-sm btn-secondary" style="border-radius: var(--radius-md); font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+                Translate: Off
+            </button>
             <?php if ($productId > 0): ?>
                 <div>
                     <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;"><?= __('chat.regarding_item') ?></p>
@@ -236,14 +239,32 @@ const otherUserId = <?= $otherUserId ?>;
 const chatBox = document.getElementById('chat-box');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
+const translateToggleBtn = document.getElementById('translate-toggle');
 let loadingDiv = document.getElementById('chat-loading');
 const realtimeRoom = `chat:${productId}:${[<?= $currentUserId ?>, otherUserId].sort((a, b) => a - b).join(':')}`;
 let realtimeChannel = null;
 let pollIntervalId = null;
+let translateEnabled = localStorage.getItem('cm_translate_messages') === '1';
+
+function updateTranslateToggleUi() {
+    if (!translateToggleBtn) return;
+    translateToggleBtn.textContent = `Translate: ${translateEnabled ? 'On' : 'Off'}`;
+}
+
+if (translateToggleBtn) {
+    updateTranslateToggleUi();
+    translateToggleBtn.addEventListener('click', () => {
+        translateEnabled = !translateEnabled;
+        localStorage.setItem('cm_translate_messages', translateEnabled ? '1' : '0');
+        updateTranslateToggleUi();
+        fetchMessages();
+    });
+}
 
 function fetchMessages() {
     const cacheBuster = Date.now();
-    fetch(`api_messages.php?action=fetch&product_id=${productId}&other_user_id=${otherUserId}&_=${cacheBuster}`, {
+    const translateParam = translateEnabled ? 1 : 0;
+    fetch(`api_messages.php?action=fetch&product_id=${productId}&other_user_id=${otherUserId}&translate=${translateParam}&_=${cacheBuster}`, {
         cache: 'no-store'
     })
         .then(res => {

@@ -16,10 +16,19 @@ if (isAdmin()) {
 
 $uid = (int) currentUserId();
 
-// Load current user.
-$stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language FROM users WHERE id = :id');
-$stmt->execute([':id' => $uid]);
-$user = $stmt->fetch();
+// Load current user (support older local schemas that may not yet have preferred_language).
+try {
+    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language FROM users WHERE id = :id');
+    $stmt->execute([':id' => $uid]);
+    $user = $stmt->fetch();
+} catch (PDOException $e) {
+    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar FROM users WHERE id = :id');
+    $stmt->execute([':id' => $uid]);
+    $user = $stmt->fetch();
+    if ($user) {
+        $user['preferred_language'] = DEFAULT_LANGUAGE;
+    }
+}
 
 if (!$user) {
     // Session points at a user that no longer exists — nuke it.
@@ -94,30 +103,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $oldAbs = ROOT_PATH . 'public/' . $user['avatar'];
                 if (is_file($oldAbs)) @unlink($oldAbs);
             }
-            $upd = $pdo->prepare('
-                UPDATE users
-                SET username = :u, phone = :p, avatar = :a, preferred_language = :lang
-                WHERE id = :id
-            ');
-            $upd->execute([
-                ':u'  => $username,
-                ':p'  => $phone !== '' ? $phone : null,
-                ':a'  => $newAvatar,
-                ':lang' => $preferredLanguage,
-                ':id' => $uid,
-            ]);
+            try {
+                $upd = $pdo->prepare('
+                    UPDATE users
+                    SET username = :u, phone = :p, avatar = :a, preferred_language = :lang
+                    WHERE id = :id
+                ');
+                $upd->execute([
+                    ':u'  => $username,
+                    ':p'  => $phone !== '' ? $phone : null,
+                    ':a'  => $newAvatar,
+                    ':lang' => $preferredLanguage,
+                    ':id' => $uid,
+                ]);
+            } catch (PDOException $e) {
+                $upd = $pdo->prepare('
+                    UPDATE users
+                    SET username = :u, phone = :p, avatar = :a
+                    WHERE id = :id
+                ');
+                $upd->execute([
+                    ':u'  => $username,
+                    ':p'  => $phone !== '' ? $phone : null,
+                    ':a'  => $newAvatar,
+                    ':id' => $uid,
+                ]);
+            }
         } else {
-            $upd = $pdo->prepare('
-                UPDATE users
-                SET username = :u, phone = :p, preferred_language = :lang
-                WHERE id = :id
-            ');
-            $upd->execute([
-                ':u'  => $username,
-                ':p'  => $phone !== '' ? $phone : null,
-                ':lang' => $preferredLanguage,
-                ':id' => $uid,
-            ]);
+            try {
+                $upd = $pdo->prepare('
+                    UPDATE users
+                    SET username = :u, phone = :p, preferred_language = :lang
+                    WHERE id = :id
+                ');
+                $upd->execute([
+                    ':u'  => $username,
+                    ':p'  => $phone !== '' ? $phone : null,
+                    ':lang' => $preferredLanguage,
+                    ':id' => $uid,
+                ]);
+            } catch (PDOException $e) {
+                $upd = $pdo->prepare('
+                    UPDATE users
+                    SET username = :u, phone = :p
+                    WHERE id = :id
+                ');
+                $upd->execute([
+                    ':u'  => $username,
+                    ':p'  => $phone !== '' ? $phone : null,
+                    ':id' => $uid,
+                ]);
+            }
         }
 
         // Keep session in sync with the new username and language preference.

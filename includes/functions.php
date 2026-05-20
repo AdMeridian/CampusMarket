@@ -227,6 +227,7 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
     require_once __DIR__ . '/../config/supabase.php';
     $supabaseUrl = supabaseUrl();
     $supabaseKey = supabaseAnonKey();
+    $supabaseServiceKey = function_exists('supabaseServiceRoleKey') ? supabaseServiceRoleKey() : '';
 
     if (empty($supabaseUrl) || empty($supabaseKey)) {
         // Local upload fallback if Supabase not configured
@@ -248,9 +249,10 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $fileData);
+    $uploadKey = $supabaseServiceKey !== '' ? $supabaseServiceKey : $supabaseKey;
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Bearer " . $supabaseKey,
-        "apikey: " . $supabaseKey,
+        "Authorization: Bearer " . $uploadKey,
+        "apikey: " . $uploadKey,
         "Content-Type: " . $file['type']
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -266,6 +268,16 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
         $publicUrl = rtrim($supabaseUrl, '/') . '/storage/v1/object/public/' . $bucket . '/' . $objectName;
         return ['success' => true, 'path' => $publicUrl];
     } else {
+        // Resilient fallback: if cloud upload fails, still allow local upload path.
+        $relPath = 'uploads/' . $objectName;
+        $absPath = __DIR__ . '/../public/' . $relPath;
+        $dir = dirname($absPath);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        if (@move_uploaded_file($file['tmp_name'], $absPath)) {
+            return ['success' => true, 'path' => $relPath];
+        }
         return ['success' => false, 'error' => 'Upload failed: ' . $response];
     }
 }

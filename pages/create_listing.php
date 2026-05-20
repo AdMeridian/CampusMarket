@@ -9,11 +9,9 @@ if (isAdmin()) {
     redirect(BASE_URL . 'admin/index.php');
 }
 
-$pageTitle = __('create_listing.page_title');
-include '../includes/header.php';
-
 $success = false;
 $error = '';
+$createdProductId = 0;
 
 // Handle Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -65,10 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdo->commit();
         $success = true;
-        setFlash('success', __('create_listing.success_msg'));
-        
-        // Redirect to promotions page to offer an up-sell
-        redirect('promotions.php?product_id=' . $productId . '&new_listing=1');
+        $createdProductId = (int)$productId;
 
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -78,7 +73,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch Categories
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
+
+$pageTitle = __('create_listing.page_title');
+include '../includes/header.php';
 ?>
+
+<?php if ($success && $createdProductId > 0): ?>
+<div class="container mt-24 mb-20">
+    <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2rem; border-radius: var(--radius-xl); text-align: center;">
+        <h1 class="mb-2" style="font-size: 2rem;"><?= __('create_listing.success_msg') ?></h1>
+        <p class="text-muted mb-6">Would you like to promote this listing now?</p>
+        <div class="flex justify-center gap-4 flex-wrap">
+            <a class="btn btn-primary" href="promotions.php?product_id=<?= (int)$createdProductId ?>&new_listing=1" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
+                Yes, promote it
+            </a>
+            <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
+                No, view my listing
+            </a>
+        </div>
+    </div>
+</div>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php return; ?>
+<?php endif; ?>
 
 <div class="container relative mt-24 mb-20 flex justify-center">
     <!-- Decorative elements -->
@@ -232,6 +249,13 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 <script>
 let uploadedFiles = [];
 const maxFiles = 5;
+const createListingI18n = {
+    processing: <?= json_encode(__('create_listing.processing_images')) ?>,
+    compressing: <?= json_encode(__('create_listing.compressing_images')) ?>,
+    maxFilesAlert: <?= json_encode(__('create_listing.max_files_alert', ['max' => MAX_IMAGES])) ?>,
+    publishLabel: <?= json_encode(__('create_listing.publish')) ?>,
+    uploadHelp: <?= json_encode(__('create_listing.upload_desc')) ?>
+};
 
 function updateFileInput() {
     const dt = new DataTransfer();
@@ -343,8 +367,8 @@ document.getElementById('imgInput').addEventListener('change', async function(e)
     }
     
     submitBtn.disabled = true;
-    submitBtn.innerText = "Processing Images...";
-    uploadHelp.innerText = "Compressing images... Please wait.";
+    submitBtn.innerText = createListingI18n.processing;
+    uploadHelp.innerText = createListingI18n.compressing;
     uploadHelp.style.color = "var(--primary)";
     
     for (let i = 0; i < newFiles.length; i++) {
@@ -360,7 +384,7 @@ document.getElementById('imgInput').addEventListener('change', async function(e)
                 uploadedFiles.push(newFiles[i]);
             }
         } else {
-            alert('You can only upload a maximum of ' + maxFiles + ' images.');
+            alert(createListingI18n.maxFilesAlert);
             break;
         }
     }
@@ -369,10 +393,11 @@ document.getElementById('imgInput').addEventListener('change', async function(e)
     renderPreviews();
     
     submitBtn.disabled = false;
-    submitBtn.innerText = "Publish Listing";
-    uploadHelp.innerText = "PNG, JPG up to 5MB  ·  Max 5 photos";
+    submitBtn.innerText = createListingI18n.publishLabel;
+    uploadHelp.innerText = createListingI18n.uploadHelp;
     uploadHelp.style.color = "";
 });
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
