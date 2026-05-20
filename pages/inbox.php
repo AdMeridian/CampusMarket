@@ -5,6 +5,10 @@ requireLogin();
 
 $currentUserId = currentUserId();
 
+// Fetch Admin ID for quick support link
+$adminStmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+$adminId = $adminStmt->fetchColumn();
+
 // Fetch the latest message for each conversation
 $stmt = $pdo->prepare("
     SELECT 
@@ -328,6 +332,23 @@ body.dark-mode .convo-card.unread {
             </div>
         </div>
     </div>
+
+    <?php if ($adminId && $adminId != $currentUserId): ?>
+    <div class="mb-6">
+        <a href="messages.php?other_user_id=<?= $adminId ?>&product_id=0" class="flex items-center gap-4 p-4 rounded-xl shadow-sm transition-all hover-scale" style="background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%); border: 1px solid rgba(99,102,241,0.2); text-decoration: none;">
+            <div class="flex items-center justify-center text-primary bg-white shadow-sm flex-shrink-0" style="width: 42px; height: 42px; border-radius: 50%;">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            </div>
+            <div>
+                <h4 class="m-0 font-bold" style="color: var(--primary); font-size: 1.05rem;">Need any help?</h4>
+                <p class="m-0 text-muted small" style="font-size: 0.85rem; font-weight: 500;">Reach out to Admin directly</p>
+            </div>
+            <div class="ml-auto text-primary opacity-60">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+    </div>
+    <?php endif; ?>
 
     <?php if (empty($conversations)): ?>
         <!-- Empty State -->

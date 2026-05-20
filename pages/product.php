@@ -77,6 +77,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     }
 }
 
+// Handle Discount Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'set_discount') {
+    verifyCsrfToken();
+    $discountPercent = (int)($_POST['discount_percent'] ?? 0);
+    if ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
+        setFlash('error', 'Discount must be between 0 and ' . LISTING_DISCOUNT_MAX_PERCENT . ' percent.');
+    } else {
+        $stmtUp = $pdo->prepare("UPDATE products SET discount_percent = :dp, discount_set_at = NOW() WHERE id = :id");
+        $stmtUp->execute([':dp' => $discountPercent, ':id' => $productId]);
+        setFlash('success', $discountPercent > 0 ? 'Discount applied successfully!' : 'Discount removed.');
+        redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+    }
+}
+
 // Handle Mark as Sold (Now moves to bin too)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'mark_sold') {
     verifyCsrfToken();
@@ -450,6 +464,25 @@ require_once __DIR__ . '/../includes/header.php';
                             <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: var(--primary); background: var(--bg-surface); border: 1px solid var(--border-light); padding: 0 1rem; border-radius: 10px; cursor: pointer;">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 UPDATE PRICE
+                            </button>
+                        </form>
+                        
+                        <!-- Set Discount Form -->
+                        <form method="post" class="flex flex-wrap items-center gap-4 mt-4">
+                            <?php echo csrfTokenField(); ?>
+                            <input type="hidden" name="action" value="set_discount">
+                            <div class="flex items-center bg-white border border-slate-200 px-4" style="border-radius: 10px; height: 38px; min-width: 120px;">
+                                <select name="discount_percent" style="width: 100%; background: transparent; border: none; font-size: 0.95rem; font-weight: 800; color: #1e293b; outline: none; cursor: pointer;">
+                                    <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
+                                        <option value="<?php echo $d; ?>" <?php echo ((int)($product['discount_percent'] ?? 0) === $d) ? 'selected' : ''; ?>>
+                                            <?php echo $d === 0 ? 'No discount' : ('-' . $d . '%'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: white; background: #ef4444; border: 1px solid #dc2626; padding: 0 1rem; border-radius: 10px; cursor: pointer;">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                APPLY DISCOUNT
                             </button>
                         </form>
                     </div>

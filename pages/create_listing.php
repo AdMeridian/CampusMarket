@@ -225,19 +225,77 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 </style>
 
 <script>
-document.getElementById('imgInput').addEventListener('change', function(e) {
+let uploadedFiles = [];
+const maxFiles = 5;
+
+function updateFileInput() {
+    const dt = new DataTransfer();
+    uploadedFiles.forEach(file => dt.items.add(file));
+    document.getElementById('imgInput').files = dt.files;
+}
+
+function renderPreviews() {
     const preview = document.getElementById('preview');
     preview.innerHTML = '';
-    [...e.target.files].forEach(file => {
+    
+    uploadedFiles.forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = (re) => {
             const div = document.createElement('div');
-            div.style = "width:120px; height:120px; border-radius: var(--radius-md); overflow:hidden; border: 2px solid var(--primaryLight); box-shadow: var(--shadow-sm); flex-shrink: 0;";
-            div.innerHTML = `<img src="${re.target.result}" style="width:100%; height:100%; object-fit:cover;">`;
+            div.style = "position: relative; width:120px; height:120px; border-radius: var(--radius-md); overflow:hidden; border: 2px solid var(--primaryLight); box-shadow: var(--shadow-sm); flex-shrink: 0;";
+            
+            const img = document.createElement('img');
+            img.src = re.target.result;
+            img.style = "width:100%; height:100%; object-fit:cover;";
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = "button";
+            removeBtn.innerHTML = "&times;";
+            removeBtn.style = "position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 16px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;";
+            removeBtn.onclick = function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                uploadedFiles.splice(index, 1);
+                updateFileInput();
+                renderPreviews();
+            };
+            
+            div.appendChild(img);
+            div.appendChild(removeBtn);
             preview.appendChild(div);
         }
         reader.readAsDataURL(file);
     });
+}
+
+document.getElementById('imgInput').addEventListener('change', function(e) {
+    const newFiles = [...e.target.files];
+    
+    // Check if new selection was just the internal update
+    if (newFiles.length === uploadedFiles.length) {
+        let same = true;
+        for (let i = 0; i < newFiles.length; i++) {
+            if (newFiles[i] !== uploadedFiles[i]) {
+                same = false; break;
+            }
+        }
+        if (same) return;
+    }
+    
+    for (let i = 0; i < newFiles.length; i++) {
+        // Skip if already in array
+        if (uploadedFiles.some(f => f.name === newFiles[i].name && f.size === newFiles[i].size)) continue;
+        
+        if (uploadedFiles.length < maxFiles) {
+            uploadedFiles.push(newFiles[i]);
+        } else {
+            alert('You can only upload a maximum of ' + maxFiles + ' images.');
+            break;
+        }
+    }
+    
+    updateFileInput();
+    renderPreviews();
 });
 </script>
 

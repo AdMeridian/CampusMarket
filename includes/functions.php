@@ -130,9 +130,6 @@ function isDiscountEligible(array $product, int $minimumDays = LISTING_DISCOUNT_
     return ((time() - $created) >= ($minimumDays * 86400));
 }
 
-/**
- * Render product price with discount visual when applicable.
- */
 function renderProductPrice(array $product): string {
     $discountPercent = (int)($product['discount_percent'] ?? 0);
     $base = (float)($product['price'] ?? 0);
@@ -142,8 +139,9 @@ function renderProductPrice(array $product): string {
     }
     return
         '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final) . '</span> ' .
-        '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;">' . formatPrice($base) . '</span> ' .
-        '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;">-' . $discountPercent . '%</span>';
+        '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . formatPrice($base) . '</span> ' .
+        '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">Discounted</span> ' .
+        '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>';
 }
 
 /**
@@ -198,7 +196,19 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
         return ['success' => false, 'error' => 'Invalid file type'];
     }
 
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    // Secure Extension Whitelist Check
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowed_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    if (!in_array($ext, $allowed_exts)) {
+        return ['success' => false, 'error' => 'Invalid file extension'];
+    }
+
+    // Verify file content is a valid image using getimagesize
+    $img_info = @getimagesize($file['tmp_name']);
+    if ($img_info === false) {
+        return ['success' => false, 'error' => 'Uploaded file is not a valid image'];
+    }
+
     $filename = uniqid('img_', true) . '.' . $ext;
     $subfolder = trim($subfolder, '/');
     $objectName = $subfolder . '/' . $filename;

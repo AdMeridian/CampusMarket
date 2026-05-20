@@ -33,8 +33,8 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
             ?>
             <img src="<?php echo $imgUrl; ?>" alt="<?php echo sanitize($prod['title']); ?>">
             
-            <!-- Condition Badge -->
-            <div style="position: absolute; top: 1rem; left: 1rem; z-index: 5;">
+            <!-- Badges Container (Top Left) -->
+            <div style="position: absolute; top: 1rem; left: 1rem; z-index: 5; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <?php 
                 $cond = $prod['condition'] ?? 'used';
                 $badge = conditionBadge($cond); 
@@ -42,6 +42,12 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
                 <span class="badge <?php echo $badge['class']; ?> shadow-sm" style="font-size: 0.7rem; padding: 0.4rem 0.85rem; backdrop-filter: blur(4px);">
                     <?php echo $badge['label']; ?>
                 </span>
+                
+                <?php if (!empty($prod['discount_percent']) && (int)$prod['discount_percent'] > 0): ?>
+                <span class="badge shadow-sm" style="background: #ef4444; color: white; font-size: 0.7rem; padding: 0.4rem 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Discounted
+                </span>
+                <?php endif; ?>
             </div>
 
             <!-- Featured / Ad Badge -->
