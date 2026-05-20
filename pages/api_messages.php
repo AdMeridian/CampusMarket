@@ -10,13 +10,14 @@ function logApiError($msg) {
     file_put_contents(__DIR__ . '/../api_error.log', date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
 }
 
-if (!isLoggedIn()) {
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+if ($action !== 'set_language' && !isLoggedIn()) {
     echo json_encode(['error' => 'Not authenticated']);
     exit;
 }
 
-$currentUserId = currentUserId();
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+$currentUserId = isLoggedIn() ? currentUserId() : 0;
 
 function isValidConversation(PDO $pdo, int $productId, int $currentUserId, int $otherUserId): bool {
     if ($currentUserId <= 0 || $otherUserId <= 0 || $currentUserId === $otherUserId) {
@@ -656,14 +657,28 @@ if ($action === 'set_language') {
         exit;
     }
     
-    $success = setUserPreferredLanguage($pdo, $currentUserId, $lang);
-    if ($success) {
-        $_SESSION['preferred_language'] = $lang;
-        i18nInit($lang);
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'error' => 'Failed to save language preference']);
+    if (isLoggedIn()) {
+        setUserPreferredLanguage($pdo, currentUserId(), $lang);
     }
+    
+    $_SESSION['preferred_language'] = $lang;
+    
+    // Set language cookie so it persists for guests and serverless functions
+    $isSecureRequest = (
+        !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+    );
+    setcookie('campusmarket_lang', $lang, [
+        'expires'  => time() + 86400 * 30, // 30 days
+        'path'     => '/',
+        'secure'   => $isSecureRequest,
+        'samesite' => 'Lax',
+        'httponly' => false, // Accessible by client-side JS
+    ]);
+    
+    i18nInit($lang);
+    echo json_encode(['success' => true]);
     exit;
 }
 

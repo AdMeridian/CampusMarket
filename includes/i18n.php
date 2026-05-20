@@ -146,3 +146,44 @@ function i18nDetectFromBrowser(): string {
 
     return DEFAULT_LANGUAGE;
 }
+
+/**
+ * Translate a category name dynamically based on predefined mappings.
+ */
+function translateCategory(string $name): string {
+    $clean = strtolower($name);
+    $clean = str_replace('&', 'and', $clean);
+    $clean = preg_replace('/[^a-z0-9\s]/', '', $clean);
+    $clean = preg_replace('/\s+/', '_', trim($clean));
+    
+    $map = [
+        'electronics_and_accessories' => 'category.electronics_accessories',
+        'electronics_accessories' => 'category.electronics_accessories',
+        'books_and_study_materials' => 'category.books_study_materials',
+        'books_study_materials' => 'category.books_study_materials',
+        'furniture' => 'category.furniture',
+        'clothing_and_fashion' => 'category.clothing_fashion',
+        'clothing_fashion' => 'category.clothing_fashion',
+        'kitchen_essentials' => 'category.kitchen_essentials',
+        'health_and_personal_care' => 'category.health_personal_care',
+        'health_personal_care' => 'category.health_personal_care',
+        'food_and_beverages' => 'category.food_beverages',
+        'food_beverages' => 'category.food_beverages',
+        'stationery_and_study_supplies' => 'category.stationery_study_supplies',
+        'stationery_study_supplies' => 'category.stationery_study_supplies',
+        'dorms_and_living_essentials' => 'category.dorm_living_essentials',
+        'dorm_and_living_essentials' => 'category.dorm_living_essentials',
+        'dorm_living_essentials' => 'category.dorm_living_essentials',
+        'transportation' => 'category.transportation',
+        'transportation_bikes_and_scooters' => 'category.transportation',
+        'transportation_bikes_scooters' => 'category.transportation',
+    ];
+    
+    $key = $map[$clean] ?? 'category.' . $clean;
+    $translated = __($key);
+    
+    if ($translated === $key) {
+        return $name;
+    }
+    return $translated;
+}
