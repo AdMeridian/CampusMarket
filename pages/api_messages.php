@@ -112,11 +112,14 @@ if ($action === 'fetch') {
         ':pid2' => $productId
     ]);
     
-    // Fetch messages
+    // Fetch messages with translation for current user's preferred language
+    $myLang = i18nGetLocale();
     $stmt = $pdo->prepare("
-        SELECT m.*, u.username as sender_name 
+        SELECT m.*, u.username as sender_name,
+               t.translated_text, t.source_lang
         FROM messages m 
         JOIN users u ON m.sender_id = u.id
+        LEFT JOIN message_translations t ON m.id = t.message_id AND t.target_lang = :mylang
         WHERE (m.product_id = :pid1 OR (:pid2 = 0 AND m.product_id IS NULL))
           AND (
               (m.sender_id = :uid1 AND m.receiver_id = :other1) OR
@@ -125,6 +128,7 @@ if ($action === 'fetch') {
         ORDER BY m.created_at ASC
     ");
     $stmt->execute([
+        ':mylang' => $myLang,
         ':pid1' => $productId,
         ':pid2' => $productId,
         ':uid1' => $currentUserId,
@@ -136,10 +140,37 @@ if ($action === 'fetch') {
     
     // Format response
     $results = [];
+    $translator = getTranslationService();
     foreach ($messages as $msg) {
+        $body = $msg['body'];
+        $originalText = $msg['body'];
+        $isTranslated = false;
+        $sourceLang = '';
+
+        if ($msg['sender_id'] != $currentUserId) {
+            if ($msg['translated_text'] !== null) {
+                if ($msg['source_lang'] !== $myLang && $msg['source_lang'] !== 'unknown') {
+                    $body = $msg['translated_text'];
+                    $isTranslated = true;
+                    $sourceLang = $msg['source_lang'];
+                }
+            } elseif ($translator->isConfigured()) {
+                // Translate on-the-fly and cache
+                $transResult = $translator->translateMessage((int)$msg['id'], $msg['body'], $myLang, $pdo);
+                if ($transResult['source_lang'] !== $myLang && $transResult['source_lang'] !== 'unknown') {
+                    $body = $transResult['translated_text'];
+                    $isTranslated = true;
+                    $sourceLang = $transResult['source_lang'];
+                }
+            }
+        }
+
         $results[] = [
             'id' => $msg['id'],
-            'body' => htmlspecialchars($msg['body']),
+            'body' => htmlspecialchars($body, ENT_QUOTES, 'UTF-8'),
+            'original_text' => htmlspecialchars($originalText, ENT_QUOTES, 'UTF-8'),
+            'is_translated' => $isTranslated,
+            'source_lang' => $sourceLang,
             'is_mine' => $msg['sender_id'] == $currentUserId,
             'sender_name' => $msg['sender_name'],
             'created_at' => date('Y-m-d H:i:s', strtotime($msg['created_at']))
@@ -208,6 +239,19 @@ if ($action === 'send') {
         createNotification($pdo, $receiverId, 'message', "New Message", "You received a new message.", $productId > 0 ? $productId : null);
         
         $pdo->commit();
+
+        // Translate and cache for receiver after transaction is successfully committed
+        $messageId = (int)$pdo->lastInsertId();
+        try {
+            $receiverLang = getUserPreferredLanguage($pdo, $receiverId);
+            $translator = getTranslationService();
+            if ($translator->isConfigured()) {
+                $translator->translateMessage($messageId, $body, $receiverLang, $pdo);
+            }
+        } catch (Exception $e) {
+            error_log("[api_messages] Failed to auto-translate message on send: " . $e->getMessage());
+        }
+
         ob_clean();
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
@@ -264,9 +308,22 @@ if ($action === 'propose') {
         createNotification($pdo, $receiverId, 'message', "Purchase Proposal", "Someone wants to buy your item.", $productId);
         
         $pdo->commit();
+
+        // Translate and cache for receiver after transaction is successfully committed
+        $messageId = (int)$pdo->lastInsertId();
+        try {
+            $receiverLang = getUserPreferredLanguage($pdo, $receiverId);
+            $translator = getTranslationService();
+            if ($translator->isConfigured()) {
+                $translator->translateMessage($messageId, $proposedBody, $receiverLang, $pdo);
+            }
+        } catch (Exception $e) {
+            error_log("[api_messages] Failed to auto-translate propose message: " . $e->getMessage());
+        }
+
         echo json_encode(['success' => true, 'message' => 'Purchase proposal sent!']);
     } catch (PDOException $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) $pdo->rollBack();
         echo json_encode(['error' => 'Database error']);
     }
     exit;
@@ -584,8 +641,29 @@ if ($action === 'get_active_products') {
             'is_mine' => $p['user_id'] == $currentUserId
         ];
     }
-    
     echo json_encode(['success' => true, 'products' => $results]);
+    exit;
+}
+// ─── Set Preferred Language ────────────────────────
+if ($action === 'set_language') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        verifyCsrfTokenJson();
+    }
+    $lang = $_POST['language'] ?? $_GET['language'] ?? '';
+    
+    if (empty($lang) || !array_key_exists($lang, SUPPORTED_LANGUAGES)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid or unsupported language']);
+        exit;
+    }
+    
+    $success = setUserPreferredLanguage($pdo, $currentUserId, $lang);
+    if ($success) {
+        $_SESSION['preferred_language'] = $lang;
+        i18nInit($lang);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Failed to save language preference']);
+    }
     exit;
 }
 

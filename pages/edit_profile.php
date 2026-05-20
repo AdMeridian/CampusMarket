@@ -17,7 +17,7 @@ if (isAdmin()) {
 $uid = (int) currentUserId();
 
 // Load current user.
-$stmt = $pdo->prepare('SELECT id, username, email, phone, avatar FROM users WHERE id = :id');
+$stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language FROM users WHERE id = :id');
 $stmt->execute([':id' => $uid]);
 $user = $stmt->fetch();
 
@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $username = trim($_POST['username'] ?? '');
     $phone    = trim($_POST['phone'] ?? '');
+    $preferredLanguage = trim($_POST['preferred_language'] ?? '');
 
     // Username
     if ($username === '') {
@@ -54,6 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Phone (optional)
     if ($phone !== '' && !preg_match('/^[\d\s\-\+\(\)]{7,20}$/', $phone)) {
         $errors['phone'] = 'Phone number looks invalid.';
+    }
+
+    // Language validation
+    if (empty($preferredLanguage) || !array_key_exists($preferredLanguage, SUPPORTED_LANGUAGES)) {
+        $preferredLanguage = DEFAULT_LANGUAGE;
     }
 
     // Avatar upload — use Member 1's uploadImage() helper.
@@ -90,41 +96,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $upd = $pdo->prepare('
                 UPDATE users
-                SET username = :u, phone = :p, avatar = :a
+                SET username = :u, phone = :p, avatar = :a, preferred_language = :lang
                 WHERE id = :id
             ');
             $upd->execute([
                 ':u'  => $username,
                 ':p'  => $phone !== '' ? $phone : null,
                 ':a'  => $newAvatar,
+                ':lang' => $preferredLanguage,
                 ':id' => $uid,
             ]);
         } else {
             $upd = $pdo->prepare('
                 UPDATE users
-                SET username = :u, phone = :p
+                SET username = :u, phone = :p, preferred_language = :lang
                 WHERE id = :id
             ');
             $upd->execute([
                 ':u'  => $username,
                 ':p'  => $phone !== '' ? $phone : null,
+                ':lang' => $preferredLanguage,
                 ':id' => $uid,
             ]);
         }
 
-        // Keep session in sync with the new username.
+        // Keep session in sync with the new username and language preference.
         $_SESSION['username'] = $username;
+        $_SESSION['preferred_language'] = $preferredLanguage;
+        i18nInit($preferredLanguage);
 
-        setFlash('success', 'Profile updated successfully!');
+        setFlash('success', __('profile.updated_success'));
         redirect(BASE_URL . '/pages/profile.php');
     }
 
     // On error, keep typed values visible.
     $user['username'] = $username;
     $user['phone']    = $phone;
+    $user['preferred_language'] = $preferredLanguage;
 }
 
-$pageTitle = 'Edit profile';
+$pageTitle = __('profile.edit_title');
 require_once '../includes/header.php';
 ?>
 
@@ -132,15 +143,15 @@ require_once '../includes/header.php';
   <div class="glass-panel" style="width: 100%; max-width: 650px; border-radius: var(--radius-lg); overflow: hidden;">
       <div style="background: var(--bg-surface); padding: 2rem; border-bottom: 1px solid var(--border-light);">
         <div class="flex items-center justify-between">
-            <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px;">Edit Profile</h1>
+            <h1 class="mb-0 text-main font-bold" style="letter-spacing: -0.5px;"><?= __('profile.edit_title') ?></h1>
             <a href="<?php echo BASE_URL; ?>/pages/profile.php" class="btn btn-secondary btn-sm hover-scale shadow-sm flex items-center gap-1" style="border-radius: var(--radius-lg); display: inline-flex;">
                 <svg xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
-                Cancel
+                <?= __('profile.cancel') ?>
             </a>
         </div>
-        <p class="text-muted mt-2 mb-0">Update your public identity and contact details.</p>
+        <p class="text-muted mt-2 mb-0"><?= __('profile.update_desc') ?></p>
       </div>
 
       <div style="padding: 2.5rem;">
@@ -151,18 +162,18 @@ require_once '../includes/header.php';
                 <div class="flex items-center gap-6">
                     <img id="avatar-preview" src="<?php echo sanitize(avatarUrl($user['avatar'])); ?>" alt="Avatar" class="shadow-sm" style="width: 90px; height: 90px; border-radius: var(--radius-xl); object-fit: cover; border: 3px solid white; transition: var(--transition);">
                     <div class="flex-grow">
-                        <label class="form-label font-bold mb-2">Upload Profile Picture</label>
+                        <label class="form-label font-bold mb-2"><?= __('profile.upload_picture') ?></label>
                         <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control premium-input p-2 <?php echo isset($errors['avatar']) ? 'border-accent' : ''; ?>" style="font-size: 0.9rem;">
                         <?php if (isset($errors['avatar'])): ?>
                             <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['avatar']); ?></div>
                         <?php else: ?>
-                            <div class="text-muted small mt-2">JPEG, PNG, WebP, or GIF · Max 5MB</div>
+                            <div class="text-muted small mt-2"><?= __('profile.avatar_formats') ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
 
                 <div style="border-top: 1px solid var(--border-light); padding-top: 1.5rem;">
-                    <label class="form-label font-bold mb-3 block text-main">Or Choose a Student Avatar Preset</label>
+                    <label class="form-label font-bold mb-3 block text-main"><?= __('profile.choose_preset') ?></label>
                     <input type="hidden" id="selected-preset" name="selected_preset" value="">
                     
                     <div class="grid grid-cols-3 sm:grid-cols-6 gap-4">
@@ -193,7 +204,7 @@ require_once '../includes/header.php';
             <!-- Fields -->
             <div class="grid gap-6">
                 <div>
-                    <label for="username" class="form-label font-bold">Username</label>
+                    <label for="username" class="form-label font-bold"><?= __('profile.username') ?></label>
                     <input type="text" id="username" name="username" value="<?php echo sanitize($user['username']); ?>" maxlength="50" required class="form-control premium-input <?php echo isset($errors['username']) ? 'border-accent' : ''; ?>">
                     <?php if (isset($errors['username'])): ?>
                         <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['username']); ?></div>
@@ -201,7 +212,7 @@ require_once '../includes/header.php';
                 </div>
 
                 <div>
-                    <label for="phone" class="form-label font-bold">Contact Number (Optional)</label>
+                    <label for="phone" class="form-label font-bold"><?= __('profile.contact_number') ?></label>
                     <input type="tel" id="phone" name="phone" value="<?php echo sanitize($user['phone'] ?? ''); ?>" maxlength="20" class="form-control premium-input <?php echo isset($errors['phone']) ? 'border-accent' : ''; ?>">
                     <?php if (isset($errors['phone'])): ?>
                         <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['phone']); ?></div>
@@ -209,16 +220,28 @@ require_once '../includes/header.php';
                 </div>
 
                 <div>
-                    <label class="form-label font-bold">University Email</label>
-                    <input type="email" value="<?php echo sanitize($user['email']); ?>" disabled class="form-control" style="background: rgba(241, 245, 249, 0.6); color: var(--text-muted); cursor: not-allowed; border: 1px border-light;">
-                    <div class="text-muted small mt-2">Verified university emails cannot be changed. Contact support if you lost access.</div>
+                    <label for="preferred_language" class="form-label font-bold"><?= __('profile.preferred_language') ?></label>
+                    <select id="preferred_language" name="preferred_language" class="form-control premium-input" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); padding: 0.75rem; border-radius: var(--radius-md);">
+                        <?php foreach (SUPPORTED_LANGUAGES as $code => $name): ?>
+                            <option value="<?= htmlspecialchars($code) ?>" <?= ($user['preferred_language'] ?? DEFAULT_LANGUAGE) === $code ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($name) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="text-muted small mt-2"><?= __('profile.language_note') ?></div>
+                </div>
+
+                <div>
+                    <label class="form-label font-bold"><?= __('profile.university_email') ?></label>
+                    <input type="email" value="<?php echo sanitize($user['email']); ?>" disabled class="form-control" style="background: rgba(241, 245, 249, 0.6); color: var(--text-muted); cursor: not-allowed; border: 1px solid var(--border-light); padding: 0.75rem; border-radius: var(--radius-md);">
+                    <div class="text-muted small mt-2"><?= __('profile.email_note') ?></div>
                 </div>
             </div>
 
             <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">
 
             <div class="flex justify-end">
-                <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg font-bold" style="border-radius: var(--radius-lg);">Save Changes</button>
+                <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg font-bold" style="border-radius: var(--radius-lg);"><?= __('profile.save_changes') ?></button>
             </div>
         </form>
       </div>

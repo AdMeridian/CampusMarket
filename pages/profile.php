@@ -17,7 +17,7 @@ if (isAdmin() && $viewId === (int)currentUserId()) {
 }
 
 // Fetch User
-$stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, created_at FROM users WHERE id = :id");
+$stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, preferred_language, created_at FROM users WHERE id = :id");
 $stmt->execute([':id' => $viewId]);
 $user = $stmt->fetch();
 
@@ -723,6 +723,19 @@ body.dark-mode .btn-white-solid:hover {
                 <div class="info-item">
                     <span class="info-label">Phone</span>
                     <span class="info-value"><?php echo sanitize($user['phone']); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($isSelf || isAdmin()): ?>
+                <div class="info-divider"></div>
+                <div class="info-item">
+                    <span class="info-label"><?= __('profile.preferred_language') ?></span>
+                    <span class="info-value">
+                        <?php 
+                        $langCode = $user['preferred_language'] ?? DEFAULT_LANGUAGE;
+                        echo htmlspecialchars(SUPPORTED_LANGUAGES[$langCode] ?? $langCode); 
+                        ?>
+                    </span>
                 </div>
                 <?php endif; ?>
 

@@ -59,6 +59,8 @@ if (file_exists($envFile)) {
 require_once ROOT_PATH . 'config/supabase.php';
 require_once ROOT_PATH . 'config/db.php';
 require_once ROOT_PATH . 'includes/functions.php';
+require_once ROOT_PATH . 'includes/i18n.php';
+require_once ROOT_PATH . 'includes/translation.php';
 
 // ─── Stateless Cookie-Based Session Replication (Vercel Serverless Compatibility) ───
 $isSecureRequest = (
@@ -82,6 +84,7 @@ if (empty($_SESSION['user_id']) && !empty($_COOKIE['campusmarket_sess_stateless'
                 $_SESSION['username'] = $data['username'] ?? '';
                 $_SESSION['supabase_access_token'] = $data['supabase_access_token'] ?? '';
                 $_SESSION['supabase_refresh_token'] = $data['supabase_refresh_token'] ?? '';
+                $_SESSION['preferred_language'] = $data['preferred_language'] ?? DEFAULT_LANGUAGE;
             }
         }
     }
@@ -97,6 +100,7 @@ register_shutdown_function(function() use ($isSecureRequest) {
                 'username' => $_SESSION['username'] ?? '',
                 'supabase_access_token' => $_SESSION['supabase_access_token'] ?? '',
                 'supabase_refresh_token' => $_SESSION['supabase_refresh_token'] ?? '',
+                'preferred_language' => $_SESSION['preferred_language'] ?? DEFAULT_LANGUAGE,
             ];
             $json = json_encode($sessionData);
             $secret = supabaseAnonKey() ?: 'campusmarket_fallback_secret_key_12345';
@@ -135,3 +139,15 @@ if (isLoggedIn()) {
         session_start();
     }
 }
+
+// ─── i18n Initialization ─────────────────────────────────────
+// Determine user's preferred language: session > DB > browser > default
+$_userLang = $_SESSION['preferred_language'] ?? null;
+if (!$_userLang && isLoggedIn()) {
+    $_userLang = getUserPreferredLanguage($pdo, currentUserId());
+    $_SESSION['preferred_language'] = $_userLang;
+}
+if (!$_userLang) {
+    $_userLang = i18nDetectFromBrowser();
+}
+i18nInit($_userLang);

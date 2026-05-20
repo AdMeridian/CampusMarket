@@ -636,3 +636,41 @@ function verifyCsrfTokenJson(): void {
         exit;
     }
 }
+
+// ─── Language / i18n Helpers ─────────────────────────────────
+
+/**
+ * Get a user's preferred language from the database.
+ */
+function getUserPreferredLanguage(PDO $pdo, int $userId): string {
+    try {
+        $stmt = $pdo->prepare("SELECT preferred_language FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $lang = $stmt->fetchColumn();
+        if ($lang && array_key_exists($lang, SUPPORTED_LANGUAGES)) {
+            return $lang;
+        }
+    } catch (PDOException $e) {
+        // Column may not exist yet — graceful fallback
+    }
+    return DEFAULT_LANGUAGE;
+}
+
+/**
+ * Set a user's preferred language in the database and session.
+ */
+function setUserPreferredLanguage(PDO $pdo, int $userId, string $lang): bool {
+    if (!array_key_exists($lang, SUPPORTED_LANGUAGES)) {
+        return false;
+    }
+    try {
+        $stmt = $pdo->prepare("UPDATE users SET preferred_language = :lang WHERE id = :id");
+        $stmt->execute([':lang' => $lang, ':id' => $userId]);
+        $_SESSION['preferred_language'] = $lang;
+        return true;
+    } catch (PDOException $e) {
+        error_log("setUserPreferredLanguage error: " . $e->getMessage());
+        return false;
+    }
+}
+

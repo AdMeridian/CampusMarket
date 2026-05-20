@@ -93,14 +93,14 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <h3 class="mb-0 font-bold" style="line-height: 1.2;">@<?= htmlspecialchars($otherUser['username']) ?></h3>
                 <p class="text-muted small mb-0 flex items-center gap-1">
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span> Active recently
+                    <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span> <?= __('chat.active_recently') ?>
                 </p>
             </div>
         </div>
         <div class="flex items-center gap-3 text-right hidden sm:flex">
             <?php if ($productId > 0): ?>
                 <div>
-                    <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Regarding Item</p>
+                    <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;"><?= __('chat.regarding_item') ?></p>
                     <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="font-bold text-main hover:text-primary transition-colors" style="text-decoration: none; font-size: 0.9rem; display: block; max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         <?= htmlspecialchars($product['title']) ?>
                     </a>
@@ -111,9 +111,9 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
             <?php else: ?>
                 <div>
-                    <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;">Conversation</p>
+                    <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;"><?= __('chat.conversation_label') ?></p>
                     <span class="font-bold text-main" style="font-size: 0.9rem;"><?= htmlspecialchars($product['title']) ?></span>
-                    <p class="text-secondary font-bold mb-0" style="font-size: 0.9rem;"><?= $product['title'] === 'CampusMarket Support' ? 'Official Help' : 'Private DM' ?></p>
+                    <p class="text-secondary font-bold mb-0" style="font-size: 0.9rem;"><?= $product['title'] === 'CampusMarket Support' ? __('chat.official_help') : __('chat.private_dm') ?></p>
                 </div>
                 <div style="width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light); background: var(--secondary-light); display: flex; align-items: center; justify-content: center; color: var(--secondary);">
                     <?php if ($product['title'] === 'CampusMarket Support'): ?>
@@ -154,8 +154,8 @@ require_once __DIR__ . '/../includes/header.php';
                         </svg>
                     </div>
                     <div>
-                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;">Ready to buy?</h4>
-                        <p class="text-xs text-muted mb-0">Send a formal purchase request to the seller.</p>
+                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;"><?= __('chat.ready_to_buy') ?></h4>
+                        <p class="text-xs text-muted mb-0"><?= __('chat.send_purchase_request') ?></p>
                     </div>
                 </div>
                 <form action="api_messages.php" method="POST" class="m-0">
@@ -165,7 +165,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <button type="button" class="btn btn-primary btn-sm shadow-md font-bold uppercase tracking-wider hover-scale" 
                             style="font-size: 0.7rem; padding: 0.5rem 1.25rem; border-radius: var(--radius-lg); letter-spacing: 0.05em;" 
                             onclick="proposeOrder()">
-                        Propose Order
+                        <?= __('chat.propose_order') ?>
                     </button>
                 </form>
             </div>
@@ -186,11 +186,11 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div>
                         <?php if ($isSupport): ?>
-                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;">CampusMarket Support</h4>
-                        <p class="text-xs text-muted mb-0">Our team usually responds within 24 hours.</p>
+                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;"><?= __('chat.support_title') ?></h4>
+                        <p class="text-xs text-muted mb-0"><?= __('chat.support_desc') ?></p>
                         <?php else: ?>
-                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;">Direct Message</h4>
-                        <p class="text-xs text-muted mb-0">Private conversation with @<?= htmlspecialchars($otherUser['username']) ?></p>
+                        <h4 class="text-sm font-bold text-main mb-0" style="line-height: 1.2;"><?= __('chat.dm_title') ?></h4>
+                        <p class="text-xs text-muted mb-0"><?= __('chat.dm_desc', ['username' => htmlspecialchars($otherUser['username'])]) ?></p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -200,8 +200,8 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- Input Area -->
         <div style="background: var(--bg-surface); border-top: 1px solid var(--border-light); padding: 0.75rem;">
             <form id="chat-form" class="flex gap-3 relative m-0">
-                <input type="text" id="chat-input" class="premium-input" style="background: var(--bg-surface); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); font-size: 1rem; flex-grow: 1;" placeholder="Type your message..." required autocomplete="off">
-                <button type="submit" class="btn btn-primary hover-scale shadow-md" style="border-radius: var(--radius-lg); width: 54px; height: 54px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Send">
+                <input type="text" id="chat-input" class="premium-input" style="background: var(--bg-surface); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); font-size: 1rem; flex-grow: 1;" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" required autocomplete="off">
+                <button type="submit" class="btn btn-primary hover-scale shadow-md" style="border-radius: var(--radius-lg); width: 54px; height: 54px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="<?= htmlspecialchars(__('chat.send')) ?>">
                     <svg style="width: 24px; height: 24px; transform: translateX(2px);" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                 </button>
             </form>
@@ -279,7 +279,7 @@ function renderMessages(messages) {
         chatBox.innerHTML = `
             <div class="text-center text-muted my-auto flex flex-col items-center justify-center opacity-50">
                 <div class="text-5xl mb-2">👋</div>
-                <p>Say hello to start the conversation!</p>
+                <p>${__('chat.say_hello')}</p>
             </div>
         `;
         return;
@@ -300,6 +300,7 @@ function renderMessages(messages) {
         }
 
         const msgDiv = document.createElement('div');
+        msgDiv.className = 'message-bubble';
         msgDiv.style.maxWidth = '75%';
         msgDiv.style.padding = '0.875rem 1.25rem';
         msgDiv.style.boxShadow = 'none';
@@ -324,8 +325,24 @@ function renderMessages(messages) {
         
         let timeStr = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
+        let bodyHtml = `<div class="message-text-content" style="font-size: 1rem;">${msg.body}</div>`;
+        if (!msg.is_mine && msg.is_translated) {
+            const langName = CampusMarketI18n.getLangName(msg.source_lang);
+            const translatedLabel = __('chat.translated_from', { lang: langName });
+            const viewOriginalText = __('chat.view_original');
+            
+            bodyHtml = `
+                <div class="message-text-content translated-text" style="font-size: 1rem;">${msg.body}</div>
+                <div class="message-text-content original-text" style="font-size: 1rem; display: none; opacity: 0.85; font-style: italic;">${msg.original_text}</div>
+                <div class="translation-meta" style="font-size: 0.7rem; opacity: 0.7; margin-top: 6px; display: flex; align-items: center; gap: 6px; border-top: 1px dashed var(--border-light); padding-top: 4px;">
+                    <span>🌐 ${translatedLabel}</span>
+                    <button type="button" class="btn-toggle-translation" onclick="toggleOriginalText(this)" style="background: none; border: none; padding: 0; margin: 0; color: var(--primary); font-size: 0.7rem; cursor: pointer; text-decoration: underline; font-weight: bold;">${viewOriginalText}</button>
+                </div>
+            `;
+        }
+
         msgDiv.innerHTML = `
-            <div style="font-size: 1rem;">${msg.body}</div>
+            ${bodyHtml}
             <div style="font-size: 0.65rem; text-align: right; margin-top: 4px; opacity: ${msg.is_mine ? '0.8' : '0.5'};">
                 ${timeStr}
             </div>
@@ -337,6 +354,22 @@ function renderMessages(messages) {
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 }
+
+window.toggleOriginalText = function(btn) {
+    const bubble = btn.closest('.message-bubble');
+    const translatedEl = bubble.querySelector('.translated-text');
+    const originalEl = bubble.querySelector('.original-text');
+    
+    if (translatedEl.style.display === 'none') {
+        translatedEl.style.display = 'block';
+        originalEl.style.display = 'none';
+        btn.textContent = __('chat.view_original');
+    } else {
+        translatedEl.style.display = 'none';
+        originalEl.style.display = 'block';
+        btn.textContent = __('chat.hide_original');
+    }
+};
 
 chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -356,7 +389,7 @@ chatForm.addEventListener('submit', (e) => {
     msgDiv.style.lineHeight = '1.6';
     msgDiv.style.wordWrap = 'break-word';
     msgDiv.style.opacity = '0.7'; // Indicate sending
-    msgDiv.innerHTML = `<div style="font-size: 1rem;">${text}</div><div style="font-size: 0.65rem; text-align: right; margin-top: 4px;">Sending...</div>`;
+    msgDiv.innerHTML = `<div style="font-size: 1rem;">${text}</div><div style="font-size: 0.65rem; text-align: right; margin-top: 4px;">${__('chat.sending')}</div>`;
     chatBox.appendChild(msgDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -391,14 +424,14 @@ chatForm.addEventListener('submit', (e) => {
             }
             fetchMessages();
         } else {
-            alert('Error sending message: ' + data.error);
+            alert(__('chat.error_send') + data.error);
             msgDiv.remove();
             chatInput.value = text;
         }
     })
     .catch(err => {
         console.error('Send failed:', err);
-        alert('Failed to send message. Please try again.');
+        alert(__('chat.failed_send'));
         msgDiv.remove();
         chatInput.value = text;
     });
@@ -476,7 +509,7 @@ function renderHandshakeBar(deal) {
                 <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span style="font-size: 0.8rem; font-weight: 600;">Deal Info</span>
+                <span style="font-size: 0.8rem; font-weight: 600;">${__('deal.deal_info')}</span>
             </div>
         `;
         return;
@@ -493,24 +526,24 @@ function renderHandshakeBar(deal) {
                         </svg>
                     </div>
                     <div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">Did a transaction happen?</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Select the item to confirm the deal and delist it.</div>
+                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.did_transaction')}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.select_item')}</div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="openProductSelector()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes</button>
-                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">No</button>
+                    <button onclick="openProductSelector()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.yes')}</button>
+                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.no')}</button>
                 </div>
             </div>
             <div id="choose-product-selector" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; width: 100%;">
                 <div style="flex-grow: 1;">
                     <select id="deal-product-select" class="premium-input" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); background: var(--bg-surface); color: var(--text-main);">
-                        <option value="">Loading items...</option>
+                        <option value="">${__('deal.loading_items')}</option>
                     </select>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="submitChosenProduct()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Confirm</button>
-                    <button onclick="cancelChooseProduct()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Cancel</button>
+                    <button onclick="submitChosenProduct()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.confirm')}</button>
+                    <button onclick="cancelChooseProduct()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.cancel')}</button>
                 </div>
             </div>
         `;
@@ -525,13 +558,13 @@ function renderHandshakeBar(deal) {
                         </svg>
                     </div>
                     <div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">Did this deal happen?</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Confirming marks this item as sold and removes it from listings.</div>
+                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.did_deal_happen')}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.confirm_marks_sold')}</div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Yes, deal is done!</button>
-                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">Not yet</button>
+                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.yes_done')}</button>
+                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_yet')}</button>
                 </div>
             </div>
         `;
@@ -545,8 +578,8 @@ function renderHandshakeBar(deal) {
                     </svg>
                 </div>
                 <div>
-                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">Awaiting Confirmation</div>
-                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">You confirmed this deal. Waiting for the seller to confirm...</div>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.awaiting_confirmation')}</div>
+                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${__('deal.you_confirmed_waiting')}</div>
                 </div>
             </div>
         `;
@@ -561,13 +594,13 @@ function renderHandshakeBar(deal) {
                         </svg>
                     </div>
                     <div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">@${buyerName} says the deal is done!</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Confirm below to mark &ldquo;${productTitle}&rdquo; as sold.</div>
+                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.says_done', {buyer: buyerName})}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.confirm_to_mark', {product: productTitle})}</div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">Confirm & Delist Item</button>
-                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">Not done yet</button>
+                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">${__('deal.confirm_delist')}</button>
+                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_done_yet')}</button>
                 </div>
             </div>
         `;
@@ -581,8 +614,8 @@ function renderHandshakeBar(deal) {
                     </svg>
                 </div>
                 <div>
-                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--secondary); line-height: 1.2;">Deal confirmed!</div>
-                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">This item has been marked as sold.</div>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--secondary); line-height: 1.2;">${__('deal.deal_confirmed')}</div>
+                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${__('deal.item_marked_sold')}</div>
                 </div>
             </div>
         `;
@@ -605,17 +638,17 @@ function openProductSelector() {
         .then(res => res.json())
         .then(data => {
             if (data.success && data.products.length > 0) {
-                let options = '<option value="">Select an item...</option>';
+                let options = '<option value="">' + __('deal.select_item_prompt') + '</option>';
                 data.products.forEach(p => {
                     options += `<option value="${p.id}" data-is-mine="${p.is_mine}">${p.title} - ${p.price}</option>`;
                 });
                 select.innerHTML = options;
             } else {
-                select.innerHTML = '<option value="">No active items found</option>';
+                select.innerHTML = '<option value="">' + __('deal.no_active_items') + '</option>';
             }
         })
         .catch(err => {
-            select.innerHTML = '<option value="">Error loading items</option>';
+            select.innerHTML = '<option value="">' + __('deal.error_loading') + '</option>';
         });
 }
 
@@ -642,7 +675,7 @@ function confirmDeal(prodId = null, isSellerOverride = null) {
     const isSeller = isSellerOverride !== null ? isSellerOverride : (window.currentDeal && window.currentDeal.is_seller);
 
     if (isSeller) {
-        if (!confirm("Are you sure you want to mark this item as sold? It will be delisted immediately.")) {
+        if (!confirm(__('deal.confirm_delist_warning'))) {
             return;
         }
     }
