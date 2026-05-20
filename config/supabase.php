@@ -5,7 +5,8 @@
  */
 
 function supabaseUrl(): string {
-    return getenv('SUPABASE_URL') ?: (defined('SUPABASE_URL') ? trim((string) SUPABASE_URL) : '');
+    $url = getenv('SUPABASE_URL') ?: (defined('SUPABASE_URL') ? trim((string) SUPABASE_URL) : '');
+    return rtrim(trim($url), './');
 }
 
 function supabaseAnonKey(): string {
