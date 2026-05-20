@@ -111,6 +111,137 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     }
 }
 
+// Handle Add Images
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'add_images') {
+    verifyCsrfToken();
+    
+    // Count current images
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM product_images WHERE product_id = ?");
+    $stmtCount->execute([$productId]);
+    $currentCount = (int)$stmtCount->fetchColumn();
+    
+    if ($currentCount >= 5) {
+        setFlash('error', 'You have reached the maximum limit of 5 images.');
+        redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+    }
+    
+    if (!empty($_FILES['images']['name'][0])) {
+        $files = $_FILES['images'];
+        $uploaded = 0;
+        
+        for ($i = 0; $i < count($files['name']); $i++) {
+            if ($currentCount + $uploaded >= 5) break;
+            
+            $fileData = [
+                'name'     => $files['name'][$i],
+                'type'     => $files['type'][$i],
+                'tmp_name' => $files['tmp_name'][$i],
+                'error'    => $files['error'][$i],
+                'size'     => $files['size'][$i]
+            ];
+            
+            $upload = handleUpload($fileData, 'products/');
+            if ($upload['success']) {
+                $isPrimary = ($currentCount === 0 && $uploaded === 0);
+                $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (:pid, :path, :primary)");
+                $stmtImg->bindValue(':pid', $productId, PDO::PARAM_INT);
+                $stmtImg->bindValue(':path', $upload['path'], PDO::PARAM_STR);
+                $stmtImg->bindValue(':primary', $isPrimary, PDO::PARAM_BOOL);
+                $stmtImg->execute();
+                $uploaded++;
+            } else {
+                setFlash('error', 'Upload failed: ' . $upload['error']);
+                redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+            }
+        }
+        
+        if ($uploaded > 0) {
+            setFlash('success', "Successfully uploaded $uploaded image(s)!");
+        }
+    } else {
+        setFlash('error', 'No images selected.');
+    }
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+}
+
+// Handle Set Primary Image
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'set_primary') {
+    verifyCsrfToken();
+    $imageId = (int)($_POST['image_id'] ?? 0);
+    
+    // Verify image belongs to this product
+    $check = $pdo->prepare("SELECT 1 FROM product_images WHERE id = ? AND product_id = ?");
+    $check->execute([$imageId, $productId]);
+    if ($check->fetch()) {
+        $pdo->beginTransaction();
+        try {
+            // Set all to false
+            $stmt1 = $pdo->prepare("UPDATE product_images SET is_primary = FALSE WHERE product_id = ?");
+            $stmt1->execute([$productId]);
+            // Set target to true
+            $stmt2 = $pdo->prepare("UPDATE product_images SET is_primary = TRUE WHERE id = ?");
+            $stmt2->execute([$imageId]);
+            $pdo->commit();
+            setFlash('success', 'Primary image updated!');
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            setFlash('error', 'Database error updating primary image.');
+        }
+    } else {
+        setFlash('error', 'Invalid image selection.');
+    }
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+}
+
+// Handle Delete Image
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'delete_image') {
+    verifyCsrfToken();
+    $imageId = (int)($_POST['image_id'] ?? 0);
+    
+    // Get image details
+    $stmtGet = $pdo->prepare("SELECT image_path, is_primary FROM product_images WHERE id = ? AND product_id = ?");
+    $stmtGet->execute([$imageId, $productId]);
+    $img = $stmtGet->fetch();
+    
+    if ($img) {
+        $pdo->beginTransaction();
+        try {
+            // Delete DB row
+            $stmtDel = $pdo->prepare("DELETE FROM product_images WHERE id = ?");
+            $stmtDel->execute([$imageId]);
+            
+            // Delete file if local
+            $path = $img['image_path'];
+            if (strpos($path, 'http') !== 0) {
+                $absPath = __DIR__ . '/../public/' . ltrim($path, '/');
+                if (file_exists($absPath)) {
+                    @unlink($absPath);
+                }
+            }
+            
+            // If it was primary, assign a new primary
+            if ($img['is_primary']) {
+                $stmtNext = $pdo->prepare("SELECT id FROM product_images WHERE product_id = ? LIMIT 1");
+                $stmtNext->execute([$productId]);
+                $nextId = $stmtNext->fetchColumn();
+                if ($nextId) {
+                    $stmtSetNext = $pdo->prepare("UPDATE product_images SET is_primary = TRUE WHERE id = ?");
+                    $stmtSetNext->execute([$nextId]);
+                }
+            }
+            
+            $pdo->commit();
+            setFlash('success', 'Image deleted successfully.');
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            setFlash('error', 'Failed to delete image.');
+        }
+    } else {
+        setFlash('error', 'Image not found or access denied.');
+    }
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+}
+
 // Fetch Images
 $stmt = $pdo->prepare("SELECT * FROM product_images WHERE product_id = :id ORDER BY is_primary DESC");
 $stmt->execute([':id' => $productId]);
@@ -507,6 +638,86 @@ require_once __DIR__ . '/../includes/header.php';
                         </form>
                     </div>
 
+                    <!-- GALLERY MANAGEMENT -->
+                    <div class="mb-8 border-t border-slate-100 pt-6 mt-6">
+                        <h4 class="font-bold text-slate-800 mb-4" style="font-size: 1.15rem;">Manage Image Gallery</h4>
+                        
+                        <!-- Thumbnail Grid -->
+                        <div class="grid grid-cols-5 gap-3 mb-6">
+                            <?php foreach ($images as $img): ?>
+                                <div class="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50" style="width: 100%;">
+                                    <img src="<?php echo getProductImage($img['image_path']); ?>" alt="Gallery Image" class="w-full h-full object-cover">
+                                    
+                                    <!-- Badges & Controls Overlay -->
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5">
+                                        <div class="flex justify-between items-start">
+                                            <?php if ($img['is_primary']): ?>
+                                                <span class="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow">Primary</span>
+                                            <?php else: ?>
+                                                <form method="post" style="display:inline;">
+                                                    <?php echo csrfTokenField(); ?>
+                                                    <input type="hidden" name="action" value="set_primary">
+                                                    <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
+                                                    <button type="submit" class="bg-white/90 hover:bg-white text-indigo-600 p-1 rounded shadow transition-colors" title="Set Primary" style="border:none; cursor:pointer;">
+                                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
+                                            
+                                            <!-- Delete Button -->
+                                            <?php if (count($images) > 1): ?>
+                                                <form method="post" onsubmit="return confirm('Delete this image?')" style="display:inline;">
+                                                    <?php echo csrfTokenField(); ?>
+                                                    <input type="hidden" name="action" value="delete_image">
+                                                    <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
+                                                    <button type="submit" class="bg-red-600/90 hover:bg-red-600 text-white p-1 rounded shadow transition-colors ml-auto" title="Delete Image" style="border:none; cursor:pointer;">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Fallback Indicator for Primary on non-hover -->
+                                    <?php if ($img['is_primary']): ?>
+                                        <div class="absolute bottom-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow" style="pointer-events: none;">
+                                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                            
+                            <!-- Empty Slots if < 5 -->
+                            <?php for ($i = count($images); $i < 5; $i++): ?>
+                                <div class="border border-dashed border-slate-200 rounded-lg flex items-center justify-center aspect-square text-slate-300">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                </div>
+                            <?php endfor; ?>
+                        </div>
+
+                        <!-- Add Images Form -->
+                        <?php if (count($images) < 5): ?>
+                            <form method="post" enctype="multipart/form-data" class="mt-4">
+                                <?php echo csrfTokenField(); ?>
+                                <input type="hidden" name="action" value="add_images">
+                                
+                                <div class="flex items-center gap-3">
+                                    <label class="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-sm cursor-pointer" style="margin-bottom:0;">
+                                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        Select Files
+                                        <input type="file" id="mgmtImgInput" name="images[]" multiple accept="image/*" class="hidden">
+                                    </label>
+                                    <span id="mgmtUploadHelp" class="text-xs text-slate-400">Up to <?php echo 5 - count($images); ?> more photos</span>
+                                    
+                                    <button type="submit" id="mgmtSubmitBtn" class="btn btn-primary btn-sm px-4 py-2 ml-auto" style="height:38px; display:none; font-weight:bold;">
+                                        Upload
+                                    </button>
+                                </div>
+                                <div id="mgmtPreview" class="flex flex-wrap gap-2 mt-3"></div>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+
                     <!-- FOOTER NAVIGATION -->
                     <a href="<?php echo BASE_URL; ?>pages/profile.php" class="inline-flex items-center gap-2 font-bold text-[1rem] mt-12 hover-scale" style="color: var(--primary);">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="stroke-width: 2;"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -579,6 +790,157 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 30);
     });
 });
+
+// Gallery Management client-side logic
+const mgmtImgInput = document.getElementById('mgmtImgInput');
+if (mgmtImgInput) {
+    let mgmtUploadedFiles = [];
+    const mgmtMaxFiles = <?php echo isset($images) ? (5 - count($images)) : 5; ?>;
+
+    function compressImageAsync(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width *= maxHeight / height;
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(function (blob) {
+                        if (!blob) {
+                            reject(new Error('Canvas to Blob failed'));
+                            return;
+                        }
+                        const compressedFile = new File([blob], file.name.substring(0, file.name.lastIndexOf('.')) + '.jpg', {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function updateMgmtFileInput() {
+        const dt = new DataTransfer();
+        mgmtUploadedFiles.forEach(file => dt.items.add(file));
+        mgmtImgInput.files = dt.files;
+    }
+
+    function renderMgmtPreviews() {
+        const preview = document.getElementById('mgmtPreview');
+        const submitBtn = document.getElementById('mgmtSubmitBtn');
+        preview.innerHTML = '';
+        
+        if (mgmtUploadedFiles.length > 0) {
+            submitBtn.style.display = 'inline-block';
+        } else {
+            submitBtn.style.display = 'none';
+        }
+        
+        mgmtUploadedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                const div = document.createElement('div');
+                div.style = "position: relative; width:70px; height:70px; border-radius: var(--radius-md); overflow:hidden; border: 1px solid var(--border-light); flex-shrink: 0;";
+                
+                const img = document.createElement('img');
+                img.src = re.target.result;
+                img.style = "width:100%; height:100%; object-fit:cover;";
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.type = "button";
+                removeBtn.innerHTML = "&times;";
+                removeBtn.style = "position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;";
+                removeBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    mgmtUploadedFiles.splice(index, 1);
+                    updateMgmtFileInput();
+                    renderMgmtPreviews();
+                };
+                
+                div.appendChild(img);
+                div.appendChild(removeBtn);
+                preview.appendChild(div);
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+
+    mgmtImgInput.addEventListener('change', async function(e) {
+        const newFiles = [...e.target.files];
+        const submitBtn = document.getElementById('mgmtSubmitBtn');
+        const uploadHelp = document.getElementById('mgmtUploadHelp');
+        
+        if (newFiles.length === 0) return;
+        
+        // Check if new selection was just the internal update
+        if (newFiles.length === mgmtUploadedFiles.length) {
+            let same = true;
+            for (let i = 0; i < newFiles.length; i++) {
+                if (newFiles[i] !== mgmtUploadedFiles[i]) {
+                    same = false; break;
+                }
+            }
+            if (same) return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Processing...";
+        uploadHelp.innerText = "Compressing images...";
+        uploadHelp.style.color = "var(--primary)";
+        
+        for (let i = 0; i < newFiles.length; i++) {
+            if (mgmtUploadedFiles.some(f => f.name === newFiles[i].name && f.size === newFiles[i].size)) continue;
+            
+            if (mgmtUploadedFiles.length < mgmtMaxFiles) {
+                try {
+                    const compressed = await compressImageAsync(newFiles[i]);
+                    mgmtUploadedFiles.push(compressed);
+                } catch (err) {
+                    console.error('Compression failed', err);
+                    mgmtUploadedFiles.push(newFiles[i]);
+                }
+            } else {
+                alert('You can only upload up to ' + mgmtMaxFiles + ' additional images.');
+                break;
+            }
+        }
+        
+        updateMgmtFileInput();
+        renderMgmtPreviews();
+        
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Upload";
+        uploadHelp.innerText = "Ready to upload";
+        uploadHelp.style.color = "";
+    });
+}
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

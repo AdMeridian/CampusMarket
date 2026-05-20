@@ -50,8 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $upload = handleUpload($fileData, 'products/');
                 if ($upload['success']) {
                     $isPrimary = ($i === 0);
-                    $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (?, ?, ?)");
-                    $stmtImg->execute([$productId, $upload['path'], $isPrimary]);
+                    $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (:pid, :path, :primary)");
+                    $stmtImg->bindValue(':pid', $productId, PDO::PARAM_INT);
+                    $stmtImg->bindValue(':path', $upload['path'], PDO::PARAM_STR);
+                    $stmtImg->bindValue(':primary', $isPrimary, PDO::PARAM_BOOL);
+                    $stmtImg->execute();
                 }
             }
         }
@@ -150,7 +153,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
                             <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </div>
                         <p class="font-bold mb-1" style="color: var(--primary); font-size: 1.05rem;">Click to Upload Images</p>
-                        <p class="text-muted small">PNG, JPG up to 5MB &nbsp;·&nbsp; Max 5 photos</p>
+                        <p id="uploadHelp" class="text-muted small">PNG, JPG up to 5MB &nbsp;·&nbsp; Max 5 photos</p>
                         <input type="file" id="imgInput" name="images[]" multiple accept="image/*" class="hidden">
                     </div>
                     <div id="preview" class="flex flex-wrap gap-4 mt-5"></div>
@@ -165,7 +168,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
                         </svg>
                         Cancel
                     </a>
-                    <button type="submit" class="btn btn-primary px-8 py-3 hover-scale shadow-lg" style="border-radius: var(--radius-lg); font-weight: bold; font-size: 1.1rem;">Publish Listing</button>
+                    <button type="submit" id="submitBtn" class="btn btn-primary px-8 py-3 hover-scale shadow-lg" style="border-radius: var(--radius-lg); font-weight: bold; font-size: 1.1rem;">Publish Listing</button>
                 </div>
 
             </form>
@@ -268,8 +271,60 @@ function renderPreviews() {
     });
 }
 
-document.getElementById('imgInput').addEventListener('change', function(e) {
+function compressImageAsync(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = new Image();
+            img.onload = function () {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(function (blob) {
+                    if (!blob) {
+                        reject(new Error('Canvas to Blob failed'));
+                        return;
+                    }
+                    const compressedFile = new File([blob], file.name.substring(0, file.name.lastIndexOf('.')) + '.jpg', {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    resolve(compressedFile);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+document.getElementById('imgInput').addEventListener('change', async function(e) {
     const newFiles = [...e.target.files];
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadHelp = document.getElementById('uploadHelp');
+    
+    if (newFiles.length === 0) return;
     
     // Check if new selection was just the internal update
     if (newFiles.length === uploadedFiles.length) {
@@ -282,12 +337,23 @@ document.getElementById('imgInput').addEventListener('change', function(e) {
         if (same) return;
     }
     
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Processing Images...";
+    uploadHelp.innerText = "Compressing images... Please wait.";
+    uploadHelp.style.color = "var(--primary)";
+    
     for (let i = 0; i < newFiles.length; i++) {
         // Skip if already in array
         if (uploadedFiles.some(f => f.name === newFiles[i].name && f.size === newFiles[i].size)) continue;
         
         if (uploadedFiles.length < maxFiles) {
-            uploadedFiles.push(newFiles[i]);
+            try {
+                const compressed = await compressImageAsync(newFiles[i]);
+                uploadedFiles.push(compressed);
+            } catch (err) {
+                console.error('Compression failed, using original file', err);
+                uploadedFiles.push(newFiles[i]);
+            }
         } else {
             alert('You can only upload a maximum of ' + maxFiles + ' images.');
             break;
@@ -296,6 +362,11 @@ document.getElementById('imgInput').addEventListener('change', function(e) {
     
     updateFileInput();
     renderPreviews();
+    
+    submitBtn.disabled = false;
+    submitBtn.innerText = "Publish Listing";
+    uploadHelp.innerText = "PNG, JPG up to 5MB  ·  Max 5 photos";
+    uploadHelp.style.color = "";
 });
 </script>
 
