@@ -148,17 +148,27 @@ function renderProductPrice(array $product): string {
  * Human-readable time ago (e.g., "3 hours ago")
  */
 function timeAgo(?string $datetime): string {
-    if (!$datetime) return 'Recently';
+    if (!$datetime) return __('time.recently');
     $now  = new DateTime();
     $ago  = new DateTime($datetime);
     $diff = $now->diff($ago);
 
-    if ($diff->y > 0) return $diff->y . ' year'   . ($diff->y > 1 ? 's' : '') . ' ago';
-    if ($diff->m > 0) return $diff->m . ' month'  . ($diff->m > 1 ? 's' : '') . ' ago';
-    if ($diff->d > 0) return $diff->d . ' day'    . ($diff->d > 1 ? 's' : '') . ' ago';
-    if ($diff->h > 0) return $diff->h . ' hour'   . ($diff->h > 1 ? 's' : '') . ' ago';
-    if ($diff->i > 0) return $diff->i . ' minute' . ($diff->i > 1 ? 's' : '') . ' ago';
-    return 'Just now';
+    if ($diff->y > 0) {
+        return $diff->y === 1 ? __('time.year_ago') : __('time.years_ago', ['count' => $diff->y]);
+    }
+    if ($diff->m > 0) {
+        return $diff->m === 1 ? __('time.month_ago') : __('time.months_ago', ['count' => $diff->m]);
+    }
+    if ($diff->d > 0) {
+        return $diff->d === 1 ? __('time.day_ago') : __('time.days_ago', ['count' => $diff->d]);
+    }
+    if ($diff->h > 0) {
+        return $diff->h === 1 ? __('time.hour_ago') : __('time.hours_ago', ['count' => $diff->h]);
+    }
+    if ($diff->i > 0) {
+        return $diff->i === 1 ? __('time.minute_ago') : __('time.minutes_ago', ['count' => $diff->i]);
+    }
+    return __('time.just_now');
 }
 
 /**
@@ -166,11 +176,11 @@ function timeAgo(?string $datetime): string {
  */
 function conditionBadge(?string $condition): array {
     return match($condition) {
-        'new'      => ['label' => 'New',      'class' => 'badge-new'],
-        'like_new' => ['label' => 'Like New', 'class' => 'badge-like-new'],
-        'used'     => ['label' => 'Used',     'class' => 'badge-used'],
-        'poor'     => ['label' => 'Poor',     'class' => 'badge-poor'],
-        default    => ['label' => 'Unknown',  'class' => 'badge-used'],
+        'new'      => ['label' => __('condition.new'),      'class' => 'badge-new'],
+        'like_new' => ['label' => __('condition.like_new'), 'class' => 'badge-like-new'],
+        'used'     => ['label' => __('condition.used'),     'class' => 'badge-used'],
+        'poor'     => ['label' => __('condition.poor'),     'class' => 'badge-poor'],
+        default    => ['label' => __('condition.unknown'),  'class' => 'badge-used'],
     };
 }
 

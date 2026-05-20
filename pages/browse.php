@@ -61,7 +61,7 @@ $products = $stmt->fetchAll();
 
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
 
-$pageTitle = "Browse Marketplace";
+$pageTitle = __('browse.page_title');
 include '../includes/header.php';
 ?>
 
@@ -71,13 +71,13 @@ include '../includes/header.php';
         <!-- Browse Header -->
         <div class="mb-10 flex justify-between items-end gap-6">
             <div class="text-left">
-                <h1 class="font-bold text-4xl mb-2" style="color: var(--text-main);">Discover Great Finds</h1>
-                <p class="text-muted text-lg">Browse items from students around your campus</p>
+                <h1 class="font-bold text-4xl mb-2" style="color: var(--text-main);"><?= __('browse.title') ?></h1>
+                <p class="text-muted text-lg"><?= __('browse.subtitle') ?></p>
             </div>
             
             <div class="flex items-center gap-2 text-muted font-medium">
                 <span class="w-2 h-2 rounded-full" style="background: var(--primary);"></span>
-                Marketplace
+                <?= __('browse.marketplace') ?>
             </div>
         </div>
 
@@ -87,8 +87,8 @@ include '../includes/header.php';
             <aside class="lg-col-span-1">
                 <div id="filter-sidebar" class="glass-panel p-5 sticky-desktop" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                     <div class="flex justify-between items-center mb-8 pb-4 border-b">
-                        <h2 class="mb-0" style="font-size: 1.25rem;">Filters</h2>
-                        <a href="browse.php" class="text-muted small font-bold uppercase tracking-wider hover:text-primary">Clear</a>
+                        <h2 class="mb-0" style="font-size: 1.25rem;"><?= __('browse.filters') ?></h2>
+                        <a href="browse.php" class="text-muted small font-bold uppercase tracking-wider hover:text-primary"><?= __('browse.clear') ?></a>
                     </div>
 
                     <form method="GET" action="<?php echo BASE_URL; ?>pages/browse.php">
@@ -102,14 +102,14 @@ include '../includes/header.php';
                         <!-- Category Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span>Category</span>
+                                <span><?= __('browse.category') ?></span>
                             </div>
                             <div class="relative">
                                 <select name="category" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
-                                    <option value="">All Categories</option>
+                                    <option value=""><?= __('browse.all_categories') ?></option>
                                     <?php foreach ($categories as $cat): ?>
                                         <option value="<?php echo $cat['id']; ?>" <?php echo $category == $cat['id'] ? 'selected' : ''; ?>>
-                                            <?php echo sanitize($cat['name']); ?>
+                                            <?php echo sanitize(translateCategory($cat['name'])); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -119,23 +119,29 @@ include '../includes/header.php';
                         <!-- Price Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span>Price Range</span>
+                                <span><?= __('browse.price_range') ?></span>
                             </div>
                             <div class="flex gap-2">
-                                <input type="number" name="min_price" placeholder="Min" value="<?php echo sanitize($minPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
-                                <input type="number" name="max_price" placeholder="Max" value="<?php echo sanitize($maxPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
+                                <input type="number" name="min_price" placeholder="<?= addslashes(__('browse.price_min')) ?>" value="<?php echo sanitize($minPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
+                                <input type="number" name="max_price" placeholder="<?= addslashes(__('browse.price_max')) ?>" value="<?php echo sanitize($maxPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
                             </div>
                         </div>
 
                         <!-- Condition Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span>Condition</span>
+                                <span><?= __('browse.condition') ?></span>
                             </div>
                             <div class="relative">
                                 <select name="condition" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <?php 
-                                    $conditions = ['' => 'Any Condition', 'new' => 'New', 'like_new' => 'Like New', 'used' => 'Used', 'poor' => 'Poor'];
+                                    $conditions = [
+                                        '' => __('browse.any_condition'),
+                                        'new' => __('browse.cond_new'),
+                                        'like_new' => __('browse.cond_like_new'),
+                                        'used' => __('browse.cond_used'),
+                                        'poor' => __('browse.cond_poor')
+                                    ];
                                     foreach ($conditions as $val => $label): 
                                     ?>
                                         <option value="<?php echo $val; ?>" <?php echo $condition == $val ? 'selected' : ''; ?>>
@@ -145,8 +151,8 @@ include '../includes/header.php';
                                 </select>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn btn-primary w-full shadow-md" style="padding: 0.8rem; border-radius: var(--radius-md);">Apply Filters</button>
+ 
+                        <button type="submit" class="btn btn-primary w-full shadow-md" style="padding: 0.8rem; border-radius: var(--radius-md);"><?= __('browse.apply_filters') ?></button>
                     </form>
                 </div>
             </aside>
@@ -210,7 +216,7 @@ include '../includes/header.php';
                 <div class="mb-8 browse-results-header">
                     <!-- Item Count -->
                     <div class="item-count-badge" style="background: var(--bg-card); color: var(--text-main); padding: 0.4rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border-light); flex-shrink: 0;">
-                        <?php echo count($products); ?> Items
+                        <?= __('browse.items_count', ['count' => count($products)]) ?>
                     </div>
 
                     <!-- Search Bar (In Between) -->
@@ -226,13 +232,13 @@ include '../includes/header.php';
                         <?php if($maxPrice !== ''): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
                         <?php if($sort): ?><input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>"><?php endif; ?>
                         
-                        <input type="text" name="q" value="<?php echo sanitize($search); ?>" placeholder="Search items..." class="search-input">
-                        <button type="submit" class="search-btn" style="height: 34px; padding: 0 1.25rem;">Find</button>
+                        <input type="text" name="q" value="<?php echo sanitize($search); ?>" placeholder="<?= addslashes(__('browse.search_placeholder')) ?>" class="search-input">
+                        <button type="submit" class="search-btn" style="height: 34px; padding: 0 1.25rem;"><?= __('browse.find') ?></button>
                     </form>
 
                     <!-- Sort Dropdown -->
                     <div class="sort-dropdown-el flex items-center gap-3 flex-shrink-0">
-                        <span class="text-muted small font-bold uppercase tracking-wider" style="font-size: 0.8rem;">Sort By</span>
+                        <span class="text-muted small font-bold uppercase tracking-wider" style="font-size: 0.8rem;"><?= __('browse.sort_by') ?></span>
                         <form method="GET" action="browse.php" id="sort-form" class="mb-0">
                             <?php if($search): ?><input type="hidden" name="q" value="<?php echo sanitize($search); ?>"><?php endif; ?>
                             <?php if($category): ?><input type="hidden" name="category" value="<?php echo sanitize($category); ?>"><?php endif; ?>
@@ -241,10 +247,10 @@ include '../includes/header.php';
                             <?php if($maxPrice): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
                             
                             <select name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-lg); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
-                                <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest First</option>
-                                <option value="price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>>Price: Low to High</option>
-                                <option value="price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>>Price: High to Low</option>
-                                <option value="condition_best" <?php echo $sort == 'condition_best' ? 'selected' : ''; ?>>Condition: Best First</option>
+                                <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>><?= __('browse.sort_newest') ?></option>
+                                <option value="price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>><?= __('browse.sort_price_asc') ?></option>
+                                <option value="price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>><?= __('browse.sort_price_desc') ?></option>
+                                <option value="condition_best" <?php echo $sort == 'condition_best' ? 'selected' : ''; ?>><?= __('browse.sort_cond_best') ?></option>
                             </select>
                         </form>
                     </div>
@@ -252,7 +258,7 @@ include '../includes/header.php';
 
                 <?php if($search): ?>
                     <div class="mb-6 px-2">
-                        <span class="text-muted text-sm">Showing results for "<strong class="text-main"><?php echo sanitize($search); ?></strong>"</span>
+                        <span class="text-muted text-sm"><?= __('browse.showing_results', ['query' => sanitize($search)]) ?></span>
                     </div>
                 <?php endif; ?>
 
@@ -261,9 +267,9 @@ include '../includes/header.php';
                         <div class="mb-4 text-muted flex justify-center">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         </div>
-                        <h3 class="font-bold text-main text-2xl mb-2">No items found</h3>
-                        <p class="text-muted text-lg max-w-md mx-auto">We couldn't find any items matching your current filters. Try adjusting your search criteria or clearing filters.</p>
-                        <a href="browse.php" class="btn btn-primary mt-6 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600;">Clear All Filters</a>
+                        <h3 class="font-bold text-main text-2xl mb-2"><?= __('browse.no_items_found') ?></h3>
+                        <p class="text-muted text-lg max-w-md mx-auto"><?= __('browse.no_items_desc') ?></p>
+                        <a href="browse.php" class="btn btn-primary mt-6 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600;"><?= __('browse.clear_filters_btn') ?></a>
                     </div>
                 <?php else: ?>
                     <div class="grid grid-cols-1 md-grid-cols-2 xl-grid-cols-3 gap-6">

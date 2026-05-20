@@ -76,12 +76,34 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <style>
         .lang-dropdown { position: relative; display: inline-flex; }
         .lang-dropdown-btn {
-            background: none; border: none; cursor: pointer; padding: 0.4rem;
-            color: var(--text-main); display: flex; align-items: center; gap: 0.3rem;
-            border-radius: var(--radius-md); transition: all 0.2s ease;
-            font-size: 0.85rem; font-weight: 600;
+            background: var(--bg-main);
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: var(--radius-md);
+            transition: var(--transition);
+            font-size: 0.82rem;
+            font-weight: 700;
+            height: 38px;
+            box-sizing: border-box;
         }
-        .lang-dropdown-btn:hover { background: rgba(99,102,241,0.08); color: var(--primary); }
+        #lang-dropdown-mobile .lang-dropdown-btn {
+            width: 38px;
+            justify-content: center;
+            padding: 0;
+        }
+        #lang-dropdown-desktop .lang-dropdown-btn {
+            padding: 0 0.75rem;
+        }
+        .lang-dropdown-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
         .lang-dropdown-content {
             display: none; position: absolute; top: 100%; right: 0; z-index: 1000;
             min-width: 150px; background: var(--bg-surface); border: 1px solid var(--border-light);
@@ -154,7 +176,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 
         <!-- Navigation Links -->
         <div class="nav-links" id="nav-links">
-            <div class="hidden lg-block" style="display: flex; align-items: center; gap: 0.25rem;">
+            <div class="flex" style="align-items: center; gap: 0.25rem;">
                 <!-- Language Selector (Desktop) -->
                 <div class="lang-dropdown" id="lang-dropdown-desktop">
                     <button type="button" class="lang-dropdown-btn" aria-label="<?= __('lang.selector_label') ?>" onclick="this.parentElement.classList.toggle('open')">

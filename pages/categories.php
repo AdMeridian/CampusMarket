@@ -1,9 +1,10 @@
 <?php
 // pages/categories.php
-require_once '../config/constants.php';
-require_once '../includes/header.php';
+require_once __DIR__ . '/../includes/bootstrap.php';
 
-$pageTitle = "Browse Categories";
+$pageTitle = __('categories.browse_categories');
+
+require_once __DIR__ . '/../includes/header.php';
 
 // Fetch all categories from the database
 $stmt = $pdo->query("SELECT * FROM categories ORDER BY name ASC");
@@ -22,12 +23,9 @@ $catIcons = [
 ?>
 
 <div class="container min-h-screen pt-12 pb-20 relative">
-    <!-- Background Accents -->
-
-
     <div class="mb-10 text-center lg:text-left">
-        <h1 class="font-bold text-4xl mb-3 text-main">Explore Categories</h1>
-        <p class="text-muted text-lg max-w-2xl">Find exactly what you need by browsing our organized campus marketplace categories.</p>
+        <h1 class="font-bold text-4xl mb-3 text-main"><?= __('categories.explore_title') ?></h1>
+        <p class="text-muted text-lg max-w-2xl"><?= __('categories.explore_desc') ?></p>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
@@ -43,8 +41,8 @@ $catIcons = [
                     </div>
                     
                     <div>
-                        <h3 class="mb-1 font-bold text-main" style="font-size: 1.25rem; transition: color 0.3s ease;" class="group-hover:text-primary"><?php echo sanitize($cat['name']); ?></h3>
-                        <span class="text-primary font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity" style="transform: translateY(10px); display: block;">Browse Items →</span>
+                        <h3 class="mb-1 font-bold text-main" style="font-size: 1.25rem; transition: color 0.3s ease;" class="group-hover:text-primary"><?php echo sanitize(translateCategory($cat['name'])); ?></h3>
+                        <span class="text-primary font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity" style="transform: translateY(10px); display: block;"><?= __('categories.browse_items') ?> →</span>
                     </div>
                 </a>
             <?php endforeach; ?>
@@ -53,8 +51,8 @@ $catIcons = [
                 <div class="mb-4 opacity-30 flex justify-center">
                     <svg class="w-16 h-16 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                 </div>
-                <h3 class="text-2xl font-bold text-main mb-2">No categories yet</h3>
-                <p class="text-muted">Check back later once the administator sets up the categories.</p>
+                <h3 class="text-2xl font-bold text-main mb-2"><?= __('categories.no_categories') ?></h3>
+                <p class="text-muted"><?= __('categories.no_categories_desc') ?></p>
             </div>
         <?php endif; ?>
     </div>
@@ -62,7 +60,7 @@ $catIcons = [
     <div class="mt-16 text-center">
         <a href="../index.php" class="btn btn-secondary shadow-sm hover-scale items-center gap-2" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; display: inline-flex; font-weight: bold;">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Home
+            <?= __('categories.back_to_home') ?>
         </a>
     </div>
 </div>

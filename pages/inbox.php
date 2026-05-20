@@ -1,6 +1,6 @@
 <?php
-$pageTitle = __('inbox.messages_tab');
 require_once __DIR__ . '/../includes/bootstrap.php';
+$pageTitle = __('inbox.messages_tab');
 requireLogin();
 
 $currentUserId = currentUserId();

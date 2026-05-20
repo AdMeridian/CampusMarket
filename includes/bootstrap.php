@@ -141,13 +141,23 @@ if (isLoggedIn()) {
 }
 
 // ─── i18n Initialization ─────────────────────────────────────
-// Determine user's preferred language: session > DB > browser > default
-$_userLang = $_SESSION['preferred_language'] ?? null;
+// Determine user's preferred language: session > cookie > DB > browser > default
+$_userLang = $_SESSION['preferred_language'] ?? $_COOKIE['campusmarket_lang'] ?? null;
 if (!$_userLang && isLoggedIn()) {
     $_userLang = getUserPreferredLanguage($pdo, currentUserId());
     $_SESSION['preferred_language'] = $_userLang;
 }
 if (!$_userLang) {
     $_userLang = i18nDetectFromBrowser();
+}
+// Keep cookie in sync
+if (empty($_COOKIE['campusmarket_lang']) || $_COOKIE['campusmarket_lang'] !== $_userLang) {
+    setcookie('campusmarket_lang', $_userLang, [
+        'expires'  => time() + 86400 * 30, // 30 days
+        'path'     => '/',
+        'secure'   => $isSecureRequest,
+        'samesite' => 'Lax',
+        'httponly' => false, // Accessible by client-side JS
+    ]);
 }
 i18nInit($_userLang);

@@ -16,7 +16,7 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
     <?php if ($isOwner): ?>
         <div style="position: absolute; top: 1rem; right: 1rem; background: var(--bg-surface); color: var(--primary); padding: 0.35rem 0.6rem; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; border-radius: var(--radius-md); z-index: 10; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light); display: flex; align-items: center; gap: 4px;">
             <svg class="w-2 h-2" fill="currentColor" viewBox="0 0 20 20" style="width: 10px; height: 10px;"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
-            Your Listing
+            <?= __('product.your_listing') ?>
         </div>
     <?php elseif (!empty($prod['seller_name'])): ?>
         <div style="position: absolute; top: 1rem; right: 1rem; background: var(--glass-bg); color: var(--text-main); padding: 0.35rem 0.6rem; font-size: 0.65rem; font-weight: 600; border-radius: var(--radius-md); z-index: 10; border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 4px; backdrop-filter: blur(4px);">
@@ -45,7 +45,7 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
                 
                 <?php if (!empty($prod['discount_percent']) && (int)$prod['discount_percent'] > 0): ?>
                 <span class="badge shadow-sm" style="background: #ef4444; color: white; font-size: 0.7rem; padding: 0.4rem 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
-                    Discounted
+                    <?= __('product.discounted') ?>
                 </span>
                 <?php endif; ?>
             </div>
@@ -54,7 +54,7 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
             <?php if (!empty($prod['is_featured']) && (int)$prod['is_featured'] === 1): ?>
             <div style="position: absolute; top: 1rem; right: 1rem; z-index: 5;">
                 <span class="badge" style="background: var(--primary); color: white; font-size: 0.7rem; padding: 0.4rem 0.85rem; box-shadow: var(--shadow-sm); border: 1px solid rgba(255,255,255,0.2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.25rem;">
-                    Featured
+                    <?= __('product.featured') ?>
                 </span>
             </div>
             <?php endif; ?>
@@ -62,13 +62,13 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
 
         <!-- Product Info -->
         <div class="flex flex-col flex-grow px-1">
-            <p class="mb-2" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.25rem;">(<?php echo sanitize($prod['category_name'] ?? ($prod['category'] ?? 'General')); ?>)</p>
+            <p class="mb-2" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.25rem;">(<?php echo sanitize(translateCategory($prod['category_name'] ?? ($prod['category'] ?? 'General'))); ?>)</p>
             <h4 class="mb-3 text-main" style="font-size: 1.15rem; font-weight: 600; line-height: 1.3; margin-bottom: 1rem; flex-grow: 1;"><?php echo sanitize($prod['title']); ?></h4>
             
             <div class="mt-auto flex flex-col gap-1">
                 <div class="flex items-center gap-3">
                     <span style="font-weight: 700; color: var(--text-main); font-size: 1.15rem; white-space: nowrap;"><?php echo renderProductPrice($prod); ?></span>
-                    <span class="text-muted" style="font-size: 0.75rem; opacity: 0.7;">• Listed <?php echo timeAgo($prod['created_at']); ?></span>
+                    <span class="text-muted" style="font-size: 0.75rem; opacity: 0.7;">• <?= __('product.listed_time', ['time' => timeAgo($prod['created_at'])]) ?></span>
                 </div>
             </div>
         </div>
@@ -91,7 +91,7 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
                     $isSaved = in_array($prod['id'], $userWishlistIds);
                 }
             ?>
-            <button type="submit" style="background: <?php echo $isSaved ? 'var(--error-bg)' : 'var(--bg-main)'; ?>; border: 1px solid <?php echo $isSaved ? 'var(--error)' : 'var(--border-light)'; ?>; color: <?php echo $isSaved ? 'var(--error)' : 'var(--text-muted)'; ?>; padding: 0.6rem; border-radius: var(--radius-md); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition);" title="<?php echo $isSaved ? 'Remove from Wishlist' : 'Save for Later'; ?>">
+            <button type="submit" style="background: <?php echo $isSaved ? 'var(--error-bg)' : 'var(--bg-main)'; ?>; border: 1px solid <?php echo $isSaved ? 'var(--error)' : 'var(--border-light)'; ?>; color: <?php echo $isSaved ? 'var(--error)' : 'var(--text-muted)'; ?>; padding: 0.6rem; border-radius: var(--radius-md); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition);" title="<?php echo $isSaved ? __('product.remove_wishlist') : __('product.save_later'); ?>">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="<?php echo $isSaved ? 'currentColor' : 'none'; ?>" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                 </svg>

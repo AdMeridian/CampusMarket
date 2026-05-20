@@ -1,9 +1,10 @@
 <?php
 // index.php
-require_once 'config/constants.php';
-require_once 'includes/header.php';
+require_once __DIR__ . '/includes/bootstrap.php';
 
-$pageTitle = "Home";
+$pageTitle = __('home.page_title');
+
+require_once __DIR__ . '/includes/header.php';
 
 // Data for homepage
 $recentProducts = getRecentProducts($pdo, 8);
@@ -39,16 +40,16 @@ unset($dcat);
     <div class="hero-overlay"></div>
     
     <div class="container text-center">
-        <h1 style="font-size: 4rem; font-weight: 700; margin-bottom: 1.5rem; color: white;">The Campus Marketplace</h1>
+        <h1 style="font-size: 4rem; font-weight: 700; margin-bottom: 1.5rem; color: white;"><?= __('home.hero_title') ?></h1>
         <p style="font-size: 1.5rem; max-width: 700px; margin: 0 auto 3rem; font-weight: 400; color: white; text-align: center;">
-            The safest way to buy and sell within your university community.
+            <?= __('home.hero_desc') ?>
         </p>
         <div class="flex flex-col sm-flex-row justify-center items-center gap-6">
-            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;">Start Browsing</a>
+            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;"><?= __('home.start_browsing') ?></a>
             <?php if (isLoggedIn()): ?>
-                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;">Sell an Item</a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;"><?= __('home.sell_an_item') ?></a>
             <?php else: ?>
-                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/register.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;">Join to Sell</a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/register.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;"><?= __('home.join_to_sell') ?></a>
             <?php endif; ?>
         </div>
     </div>
@@ -75,8 +76,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <section class="mt-12">
     <div class="container">
         <div class="flex justify-between items-end mb-8">
-            <h2 class="mb-0">Shop by Category</h2>
-            <a href="pages/categories.php" class="text-muted" style="font-weight: 500;">View all</a>
+            <h2 class="mb-0"><?= __('home.shop_by_category') ?></h2>
+            <a href="pages/categories.php" class="text-muted" style="font-weight: 500;"><?= __('home.view_all') ?></a>
         </div>
         <div class="grid grid-cols-3 md-grid-cols-3 lg-grid-cols-3 gap-6">
             <?php 
@@ -100,14 +101,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="color: var(--text-muted); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
                         <?php echo $cat['icon']; ?>
                     </div>
-                    <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;"><?php echo $cat['name']; ?></strong>
-                    <span class="text-muted small"><?php echo $count; ?> items available</span>
+                    <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;"><?php echo translateCategory($cat['name']); ?></strong>
+                    <span class="text-muted small"><?= __('home.items_available', ['count' => $count]) ?></span>
                 </a>
             <?php endforeach; ?>
         </div>
         
         <div class="mt-12 text-center">
-            <a href="pages/categories.php" class="btn btn-outline" style="padding: 0.8rem 2.5rem; border-radius: var(--radius-lg); font-weight: 600; font-size: 1rem;">View All Categories</a>
+            <a href="pages/categories.php" class="btn btn-outline" style="padding: 0.8rem 2.5rem; border-radius: var(--radius-lg); font-weight: 600; font-size: 1rem;"><?= __('home.view_all_categories') ?></a>
         </div>
     </div>
 </section>
@@ -123,11 +124,11 @@ if (!empty($featuredProducts)):
             <div>
                 <h2 class="mb-1" style="display: flex; align-items: center; gap: 0.75rem;">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="color: var(--primary)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                    Featured Spotlight
+                    <?= __('home.featured_spotlight') ?>
                 </h2>
-                <p class="text-muted mb-0">Premium listings currently being promoted by our community</p>
+                <p class="text-muted mb-0"><?= __('home.featured_desc') ?></p>
             </div>
-            <a href="pages/promotions.php" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 0.4rem 1rem;">Promote Your Listing</a>
+            <a href="pages/promotions.php" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 0.4rem 1rem;"><?= __('home.promote_listing') ?></a>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
@@ -145,18 +146,18 @@ if (!empty($featuredProducts)):
 <section class="mt-16 mb-16">
     <div class="container">
         <div class="flex justify-between items-end mb-8">
-            <h2 class="mb-0">Recent Listings</h2>
-            <a href="pages/browse.php" class="btn btn-secondary btn-sm">See everything</a>
+            <h2 class="mb-0"><?= __('home.recent_listings') ?></h2>
+            <a href="pages/browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
 
         <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-4 gap-6">
             <?php if (empty($recentProducts)): ?>
                 <div class="col-span-full text-center py-12 bg-white rounded-lg border">
-                    <p class="text-muted">No products listed yet. Be the first to sell something!</p>
+                    <p class="text-muted"><?= __('home.no_products_desc') ?></p>
                     <?php if (isLoggedIn()): ?>
-                        <a href="pages/create_listing.php" class="btn btn-primary">Create Listing</a>
+                        <a href="pages/create_listing.php" class="btn btn-primary"><?= __('home.create_listing') ?></a>
                     <?php else: ?>
-                        <a href="pages/register.php" class="btn btn-primary">Join & Sell</a>
+                        <a href="pages/register.php" class="btn btn-primary"><?= __('home.join_sell') ?></a>
                     <?php endif; ?>
                 </div>
             <?php else: ?>
@@ -167,7 +168,7 @@ if (!empty($featuredProducts)):
         </div>
 
         <div class="mt-12 text-center">
-            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-md); font-weight: 600;">Explore All Listings</a>
+            <a href="pages/browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-md); font-weight: 600;"><?= __('home.explore_all') ?></a>
         </div>
     </div>
 </section>
@@ -179,8 +180,8 @@ if (!empty($featuredProducts)):
             <?php if (empty($cat['products'])) continue; ?>
             <div class="mb-16">
                 <div class="flex justify-between items-end mb-6" style="border-bottom: 2px solid #f1f5f9; padding-bottom: 1rem;">
-                    <h2 class="mb-0"><?php echo htmlspecialchars($cat['name']); ?></h2>
-                    <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="text-primary font-bold">See all <?php echo htmlspecialchars($cat['name']); ?> &rarr;</a>
+                    <h2 class="mb-0"><?php echo htmlspecialchars(translateCategory($cat['name'])); ?></h2>
+                    <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="text-primary font-bold"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
                 </div>
                 <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-5 gap-6">
                     <?php foreach ($cat['products'] as $prod): ?>
@@ -203,12 +204,12 @@ if (!empty($donors)):
             
             <div class="inline-flex items-center gap-2 mb-6 font-bold" style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                Wall of Supporters
+                <?= __('home.wall_supporters') ?>
             </div>
             
-            <h2 class="font-bold text-4xl mb-4" style="color: var(--text-main);">Community Hall of Fame</h2>
+            <h2 class="font-bold text-4xl mb-4" style="color: var(--text-main);"><?= __('home.hall_of_fame') ?></h2>
             <p class="text-muted text-lg mb-8" style="line-height: 1.6; text-align: center; width: 100%;">
-                Our platform thrives because of the generosity of our students. Join these incredible individuals in keeping CampusMarket free for everyone.
+                <?= __('home.hall_of_fame_desc') ?>
             </p>
             
             <div class="flex flex-wrap justify-center gap-8 md:gap-12" style="min-height: 120px; align-items: center;">
@@ -229,7 +230,7 @@ if (!empty($donors)):
 
             <div class="mt-10" style="padding-bottom: 2rem;">
                 <a href="pages/donate.php" class="btn btn-primary" style="padding: 1rem 3.5rem; border-radius: var(--radius-md); font-weight: 600;">
-                    Become a Supporter
+                    <?= __('home.become_supporter') ?>
                 </a>
             </div>
         </div>
