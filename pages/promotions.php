@@ -10,6 +10,7 @@ if (isAdmin()) {
 
 $currentUserId = currentUserId();
 $pageTitle = 'Promotions & Donations';
+$prefillProductId = isset($_GET['product_id']) ? (int)$_GET['product_id'] : 0;
 $promoPaymentsTableExists = false;
 try {
     $promoPaymentsTableExists = (bool)$pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'promotion_payments' LIMIT 1")->fetchColumn();
@@ -138,7 +139,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <select name="product_id" id="product_id" class="form-control" style="border-radius: 12px; border: 1px solid #e2e8f0; font-weight: 500;">
                         <option value="">Choose a listing to promote...</option>
                         <?php foreach ($myProducts as $p): ?>
-                            <option value="<?php echo (int)$p['id']; ?>">
+                            <option value="<?php echo (int)$p['id']; ?>" <?php echo ($prefillProductId > 0 && (int)$p['id'] === $prefillProductId) ? 'selected' : ''; ?>>
                                 <?php echo sanitize($p['title']); ?> (<?php echo (int)$p['is_featured'] === 1 ? 'Already Featured' : 'Not Featured'; ?>)
                             </option>
                         <?php endforeach; ?>
@@ -363,6 +364,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (productPicker.value) {
         stripeProduct.value = productPicker.value;
         manualProduct.value = productPicker.value;
+    }
+
+    // Prefill from create listing flow if query param is present.
+    const prefillProductId = <?= (int)$prefillProductId ?>;
+    if (prefillProductId > 0) {
+        productPicker.value = String(prefillProductId);
+        stripeProduct.value = String(prefillProductId);
+        manualProduct.value = String(prefillProductId);
     }
 
     // Stripe Validation

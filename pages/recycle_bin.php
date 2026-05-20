@@ -11,8 +11,10 @@ $userId = (int)currentUserId();
 $errors = [];
 $success = '';
 
-// Auto-cleanup: Delete items older than 30 days (PostgreSQL syntax)
-$cleanup = $pdo->prepare("DELETE FROM products WHERE status = 'deleted' AND deleted_at < NOW() - INTERVAL '30 days'");
+// Auto-cleanup: Delete items older than 30 days (cross-database compatibility)
+$isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
+$intervalSql = $isPostgres ? "NOW() - INTERVAL '30 days'" : "NOW() - INTERVAL 30 DAY";
+$cleanup = $pdo->prepare("DELETE FROM products WHERE status = 'deleted' AND deleted_at < $intervalSql");
 $cleanup->execute();
 
 // Handle actions

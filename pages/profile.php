@@ -16,10 +16,19 @@ if (isAdmin() && $viewId === (int)currentUserId()) {
     redirect(BASE_URL . 'admin/index.php');
 }
 
-// Fetch User
-$stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, preferred_language, created_at FROM users WHERE id = :id");
-$stmt->execute([':id' => $viewId]);
-$user = $stmt->fetch();
+// Fetch User (support older local schemas that may not yet have preferred_language)
+try {
+    $stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, preferred_language, created_at FROM users WHERE id = :id");
+    $stmt->execute([':id' => $viewId]);
+    $user = $stmt->fetch();
+} catch (PDOException $e) {
+    $stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, created_at FROM users WHERE id = :id");
+    $stmt->execute([':id' => $viewId]);
+    $user = $stmt->fetch();
+    if ($user) {
+        $user['preferred_language'] = DEFAULT_LANGUAGE;
+    }
+}
 
 if (!$user) {
     include '../includes/header.php';

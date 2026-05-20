@@ -30,8 +30,15 @@ if (!$product) {
 // Increment View Count (Unique per student)
 $canCountView = false;
 $currentUid = isLoggedIn() ? (int)currentUserId() : null;
+$hasProductViewsTable = true;
 
-if ($currentUid) {
+try {
+    $pdo->query("SELECT 1 FROM product_views LIMIT 1");
+} catch (PDOException $e) {
+    $hasProductViewsTable = false;
+}
+
+if ($hasProductViewsTable && $currentUid) {
     // Check if this student has already viewed this product
     $viewCheck = $pdo->prepare("SELECT 1 FROM product_views WHERE product_id = ? AND user_id = ?");
     $viewCheck->execute([$productId, $currentUid]);
@@ -41,7 +48,7 @@ if ($currentUid) {
         $insView->execute([$productId, $currentUid]);
         $canCountView = true;
     }
-} else {
+} elseif ($hasProductViewsTable) {
     // For guests, use a persistent cookie to track views (survives logout/login)
     $guestViews = [];
     if (isset($_COOKIE['cm_pv'])) {
@@ -67,10 +74,14 @@ $isOwner = isLoggedIn() && ((int)currentUserId() === (int)$product['seller_id'] 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_price') {
     verifyCsrfToken();
     $newPrice = (float)($_POST['new_price'] ?? 0);
+    if ($newPrice > 0) {
+        $stmtUp = $pdo->prepare("UPDATE products SET price = :price, updated_at = NOW() WHERE id = :id");
+        $stmtUp->execute([':price' => $newPrice, ':id' => $productId]);
         setFlash('success', __('product.price_updated'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     } else {
         setFlash('error', __('product.price_error'));
+        redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     }
 }
 
@@ -248,10 +259,14 @@ $images = $stmt->fetchAll();
 $rating = getSellerRating($pdo, (int)$product['seller_id']);
 $trust  = getSellerTrustScore($pdo, (int)$product['seller_id']);
 
-// Fetch REAL unique view count from product_views table
-$stmtViews = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ?");
-$stmtViews->execute([$productId]);
-$uniqueViewCount = (int)$stmtViews->fetchColumn();
+// Fetch REAL unique view count from product_views table (fallback when table is missing locally)
+if ($hasProductViewsTable) {
+    $stmtViews = $pdo->prepare("SELECT COUNT(*) FROM product_views WHERE product_id = ?");
+    $stmtViews->execute([$productId]);
+    $uniqueViewCount = (int)$stmtViews->fetchColumn();
+} else {
+    $uniqueViewCount = (int)($product['views'] ?? 0);
+}
 
 // Fetch Wishlist count
 $stmtWish = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ?");
@@ -272,9 +287,13 @@ $wishSql = $driver === 'pgsql'
     : "SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= DATE_SUB(NOW(), INTERVAL ? DAY)";
 
 for ($d = 5; $d >= 0; $d--) {
-    $sv = $pdo->prepare($viewSql);
-    $sv->execute([$productId, $d]);
-    $viewCumPoints[] = (int)$sv->fetchColumn();
+    if ($hasProductViewsTable) {
+        $sv = $pdo->prepare($viewSql);
+        $sv->execute([$productId, $d]);
+        $viewCumPoints[] = (int)$sv->fetchColumn();
+    } else {
+        $viewCumPoints[] = 0;
+    }
 
     $sw = $pdo->prepare($wishSql);
     $sw->execute([$productId, $d]);
@@ -678,7 +697,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <!-- Fallback Indicator for Primary on non-hover -->
                                     <?php if ($img['is_primary']): ?>
                                         <div class="absolute bottom-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow" style="pointer-events: none;">
-                                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                                            <svg class="w-2.5 h-2.5" style="width: 10px; height: 10px; display: block;" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
                                         </div>
                                     <?php endif; ?>
                                 </div>
