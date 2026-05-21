@@ -73,7 +73,7 @@ require_once __DIR__ . '/../includes/header.php';
     <h2 class="section-title">Latest Listings</h2>
     <a href="browse.php" class="view-all">View all →</a>
   </div>
-  <div class="products-grid">
+  <div class="scroll-row">
     <?php foreach($latest_products as $prod): ?>
       <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
     <?php endforeach; ?>
@@ -99,7 +99,7 @@ require_once __DIR__ . '/../includes/header.php';
           </div>
           <a href="browse.php?category=<?= $cat['id'] ?>" class="view-all">See more in <?= htmlspecialchars($cat['name']) ?> →</a>
         </div>
-        <div class="products-grid">
+        <div class="scroll-row">
           <?php foreach($cat['products'] as $prod): ?>
             <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
           <?php endforeach; ?>

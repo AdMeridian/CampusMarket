@@ -47,11 +47,11 @@ if ($action === 'search_users') {
         exit;
     }
     
-    // Search users by username, excluding the current logged-in user
+    // Search users by username, excluding the current logged-in user (case-insensitive)
     $stmt = $pdo->prepare("
         SELECT id, username, avatar 
         FROM users 
-        WHERE username LIKE :q AND id != :my_id 
+        WHERE LOWER(username) LIKE LOWER(:q) AND id != :my_id 
         LIMIT 10
     ");
     $stmt->execute([
@@ -622,6 +622,86 @@ if ($action === 'get_active_products') {
     echo json_encode(['success' => true, 'products' => $results]);
     exit;
 }
+
+// ─── Delete Message ────────────────────────
+if ($action === 'delete_message') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        verifyCsrfTokenJson();
+    }
+    $messageId = (int)($_POST['message_id'] ?? $_GET['message_id'] ?? 0);
+    
+    if ($messageId <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Missing message ID']);
+        exit;
+    }
+    
+    // Fetch message to verify ownership
+    $stmt = $pdo->prepare("SELECT sender_id FROM messages WHERE id = ?");
+    $stmt->execute([$messageId]);
+    $senderId = $stmt->fetchColumn();
+    
+    if (!$senderId) {
+        echo json_encode(['success' => false, 'error' => 'Message not found']);
+        exit;
+    }
+    
+    if ($senderId != $currentUserId && !isAdmin()) {
+        echo json_encode(['success' => false, 'error' => 'Unauthorized to delete this message']);
+        exit;
+    }
+    
+    try {
+        $stmtDel = $pdo->prepare("DELETE FROM messages WHERE id = ?");
+        $stmtDel->execute([$messageId]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ─── Clear Chat ────────────────────────────
+if ($action === 'clear_chat') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        verifyCsrfTokenJson();
+    }
+    $productId = (int)($_POST['product_id'] ?? $_GET['product_id'] ?? 0);
+    $otherUserId = (int)($_POST['other_user_id'] ?? $_GET['other_user_id'] ?? 0);
+    
+    if ($otherUserId <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Missing other user ID']);
+        exit;
+    }
+    
+    if (!isValidConversation($pdo, $productId, $currentUserId, $otherUserId)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid conversation context']);
+        exit;
+    }
+    
+    try {
+        $stmtDel = $pdo->prepare("
+            DELETE FROM messages 
+            WHERE (product_id = :pid1 OR (:pid2 = 0 AND product_id IS NULL))
+              AND (
+                  (sender_id = :uid1 AND receiver_id = :other1) OR
+                  (sender_id = :other2 AND receiver_id = :uid2)
+              )
+        ");
+        $stmtDel->execute([
+            ':pid1' => $productId,
+            ':pid2' => $productId,
+            ':uid1' => $currentUserId,
+            ':other1' => $otherUserId,
+            ':other2' => $otherUserId,
+            ':uid2' => $currentUserId
+        ]);
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ─── Set Preferred Language ────────────────────────
 if ($action === 'set_language') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {

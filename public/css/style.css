@@ -1551,3 +1551,48 @@ body {
   backdrop-filter: blur(8px);
 }
 
+/* Premium Horizontal Scroll Row Layout */
+.scroll-row {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 1.5rem;
+  padding: 0.5rem 0.25rem 1.5rem;
+  margin-bottom: 1rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+}
+
+.scroll-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scroll-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-row::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: var(--radius-full);
+  transition: var(--transition);
+}
+
+.scroll-row::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Scroll snap alignment and card sizing */
+.scroll-row > * {
+  flex: 0 0 280px;
+  width: 280px;
+  scroll-snap-align: start;
+}
+
+/* Adjust category quick access cards inside scroll-row */
+.scroll-row > a.card {
+  flex: 0 0 220px;
+  width: 220px;
+}
+

@@ -98,6 +98,9 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </div>
         <div class="flex items-center gap-3 text-right hidden sm:flex">
+            <button id="clear-chat-btn" type="button" class="btn btn-sm btn-danger" style="border-radius: var(--radius-md); font-size: 0.75rem; padding: 0.35rem 0.75rem; border: none;" onclick="clearChat()">
+                <?= __('chat.clear_chat') ?>
+            </button>
             <button id="translate-toggle" type="button" class="btn btn-sm btn-secondary" style="border-radius: var(--radius-md); font-size: 0.75rem; padding: 0.35rem 0.75rem;">
                 Translate: Off
             </button>
@@ -218,6 +221,34 @@ require_once __DIR__ . '/../includes/header.php';
 #chat-box::-webkit-scrollbar-track { background: transparent; }
 #chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 #chat-box::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+/* Delete message button */
+.message-bubble .btn-delete-msg {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: inherit;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 2;
+}
+.message-bubble .btn-delete-msg:hover {
+    background: rgba(0,0,0,0.12);
+}
+.message-bubble:hover .btn-delete-msg {
+    opacity: 0.6;
+}
+.message-bubble:hover .btn-delete-msg:hover {
+    opacity: 1;
+}
 </style>
 
 <script>
@@ -236,6 +267,7 @@ function goBackOrInbox() {
 
 const productId = <?= $productId ?>;
 const otherUserId = <?= $otherUserId ?>;
+const isAdmin = <?= isAdmin() ? 'true' : 'false' ?>;
 const chatBox = document.getElementById('chat-box');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
@@ -344,6 +376,11 @@ function renderMessages(messages) {
             msgDiv.style.marginRight = 'auto';
         }
         
+        const canDelete = msg.is_mine || isAdmin;
+        if (canDelete) {
+            msgDiv.style.paddingRight = '2.25rem';
+        }
+        
         let timeStr = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
         let bodyHtml = `<div class="message-text-content" style="font-size: 1rem;">${msg.body}</div>`;
@@ -363,6 +400,9 @@ function renderMessages(messages) {
         }
 
         msgDiv.innerHTML = `
+            ${canDelete ? `<button class="btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>` : ''}
             ${bodyHtml}
             <div style="font-size: 0.65rem; text-align: right; margin-top: 4px; opacity: ${msg.is_mine ? '0.8' : '0.5'};">
                 ${timeStr}
@@ -469,6 +509,45 @@ function proposeOrder() {
             alert('Error: ' + data.error);
         }
     });
+}
+
+function deleteMessage(msgId) {
+    if (!confirm(__('chat.confirm_delete_msg'))) return;
+    const formData = new FormData();
+    formData.append('action', 'delete_message');
+    formData.append('message_id', msgId);
+    formData.append('csrf_token', window.__csrfToken || '');
+
+    fetch('api_messages.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                fetchMessages();
+            } else {
+                alert(data.error || 'Error deleting message');
+            }
+        })
+        .catch(err => console.error('Delete failed:', err));
+}
+
+function clearChat() {
+    if (!confirm(__('chat.confirm_clear_chat'))) return;
+    const formData = new FormData();
+    formData.append('action', 'clear_chat');
+    formData.append('product_id', productId);
+    formData.append('other_user_id', otherUserId);
+    formData.append('csrf_token', window.__csrfToken || '');
+
+    fetch('api_messages.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                fetchMessages();
+            } else {
+                alert(data.error || 'Error clearing chat');
+            }
+        })
+        .catch(err => console.error('Clear chat failed:', err));
 }
 
 // ─── Deal Handshake Logic ──────────────────────────────

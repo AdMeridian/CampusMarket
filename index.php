@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <h2 class="mb-0"><?= __('home.shop_by_category') ?></h2>
             <a href="pages/categories.php" class="text-muted" style="font-weight: 500;"><?= __('home.view_all') ?></a>
         </div>
-        <div class="grid grid-cols-3 md-grid-cols-3 lg-grid-cols-3 gap-6">
+        <div class="scroll-row">
             <?php 
             // Hardcoded categories as requested
             $hardcodedCategories = [
@@ -131,7 +131,7 @@ if (!empty($featuredProducts)):
             <a href="pages/promotions.php" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 0.4rem 1rem;"><?= __('home.promote_listing') ?></a>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+        <div class="scroll-row">
             <?php foreach ($featuredProducts as $prod): ?>
                 <div class="featured-card-wrap">
                     <?php include 'includes/product_card_template.php'; ?>
@@ -150,7 +150,7 @@ if (!empty($featuredProducts)):
             <a href="pages/browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
 
-        <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-4 gap-6">
+        <div class="scroll-row">
             <?php if (empty($recentProducts)): ?>
                 <div class="col-span-full text-center py-12 bg-white rounded-lg border">
                     <p class="text-muted"><?= __('home.no_products_desc') ?></p>
@@ -183,7 +183,7 @@ if (!empty($featuredProducts)):
                     <h2 class="mb-0"><?php echo htmlspecialchars(translateCategory($cat['name'])); ?></h2>
                     <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="text-primary font-bold"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
                 </div>
-                <div class="grid grid-cols-1 sm-grid-cols-2 md-grid-cols-3 lg-grid-cols-5 gap-6">
+                <div class="scroll-row">
                     <?php foreach ($cat['products'] as $prod): ?>
                         <?php include 'includes/product_card_template.php'; ?>
                     <?php endforeach; ?>
