@@ -708,20 +708,65 @@ function expandSearchQuery(string $query): array {
     if ($lowerQuery === '') return [];
     
     $synonyms = [
-        'mobile'   => ['phone', 'iphone', 'smartphone', 'cellphone'],
-        'phone'    => ['mobile', 'iphone', 'smartphone', 'cellphone'],
-        'pc'       => ['laptop', 'computer', 'macbook', 'desktop'],
-        'laptop'   => ['pc', 'computer', 'macbook', 'desktop'],
-        'computer' => ['pc', 'laptop', 'macbook', 'desktop'],
-        'clothes'  => ['clothing', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel'],
-        'clothing' => ['clothes', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel'],
-        'book'     => ['textbook', 'notebook', 'study', 'literature', 'guide', 'novel'],
-        'food'     => ['snack', 'drink', 'beverage', 'candy', 'juice', 'soda'],
-        'furniture'=> ['desk', 'chair', 'sofa', 'lamp', 'shelf', 'table', 'bed', 'mirror'],
-        'bike'     => ['bicycle', 'scooter', 'transportation', 'cycling'],
-        'scooter'  => ['bike', 'bicycle', 'transportation'],
-        'tech'     => ['electronics', 'device', 'gadget'],
-        'device'   => ['electronics', 'tech', 'gadget']
+        // Electronics
+        'mobile'      => ['phone', 'iphone', 'smartphone', 'cellphone'],
+        'phone'       => ['mobile', 'iphone', 'smartphone', 'cellphone'],
+        'pc'          => ['laptop', 'computer', 'macbook', 'desktop'],
+        'laptop'      => ['pc', 'computer', 'macbook', 'desktop', 'mac'],
+        'computer'    => ['pc', 'laptop', 'macbook', 'desktop', 'mac'],
+        'tech'        => ['electronics', 'device', 'gadget', 'apple', 'huawei'],
+        'device'      => ['electronics', 'tech', 'gadget'],
+        'audio'       => ['speaker', 'headphones', 'earbuds', 'airpods'],
+        'tablet'      => ['ipad', 'pad'],
+
+        // Books & Study
+        'book'        => ['textbook', 'notebook', 'study', 'literature', 'guide', 'novel', 'read'],
+        'textbook'    => ['book', 'study', 'class', 'course'],
+        'math'        => ['calculus', 'algebra', 'geometry'],
+        'science'     => ['biology', 'chemistry', 'physics'],
+
+        // Furniture
+        'furniture'   => ['desk', 'chair', 'sofa', 'lamp', 'shelf', 'table', 'bed', 'mirror', 'nightstand'],
+        'seat'        => ['chair', 'sofa', 'couch'],
+        'storage'     => ['shelf', 'bookshelf', 'cart', 'drawer'],
+
+        // Clothing
+        'clothes'     => ['clothing', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel', 'outfit'],
+        'clothing'    => ['clothes', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel', 'outfit'],
+        'shirt'       => ['t-shirt', 'tee', 'blouse', 'top'],
+        'pants'       => ['jeans', 'trousers'],
+
+        // Kitchen
+        'kitchen'     => ['cook', 'food', 'appliance', 'cutlery', 'microwave', 'fridge', 'blender'],
+        'cutlery'     => ['fork', 'spoon', 'knife'],
+        'appliance'   => ['microwave', 'fridge', 'cooker', 'blender', 'air fryer'],
+        'cookware'    => ['pot', 'pan', 'board', 'cutter'],
+
+        // Health & Care
+        'health'      => ['care', 'hygiene', 'wash', 'sanitizer', 'first aid', 'skincare'],
+        'hygiene'     => ['wash', 'soap', 'deodorant', 'shampoo', 'toothpaste'],
+        'beauty'      => ['skincare', 'wash', 'lotion'],
+
+        // Food & Beverages
+        'food'        => ['snack', 'drink', 'beverage', 'candy', 'juice', 'soda', 'chips', 'chocolate'],
+        'drink'       => ['beverage', 'juice', 'soda', 'coca-cola', 'fanta', 'lemonade', 'water'],
+        'beverage'    => ['drink', 'juice', 'soda'],
+        'snack'       => ['chips', 'candy', 'popcorn', 'chocolate', 'doritos', 'skittles'],
+
+        // Stationery
+        'stationery'  => ['paper', 'pen', 'pencil', 'notebook', 'ruler', 'calculator', 'eraser'],
+        'writing'     => ['pen', 'pencil', 'marker'],
+        'school'      => ['stationery', 'book', 'notebook', 'calculator', 'bag'],
+
+        // Dorm Essentials
+        'dorm'        => ['room', 'decor', 'essential', 'hanger', 'lamp', 'laundry', 'mirror'],
+        'room'        => ['dorm', 'decor', 'lamp', 'mirror', 'storage'],
+
+        // Transportation
+        'transport'   => ['bike', 'bicycle', 'scooter', 'cycling', 'ride'],
+        'bike'        => ['bicycle', 'scooter', 'transport', 'cycling'],
+        'bicycle'     => ['bike', 'cycling', 'transport'],
+        'scooter'     => ['bike', 'bicycle', 'transport', 'kick scooter']
     ];
     
     $terms = [$lowerQuery];
