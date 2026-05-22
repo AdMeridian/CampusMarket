@@ -19,19 +19,29 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_
         WHERE p.status = 'active'";
 
 if ($search !== '') {
-    $sql .= " AND (
-        LOWER(p.title) LIKE ?
-        OR LOWER(p.description) LIKE ?
-        OR EXISTS (
-            SELECT 1 FROM product_tags pt
-            JOIN tags t ON pt.tag_id = t.id
-            WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
-        )
-    )";
-    $lowerSearch = mb_strtolower($search);
-    $params[] = "%$lowerSearch%";
-    $params[] = "%$lowerSearch%";
-    $params[] = "%$lowerSearch%";
+    $searchTerms = expandSearchQuery($search);
+    $termConditions = [];
+    
+    foreach ($searchTerms as $term) {
+        $termConditions[] = "(
+            LOWER(p.title) LIKE ?
+            OR LOWER(p.description) LIKE ?
+            OR LOWER(c.name) LIKE ?
+            OR EXISTS (
+                SELECT 1 FROM product_tags pt
+                JOIN tags t ON pt.tag_id = t.id
+                WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
+            )
+        )";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+    }
+    
+    if (!empty($termConditions)) {
+        $sql .= " AND (" . implode(" OR ", $termConditions) . ")";
+    }
 }
 if ($category) {
     $sql .= " AND p.category_id = ?";

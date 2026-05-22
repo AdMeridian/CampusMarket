@@ -698,3 +698,40 @@ function setUserPreferredLanguage(PDO $pdo, int $userId, string $lang): bool {
     }
 }
 
+// ─── Search Helpers ──────────────────────────────────────────
+
+/**
+ * Expand a search query with common synonyms
+ */
+function expandSearchQuery(string $query): array {
+    $lowerQuery = mb_strtolower(trim($query));
+    if ($lowerQuery === '') return [];
+    
+    $synonyms = [
+        'mobile'   => ['phone', 'iphone', 'smartphone', 'cellphone'],
+        'phone'    => ['mobile', 'iphone', 'smartphone', 'cellphone'],
+        'pc'       => ['laptop', 'computer', 'macbook', 'desktop'],
+        'laptop'   => ['pc', 'computer', 'macbook', 'desktop'],
+        'computer' => ['pc', 'laptop', 'macbook', 'desktop'],
+        'clothes'  => ['clothing', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel'],
+        'clothing' => ['clothes', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel'],
+        'book'     => ['textbook', 'notebook', 'study', 'literature', 'guide', 'novel'],
+        'food'     => ['snack', 'drink', 'beverage', 'candy', 'juice', 'soda'],
+        'furniture'=> ['desk', 'chair', 'sofa', 'lamp', 'shelf', 'table', 'bed', 'mirror'],
+        'bike'     => ['bicycle', 'scooter', 'transportation', 'cycling'],
+        'scooter'  => ['bike', 'bicycle', 'transportation'],
+        'tech'     => ['electronics', 'device', 'gadget'],
+        'device'   => ['electronics', 'tech', 'gadget']
+    ];
+    
+    $terms = [$lowerQuery];
+    foreach ($synonyms as $key => $synList) {
+        if (strpos($lowerQuery, $key) !== false || in_array($lowerQuery, $synList)) {
+            $terms = array_merge($terms, $synList);
+            $terms[] = $key;
+        }
+    }
+    
+    return array_unique($terms);
+}
+

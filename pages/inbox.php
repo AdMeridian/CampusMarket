@@ -314,8 +314,9 @@ body.dark-mode .convo-card.unread {
     <div class="glass-panel mb-6 p-4" style="border-radius: var(--radius-lg); position: relative; z-index: 10;">
         <div class="relative" style="position: relative;">
             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted" style="position: absolute; top: 50%; transform: translateY(-50%); left: 0.75rem; color: var(--text-muted); display: flex; align-items: center;">
-                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
             </span>
             <input type="text" id="user-search-input" placeholder="<?= __('inbox.search_placeholder') ?>" 

@@ -18,19 +18,29 @@ if ($query !== '' || $categoryId !== '') {
     $params = [];
 
     if ($query !== '') {
-        $sql .= " AND (
-            LOWER(p.title) LIKE ?
-            OR LOWER(p.description) LIKE ?
-            OR EXISTS (
-                SELECT 1 FROM product_tags pt
-                JOIN tags t ON pt.tag_id = t.id
-                WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
-            )
-        )";
-        $lowerQuery = mb_strtolower($query);
-        $params[] = "%$lowerQuery%";
-        $params[] = "%$lowerQuery%";
-        $params[] = "%$lowerQuery%";
+        $searchTerms = expandSearchQuery($query);
+        $termConditions = [];
+        
+        foreach ($searchTerms as $term) {
+            $termConditions[] = "(
+                LOWER(p.title) LIKE ?
+                OR LOWER(p.description) LIKE ?
+                OR LOWER(c.name) LIKE ?
+                OR EXISTS (
+                    SELECT 1 FROM product_tags pt
+                    JOIN tags t ON pt.tag_id = t.id
+                    WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
+                )
+            )";
+            $params[] = "%$term%";
+            $params[] = "%$term%";
+            $params[] = "%$term%";
+            $params[] = "%$term%";
+        }
+        
+        if (!empty($termConditions)) {
+            $sql .= " AND (" . implode(" OR ", $termConditions) . ")";
+        }
     }
 
     if ($categoryId !== '') {
