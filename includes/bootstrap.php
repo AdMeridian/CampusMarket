@@ -59,6 +59,7 @@ if (file_exists($envFile)) {
 require_once ROOT_PATH . 'config/supabase.php';
 require_once ROOT_PATH . 'config/db.php';
 require_once ROOT_PATH . 'includes/functions.php';
+require_once ROOT_PATH . 'includes/mailer.php';
 require_once ROOT_PATH . 'includes/i18n.php';
 require_once ROOT_PATH . 'includes/translation.php';
 

@@ -101,3 +101,8 @@ if (!defined('STRIPE_PUBLISHABLE_KEY')) {
 if (!defined('STRIPE_SECRET_KEY')) {
     define('STRIPE_SECRET_KEY', getenv('STRIPE_SECRET_KEY') ?: 'sk_test_YOUR_SECRET_KEY');
 }
+
+// Web Push (VAPID)
+if (!defined('WEB_PUSH_PUBLIC_KEY')) {
+    define('WEB_PUSH_PUBLIC_KEY', getenv('WEB_PUSH_PUBLIC_KEY') ?: '');
+}

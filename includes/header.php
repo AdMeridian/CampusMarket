@@ -48,7 +48,8 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <script>
         window.__env = {
             SUPABASE_URL: <?php echo json_encode(supabaseUrl()); ?>,
-            SUPABASE_ANON_KEY: <?php echo json_encode(supabaseAnonKey()); ?>
+            SUPABASE_ANON_KEY: <?php echo json_encode(supabaseAnonKey()); ?>,
+            WEB_PUSH_PUBLIC_KEY: <?php echo json_encode(WEB_PUSH_PUBLIC_KEY); ?>
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

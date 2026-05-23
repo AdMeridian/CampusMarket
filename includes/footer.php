@@ -17,7 +17,11 @@
                     <li><a href="<?php echo BASE_URL; ?>/pages/categories.php"><?= __('footer.categories') ?></a></li>
                     <li><a href="<?php echo BASE_URL; ?>/pages/create_listing.php"><?= __('footer.post_item') ?></a></li>
 
-                    <li><a href="<?php echo BASE_URL; ?>/pages/register.php"><?= __('footer.create_account') ?></a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="<?php echo BASE_URL; ?>/pages/profile.php"><?= __('nav.my_profile') ?></a></li>
+                    <?php else: ?>
+                        <li><a href="<?php echo BASE_URL; ?>/pages/register.php"><?= __('footer.create_account') ?></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
             

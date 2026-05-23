@@ -358,6 +358,96 @@ function createNotification(PDO $pdo, int $userId, string $type, string $title, 
 }
 
 /**
+ * Email alert for new direct messages when users are away from the site.
+ * Rate-limited: one email per receiver/sender/product every 5 minutes.
+ */
+function sendNewMessageEmailAlert(PDO $pdo, int $receiverId, int $senderId, ?int $productId, string $messageBody): void {
+    static $hasAlertsTable = null;
+    if ($hasAlertsTable === null) {
+        try {
+            $hasAlertsTable = (bool)$pdo->query("
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'message_email_alerts'
+                LIMIT 1
+            ")->fetchColumn();
+        } catch (Throwable $e) {
+            $hasAlertsTable = false;
+        }
+    }
+    if (!$hasAlertsTable) {
+        return;
+    }
+
+    try {
+        $userStmt = $pdo->prepare("SELECT username, email, is_verified FROM users WHERE id = :id LIMIT 1");
+        $userStmt->execute([':id' => $receiverId]);
+        $receiver = $userStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$receiver || empty($receiver['email']) || !(bool)$receiver['is_verified']) {
+            return;
+        }
+
+        $senderStmt = $pdo->prepare("SELECT username FROM users WHERE id = :id LIMIT 1");
+        $senderStmt->execute([':id' => $senderId]);
+        $senderName = (string)($senderStmt->fetchColumn() ?: 'Someone');
+
+        $throttleStmt = $pdo->prepare("
+            SELECT sent_at
+            FROM message_email_alerts
+            WHERE receiver_id = :rid
+              AND sender_id = :sid
+              AND COALESCE(product_id, 0) = COALESCE(:pid, 0)
+            ORDER BY sent_at DESC
+            LIMIT 1
+        ");
+        $throttleStmt->execute([
+            ':rid' => $receiverId,
+            ':sid' => $senderId,
+            ':pid' => $productId,
+        ]);
+        $lastSent = $throttleStmt->fetchColumn();
+        if ($lastSent) {
+            $elapsed = time() - strtotime((string)$lastSent);
+            if ($elapsed < 300) {
+                return;
+            }
+        }
+
+        $inboxUrl = rtrim(BASE_URL, '/') . '/pages/inbox.php';
+        $subject = "{$senderName} sent you a message on CampusMarket";
+        $headline = 'New message received';
+        $snippet = trim($messageBody);
+        if (strlen($snippet) > 180) {
+            $snippet = substr($snippet, 0, 177) . '...';
+        }
+        $body = "you have a new message from @{$senderName}. \"{$snippet}\"";
+
+        $sendResult = sendMarketplaceAlertEmail(
+            (string)$receiver['email'],
+            (string)$receiver['username'],
+            $subject,
+            $headline,
+            $body,
+            $inboxUrl,
+            'View Message'
+        );
+
+        if (!empty($sendResult['ok'])) {
+            $ins = $pdo->prepare("
+                INSERT INTO message_email_alerts (receiver_id, sender_id, product_id, sent_at)
+                VALUES (:rid, :sid, :pid, NOW())
+            ");
+            $ins->execute([
+                ':rid' => $receiverId,
+                ':sid' => $senderId,
+                ':pid' => $productId,
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('[email-alert] sendNewMessageEmailAlert failed: ' . $e->getMessage());
+    }
+}
+
+/**
  * Count unread notifications for a user
  */
 function countUnreadNotifications(PDO $pdo, int $userId): int {

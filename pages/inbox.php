@@ -520,6 +520,16 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
+
+    let lastUnreadMessages = <?= (int)$unreadCount ?>;
+    let reloadTimer = null;
+    window.addEventListener('campusmarket:notifications-updated', function(e) {
+        const next = Number(e?.detail?.messages ?? lastUnreadMessages);
+        if (Number.isNaN(next) || next === lastUnreadMessages) return;
+        lastUnreadMessages = next;
+        if (reloadTimer) clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(() => window.location.reload(), 200);
+    });
 });
 </script>
 

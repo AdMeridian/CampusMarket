@@ -54,10 +54,11 @@ if ($httpCode === 200 && $response['payment_status'] === 'paid') {
                 ':tx'     => $sessionId
             ]);
             
-            // If it's a promotion, feature the product immediately
+            // If it's a promotion, feature the product immediately with duration.
             if ($paymentType === 'promotion' && $productId) {
-                $upd = $pdo->prepare('UPDATE products SET is_featured = TRUE, discount_set_at = NOW() WHERE id = ?');
-                $upd->execute([$productId]);
+                $days = max(1, (int) floor($amount / 15));
+                $upd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ?");
+                $upd->execute([$days, $productId]);
             }
             
             $pdo->commit();
@@ -74,3 +75,5 @@ if ($httpCode === 200 && $response['payment_status'] === 'paid') {
 }
 
 redirect(BASE_URL . $redirectPath);
+
+

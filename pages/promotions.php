@@ -149,12 +149,12 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="mb-8">
                     <label class="block mb-4 font-bold text-center" style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">2. Choose Boost Amount</label>
                     <div class="grid grid-cols-3 gap-4">
-                        <div class="amount-pill active" data-amount="50.00">₺50 <br><span style="font-size: 0.65rem; opacity: 0.8; display: block; margin-top: 2px;">3 DAYS</span></div>
-                        <div class="amount-pill" data-amount="100.00">₺100 <br><span style="font-size: 0.65rem; opacity: 0.8; display: block; margin-top: 2px;">7 DAYS</span></div>
-                        <div class="amount-pill" data-amount="200.00">₺200 <br><span style="font-size: 0.65rem; opacity: 0.8; display: block; margin-top: 2px;">30 DAYS</span></div>
+                        <div class="amount-pill active" data-amount="50.00">₺50 <br><span style="font-size: 0.65rem; opacity: 0.8; display: block; margin-top: 2px;">~3 DAYS</span></div>
+                        <div class="amount-pill" data-amount="100.00">₺100 <br><span style="font-size: 0.65rem; opacity: 0.8; display: block; margin-top: 2px;">~6 DAYS</span></div>
+                        <div class="amount-pill" data-amount="200.00">₺200 <br><span style="font-size: 0.65rem; opacity: 0.8; display: block; margin-top: 2px;">~13 DAYS</span></div>
                     </div>
                     <input type="number" id="custom-amount" class="premium-input mt-4 text-center" placeholder="Or enter amount in TL" style="border-radius: 16px; font-size: 1.1rem; font-weight: 700;">
-                    <p class="text-center mt-2 text-muted" id="duration-preview" style="font-size: 0.8rem;">Boost duration: <strong>3 days</strong></p>
+                    <p class="text-center mt-2 text-muted" id="duration-preview" style="font-size: 0.8rem;">Boost duration: <strong>3 days</strong> (15 TL/day)</p>
                 </div>
 
                 <!-- Stripe Call to Action -->
@@ -318,15 +318,12 @@ document.addEventListener('DOMContentLoaded', function() {
         let days = 0;
         const amount = parseFloat(val);
         
-        if (amount == 50) days = 3;
-        else if (amount == 100) days = 7;
-        else if (amount >= 200) days = 30;
-        else if (amount > 0) days = Math.max(1, Math.floor(amount / 15));
+        if (amount > 0) days = Math.max(1, Math.floor(amount / 15));
 
         if (days > 0) {
             previewEl.innerHTML = `Boost duration: <strong>${days} day${days > 1 ? 's' : ''}</strong>`;
         } else {
-            previewEl.innerHTML = "Enter an amount to see duration";
+            previewEl.innerHTML = "Enter an amount to see duration (15 TL/day)";
         }
     }
 
@@ -405,4 +402,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
+
 

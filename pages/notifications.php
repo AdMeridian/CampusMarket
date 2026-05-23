@@ -237,15 +237,20 @@ body.dark-mode .convo-card.unread {
         <div style="display: flex; align-items: center; gap: 0.75rem;">
             <h1>Activity Updates</h1>
         </div>
-        <?php if (!empty($notifications)): ?>
-            <form method="post" class="m-0">
-                <?php echo csrfTokenField(); ?>
-                <button type="submit" name="action" value="mark_all" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus); display: flex; align-items: center; gap: 0.35rem;">
-                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    Mark All Read
-                </button>
-            </form>
-        <?php endif; ?>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" id="enable-browser-notifs" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus);">
+                Enable Browser Alerts
+            </button>
+            <?php if (!empty($notifications)): ?>
+                <form method="post" class="m-0">
+                    <?php echo csrfTokenField(); ?>
+                    <button type="submit" name="action" value="mark_all" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus); display: flex; align-items: center; gap: 0.35rem;">
+                        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Mark All Read
+                    </button>
+                </form>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php if (empty($notifications)): ?>
@@ -308,5 +313,79 @@ body.dark-mode .convo-card.unread {
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('enable-browser-notifs');
+    if (!btn) return;
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    async function saveSubscription(subscription) {
+        const res = await fetch(window.__baseUrl + 'pages/api_push_subscriptions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': window.__csrfToken || ''
+            },
+            body: JSON.stringify({
+                action: 'subscribe',
+                subscription
+            })
+        });
+        return res.ok;
+    }
+
+    btn.addEventListener('click', async function() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            alert('Push notifications are not supported on this device/browser.');
+            return;
+        }
+
+        const vapidPublicKey = window.__env?.WEB_PUSH_PUBLIC_KEY || '';
+        if (!vapidPublicKey) {
+            alert('Push notifications are not configured yet. Please add WEB_PUSH_PUBLIC_KEY on the server.');
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert('Browser alerts were blocked. You can enable them from browser site settings.');
+            return;
+        }
+
+        const reg = await navigator.serviceWorker.ready;
+        let subscription = await reg.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            });
+        }
+
+        const ok = await saveSubscription(subscription.toJSON());
+        alert(ok ? 'Browser alerts enabled.' : 'Subscription saved locally but server sync failed.');
+    });
+
+    let lastUnreadNotifs = <?= (int)$navUnreadNotifs ?>;
+    let reloadTimer = null;
+    window.addEventListener('campusmarket:notifications-updated', function(e) {
+        const next = Number(e?.detail?.notifs ?? lastUnreadNotifs);
+        if (Number.isNaN(next) || next === lastUnreadNotifs) return;
+        lastUnreadNotifs = next;
+        if (reloadTimer) clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(() => window.location.reload(), 200);
+    });
+});
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

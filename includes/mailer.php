@@ -113,3 +113,35 @@ HTML;
         return sendEmail($to, "Verify your {$appName} account", $html);
     }
 }
+
+if (!function_exists('sendMarketplaceAlertEmail')) {
+    /**
+     * Send a compact marketplace activity email (message/order/system).
+     */
+    function sendMarketplaceAlertEmail(string $to, string $username, string $subject, string $headline, string $body, string $ctaUrl, string $ctaText = 'Open CampusMarket'): array {
+        $appName = defined('APP_NAME') ? APP_NAME : 'CampusMarket';
+        $safeName = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+        $safeHeadline = htmlspecialchars($headline, ENT_QUOTES, 'UTF-8');
+        $safeBody = htmlspecialchars($body, ENT_QUOTES, 'UTF-8');
+        $safeUrl = htmlspecialchars($ctaUrl, ENT_QUOTES, 'UTF-8');
+        $safeCta = htmlspecialchars($ctaText, ENT_QUOTES, 'UTF-8');
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html>
+<body style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;padding:24px;color:#0f172a;margin:0;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;">
+    <h2 style="margin:0 0 10px 0;font-size:20px;">{$safeHeadline}</h2>
+    <p style="margin:0 0 14px 0;color:#475569;line-height:1.5;">Hi {$safeName}, {$safeBody}</p>
+    <p style="text-align:center;margin:22px 0;">
+      <a href="{$safeUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:8px;font-weight:600;">{$safeCta}</a>
+    </p>
+    <p style="margin:12px 0 0 0;color:#94a3b8;font-size:12px;">You are receiving this because activity happened on your {$appName} account.</p>
+  </div>
+</body>
+</html>
+HTML;
+
+        return sendEmail($to, $subject, $html);
+    }
+}

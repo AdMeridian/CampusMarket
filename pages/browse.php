@@ -40,7 +40,7 @@ if ($maxPrice) {
     $params[] = $maxPrice;
 }
 
-$sql .= " ORDER BY p.is_featured DESC, ";
+$sql .= " ORDER BY CASE WHEN p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW()) THEN 1 ELSE 0 END DESC, ";
 switch ($sort) {
     case 'price_asc': $sql .= "effective_price ASC"; break;
     case 'price_desc': $sql .= "effective_price DESC"; break;
@@ -304,3 +304,5 @@ include '../includes/header.php';
 </script>
 
 <?php include '../includes/footer.php'; ?>
+
+
