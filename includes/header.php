@@ -138,6 +138,10 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
         
         <!-- Mobile Tools (Visible only on mobile next to the logo) -->
         <div class="lg-hidden flex items-center gap-2" style="margin-left: auto;">
+            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/index.php" class="back-btn" aria-label="Go home">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M15 18l-6-6 6-6"/></svg>
+            </a>
+
             <!-- Language Selector (Mobile) -->
             <div class="lang-dropdown" id="lang-dropdown-mobile">
                 <button type="button" class="lang-dropdown-btn" aria-label="<?= __('lang.selector_label') ?>" onclick="this.parentElement.classList.toggle('open')">
