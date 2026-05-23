@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireLogin();
     verifyCsrfToken();
     $issueType = sanitize($_POST['issue_type'] ?? '');
     $link = sanitize($_POST['link'] ?? '');
@@ -43,10 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $html .= "<p><strong>Description:</strong><br>" . nl2br(htmlspecialchars($description)) . "</p>";
         $html .= "<hr><p>This report has been saved to the database (ID: " . $pdo->lastInsertId() . ")</p>";
 
-        sendEmail($adminEmail, $subject, $html);
+        $emailResult = sendEmail($adminEmail, $subject, $html);
+        if (empty($emailResult['ok'])) {
+            error_log('[report] report submitted but email notification failed: ' . json_encode($emailResult));
+        }
 
         $message = '<div class="alert alert-success" style="background: rgba(16, 185, 129, 0.1); color: #059669; padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(16, 185, 129, 0.2); margin-bottom: 1.5rem;">Thank you for your report. Our moderation team has been notified and will review it shortly.</div>';
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        error_log('[report] submit failed: ' . $e->getMessage());
         $message = '<div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(239, 68, 68, 0.2); margin-bottom: 1.5rem;">There was an error submitting your report. Please try again later.</div>';
     }
 }

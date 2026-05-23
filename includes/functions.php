@@ -358,6 +358,96 @@ function createNotification(PDO $pdo, int $userId, string $type, string $title, 
 }
 
 /**
+ * Email alert for new direct messages when users are away from the site.
+ * Rate-limited: one email per receiver/sender/product every 5 minutes.
+ */
+function sendNewMessageEmailAlert(PDO $pdo, int $receiverId, int $senderId, ?int $productId, string $messageBody): void {
+    static $hasAlertsTable = null;
+    if ($hasAlertsTable === null) {
+        try {
+            $hasAlertsTable = (bool)$pdo->query("
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'message_email_alerts'
+                LIMIT 1
+            ")->fetchColumn();
+        } catch (Throwable $e) {
+            $hasAlertsTable = false;
+        }
+    }
+    if (!$hasAlertsTable) {
+        return;
+    }
+
+    try {
+        $userStmt = $pdo->prepare("SELECT username, email, is_verified FROM users WHERE id = :id LIMIT 1");
+        $userStmt->execute([':id' => $receiverId]);
+        $receiver = $userStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$receiver || empty($receiver['email']) || !(bool)$receiver['is_verified']) {
+            return;
+        }
+
+        $senderStmt = $pdo->prepare("SELECT username FROM users WHERE id = :id LIMIT 1");
+        $senderStmt->execute([':id' => $senderId]);
+        $senderName = (string)($senderStmt->fetchColumn() ?: 'Someone');
+
+        $throttleStmt = $pdo->prepare("
+            SELECT sent_at
+            FROM message_email_alerts
+            WHERE receiver_id = :rid
+              AND sender_id = :sid
+              AND COALESCE(product_id, 0) = COALESCE(:pid, 0)
+            ORDER BY sent_at DESC
+            LIMIT 1
+        ");
+        $throttleStmt->execute([
+            ':rid' => $receiverId,
+            ':sid' => $senderId,
+            ':pid' => $productId,
+        ]);
+        $lastSent = $throttleStmt->fetchColumn();
+        if ($lastSent) {
+            $elapsed = time() - strtotime((string)$lastSent);
+            if ($elapsed < 300) {
+                return;
+            }
+        }
+
+        $inboxUrl = rtrim(BASE_URL, '/') . '/pages/inbox.php';
+        $subject = "{$senderName} sent you a message on CampusMarket";
+        $headline = 'New message received';
+        $snippet = trim($messageBody);
+        if (strlen($snippet) > 180) {
+            $snippet = substr($snippet, 0, 177) . '...';
+        }
+        $body = "you have a new message from @{$senderName}. \"{$snippet}\"";
+
+        $sendResult = sendMarketplaceAlertEmail(
+            (string)$receiver['email'],
+            (string)$receiver['username'],
+            $subject,
+            $headline,
+            $body,
+            $inboxUrl,
+            'View Message'
+        );
+
+        if (!empty($sendResult['ok'])) {
+            $ins = $pdo->prepare("
+                INSERT INTO message_email_alerts (receiver_id, sender_id, product_id, sent_at)
+                VALUES (:rid, :sid, :pid, NOW())
+            ");
+            $ins->execute([
+                ':rid' => $receiverId,
+                ':sid' => $senderId,
+                ':pid' => $productId,
+            ]);
+        }
+    } catch (Throwable $e) {
+        error_log('[email-alert] sendNewMessageEmailAlert failed: ' . $e->getMessage());
+    }
+}
+
+/**
  * Count unread notifications for a user
  */
 function countUnreadNotifications(PDO $pdo, int $userId): int {
@@ -696,5 +786,87 @@ function setUserPreferredLanguage(PDO $pdo, int $userId, string $lang): bool {
         error_log("setUserPreferredLanguage error: " . $e->getMessage());
         return false;
     }
+}
+
+// ─── Search Helpers ──────────────────────────────────────────
+
+/**
+ * Expand a search query with common synonyms
+ */
+function expandSearchQuery(string $query): array {
+    $lowerQuery = mb_strtolower(trim($query));
+    if ($lowerQuery === '') return [];
+    
+    $synonyms = [
+        // Electronics
+        'mobile'      => ['phone', 'iphone', 'smartphone', 'cellphone'],
+        'phone'       => ['mobile', 'iphone', 'smartphone', 'cellphone'],
+        'pc'          => ['laptop', 'computer', 'macbook', 'desktop'],
+        'laptop'      => ['pc', 'computer', 'macbook', 'desktop', 'mac'],
+        'computer'    => ['pc', 'laptop', 'macbook', 'desktop', 'mac'],
+        'tech'        => ['electronics', 'device', 'gadget', 'apple', 'huawei'],
+        'device'      => ['electronics', 'tech', 'gadget'],
+        'audio'       => ['speaker', 'headphones', 'earbuds', 'airpods'],
+        'tablet'      => ['ipad', 'pad'],
+
+        // Books & Study
+        'book'        => ['textbook', 'notebook', 'study', 'literature', 'guide', 'novel', 'read'],
+        'textbook'    => ['book', 'study', 'class', 'course'],
+        'math'        => ['calculus', 'algebra', 'geometry'],
+        'science'     => ['biology', 'chemistry', 'physics'],
+
+        // Furniture
+        'furniture'   => ['desk', 'chair', 'sofa', 'lamp', 'shelf', 'table', 'bed', 'mirror', 'nightstand'],
+        'seat'        => ['chair', 'sofa', 'couch'],
+        'storage'     => ['shelf', 'bookshelf', 'cart', 'drawer'],
+
+        // Clothing
+        'clothes'     => ['clothing', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel', 'outfit'],
+        'clothing'    => ['clothes', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel', 'outfit'],
+        'shirt'       => ['t-shirt', 'tee', 'blouse', 'top'],
+        'pants'       => ['jeans', 'trousers'],
+
+        // Kitchen
+        'kitchen'     => ['cook', 'food', 'appliance', 'cutlery', 'microwave', 'fridge', 'blender'],
+        'cutlery'     => ['fork', 'spoon', 'knife'],
+        'appliance'   => ['microwave', 'fridge', 'cooker', 'blender', 'air fryer'],
+        'cookware'    => ['pot', 'pan', 'board', 'cutter'],
+
+        // Health & Care
+        'health'      => ['care', 'hygiene', 'wash', 'sanitizer', 'first aid', 'skincare'],
+        'hygiene'     => ['wash', 'soap', 'deodorant', 'shampoo', 'toothpaste'],
+        'beauty'      => ['skincare', 'wash', 'lotion'],
+
+        // Food & Beverages
+        'food'        => ['snack', 'drink', 'beverage', 'candy', 'juice', 'soda', 'chips', 'chocolate'],
+        'drink'       => ['beverage', 'juice', 'soda', 'coca-cola', 'fanta', 'lemonade', 'water'],
+        'beverage'    => ['drink', 'juice', 'soda'],
+        'snack'       => ['chips', 'candy', 'popcorn', 'chocolate', 'doritos', 'skittles'],
+
+        // Stationery
+        'stationery'  => ['paper', 'pen', 'pencil', 'notebook', 'ruler', 'calculator', 'eraser'],
+        'writing'     => ['pen', 'pencil', 'marker'],
+        'school'      => ['stationery', 'book', 'notebook', 'calculator', 'bag'],
+
+        // Dorm Essentials
+        'dorm'        => ['room', 'decor', 'essential', 'hanger', 'lamp', 'laundry', 'mirror'],
+        'room'        => ['dorm', 'decor', 'lamp', 'mirror', 'storage'],
+
+        // Transportation
+        'transport'   => ['bike', 'bicycle', 'scooter', 'cycling', 'ride'],
+        'bike'        => ['bicycle', 'scooter', 'transport', 'cycling'],
+        'bicycle'     => ['bike', 'cycling', 'transport'],
+        'scooter'     => ['bike', 'bicycle', 'transport', 'kick scooter']
+    ];
+    
+    $terms = [$lowerQuery];
+    foreach ($synonyms as $key => $synList) {
+        if (strpos($lowerQuery, $key) !== false || in_array($lowerQuery, $synList)) {
+            $terms = array_merge($terms, $synList);
+            $terms[] = $key;
+        }
+    }
+    
+    return array_unique($terms);
 }
 

@@ -19,9 +19,29 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_
         WHERE p.status = 'active'";
 
 if ($search !== '') {
-    $sql .= " AND (p.title LIKE ? OR p.description LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
+    $searchTerms = expandSearchQuery($search);
+    $termConditions = [];
+    
+    foreach ($searchTerms as $term) {
+        $termConditions[] = "(
+            LOWER(p.title) LIKE ?
+            OR LOWER(p.description) LIKE ?
+            OR LOWER(c.name) LIKE ?
+            OR EXISTS (
+                SELECT 1 FROM product_tags pt
+                JOIN tags t ON pt.tag_id = t.id
+                WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
+            )
+        )";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+    }
+    
+    if (!empty($termConditions)) {
+        $sql .= " AND (" . implode(" OR ", $termConditions) . ")";
+    }
 }
 if ($category) {
     $sql .= " AND p.category_id = ?";
@@ -40,7 +60,7 @@ if ($maxPrice) {
     $params[] = $maxPrice;
 }
 
-$sql .= " ORDER BY p.is_featured DESC, ";
+$sql .= " ORDER BY CASE WHEN p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW()) THEN 1 ELSE 0 END DESC, ";
 switch ($sort) {
     case 'price_asc': $sql .= "effective_price ASC"; break;
     case 'price_desc': $sql .= "effective_price DESC"; break;
@@ -221,7 +241,7 @@ include '../includes/header.php';
 
                     <!-- Search Bar (In Between) -->
                     <form method="GET" action="" class="search-bar search-form-el mb-0" style="height: 46px; position: relative; z-index: 50;">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
@@ -233,7 +253,7 @@ include '../includes/header.php';
                         <?php if($sort): ?><input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>"><?php endif; ?>
                         
                         <input type="text" name="q" value="<?php echo sanitize($search); ?>" placeholder="<?= addslashes(__('browse.search_placeholder')) ?>" class="search-input">
-                        <button type="submit" class="search-btn" style="height: 34px; padding: 0 1.25rem;"><?= __('browse.find') ?></button>
+                        <button type="submit" class="search-btn"><?= __('browse.find') ?></button>
                     </form>
 
                     <!-- Sort Dropdown -->
@@ -304,3 +324,5 @@ include '../includes/header.php';
 </script>
 
 <?php include '../includes/footer.php'; ?>
+
+

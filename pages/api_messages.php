@@ -242,6 +242,15 @@ if ($action === 'send') {
         
         $pdo->commit();
 
+        // Off-site alert fallback: email for new buyer/seller messages.
+        sendNewMessageEmailAlert(
+            $pdo,
+            $receiverId,
+            $currentUserId,
+            $productId > 0 ? $productId : null,
+            $body
+        );
+
         ob_clean();
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {

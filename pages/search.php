@@ -5,7 +5,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 $query = sanitize($_GET['q'] ?? '');
 $categoryId = $_GET['category'] ?? '';
-$pageTitle = "Search Results" . ($query ? ": " . $query : "");
+$pageTitle = __('search.page_title') . ($query ? ": " . $query : "");
 
 $results = [];
 if ($query !== '' || $categoryId !== '') {
@@ -18,9 +18,29 @@ if ($query !== '' || $categoryId !== '') {
     $params = [];
 
     if ($query !== '') {
-        $sql .= " AND (p.title LIKE ? OR p.description LIKE ?)";
-        $params[] = "%$query%";
-        $params[] = "%$query%";
+        $searchTerms = expandSearchQuery($query);
+        $termConditions = [];
+        
+        foreach ($searchTerms as $term) {
+            $termConditions[] = "(
+                LOWER(p.title) LIKE ?
+                OR LOWER(p.description) LIKE ?
+                OR LOWER(c.name) LIKE ?
+                OR EXISTS (
+                    SELECT 1 FROM product_tags pt
+                    JOIN tags t ON pt.tag_id = t.id
+                    WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
+                )
+            )";
+            $params[] = "%$term%";
+            $params[] = "%$term%";
+            $params[] = "%$term%";
+            $params[] = "%$term%";
+        }
+        
+        if (!empty($termConditions)) {
+            $sql .= " AND (" . implode(" OR ", $termConditions) . ")";
+        }
     }
 
     if ($categoryId !== '') {
@@ -41,26 +61,41 @@ if ($query !== '' || $categoryId !== '') {
 
     <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         <div class="text-center md:text-left">
-            <h1 class="font-bold text-2xl mb-1 text-main">Search Results</h1>
-            <p class="text-muted font-medium" style="font-size: 0.95rem;">Found <strong class="text-primary"><?php echo count($results); ?></strong> items <?php echo $query ? 'for "<strong class="text-main">'.sanitize($query).'</strong>"' : ''; ?></p>
+            <h1 class="font-bold text-2xl mb-1 text-main"><?= __('search.results_title') ?></h1>
+            <p class="text-muted font-medium" style="font-size: 0.95rem;">
+                <?php if ($query !== ''): ?>
+                    <?= __('search.found_items_for', [
+                        'count' => '<strong class="text-primary">' . count($results) . '</strong>',
+                        'query' => '<strong class="text-main">' . sanitize($query) . '</strong>'
+                    ]) ?>
+                <?php else: ?>
+                    <?= __('search.found_items', [
+                        'count' => '<strong class="text-primary">' . count($results) . '</strong>'
+                    ]) ?>
+                <?php endif; ?>
+            </p>
         </div>
         
         <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar" style="flex: 1; max-width: 450px; height: 48px;">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="Search items..." class="search-input">
-            <button type="submit" class="search-btn">Search</button>
+            <?php if ($categoryId !== ''): ?>
+                <input type="hidden" name="category" value="<?php echo htmlspecialchars($categoryId); ?>">
+            <?php endif; ?>
+            <?php $placeholder = (isLoggedIn() && isAdmin()) ? __('nav.search_placeholder_admin') : __('nav.search_placeholder'); ?>
+            <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
+            <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
         </form>
     </div>
 
     <?php if (empty($results)): ?>
         <div class="glass-panel p-20 text-center shadow-sm relative overflow-hidden" style="border-radius: var(--radius-xl); border: 2px dashed rgba(0,0,0,0.05);">
             <div class="text-8xl mb-6 opacity-20" style="transform: rotate(-10deg);">🔦</div>
-            <h3 class="font-bold text-main text-3xl mb-3">No items matched your search</h3>
-            <p class="text-muted text-lg max-w-lg mx-auto mb-8">We couldn't find any listings matching "<strong class="text-primary"><?php echo $query; ?></strong>". Try using different keywords, checking for typos, or using broader terms.</p>
-            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;">Browse All Items</a>
+            <h3 class="font-bold text-main text-3xl mb-3"><?= __('search.no_items_matched') ?></h3>
+            <p class="text-muted text-lg max-w-lg mx-auto mb-8"><?= __('search.no_items_desc', ['query' => '<strong class="text-primary">' . sanitize($query) . '</strong>']) ?></p>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
         </div>
     <?php else: ?>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

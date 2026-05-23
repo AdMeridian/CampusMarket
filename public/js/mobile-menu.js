@@ -8,7 +8,19 @@ function initMobileMenu() {
 
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const navLinks = document.getElementById('nav-links');
+    const mobileMenuCloseBtn = document.getElementById('mobile-menu-close');
     const themeToggleMobile = document.getElementById('theme-toggle-mobile');
+    if (mobileMenuCloseBtn && navLinks && mobileMenuBtn) {
+        mobileMenuCloseBtn.addEventListener('click', function () {
+            // Hide the mobile menu
+            navLinks.classList.remove('active');
+            // Reset hamburger icon
+            const svg = mobileMenuBtn.querySelector('svg');
+            if (svg) {
+                svg.innerHTML = '\<line x1="3" y1="12" x2="21" y2="12"\></line>\<line x1="3" y1="6" x2="21" y2="6"\></line>\<line x1="3" y1="18" x2="21" y2="18"\></line>';
+            }
+        });
+    }
     const userDropdownBtns = document.querySelectorAll('.user-dropdown-btn');
 
     if (mobileMenuBtn && navLinks) {

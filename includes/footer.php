@@ -17,7 +17,11 @@
                     <li><a href="<?php echo BASE_URL; ?>/pages/categories.php"><?= __('footer.categories') ?></a></li>
                     <li><a href="<?php echo BASE_URL; ?>/pages/create_listing.php"><?= __('footer.post_item') ?></a></li>
 
-                    <li><a href="<?php echo BASE_URL; ?>/pages/register.php"><?= __('footer.create_account') ?></a></li>
+                    <?php if (isLoggedIn()): ?>
+                        <li><a href="<?php echo BASE_URL; ?>/pages/profile.php"><?= __('nav.my_profile') ?></a></li>
+                    <?php else: ?>
+                        <li><a href="<?php echo BASE_URL; ?>/pages/register.php"><?= __('footer.create_account') ?></a></li>
+                    <?php endif; ?>
                 </ul>
             </div>
             
@@ -56,6 +60,11 @@
     $pwaJsVer = file_exists($pwaJsPath) ? filemtime($pwaJsPath) : '1';
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/pwa.js?v=<?php echo $pwaJsVer; ?>"></script>
+<?php
+    $searchJsPath = __DIR__ . '/../public/js/search-suggestions.js';
+    $searchJsVer = file_exists($searchJsPath) ? filemtime($searchJsPath) : '1';
+?>
+<script src="<?php echo BASE_URL; ?>public/js/search-suggestions.js?v=<?php echo $searchJsVer; ?>"></script>
 
 </body>
 </html>

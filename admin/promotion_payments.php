@@ -55,13 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payment_id'], $_POST[
                 $payData = $pInfo->fetch();
 
                 if ($payData && $payData['payment_type'] === 'promotion' && !empty($payData['product_id'])) {
-                    // Business Logic (Option B - Linear + Special Tiers)
+                    // Flat promotion pricing: 15 TL per day, minimum 1 day.
                     $amount = (float)$payData['amount'];
-                    
-                    if ($amount == 50) $days = 3;
-                    elseif ($amount == 100) $days = 7;
-                    elseif ($amount >= 200) $days = 30; // 200+ is always 1 month bulk deal
-                    else $days = max(1, floor($amount / 15)); // Linear ₺15 per day
+                    $days = max(1, (int) floor($amount / 15));
 
                     // Automatically feature the product with expiration
                     $updProd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ?");
@@ -159,4 +155,6 @@ $rows = $pdo->query('
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
+
 
