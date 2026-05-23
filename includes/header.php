@@ -138,11 +138,6 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
         
         <!-- Mobile Tools (Visible only on mobile next to the logo) -->
         <div class="lg-hidden flex items-center gap-2" style="margin-left: auto;">
-            <?php if (basename($_SERVER['PHP_SELF']) !== 'index.php'): ?>
-    <a href="<?php echo rtrim(BASE_URL, '/'); ?>/index.php" class="back-btn" aria-label="Go home">
-        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M15 18l-6-6 6-6"/></svg>
-    </a>
-<?php endif; ?>
 
             <!-- Language Selector (Mobile) -->
             <div class="lang-dropdown" id="lang-dropdown-mobile">
@@ -183,6 +178,14 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 
         <!-- Navigation Links -->
         <div class="nav-links" id="nav-links">
+            <!-- Mobile menu back/close button (only visible inside the mobile dropdown) -->
+            <button id="mobile-menu-close" class="mobile-menu-close-btn" aria-label="Close menu">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                <span>Back</span>
+            </button>
             <div class="flex" style="align-items: center; gap: 0.25rem;">
                 <!-- Language Selector (Desktop) -->
                 <div class="lang-dropdown" id="lang-dropdown-desktop">

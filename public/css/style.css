@@ -745,16 +745,31 @@ input:-webkit-autofill:active {
   border-color: var(--primary);
 }
 
-.back-btn {
+.mobile-menu-close-btn {
+    display: none; /* hidden by default */
     background: none;
     border: none;
     color: var(--text-main);
-    font-size: 1rem;
     cursor: pointer;
-    padding: 0.5rem;
-    margin-right: auto;
-    display: flex;
+    padding: 0.6rem 0.75rem;
     align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    align-self: flex-start;
+}
+
+@media (max-width: 1023px) {
+    .nav-links.active .mobile-menu-close-btn {
+        display: flex;
+    }
+}
+
+.mobile-menu-close-btn:hover {
+    color: var(--primary);
+    background: var(--primary-light);
 }
 
 .theme-toggle svg {
