@@ -60,6 +60,11 @@
     $pwaJsVer = file_exists($pwaJsPath) ? filemtime($pwaJsPath) : '1';
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/pwa.js?v=<?php echo $pwaJsVer; ?>"></script>
+<?php
+    $searchJsPath = __DIR__ . '/../public/js/search-suggestions.js';
+    $searchJsVer = file_exists($searchJsPath) ? filemtime($searchJsPath) : '1';
+?>
+<script src="<?php echo BASE_URL; ?>public/js/search-suggestions.js?v=<?php echo $searchJsVer; ?>"></script>
 
 </body>
 </html>

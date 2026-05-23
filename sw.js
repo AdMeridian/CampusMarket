@@ -1,4 +1,4 @@
-const CACHE_VERSION = "campusmarket-v3";
+const CACHE_VERSION = "campusmarket-v4";
 const OFFLINE_URL = "public/offline.html";
 
 const CORE_ASSETS = [
@@ -59,16 +59,20 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-      return fetch(event.request).then((response) => {
-        if (response && response.status === 200 && response.type === "basic") {
-          const responseClone = response.clone();
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Cache valid responses only (must be OK and either basic or cors)
+        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === "basic" || networkResponse.type === "cors")) {
+          const responseClone = networkResponse.clone();
           caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, responseClone));
         }
-        return response;
+        return networkResponse;
+      }).catch((err) => {
+        // Ignore fetch errors in stale-while-revalidate if we already have a cached version
+        console.error("SW Fetch error:", err);
       });
+
+      // Return cached version immediately if available, otherwise wait for network
+      return cached || fetchPromise;
     })
   );
 });

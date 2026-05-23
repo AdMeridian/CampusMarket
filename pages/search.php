@@ -85,7 +85,7 @@ if ($query !== '' || $categoryId !== '') {
                 <input type="hidden" name="category" value="<?php echo htmlspecialchars($categoryId); ?>">
             <?php endif; ?>
             <?php $placeholder = (isLoggedIn() && isAdmin()) ? __('nav.search_placeholder_admin') : __('nav.search_placeholder'); ?>
-            <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input">
+            <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
             <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
         </form>
     </div>

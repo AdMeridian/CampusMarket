@@ -171,7 +171,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <?php $placeholder = (isLoggedIn() && isAdmin()) ? __('nav.search_placeholder_admin') : __('nav.search_placeholder'); ?>
-            <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input">
+            <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
             <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
         </form>
 
@@ -260,7 +260,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
         <?php $placeholder = (isLoggedIn() && isAdmin()) ? __('nav.search_placeholder_admin') : __('nav.search_placeholder'); ?>
-        <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input">
+        <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
         <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
     </form>
 </div>
