@@ -653,6 +653,8 @@ input:-webkit-autofill:active {
   margin-top: 0.5rem;
   z-index: 1050;
   overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
   animation: slideFadeIn 0.2s ease-out;
 }
 
@@ -669,6 +671,9 @@ input:-webkit-autofill:active {
   color: var(--text-main);
   border-bottom: 1px solid var(--border-light);
   transition: background 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .suggestion-item:last-child {
@@ -685,6 +690,7 @@ input:-webkit-autofill:active {
   border-radius: var(--radius-sm);
   object-fit: cover;
   background: var(--bg-main);
+  flex-shrink: 0;
 }
 
 .suggestion-info {
@@ -692,6 +698,7 @@ input:-webkit-autofill:active {
   flex-direction: column;
   overflow: hidden;
   flex: 1;
+  min-width: 0; /* Prevents flex children with nowrap text from expanding container width */
 }
 
 .suggestion-title {
@@ -701,6 +708,7 @@ input:-webkit-autofill:active {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-main);
+  width: 100%;
 }
 
 .suggestion-meta {
@@ -710,11 +718,14 @@ input:-webkit-autofill:active {
   justify-content: space-between;
   align-items: center;
   margin-top: 0.2rem;
+  flex-wrap: wrap; /* Allows wrapping on narrow mobile screens instead of pushing layout */
+  gap: 0.35rem;
 }
 
 .suggestion-price {
   font-weight: 700;
   color: var(--primary);
+  flex-shrink: 0;
 }
 
 .suggestion-loading, .suggestion-empty {
@@ -751,25 +762,35 @@ input:-webkit-autofill:active {
     border: none;
     color: var(--text-main);
     cursor: pointer;
-    padding: 0.6rem 0.75rem;
+    padding: 0.5rem 0.8rem;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: var(--radius-md);
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: var(--radius-lg);
     transition: var(--transition);
-    align-self: flex-start;
 }
 
 @media (max-width: 1023px) {
     .nav-links.active .mobile-menu-close-btn {
-        display: flex;
+        display: inline-flex;
+        position: absolute;
+        top: calc(1.25rem + var(--safe-top));
+        left: 1.5rem;
+        z-index: 1010;
+        background: var(--bg-main);
+        border: 1px solid var(--border-light);
+        color: var(--text-main);
+        box-shadow: var(--shadow-sm);
     }
 }
 
 .mobile-menu-close-btn:hover {
     color: var(--primary);
     background: var(--primary-light);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 .theme-toggle svg {
@@ -970,6 +991,14 @@ body.dark-mode .flash-error {
 .badge-reviewed { background: var(--success-bg); color: #065f46; }
 .badge-dismissed { background: #f1f5f9; color: #475569; }
 .badge-not-taken { background: #e2e8f0; color: #64748b; border: 1px solid #cbd5e1; }
+
+body.dark-mode .badge-new { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+body.dark-mode .badge-like-new { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+body.dark-mode .badge-poor { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+body.dark-mode .badge-pending { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+body.dark-mode .badge-reviewed { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+body.dark-mode .badge-dismissed { background: rgba(156, 163, 175, 0.15); color: #d1d5db; }
+body.dark-mode .badge-not-taken { background: rgba(156, 163, 175, 0.1); color: #9ca3af; border-color: rgba(156, 163, 175, 0.2); }
 
 /* Dashboard Tables */
 .table-responsive {

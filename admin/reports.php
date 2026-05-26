@@ -29,6 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['rep
             $pdo->prepare("UPDATE reports SET status = 'reviewed' WHERE id = ?")->execute([$reportId]);
             setFlash('error', 'Item flagged and hidden from the marketplace.');
         }
+    } elseif ($action === 'resolve') {
+        $pdo->prepare("UPDATE reports SET status = 'reviewed' WHERE id = ?")->execute([$reportId]);
+        setFlash('success', 'Report marked as resolved.');
     }
     redirect('reports.php');
 }
@@ -37,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['rep
 $stmt = $pdo->query("
     SELECT r.*, p.title as product_title, u.username as reporter_name
     FROM reports r
-    JOIN products p ON r.product_id = p.id
-    JOIN users u ON r.reporter_id = u.id
+    LEFT JOIN products p ON r.product_id = p.id
+    LEFT JOIN users u ON r.reporter_id = u.id
     WHERE r.status = 'pending'
     ORDER BY r.created_at ASC
 ");
@@ -78,8 +81,12 @@ $reports = $stmt->fetchAll();
                     <?php foreach ($reports as $r): ?>
                         <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                             <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                                <div class="font-bold text-main"><?php echo sanitize($r['product_title']); ?></div>
-                                <a href="../pages/product.php?id=<?php echo $r['product_id']; ?>" target="_blank" class="small text-primary hover-scale inline-block mt-1" style="text-decoration: none; font-weight: 600;">View Live Item ↗</a>
+                                <div class="font-bold text-main"><?php echo sanitize($r['product_title'] ?? 'General Support / Bug'); ?></div>
+                                <?php if ($r['product_id']): ?>
+                                    <a href="../pages/product.php?id=<?php echo $r['product_id']; ?>" target="_blank" class="small text-primary hover-scale inline-block mt-1" style="text-decoration: none; font-weight: 600;">View Live Item ↗</a>
+                                <?php else: ?>
+                                    <span class="small text-muted inline-block mt-1" style="font-weight: 500;">General Platform Issue</span>
+                                <?php endif; ?>
                             </td>
                             <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                                 <div style="background: rgba(239,68,68,0.05); border-left: 3px solid #ef4444; padding: 0.5rem 0.75rem; border-radius: 4px; font-style: italic; color: #7f1d1d; font-size: 0.9rem;">
@@ -87,7 +94,7 @@ $reports = $stmt->fetchAll();
                                 </div>
                             </td>
                             <td class="p-4 font-medium" style="border-bottom: 1px solid var(--border-light);">
-                                @<?php echo sanitize($r['reporter_name']); ?>
+                                @<?php echo sanitize($r['reporter_name'] ?? 'Guest/Deleted'); ?>
                             </td>
                             <td class="p-4 text-muted small" style="border-bottom: 1px solid var(--border-light);">
                                 <span style="background: var(--bg-main); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-light); font-size: 0.75rem;"><?php echo timeAgo($r['created_at']); ?></span>
@@ -97,7 +104,11 @@ $reports = $stmt->fetchAll();
                                     <?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="report_id" value="<?php echo $r['id']; ?>">
                                     <button type="submit" name="action" value="dismiss" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Keep & Dismiss</button>
-                                    <button type="submit" name="action" value="flag" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" onclick="return confirm('Flag this item and hide it from the marketplace?')">Flag & Remove</button>
+                                    <?php if ($r['product_id']): ?>
+                                        <button type="submit" name="action" value="flag" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" onclick="return confirm('Flag this item and hide it from the marketplace?')">Flag & Remove</button>
+                                    <?php else: ?>
+                                        <button type="submit" name="action" value="resolve" class="btn btn-success btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Resolve</button>
+                                    <?php endif; ?>
                                 </form>
                             </td>
                         </tr>
