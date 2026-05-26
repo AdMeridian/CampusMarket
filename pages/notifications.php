@@ -346,6 +346,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     btn.addEventListener('click', async function() {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+        if (isIOS && !isStandalone) {
+            alert('To enable browser alerts on your iPhone/iPad, please add this app to your Home Screen first:\n\n1. Tap the Share button in Safari (square with up arrow)\n2. Scroll down and select "Add to Home Screen"\n3. Open the app from your Home Screen and try again.');
+            return;
+        }
+
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             alert('Push notifications are not supported on this device/browser.');
             return;

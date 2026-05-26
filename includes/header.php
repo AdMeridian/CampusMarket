@@ -262,7 +262,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 </nav>
 
 <!-- Mobile Search Row (Visible only on mobile, pushed below the fixed navbar) -->
-<div class="lg-hidden" style="margin-top: 76px; background: var(--bg-surface); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light); position: relative; z-index: 990;">
+<div class="lg-hidden mobile-search-row">
     <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar" style="max-width: 500px; margin: 0 auto;">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <circle cx="11" cy="11" r="8"></circle>
