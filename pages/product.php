@@ -352,12 +352,179 @@ require_once __DIR__ . '/../includes/header.php';
 
 .scc-seller-card {
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    border: 1px solid var(--border-light);
+    border-left: 4px solid var(--primary);
+    border-radius: var(--radius-lg);
+    padding: 1.2rem 1.4rem;
+    background: var(--bg-card);
+    margin-bottom: 1rem;
+    transition: var(--transition);
+}
+@media (max-width: 768px) {
+    .scc-seller-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.2rem;
+        padding: 1.2rem 1rem;
+    }
+}
+
+.scc-seller-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-decoration: none;
+    min-width: 0;
+}
+@media (max-width: 480px) {
+    .scc-seller-link {
+        gap: 10px;
+    }
+}
+
+.scc-avatar {
+    width: 74px;
+    height: 74px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    border: 1px solid var(--border-light);
+    flex-shrink: 0;
+}
+@media (max-width: 480px) {
+    .scc-avatar {
+        width: 56px;
+        height: 56px;
+    }
+}
+
+.scc-seller-info {
+    margin-left: 4px;
+    min-width: 0;
+    flex-grow: 1;
+}
+
+.scc-username {
+    font-size: 1.5rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0 0 0.25rem 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+@media (max-width: 480px) {
+    .scc-username {
+        font-size: 1.2rem;
+    }
+}
+
+.scc-stats-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+@media (max-width: 480px) {
+    .scc-stats-row {
+        font-size: 0.8rem;
+    }
+}
+
+.scc-badge {
+    background: var(--primary-light);
+    border: 1px solid rgba(26, 127, 100, 0.15);
+    color: var(--primary);
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+body.dark-mode .scc-badge {
+    background: rgba(52, 211, 153, 0.15);
+    border-color: rgba(52, 211, 153, 0.25);
+    color: #34d399;
+}
+
+.scc-view-profile-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    font-weight: 700;
+    color: var(--text-main);
+    background: var(--bg-surface);
+    font-size: 0.85rem;
+    transition: var(--transition);
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.scc-view-profile-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+@media (max-width: 768px) {
+    .scc-view-profile-btn {
+        width: 100%;
+        padding: 0.75rem;
+    }
+}
+
+.product-desc-card {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+}
+@media (min-width: 768px) {
+    .product-desc-card {
+        padding: 2.5rem;
+    }
+}
+
+/* Gallery responsive height overrides */
+@media (max-width: 768px) {
+    .product-gallery-main {
+        height: 300px;
+    }
+}
+@media (max-width: 480px) {
+    .product-gallery-main {
+        height: 240px;
+    }
+}
+
+.product-meta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+@media (max-width: 480px) {
+    .product-meta-row {
+        gap: 0.75rem;
+    }
 }
 
 .scc-main-card {
     border-radius: 20px;
-    border: 1px solid #e9eef7;
-    background: #fff;
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
     box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
 }
 
@@ -386,6 +553,16 @@ require_once __DIR__ . '/../includes/header.php';
 .scc-metric-violet {
     background: var(--bg-surface);
     border-color: var(--border-light) !important;
+}
+
+.text-main {
+    color: var(--text-main) !important;
+}
+.text-muted {
+    color: var(--text-muted) !important;
+}
+.text-light {
+    color: var(--text-light) !important;
 }
 </style>
 
@@ -451,9 +628,9 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="flex flex-col">
             <div class="mb-6 border-b border-gray-100 pb-6">
                 <p class="text-primary font-bold tracking-widest uppercase small mb-2" style="font-size: 0.8rem;"><?php echo sanitize(translateCategory($product['category_name'])); ?></p>
-                <h1 class="mb-4 text-main font-bold" style="font-size: 2.75rem; line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
-                <div class="flex items-center gap-4">
-                    <span style="font-size: 2.1rem; font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                <h1 class="product-title mb-4 text-main font-bold" style="line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
+                <div class="product-meta-row">
+                    <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
                     
                     <form action="../actions/toggle_wishlist.php" method="POST" style="display: inline-block;">
                         <?php echo csrfTokenField(); ?>
@@ -473,27 +650,27 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- SELLER PROFILE CARD (Visible to Everyone) -->
             <div class="scc-wrapper mt-8">
-                <div class="scc-seller-card" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid var(--border-light); border-left: 4px solid var(--primary); border-radius: var(--radius-lg); padding: 1.2rem 1.4rem; background: var(--bg-card); margin-bottom: 1rem;">
-                    <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="flex items-center" style="gap: 14px; text-decoration: none;">
+                <div class="scc-seller-card">
+                    <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="scc-seller-link">
                         <img src="<?php echo avatarUrl($product['seller_avatar']); ?>" 
                              alt="<?php echo sanitize($product['seller_name']); ?>"
-                             style="width: 74px; height: 74px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-light);">
-                        <div style="margin-left: 4px;">
-                            <h4 class="m-0 font-bold text-slate-900" style="font-size: 2.25rem; line-height: 1.05; letter-spacing: -0.01em;">@<?php echo sanitize($product['seller_name']); ?></h4>
-                            <div class="flex items-center gap-3 text-[0.95rem] font-bold mt-1">
-                                <div class="flex items-center gap-1">
+                             class="scc-avatar">
+                        <div class="scc-seller-info">
+                            <h4 class="scc-username">@<?php echo sanitize($product['seller_name']); ?></h4>
+                            <div class="scc-stats-row">
+                                <div class="flex items-center gap-1" style="color: var(--text-main);">
                                     <span style="color: #f59e0b;">&#9733;</span>
-                                    <span class="text-slate-800"><?php echo number_format($rating['avg'], 1); ?></span>
-                                    <span class="text-slate-400 font-medium">(<?php echo $rating['count']; ?> <?= $rating['count'] === 1 ? __('product.review') : __('product.reviews') ?>)</span>
+                                    <span style="font-weight: 700; color: var(--text-main);"><?php echo number_format($rating['avg'], 1); ?></span>
+                                    <span style="color: var(--text-light); font-weight: 500;">(<?php echo $rating['count']; ?> <?= $rating['count'] === 1 ? __('product.review') : __('product.reviews') ?>)</span>
                                 </div>
-                                <span style="background: var(--bg-surface); border: 1px solid var(--border-light); color: var(--text-main); padding: 0.2rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.78rem;">
+                                <span class="scc-badge">
                                     <?= $rating['count'] > 5 ? __('product.trusted_seller') : __('product.new_seller') ?>
                                 </span>
-                                <div class="text-slate-700"><?= __('product.trust_score') ?> <span class="font-bold"><?php echo (int)$trust['score']; ?>/100</span> <span style="opacity: 0.35; cursor: help;" title="<?php echo sanitize($trust['tier']); ?>">&#9432;</span></div>
+                                <div style="color: var(--text-muted);"><?= __('product.trust_score') ?> <span style="font-weight: 700; color: var(--text-main);"><?php echo (int)$trust['score']; ?>/100</span> <span style="opacity: 0.4; cursor: help;" title="<?php echo sanitize($trust['tier']); ?>">&#9432;</span></div>
                             </div>
                         </div>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="flex items-center gap-2 px-6 py-2.5 border border-slate-200 rounded-xl font-bold text-slate-600 text-sm hover:bg-slate-50 transition-all" style="min-width: 168px; justify-content: center;">
+                    <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="scc-view-profile-btn">
                         <?= __('product.view_profile') ?> <span style="opacity: 0.45; font-size: 0.8rem; margin-left: 4px;">&#10095;</span>
                     </a>
                 </div>
@@ -511,8 +688,8 @@ require_once __DIR__ . '/../includes/header.php';
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                             </div>
                             <div>
-                                <h3 class="m-0 font-black text-slate-800" style="font-size: 1.4rem;"><?= __('product.listing_insights') ?></h3>
-                                <p class="m-0 text-slate-400 font-bold" style="font-size: 0.9rem;"><?= __('product.live_performance') ?></p>
+                                <h3 class="m-0 font-black text-main" style="font-size: 1.4rem; color: var(--text-main);"><?= __('product.listing_insights') ?></h3>
+                                <p class="m-0 text-muted font-bold" style="font-size: 0.9rem;"><?= __('product.live_performance') ?></p>
                             </div>
                         </div>
                         <span style="font-size: 0.65rem; font-weight: 900; color: #94a3b8; background: #f8fafc; padding: 0.25rem 0.6rem; border-radius: 6px; letter-spacing: 0.05em; border: 1px solid #f1f5f9;"><?php echo $isOwner ? __('product.seller_badge') : __('product.livestats_badge'); ?></span>
@@ -527,12 +704,12 @@ require_once __DIR__ . '/../includes/header.php';
                                     <div class="flex items-center justify-center text-indigo-600 shadow-sm" style="width: 48px; height: 48px; border-radius: var(--radius-xl); background: var(--bg-main);">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     </div>
-                                    <span class="text-[0.95rem] font-bold text-slate-600"><?= __('product.total_reach') ?></span>
+                                    <span class="text-[0.95rem] font-bold text-muted"><?= __('product.total_reach') ?></span>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-4xl font-black text-slate-800 m-0 count-up" data-value="<?php echo $uniqueViewCount; ?>">0</h2>
+                                    <h2 class="text-4xl font-black text-main m-0 count-up" data-value="<?php echo $uniqueViewCount; ?>">0</h2>
                                 </div>
-                                <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1"><?= __('product.unique_views') ?></p>
+                                <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.unique_views') ?></p>
                             </div>
                             <?php
                                 // Build SVG path from real daily data
@@ -564,16 +741,16 @@ require_once __DIR__ . '/../includes/header.php';
                                     <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
                                         <svg class="w-6 h-6" fill="<?php echo $wishlistCount > 0 ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                                     </div>
-                                    <span class="text-[0.95rem] font-bold text-slate-600"><?= __('product.student_interest') ?></span>
+                                    <span class="text-[0.95rem] font-bold text-muted"><?= __('product.student_interest') ?></span>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-4xl font-black text-slate-800 m-0 count-up" data-value="<?php echo $wishlistCount; ?>">0</h2>
+                                    <h2 class="text-4xl font-black text-main m-0 count-up" data-value="<?php echo $wishlistCount; ?>">0</h2>
                                     <span class="text-emerald-500 font-black text-[0.8rem] flex items-center gap-1">
                                         <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                                         <?= __('product.live_label') ?>
                                     </span>
                                 </div>
-                                <p class="text-[0.75rem] font-bold text-slate-400 m-0 mt-1"><?= __('product.saved_by') ?></p>
+                                <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.saved_by') ?></p>
                             </div>
                             <?php
                                 // Build SVG path from real daily wishlist data
@@ -599,7 +776,7 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <!-- PRICING STRATEGY -->
                     <div class="mb-8">
-                        <h4 class="font-bold text-slate-800 mb-4" style="font-size: 1.15rem;"><?= __('product.pricing_strategy') ?></h4>
+                        <h4 class="font-bold text-main mb-4" style="font-size: 1.15rem; color: var(--text-main);"><?= __('product.pricing_strategy') ?></h4>
                         <form method="post" class="flex flex-wrap items-center gap-4">
                             <?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="update_price">
@@ -656,7 +833,7 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <!-- GALLERY MANAGEMENT -->
                     <div class="mb-8 border-t border-slate-100 pt-6 mt-6">
-                        <h4 class="font-bold text-slate-800 mb-4" style="font-size: 1.15rem;"><?= __('product.manage_gallery') ?></h4>
+                        <h4 class="font-bold text-main mb-4" style="font-size: 1.15rem; color: var(--text-main);"><?= __('product.manage_gallery') ?></h4>
                         
                         <!-- Thumbnail Grid -->
                         <div class="grid grid-cols-5 gap-3 mb-6">
@@ -744,14 +921,14 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
                 <!-- DESCRIPTION CARD (BOTTOM) -->
-                <div class="mt-8 p-10" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border-light);">
+                <div class="product-desc-card">
                     <div class="flex items-center gap-4 mb-8">
                         <div class="w-10 h-10 flex items-center justify-center" style="border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary);">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </div>
-                        <h3 class="m-0 font-bold text-slate-800" style="font-size: 1.4rem;"><?= __('product.description_title') ?></h3>
+                        <h3 class="m-0 font-bold text-main" style="font-size: 1.4rem; color: var(--text-main);"><?= __('product.description_title') ?></h3>
                     </div>
-                    <div style="line-height: 2; color: #64748b; font-size: 1.15rem;">
+                    <div style="line-height: 2; color: var(--text-muted); font-size: 1.15rem;">
                         <?php echo nl2br(sanitize($product['description'])); ?>
                     </div>
                 </div>

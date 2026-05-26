@@ -1,9 +1,7 @@
-const CACHE_VERSION = "campusmarket-v4";
+const CACHE_VERSION = "campusmarket-v5";
 const OFFLINE_URL = "public/offline.html";
 
 const CORE_ASSETS = [
-  "./",
-  "index.php",
   "manifest.webmanifest",
   "public/css/style.css",
   "public/js/theme.js",
@@ -38,40 +36,35 @@ self.addEventListener("fetch", (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
-  if (!requestUrl.pathname.startsWith("/")) {
-    return;
-  }
-
+  
+  // HTML / Navigation requests: always fetch from network, fallback to offline.html
   const isHtmlRequest = event.request.mode === "navigate";
-
   if (isHtmlRequest) {
     event.respondWith(
       fetch(event.request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, responseClone));
-          return response;
-        })
-        .catch(() => caches.match(event.request).then((cached) => cached || caches.match(OFFLINE_URL)))
+        .catch(() => caches.match(OFFLINE_URL))
     );
+    return;
+  }
+
+  // Only cache static assets (styles, scripts, images, manifests, fonts)
+  const isStaticAsset = /\.(css|js|png|jpg|jpeg|gif|svg|webp|webmanifest|woff2?|eot|ttf|otf)$/i.test(requestUrl.pathname);
+  if (!isStaticAsset) {
     return;
   }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Cache valid responses only (must be OK and either basic or cors)
         if (networkResponse && networkResponse.status === 200 && (networkResponse.type === "basic" || networkResponse.type === "cors")) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, responseClone));
         }
         return networkResponse;
       }).catch((err) => {
-        // Ignore fetch errors in stale-while-revalidate if we already have a cached version
         console.error("SW Fetch error:", err);
       });
 
-      // Return cached version immediately if available, otherwise wait for network
       return cached || fetchPromise;
     })
   );

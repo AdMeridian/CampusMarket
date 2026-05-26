@@ -1,6 +1,7 @@
 <?php
 // pages/create_listing.php
 require_once '../includes/bootstrap.php';
+require_once '../includes/ai_moderator.php';
 requireLogin();
 
 // Admins are moderators only — they cannot create listings
@@ -62,6 +63,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->commit();
+        // AI moderation check
+        $aiResult = aiModerateListing($title, $description, $productId);
+        if ($aiResult['passed'] && $aiResult['confidence'] >= 0.9) {
+            // Auto-approve and auto-tag
+            $status = 'active';
+            // Insert generated tags
+            if (!empty($aiResult['tags'])) {
+                $stmtTag = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) SELECT :pid, id FROM tags WHERE name = ANY(:tags) ON CONFLICT DO NOTHING");
+                $stmtTag->execute([':pid' => $productId, ':tags' => $aiResult['tags']]);
+            }
+        } else {
+            // Flag for moderation
+            $status = 'pending_approval';
+            $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
+            $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+        }
         $success = true;
         $createdProductId = (int)$productId;
 

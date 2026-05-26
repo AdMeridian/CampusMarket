@@ -176,7 +176,7 @@ require_once '../includes/header.php';
             <div class="form-row mb-8">
                 <div class="flex justify-between items-center mb-1.5">
                     <label for="password" class="form-label">Password</label>
-                    <a href="#" style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">Forgot password?</a>
+                    <a href="<?php echo BASE_URL; ?>pages/forgot_password.php" style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">Forgot password?</a>
                 </div>
                 <div class="input-with-toggle">
                     <input type="password" id="password" name="password"

@@ -180,9 +180,9 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
         <div class="nav-links" id="nav-links">
             <!-- Mobile menu back/close button (only visible inside the mobile dropdown) -->
             <button id="mobile-menu-close" class="mobile-menu-close-btn" aria-label="Close menu">
-                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
                 <span>Back</span>
             </button>
@@ -262,7 +262,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
 </nav>
 
 <!-- Mobile Search Row (Visible only on mobile, pushed below the fixed navbar) -->
-<div class="lg-hidden" style="margin-top: 76px; background: var(--bg-surface); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light);">
+<div class="lg-hidden" style="margin-top: 76px; background: var(--bg-surface); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-light); position: relative; z-index: 990;">
     <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar" style="max-width: 500px; margin: 0 auto;">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <circle cx="11" cy="11" r="8"></circle>
