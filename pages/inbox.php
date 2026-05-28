@@ -389,10 +389,6 @@ body.dark-mode .convo-card.unread {
                     <div class="convo-avatar">
                         <?php if ($hasAvatar): ?>
                             <img src="<?= avatarUrl($conv['other_avatar']) ?>" alt="<?= htmlspecialchars($conv['other_username']) ?>">
-                        <?php else: ?>
-                            <svg class="default-avatar-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v2h20v-2c0-3.33-6.67-5-10-5z"/>
-                            </svg>
                         <?php endif; ?>
                     </div>
 
@@ -488,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const avatarHTML = user.avatar_url 
                 ? `<img src="${user.avatar_url}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-light);">`
-                : `<div style="width: 36px; height: 36px; border-radius: 50%; background: #dfe5e7; display: flex; align-items: center; justify-content: center; overflow: hidden;"><svg viewBox="0 0 24 24" fill="#fff" style="width: 22px; height: 22px; margin-top: 3px;"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v2h20v-2c0-3.33-6.67-5-10-5z"/></svg></div>`;
+                : `<div style="width: 36px; height: 36px; border-radius: 50%; background: #dfe5e7; border: 1px solid var(--border-light);"></div>`;
 
             item.innerHTML = `
                 <div style="flex-shrink: 0;">${avatarHTML}</div>
