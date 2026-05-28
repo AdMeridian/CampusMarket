@@ -124,8 +124,8 @@ if ($action === 'fetch') {
         LEFT JOIN message_translations t ON m.id = t.message_id AND t.target_lang = :mylang
         WHERE (m.product_id = :pid1 OR (:pid2 = 0 AND m.product_id IS NULL))
           AND (
-              (m.sender_id = :uid1 AND m.receiver_id = :other1) OR
-              (m.sender_id = :other2 AND m.receiver_id = :uid2)
+              (m.sender_id = :uid1 AND m.receiver_id = :other1 AND m.deleted_by_sender = 0) OR
+              (m.sender_id = :other2 AND m.receiver_id = :uid2 AND m.deleted_by_receiver = 0)
           )
         ORDER BY m.created_at ASC
     ");
@@ -644,24 +644,48 @@ if ($action === 'delete_message') {
         exit;
     }
     
-    // Fetch message to verify ownership
-    $stmt = $pdo->prepare("SELECT sender_id FROM messages WHERE id = ?");
+    // Fetch message details
+    $stmt = $pdo->prepare("SELECT sender_id, receiver_id, created_at FROM messages WHERE id = ?");
     $stmt->execute([$messageId]);
-    $senderId = $stmt->fetchColumn();
+    $msg = $stmt->fetch();
     
-    if (!$senderId) {
+    if (!$msg) {
         echo json_encode(['success' => false, 'error' => 'Message not found']);
         exit;
     }
     
-    if ($senderId != $currentUserId && !isAdmin()) {
+    $senderId = (int)$msg['sender_id'];
+    $receiverId = (int)$msg['receiver_id'];
+    $createdAt = strtotime($msg['created_at']);
+    $now = time();
+    $diffMinutes = ($now - $createdAt) / 60;
+    
+    if ($senderId !== $currentUserId && $receiverId !== $currentUserId && !isAdmin()) {
         echo json_encode(['success' => false, 'error' => 'Unauthorized to delete this message']);
         exit;
     }
     
     try {
-        $stmtDel = $pdo->prepare("DELETE FROM messages WHERE id = ?");
-        $stmtDel->execute([$messageId]);
+        if (isAdmin()) {
+            $stmtDel = $pdo->prepare("DELETE FROM messages WHERE id = ?");
+            $stmtDel->execute([$messageId]);
+        } elseif ($senderId === $currentUserId && $diffMinutes <= 10) {
+            // Delete for both sides
+            $stmtDel = $pdo->prepare("DELETE FROM messages WHERE id = ?");
+            $stmtDel->execute([$messageId]);
+        } else {
+            // Soft delete from current user's side
+            if ($senderId === $currentUserId) {
+                $stmtUpd = $pdo->prepare("UPDATE messages SET deleted_by_sender = 1 WHERE id = ?");
+            } else {
+                $stmtUpd = $pdo->prepare("UPDATE messages SET deleted_by_receiver = 1 WHERE id = ?");
+            }
+            $stmtUpd->execute([$messageId]);
+            
+            // If deleted by both, delete the row
+            $stmtDelClean = $pdo->prepare("DELETE FROM messages WHERE id = ? AND deleted_by_sender = 1 AND deleted_by_receiver = 1");
+            $stmtDelClean->execute([$messageId]);
+        }
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -688,15 +712,47 @@ if ($action === 'clear_chat') {
     }
     
     try {
-        $stmtDel = $pdo->prepare("
-            DELETE FROM messages 
-            WHERE (product_id = :pid1 OR (:pid2 = 0 AND product_id IS NULL))
+        $pdo->beginTransaction();
+        
+        // Update messages sent by current user to other user
+        $stmtUpSender = $pdo->prepare("
+            UPDATE messages
+            SET deleted_by_sender = 1
+            WHERE sender_id = :uid AND receiver_id = :other
+              AND (product_id = :pid1 OR (:pid2 = 0 AND product_id IS NULL))
+        ");
+        $stmtUpSender->execute([
+            ':uid' => $currentUserId,
+            ':other' => $otherUserId,
+            ':pid1' => $productId,
+            ':pid2' => $productId
+        ]);
+        
+        // Update messages received by current user from other user
+        $stmtUpReceiver = $pdo->prepare("
+            UPDATE messages
+            SET deleted_by_receiver = 1
+            WHERE receiver_id = :uid AND sender_id = :other
+              AND (product_id = :pid1 OR (:pid2 = 0 AND product_id IS NULL))
+        ");
+        $stmtUpReceiver->execute([
+            ':uid' => $currentUserId,
+            ':other' => $otherUserId,
+            ':pid1' => $productId,
+            ':pid2' => $productId
+        ]);
+        
+        // Clean up messages deleted by both sides
+        $stmtClean = $pdo->prepare("
+            DELETE FROM messages
+            WHERE deleted_by_sender = 1 AND deleted_by_receiver = 1
+              AND (product_id = :pid1 OR (:pid2 = 0 AND product_id IS NULL))
               AND (
                   (sender_id = :uid1 AND receiver_id = :other1) OR
                   (sender_id = :other2 AND receiver_id = :uid2)
               )
         ");
-        $stmtDel->execute([
+        $stmtClean->execute([
             ':pid1' => $productId,
             ':pid2' => $productId,
             ':uid1' => $currentUserId,
@@ -704,8 +760,13 @@ if ($action === 'clear_chat') {
             ':other2' => $otherUserId,
             ':uid2' => $currentUserId
         ]);
+        
+        $pdo->commit();
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;

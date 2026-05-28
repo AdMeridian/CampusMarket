@@ -375,7 +375,7 @@ function renderMessages(messages) {
             msgDiv.style.marginRight = 'auto';
         }
         
-        const canDelete = msg.is_mine || isAdmin;
+        const canDelete = true;
         if (canDelete) {
             msgDiv.style.paddingRight = '2.25rem';
         }
