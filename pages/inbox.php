@@ -388,7 +388,7 @@ body.dark-mode .convo-card.unread {
                     <!-- Avatar -->
                     <div class="convo-avatar">
                         <?php if ($hasAvatar): ?>
-                            <img src="<?= avatarUrl($conv['other_avatar']) ?>" alt="<?= htmlspecialchars($conv['other_username']) ?>">
+                            <img src="<?= avatarUrl($conv['other_avatar']) ?>" alt="<?= htmlspecialchars($conv['other_username']) ?>" onerror="this.style.display='none'">
                         <?php endif; ?>
                     </div>
 
@@ -483,7 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             const avatarHTML = user.avatar_url 
-                ? `<img src="${user.avatar_url}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-light);">`
+                ? `<div style="width: 36px; height: 36px; border-radius: 50%; background: #dfe5e7; border: 1px solid var(--border-light); overflow: hidden; display: flex; align-items: center; justify-content: center;"><img src="${user.avatar_url}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'"></div>`
                 : `<div style="width: 36px; height: 36px; border-radius: 50%; background: #dfe5e7; border: 1px solid var(--border-light);"></div>`;
 
             item.innerHTML = `
