@@ -226,6 +226,31 @@ include '../includes/header.php';
     flex-shrink: 0;
 }
 
+@media (max-width: 520px) {
+    .profile-hero-actions {
+        width: 100%;
+        margin-left: 0;
+        padding-bottom: 0.75rem;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.65rem;
+        align-items: stretch;
+    }
+    .profile-hero-actions .btn {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+        padding: 0.75rem 0.7rem;
+        font-size: 0.92rem;
+        border-radius: 18px;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+    .profile-hero-actions .btn svg {
+        margin-right: 6px;
+    }
+}
+
 /* Tab bar sits at the bottom of the hero */
 .profile-tabs {
     display: flex;
@@ -653,7 +678,7 @@ body.dark-mode .btn-white-solid:hover {
                 <?php if ($isSelf): ?>
                     <a href="<?php echo BASE_URL; ?>pages/recycle_bin.php" class="btn btn-white"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Recycle Bin</a>
                     <a href="<?php echo BASE_URL; ?>pages/edit_profile.php" class="btn btn-white"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Edit Profile</a>
-                    <a href="logout.php" class="btn btn-white" style="margin-left: 0.5rem; background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
+                    <a href="logout.php" class="btn btn-white" style="background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
                 <?php elseif (isLoggedIn()): ?>
                     <a href="messages.php?other_user_id=<?php echo $user['id']; ?>&product_id=0" class="btn btn-white-solid"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
                 <?php endif; ?>
@@ -798,7 +823,7 @@ body.dark-mode .btn-white-solid:hover {
         <!-- ── Listings Section ────────────────────────────────── -->
         <section id="listings">
             <div class="listings-header">
-                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; items-center; gap: 0.5rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                     <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg> Active Listings (<?php echo count($userProducts); ?>)
                 </h2>
                 <?php if ($isSelf): ?>

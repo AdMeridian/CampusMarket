@@ -191,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             setFlash('success', 'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.');
-            redirect(BASE_URL . 'pages/login.php');
+            redirect(BASE_URL . 'pages/login.php?redirect=/pages/profile.php');
         } catch (Throwable $e) {
             $pdo->rollBack();
             $dbErr = strtolower($e->getMessage());
@@ -200,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Supabase signup already succeeded; duplicate local insert can happen
                 // due to retries/race conditions. Continue with verification flow.
                 setFlash('success', 'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.');
-                redirect(BASE_URL . 'pages/login.php');
+                redirect(BASE_URL . 'pages/login.php?redirect=/pages/profile.php');
             } else {
                 $errors['form'] = 'Could not save your account. Please try again or contact support.';
             }

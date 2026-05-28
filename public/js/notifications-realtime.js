@@ -2,29 +2,26 @@
     // Check for Supabase and User ID
     const supabase = window.CampusMarketSupabase;
     const userMeta = document.querySelector('meta[name="user-id"]');
-    if (!supabase || !userMeta) return;
-
-    const currentUserId = parseInt(userMeta.content);
-    if (!currentUserId) return;
-
     const baseUrl = window.__baseUrl || '/';
     const normalizePath = (p) => baseUrl.replace(/\/+$/, '') + '/' + p.replace(/^\/+/, '');
     let refreshTimer = null;
 
-    console.log('Realtime notifications initialized for user:', currentUserId);
-
-    // Function to fetch updated counts and refresh the UI badges
+    // Polling fallback (works even if Supabase is not configured on the server).
     async function refreshCounts() {
         try {
-            const response = await fetch(normalizePath('pages/api_counts.php'));
+            const response = await fetch(normalizePath('pages/api_counts.php'), { cache: 'no-store' });
             const data = await response.json();
-            
             if (data.success) {
                 updateBadges(data.unreadMessages, data.unreadNotifs);
             }
         } catch (err) {
             console.error('Failed to fetch unread counts:', err);
         }
+    }
+
+    function scheduleRefresh() {
+        if (refreshTimer) clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(refreshCounts, 120);
     }
 
     function updateBadges(messages, notifs) {
@@ -60,20 +57,16 @@
             }
         });
 
-        // Trigger a custom event for pages like inbox.php to refresh their lists if needed
-        window.dispatchEvent(new CustomEvent('campusmarket:notifications-updated', { 
-            detail: { messages, notifs } 
+        // Trigger a custom event for pages like notifications.php to refresh their lists if needed
+        window.dispatchEvent(new CustomEvent('campusmarket:notifications-updated', {
+            detail: { messages, notifs }
         }));
-    }
-
-    function scheduleRefresh() {
-        if (refreshTimer) clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(refreshCounts, 120);
     }
 
     function showBrowserNotification(title, body, url) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        if (!document.hidden) return;
+        // Show when tab is hidden OR app is not focused (mobile/desktop).
+        if (!document.hidden && document.hasFocus && document.hasFocus()) return;
 
         const options = {
             body: body || 'You have a new update on CampusMarket.',
@@ -105,6 +98,18 @@
         const result = await Notification.requestPermission();
         return result === 'granted';
     };
+
+    // If Supabase is missing, still keep the UI fresh (badges + page auto-refresh hooks).
+    if (!supabase || !userMeta) {
+        refreshCounts();
+        setInterval(refreshCounts, 15000);
+        return;
+    }
+
+    const currentUserId = parseInt(userMeta.content);
+    if (!currentUserId) return;
+
+    console.log('Realtime notifications initialized for user:', currentUserId);
 
     // Subscribe to messages table
     supabase
