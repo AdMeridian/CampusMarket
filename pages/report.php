@@ -32,8 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':reason' => $reason
         ]);
 
-        // 2. Send Email to Admin
-        $adminEmail = defined('RESEND_FROM_EMAIL') ? RESEND_FROM_EMAIL : (getenv('RESEND_FROM_EMAIL') ?: 'support@campusmarket.edu');
+        // 2. Notify support
+        $supportEmail = defined('SUPPORT_EMAIL')
+            ? SUPPORT_EMAIL
+            : (getenv('SUPPORT_EMAIL') ?: 'support@campusmarketplace.site');
         $subject = "New Report: " . ucfirst($issueType);
         $username = $_SESSION['username'] ?? 'Guest';
         
@@ -44,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $html .= "<p><strong>Description:</strong><br>" . nl2br(htmlspecialchars($description)) . "</p>";
         $html .= "<hr><p>This report has been saved to the database (ID: " . $pdo->lastInsertId() . ")</p>";
 
-        $emailResult = sendEmail($adminEmail, $subject, $html);
+        $emailResult = sendEmail($supportEmail, $subject, $html);
         if (empty($emailResult['ok'])) {
             error_log('[report] report submitted but email notification failed: ' . json_encode($emailResult));
         }

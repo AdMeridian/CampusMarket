@@ -239,7 +239,7 @@ require_once __DIR__ . '/../includes/header.php';
             <label class="form-label">Payment Method</label>
             <select name="payment_method" class="form-control mb-4" required>
                 <option value="venmo">Venmo (@CampusMarket)</option>
-                <option value="zelle">Zelle (pay@campusmarket.edu)</option>
+                <option value="zelle">Zelle (support@campusmarketplace.site)</option>
                 <option value="cash">Cash (In-person)</option>
             </select>
 

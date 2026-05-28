@@ -3,6 +3,9 @@
     "api/index.php": {
       "runtime": "vercel-php@0.9.0",
       "includeFiles": "**/*"
+    },
+    "api/web-push/send.js": {
+      "maxDuration": 10
     }
   },
   "headers": [
@@ -53,7 +56,11 @@
       "dest": "/api/index.php"
     },
     {
-      "src": "/((?!public/|manifest\\.webmanifest|sw\\.js|favicon\\.|robots\\.txt).*)$",
+      "src": "/api/web-push/send",
+      "dest": "/api/web-push/send"
+    },
+    {
+      "src": "/((?!public/|manifest\\.webmanifest|sw\\.js|favicon\\.|robots\\.txt|api/web-push/).*)$",
       "dest": "/api/index.php"
     }
   ]

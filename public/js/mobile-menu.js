@@ -75,6 +75,7 @@ function initMobileMenu() {
                     dropdown.classList.add('active');
                     this.setAttribute('aria-expanded', 'true');
                 } else {
+                    dropdown.classList.remove('active');
                     this.setAttribute('aria-expanded', 'false');
                 }
             });

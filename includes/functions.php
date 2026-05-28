@@ -355,6 +355,18 @@ function createNotification(PDO $pdo, int $userId, string $type, string $title, 
         ':body'    => $body,
         ':ref_id'  => $referenceId,
     ]);
+
+    // Web push (best-effort): send background push if configured.
+    try {
+        require_once __DIR__ . '/web_push.php';
+        $targetUrl = '/pages/notifications.php';
+        if ($type === 'message') {
+            $targetUrl = '/pages/inbox.php';
+        }
+        triggerWebPushBestEffort($userId, $title, $body, $targetUrl);
+    } catch (Throwable $e) {
+        // ignore
+    }
 }
 
 /**

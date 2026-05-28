@@ -72,7 +72,7 @@ if (($_GET['source'] ?? '') === 'supabase') {
             </div>
             <button class="btn-close" onclick="window.close()">Close this tab</button>
             <div class="divider">— or —</div>
-            <a href="<?php echo BASE_URL; ?>pages/login.php" class="login-link">Log in here instead</a>
+            <a href="<?php echo BASE_URL; ?>pages/login.php?redirect=/pages/profile.php" class="login-link">Log in here instead</a>
             <p class="brand">CampusMarket · NEU</p>
         </div>
     </body>
@@ -139,6 +139,6 @@ try {
 }
 
 setFlash('success', 'Email verified! You can now log in.');
-redirect(BASE_URL . 'pages/login.php');
+redirect(BASE_URL . 'pages/login.php?redirect=/pages/profile.php');
 
 
