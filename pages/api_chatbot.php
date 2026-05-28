@@ -3,39 +3,47 @@
 // Backend API for CampusMarket Chatbot
 // Implements rate-limiting, conversation memory, expanded FAQs, friendly chit-chat, and Gemini fallback.
 
+// Disable warning/error output pollution to keep JSON responses pristine on live servers
+error_reporting(0);
+ini_set('display_errors', 0);
+
 header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/bootstrap.php';
 
-// ─── 1. Rate Limiting (20 messages per user per hour in session) ───
-if (!isset($_SESSION['chatbot_messages_timestamps'])) {
-    $_SESSION['chatbot_messages_timestamps'] = [];
-}
-$now = time();
-// Filter out timestamps older than 1 hour (3600 seconds)
-$_SESSION['chatbot_messages_timestamps'] = array_filter(
-    $_SESSION['chatbot_messages_timestamps'],
-    function($timestamp) use ($now) {
-        return ($now - $timestamp) < 3600;
+// Safe default admin ID in case database query fails early
+$adminId = 1;
+
+try {
+    // Fetch First Admin ID dynamically for escalation path
+    $adminStmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+    $adminId = (int)($adminStmt->fetchColumn() ?: 1);
+
+    // ─── 1. Rate Limiting (20 messages per user per hour in session) ───
+    if (!isset($_SESSION['chatbot_messages_timestamps'])) {
+        $_SESSION['chatbot_messages_timestamps'] = [];
     }
-);
+    $now = time();
+    // Filter out timestamps older than 1 hour (3600 seconds)
+    $_SESSION['chatbot_messages_timestamps'] = array_filter(
+        $_SESSION['chatbot_messages_timestamps'],
+        function($timestamp) use ($now) {
+            return ($now - $timestamp) < 3600;
+        }
+    );
 
-if (count($_SESSION['chatbot_messages_timestamps']) >= 20) {
-    echo json_encode([
-        'success' => false,
-        'error' => 'rate_limit',
-        'response' => i18nGetLocale() === 'tr' 
-            ? 'Saatlik mesaj sınırına ulaştınız (Maksimum 20 mesaj/saat). Lütfen daha sonra tekrar deneyin.'
-            : 'You have reached your hourly message limit (Maximum 20 messages/hour). Please try again later.'
-    ]);
-    exit;
-}
+    if (count($_SESSION['chatbot_messages_timestamps']) >= 20) {
+        echo json_encode([
+            'success' => false,
+            'error' => 'rate_limit',
+            'response' => i18nGetLocale() === 'tr' 
+                ? 'Saatlik mesaj sınırına ulaştınız (Maksimum 20 mesaj/saat). Lütfen daha sonra tekrar deneyin.'
+                : 'You have reached your hourly message limit (Maximum 20 messages/hour). Please try again later.'
+        ]);
+        exit;
+    }
 
-// Log current message timestamp
-$_SESSION['chatbot_messages_timestamps'][] = $now;
-
-// Fetch First Admin ID dynamically for escalation path
-$adminStmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
-$adminId = (int)($adminStmt->fetchColumn() ?: 1);
+    // Log current message timestamp
+    $_SESSION['chatbot_messages_timestamps'][] = $now;
 
 // Decode input payload
 $userMessage = isset($_POST['message']) ? trim($_POST['message']) : '';
@@ -284,18 +292,46 @@ $httpCode = 0;
 
 foreach ($modelsToTry as $model) {
     $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
-    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+    $response = false;
     
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+    } else {
+        // Fallback to file_get_contents stream context if cURL is not available
+        $options = [
+            'http' => [
+                'header'  => "Content-Type: application/json\r\n",
+                'method'  => 'POST',
+                'content' => json_encode($requestBody),
+                'timeout' => 6,
+                'ignore_errors' => true
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ]
+        ];
+        $context  = stream_context_create($options);
+        $response = @file_get_contents($url, false, $context);
+        
+        if (isset($http_response_header)) {
+            preg_match('{HTTP\/\S*\s(\d\d\d)}', $http_response_header[0], $matches);
+            $httpCode = (int)($matches[1] ?? 0);
+        }
+    }
     
-    if ($httpCode === 200) {
+    if ($httpCode === 200 && $response !== false) {
         $data = json_decode($response, true);
         $aiText = trim($data['candidates'][0]['content']['parts'][0]['text'] ?? '');
         if ($aiText !== '') {
@@ -322,6 +358,16 @@ if ($httpCode !== 200 || $aiText === '' || stripos($aiText, 'UNKNOWN') !== false
         'success' => true,
         'response' => $aiText,
         'unknown' => false,
+        'admin_id' => $adminId
+    ]);
+}
+// Closing try block
+} catch (Throwable $e) {
+    // Safely output the escalation card if any runtime error or undefined call occurs
+    echo json_encode([
+        'success' => true,
+        'response' => 'UNKNOWN',
+        'unknown' => true,
         'admin_id' => $adminId
     ]);
 }
