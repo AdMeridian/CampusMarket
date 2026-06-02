@@ -46,9 +46,25 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            if (savedTheme === 'dark') {
                 document.documentElement.classList.add('dark-mode');
                 document.addEventListener('DOMContentLoaded', () => document.body.classList.add('dark-mode'));
+            }
+
+            // Intercept Supabase auth callback hash fragments on any page (like home page fallbacks)
+            const hash = window.location.hash;
+            if (hash && (hash.includes('access_token=') || hash.includes('type=recovery') || hash.includes('type=signup') || hash.includes('type=email'))) {
+                const params = new URLSearchParams(hash.replace(/^#/, ''));
+                const type = params.get('type') || '';
+                const accessToken = params.get('access_token') || '';
+
+                if (accessToken !== '') {
+                    if ((type === 'recovery' || hash.includes('type=recovery')) && !window.location.pathname.endsWith('reset_password.php')) {
+                        window.location.href = '<?php echo BASE_URL; ?>pages/reset_password.php' + hash;
+                    } else if ((type === 'signup' || type === 'email' || hash.includes('type=signup') || hash.includes('type=email')) && !window.location.pathname.endsWith('verify_email.php')) {
+                        window.location.href = '<?php echo BASE_URL; ?>pages/verify_email.php?source=supabase&access_token=' + encodeURIComponent(accessToken) + '&type=' + encodeURIComponent(type || 'email');
+                    }
+                }
             }
         })();
     </script>

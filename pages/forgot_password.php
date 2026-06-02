@@ -22,9 +22,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors['email'] = 'Enter a valid email address.';
     } else {
+        $isSecureRequest = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+        );
+        $originHost = $_SERVER['HTTP_HOST'] ?? '';
+        $originScheme = $isSecureRequest ? 'https' : 'http';
+        $emailRedirectTo = $originHost !== ''
+            ? ($originScheme . '://' . $originHost . '/pages/reset_password.php')
+            : (BASE_URL . 'pages/reset_password.php');
+
         // Call Supabase password recovery endpoint.
         $response = supabaseAuthRequest('POST', 'recover', [
             'email' => $email,
+            'redirect_to' => $emailRedirectTo,
+            'options' => [
+                'emailRedirectTo' => $emailRedirectTo,
+            ],
         ]);
         if ($response['ok']) {
             $successMessage = 'If an account exists for this email, a recovery link has been sent.';

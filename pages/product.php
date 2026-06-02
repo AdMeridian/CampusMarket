@@ -9,14 +9,24 @@ if ($productId <= 0) {
 }
 
 // Fetch Product Details
+$viewerId = isLoggedIn() ? (int)currentUserId() : 0;
+$viewerIsAdmin = isAdmin() ? 1 : 0;
 $stmt = $pdo->prepare("
     SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since
     FROM products p
     JOIN categories c ON p.category_id = c.id
     JOIN users u ON p.user_id = u.id
-    WHERE p.id = :id AND p.status = 'active'
+    WHERE p.id = :id
+      AND (
+          p.status = 'active'
+          OR (p.status <> 'deleted' AND (p.user_id = :viewer_id OR :viewer_is_admin = 1))
+      )
 ");
-$stmt->execute([':id' => $productId]);
+$stmt->execute([
+    ':id' => $productId,
+    ':viewer_id' => $viewerId,
+    ':viewer_is_admin' => $viewerIsAdmin,
+]);
 $product = $stmt->fetch();
 
 if (!$product) {
@@ -839,7 +849,7 @@ body.dark-mode .scc-badge {
                         <div class="grid grid-cols-5 gap-3 mb-6">
                             <?php foreach ($images as $img): ?>
                                 <div class="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50" style="width: 100%;">
-                                    <img src="<?php echo getProductImage($img['image_path']); ?>" alt="Gallery Image" class="w-full h-full object-cover">
+                                    <img src="<?php echo getProductImage($img['image_path']); ?>" alt="Gallery Image" class="w-full h-full object-contain" style="object-fit: contain; background: #f8fafc;">
                                     
                                     <!-- Badges & Controls Overlay -->
                                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5">

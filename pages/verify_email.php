@@ -6,39 +6,110 @@ require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
 
 if (($_GET['source'] ?? '') === 'supabase') {
-    $tokenHash = trim((string)($_GET['token_hash'] ?? ''));
-    $type = trim((string)($_GET['type'] ?? 'email'));
+    $tokenHash   = trim((string)($_GET['token_hash'] ?? ''));
+    $accessToken = trim((string)($_GET['access_token'] ?? ''));
+    $type        = trim((string)($_GET['type'] ?? 'email'));
 
     // Password recovery links must go to the reset password page, not here.
     if ($type === 'recovery') {
-        if ($tokenHash === '') {
+        if ($tokenHash !== '') {
+            redirect(BASE_URL . 'pages/reset_password.php?token_hash=' . urlencode($tokenHash));
+        } elseif ($accessToken !== '') {
+            redirect(BASE_URL . 'pages/reset_password.php#access_token=' . urlencode($accessToken) . '&type=recovery');
+        } else {
             setFlash('error', 'Invalid password reset link. Please request a new one.');
             redirect(BASE_URL . 'pages/forgot_password.php');
         }
-        redirect(BASE_URL . 'pages/reset_password.php?token_hash=' . urlencode($tokenHash));
     }
 
-    if ($tokenHash === '') {
-        setFlash('error', 'Invalid verification link.');
-        redirect(BASE_URL . 'pages/login.php');
+    $verifiedEmail = '';
+
+    // Flow 1: Verification using access_token (from client-side hash redirect)
+    if ($accessToken !== '') {
+        // Fetch user from Supabase using GET /auth/v1/user
+        $url = rtrim(supabaseUrl(), '/') . '/auth/v1/user';
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_CUSTOMREQUEST  => 'GET',
+            CURLOPT_HTTPHEADER     => [
+                'apikey: '        . supabaseAnonKey(),
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json',
+            ],
+        ]);
+        $body   = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($status >= 200 && $status < 300) {
+            $userDecoded = json_decode((string)$body, true);
+            $verifiedEmail = strtolower(trim((string)($userDecoded['email'] ?? '')));
+        } else {
+            setFlash('error', 'Verification session expired. Please log in.');
+            redirect(BASE_URL . 'pages/login.php');
+        }
     }
+    // Flow 2: Verification using token_hash (direct callback)
+    elseif ($tokenHash !== '') {
+        $verify = supabaseAuthRequest('POST', 'verify', [
+            'token_hash' => $tokenHash,
+            'type' => $type,
+        ]);
 
-    $verify = supabaseAuthRequest('POST', 'verify', [
-        'token_hash' => $tokenHash,
-        'type' => $type,
-    ]);
+        if (!$verify['ok']) {
+            setFlash('error', 'Verification failed or link expired. Please request a new verification email.');
+            redirect(BASE_URL . 'pages/login.php');
+        }
 
-    if (!$verify['ok']) {
-        setFlash('error', 'Verification failed or link expired. Please request a new verification email.');
-        redirect(BASE_URL . 'pages/login.php');
+        $supabaseUser = $verify['data']['user'] ?? [];
+        $verifiedEmail = strtolower(trim((string)($supabaseUser['email'] ?? '')));
     }
-
-    $supabaseUser = $verify['data']['user'] ?? [];
-    $verifiedEmail = strtolower(trim((string)($supabaseUser['email'] ?? '')));
+    // Flow 3: No query parameters (could be a hash fragment)
+    else {
+        ?>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Verifying... - CampusMarket</title>
+            <script>
+                (function() {
+                    const hash = window.location.hash;
+                    if (hash && (hash.includes('access_token=') || hash.includes('type=recovery') || hash.includes('type=signup') || hash.includes('type=email'))) {
+                        const params = new URLSearchParams(hash.replace(/^#/, ''));
+                        const type = params.get('type') || '';
+                        const accessToken = params.get('access_token') || '';
+                        if (accessToken) {
+                            if (type === 'recovery' || hash.includes('type=recovery')) {
+                                window.location.href = '<?php echo BASE_URL; ?>pages/reset_password.php' + hash;
+                            } else {
+                                window.location.href = '<?php echo BASE_URL; ?>pages/verify_email.php?source=supabase&access_token=' + encodeURIComponent(accessToken) + '&type=' + encodeURIComponent(type || 'email');
+                            }
+                            return;
+                        }
+                    }
+                    window.location.href = '<?php echo BASE_URL; ?>pages/login.php?error=invalid_link';
+                })();
+            </script>
+        </head>
+        <body>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; text-align:center; padding:100px 20px; color:#475569;">
+                <p style="font-size:1.2rem; font-weight:500;">Verifying your link...</p>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
 
     if ($verifiedEmail !== '') {
         $upd = $pdo->prepare('UPDATE users SET is_verified = TRUE WHERE LOWER(email) = LOWER(:e)');
         $upd->execute([':e' => $verifiedEmail]);
+    } else {
+        setFlash('error', 'Could not retrieve user email. Verification failed.');
+        redirect(BASE_URL . 'pages/login.php');
     }
 
     ?>

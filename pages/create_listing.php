@@ -13,6 +13,7 @@ if (isAdmin()) {
 $success = false;
 $error = '';
 $createdProductId = 0;
+$createdProductStatus = '';
 
 // Handle Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,67 +25,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = sanitize($_POST['description']);
     $userId      = currentUserId();
 
-    try {
-        $pdo->beginTransaction();
-
-        // 1. Insert Product
-        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-        $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-        $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, {$conditionQuote}, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
-        $stmt->execute([$userId, $categoryId, $title, $description, $price, $condition]);
-        $productId = $pdo->lastInsertId();
-
-        // 2. Handle Image Uploads
-        if (!empty($_FILES['images']['name'][0])) {
-            $files = $_FILES['images'];
-            for ($i = 0; $i < count($files['name']); $i++) {
-                if ($i >= MAX_IMAGES) break; // Limit per listing
-
-                $fileData = [
-                    'name'     => $files['name'][$i],
-                    'type'     => $files['type'][$i],
-                    'tmp_name' => $files['tmp_name'][$i],
-                    'error'    => $files['error'][$i],
-                    'size'     => $files['size'][$i]
-                ];
-
-                $upload = handleUpload($fileData, 'products/');
-                if ($upload['success']) {
-                    $isPrimary = ($i === 0);
-                    $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (:pid, :path, :primary)");
-                    $stmtImg->bindValue(':pid', $productId, PDO::PARAM_INT);
-                    $stmtImg->bindValue(':path', $upload['path'], PDO::PARAM_STR);
-                    $stmtImg->bindValue(':primary', $isPrimary, PDO::PARAM_BOOL);
-                    $stmtImg->execute();
-                } else {
-                    throw new Exception("Image upload failed: " . $upload['error']);
+    // Collect Image Data for Moderation
+    $imagesData = [];
+    if (!empty($_FILES['images']['name'][0])) {
+        $files = $_FILES['images'];
+        for ($i = 0; $i < count($files['name']); $i++) {
+            if ($i >= MAX_IMAGES) break;
+            if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                $tmp = $files['tmp_name'][$i];
+                $mime = $files['type'][$i];
+                if (strpos($mime, 'image/') === 0) {
+                    $base64 = base64_encode(file_get_contents($tmp));
+                    $imagesData[] = [
+                        'mime' => $mime,
+                        'base64' => $base64
+                    ];
                 }
             }
         }
+    }
 
-        $pdo->commit();
-        // AI moderation check
-        $aiResult = aiModerateListing($title, $description, $productId);
-        if ($aiResult['passed'] && $aiResult['confidence'] >= 0.9) {
-            // Auto-approve and auto-tag
-            $status = 'active';
-            // Insert generated tags
-            if (!empty($aiResult['tags'])) {
-                $stmtTag = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) SELECT :pid, id FROM tags WHERE name = ANY(:tags) ON CONFLICT DO NOTHING");
-                $stmtTag->execute([':pid' => $productId, ':tags' => $aiResult['tags']]);
+    // Call AI Moderation Before Database Changes
+    $aiResult = aiModerateListing($title, $description, $imagesData);
+
+    if ($aiResult['is_blurry']) {
+        $error = "This photo looks blurry. Please retake or upload a clearer image.";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            // 1. Insert Product
+            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
+            $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, {$conditionQuote}, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
+            $stmt->execute([$userId, $categoryId, $title, $description, $price, $condition]);
+            $productId = $pdo->lastInsertId();
+
+            // 2. Handle Image Uploads
+            if (!empty($_FILES['images']['name'][0])) {
+                $files = $_FILES['images'];
+                for ($i = 0; $i < count($files['name']); $i++) {
+                    if ($i >= MAX_IMAGES) break; // Limit per listing
+
+                    $fileData = [
+                        'name'     => $files['name'][$i],
+                        'type'     => $files['type'][$i],
+                        'tmp_name' => $files['tmp_name'][$i],
+                        'error'    => $files['error'][$i],
+                        'size'     => $files['size'][$i]
+                    ];
+
+                    $upload = handleUpload($fileData, 'products/');
+                    if ($upload['success']) {
+                        $isPrimary = ($i === 0);
+                        $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (:pid, :path, :primary)");
+                        $stmtImg->bindValue(':pid', $productId, PDO::PARAM_INT);
+                        $stmtImg->bindValue(':path', $upload['path'], PDO::PARAM_STR);
+                        $stmtImg->bindValue(':primary', $isPrimary, PDO::PARAM_BOOL);
+                        $stmtImg->execute();
+                    } else {
+                        throw new Exception("Image upload failed: " . $upload['error']);
+                    }
+                }
             }
-        } else {
-            // Flag for moderation
-            $status = 'pending_approval';
-            $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
-            $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
-        }
-        $success = true;
-        $createdProductId = (int)$productId;
 
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error = __('create_listing.error_msg', ['error' => $e->getMessage()]);
+            if ($aiResult['passed'] && $aiResult['confidence'] >= 0.9) {
+                // Auto-approve and auto-tag
+                $status = 'active';
+                // Insert generated tags
+                if (!empty($aiResult['tags'])) {
+                    $stmtTag = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) SELECT :pid, id FROM tags WHERE name = ANY(:tags) ON CONFLICT DO NOTHING");
+                    $stmtTag->execute([':pid' => $productId, ':tags' => ($driver === 'pgsql' && is_array($aiResult['tags'])) ? '{' . implode(',', $aiResult['tags']) . '}' : $aiResult['tags']]);
+                }
+            } else {
+                // Flag for moderation
+                $status = 'pending_approval';
+                $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
+                $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+            }
+            
+            $pdo->commit();
+            $success = true;
+            $createdProductId = (int)$productId;
+            $createdProductStatus = $status;
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $error = __('create_listing.error_msg', ['error' => $e->getMessage()]);
+        }
     }
 }
 
@@ -99,7 +127,8 @@ include '../includes/header.php';
 <div class="container mt-24 mb-20">
     <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2rem; border-radius: var(--radius-xl); text-align: center;">
         <h1 class="mb-2" style="font-size: 2rem;"><?= __('create_listing.success_msg') ?></h1>
-        <p class="text-muted mb-6">Would you like to promote this listing now?</p>
+        <?php if ($createdProductStatus === 'active'): ?>
+        <p class="text-muted mb-6">Your listing is live. Would you like to promote it now?</p>
         <div class="flex justify-center gap-4 flex-wrap">
             <a class="btn btn-primary" href="promotions.php?product_id=<?= (int)$createdProductId ?>&new_listing=1" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
                 Yes, promote it
@@ -108,6 +137,12 @@ include '../includes/header.php';
                 No, view my listing
             </a>
         </div>
+        <?php else: ?>
+        <p class="text-muted mb-6">This listing needs a manual review before it can go live or be promoted.</p>
+        <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
+            View listing status
+        </a>
+        <?php endif; ?>
     </div>
 </div>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
@@ -134,9 +169,9 @@ include '../includes/header.php';
         <div class="glass-panel" style="padding: 2.5rem; border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10;">
             <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid gap-6">
                 <?php echo csrfTokenField(); ?>
-                                <div class="form-group">
+                <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
-                    <input type="text" name="title" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -145,14 +180,14 @@ include '../includes/header.php';
                         <select name="category_id" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                             <option value=""><?= __('create_listing.select_category') ?></option>
                             <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>"><?php echo sanitize(translateCategory($cat['name'])); ?></option>
+                                <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_POST['category_id']) && $_POST['category_id'] == $cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.price_label', ['currency' => APP_CURRENCY]) ?></label>
                         <div class="relative">
-                            <input type="number" name="price" step="0.01" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                            <input type="number" name="price" step="0.01" value="<?= htmlspecialchars($_POST['price'] ?? '') ?>" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                         </div>
                     </div>
                 </div>
@@ -170,7 +205,7 @@ include '../includes/header.php';
                         foreach($opts as $val => $label):
                         ?>
                         <label class="condition-label group flex items-center gap-3 cursor-pointer glass-panel transition-all duration-200" style="border-radius: var(--radius-full); border: 2px solid transparent; padding: 0.55rem 1.25rem; min-width: 100px; justify-content: center;">
-                            <input type="radio" name="condition" value="<?php echo $val; ?>" <?php echo $val == $default ? 'checked' : ''; ?> class="hidden-radio">
+                            <input type="radio" name="condition" value="<?php echo $val; ?>" <?php echo (isset($_POST['condition']) ? $_POST['condition'] == $val : $val == $default) ? 'checked' : ''; ?> class="hidden-radio">
                             <span class="custom-radio"></span>
                             <span class="font-semibold text-main"><?php echo $label; ?></span>
                         </label>
@@ -179,7 +214,7 @@ include '../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
-                    <textarea name="description" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required></textarea>
+                    <textarea name="description" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
  
                 <div class="form-group">
@@ -417,4 +452,3 @@ document.getElementById('imgInput').addEventListener('change', async function(e)
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-

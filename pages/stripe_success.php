@@ -5,7 +5,8 @@ requireLogin();
 
 $sessionId = $_GET['session_id'] ?? '';
 $paymentType = sanitize($_GET['type'] ?? 'promotion');
-$redirectPath = ($paymentType === 'donation') ? 'pages/donate.php' : 'pages/promotions.php';
+$fallbackProductId = isset($_GET['product_id']) ? (int)$_GET['product_id'] : 0;
+$redirectPath = ($paymentType === 'donation') ? 'pages/donate.php' : (($fallbackProductId > 0) ? 'pages/product.php?id=' . $fallbackProductId : 'pages/promotions.php');
 
 if (empty($sessionId)) {
     redirect(BASE_URL . $redirectPath);
@@ -31,6 +32,11 @@ if ($httpCode === 200 && $response['payment_status'] === 'paid') {
     $productId   = !empty($meta['product_id']) ? (int)$meta['product_id'] : null;
     $paymentType = sanitize($meta['payment_type']);
     $amount      = (float)$meta['amount'];
+    if ($paymentType === 'promotion' && $productId) {
+        $redirectPath = 'pages/product.php?id=' . $productId;
+    } elseif ($paymentType === 'donation') {
+        $redirectPath = 'pages/donate.php';
+    }
     
     // Check if this session was already processed to prevent duplicates
     $check = $pdo->prepare('SELECT id FROM promotion_payments WHERE transaction_ref = ?');
@@ -57,8 +63,11 @@ if ($httpCode === 200 && $response['payment_status'] === 'paid') {
             // If it's a promotion, feature the product immediately with duration.
             if ($paymentType === 'promotion' && $productId) {
                 $days = max(1, (int) floor($amount / 15));
-                $upd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ?");
+                $upd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ? AND status = 'active'");
                 $upd->execute([$days, $productId]);
+                if ($upd->rowCount() === 0) {
+                    throw new Exception('Listing is not active and cannot be promoted yet.');
+                }
             }
             
             $pdo->commit();

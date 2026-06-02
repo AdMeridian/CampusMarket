@@ -101,8 +101,8 @@ if ($promoPaymentsTableExists) {
 $listings = $stmt->fetchAll();
 ?>
 
-<div class="container mt-8 mb-16">
-    <div class="flex justify-between items-end mb-8">
+<div class="container mt-8 mb-16 admin-listings-page">
+    <div class="flex justify-between items-end mb-8 admin-page-toolbar">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> > Listings</div>
             <h1 class="mb-0">Listing Management</h1>
@@ -114,7 +114,7 @@ $listings = $stmt->fetchAll();
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
-        <table class="table w-full text-left" style="border-collapse: collapse; margin: 0;">
+        <table class="table w-full text-left admin-listings-table" style="border-collapse: collapse; margin: 0; min-width: 920px;">
             <thead>
                 <tr style="background: rgba(248, 250, 252, 0.8);">
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Item Name</th>
@@ -129,16 +129,18 @@ $listings = $stmt->fetchAll();
                 <?php foreach ($listings as $item): ?>
                     <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                            <div class="flex items-center gap-3">
-                                <div class="font-bold flex items-center gap-2">
+                            <div class="listing-title-cell">
+                                <div class="font-bold flex items-center gap-2" style="line-height: 1.35;">
                                     <?php echo sanitize($item['title']); ?>
                                 </div>
+                                <div class="listing-badge-row">
                                 <?php if ($item['is_featured']): ?>
                                     <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><span>Featured</span></span>
                                 <?php endif; ?>
                                 <?php if ((int)$item['available_promo_credits'] > 0): ?>
                                     <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><?php echo (int)$item['available_promo_credits']; ?> Promo Credit</span>
                                 <?php endif; ?>
+                                </div>
                             </div>
                             <div style="font-size: 0.78rem; color: var(--text-muted);">ID #<?php echo $item['id']; ?></div>
                         </td>
@@ -150,7 +152,7 @@ $listings = $stmt->fetchAll();
                             <span class="badge <?php echo $badge['class']; ?> shadow-sm"><?php echo $badge['label']; ?></span>
                         </td>
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light);">
-                            <div class="flex justify-end gap-2">
+                            <div class="admin-action-row">
                                 <?php if ($item['is_featured']): ?>
                                     <a href="?action=unfeature&id=<?php echo $item['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Unfeature">UNFEAT</a>
                                 <?php elseif ((int)$item['available_promo_credits'] > 0): ?>
@@ -174,5 +176,37 @@ $listings = $stmt->fetchAll();
         <?php endif; ?>
     </div>
 </div>
+
+<style>
+.admin-page-toolbar {
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.admin-listings-table th,
+.admin-listings-table td {
+    vertical-align: middle;
+}
+.listing-title-cell {
+    display: grid;
+    gap: 0.45rem;
+    max-width: 320px;
+}
+.listing-badge-row,
+.admin-action-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+.admin-action-row {
+    justify-content: flex-end;
+}
+@media (max-width: 720px) {
+    .admin-page-toolbar {
+        align-items: flex-start !important;
+        flex-direction: column;
+    }
+}
+</style>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

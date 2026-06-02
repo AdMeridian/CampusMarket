@@ -57,10 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect(BASE_URL . 'pages/promotions.php');
             }
 
-            $ownCheck = $pdo->prepare('SELECT id FROM products WHERE id = :pid AND user_id = :uid');
+            $ownCheck = $pdo->prepare("SELECT id FROM products WHERE id = :pid AND user_id = :uid AND status = 'active'");
             $ownCheck->execute([':pid' => $productIdRaw, ':uid' => $currentUserId]);
             if (!$ownCheck->fetchColumn()) {
-                setFlash('error', 'You can only promote your own listing.');
+                setFlash('error', 'You can only promote your own active listings.');
                 redirect(BASE_URL . 'pages/promotions.php');
             }
             $productId = $productIdRaw;
@@ -84,11 +84,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         setFlash('success', 'Payment request submitted. Admin will review it shortly.');
+        if ($paymentType === 'promotion' && $productId) {
+            redirect(BASE_URL . 'pages/product.php?id=' . (int)$productId);
+        }
         redirect(BASE_URL . 'pages/promotions.php');
     }
 }
 
-$myProductsStmt = $pdo->prepare("SELECT id, title, status, is_featured FROM products WHERE user_id = :uid ORDER BY created_at DESC");
+$myProductsStmt = $pdo->prepare("SELECT id, title, status, is_featured FROM products WHERE user_id = :uid AND status = 'active' ORDER BY created_at DESC");
 $myProductsStmt->execute([':uid' => $currentUserId]);
 $myProducts = $myProductsStmt->fetchAll();
 

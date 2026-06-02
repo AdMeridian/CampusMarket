@@ -109,9 +109,9 @@ if (!empty($donors)):
         <p class="text-muted" style="font-size: 0.9rem; opacity: 0.7;">Thank you to everyone who has supported CampusMarket.</p>
     </div>
 
-    <div class="flex flex-wrap justify-center gap-8">
+    <div class="hall-carousel" aria-label="Community Hall of Fame supporters">
         <?php foreach ($donors as $donor): ?>
-            <div class="donor-card flex flex-col items-center gap-2">
+            <div class="donor-card hall-carousel-card flex flex-col items-center gap-2">
                 <div style="position: relative; display: inline-block;">
                     <img src="<?php echo avatarUrl($donor['avatar']); ?>"
                          alt="<?php echo sanitize($donor['username']); ?>"
@@ -121,6 +121,10 @@ if (!empty($donors)):
                 <p style="font-weight: 800; font-size: 0.8rem; color: var(--text-main);">@<?php echo sanitize($donor['username']); ?></p>
             </div>
         <?php endforeach; ?>
+    </div>
+    <div class="hall-carousel-actions" aria-hidden="true">
+        <button type="button" class="hall-carousel-btn" data-hall-dir="-1">&lsaquo;</button>
+        <button type="button" class="hall-carousel-btn" data-hall-dir="1">&rsaquo;</button>
     </div>
 </div>
 <?php endif; ?>
@@ -194,6 +198,43 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .donor-card { transition: var(--transition); cursor: default; }
 .donor-card:hover { transform: translateY(-5px); }
 .donor-card:hover img { transform: rotate(0deg); }
+.hall-carousel {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(108px, 1fr);
+    gap: 1.25rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline mandatory;
+    padding: 0.5rem 0.25rem 1rem;
+    scrollbar-width: thin;
+}
+.hall-carousel-card {
+    scroll-snap-align: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 1rem 0.75rem;
+    min-width: 108px;
+}
+.hall-carousel-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+.hall-carousel-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-light);
+    background: var(--bg-surface);
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 1.35rem;
+    line-height: 1;
+    box-shadow: var(--shadow-sm);
+}
 </style>
 
 <script>
@@ -212,6 +253,17 @@ document.addEventListener('DOMContentLoaded', function() {
         pills.forEach(p => {
             if (parseFloat(p.dataset.amount) === val) p.classList.add('active');
             else p.classList.remove('active');
+        });
+    });
+
+    const hallCarousel = document.querySelector('.hall-carousel');
+    document.querySelectorAll('[data-hall-dir]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!hallCarousel) return;
+            hallCarousel.scrollBy({
+                left: Number(this.dataset.hallDir) * Math.max(180, hallCarousel.clientWidth * 0.65),
+                behavior: 'smooth'
+            });
         });
     });
 });

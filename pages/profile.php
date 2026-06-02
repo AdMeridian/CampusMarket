@@ -83,18 +83,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], 
     redirect(BASE_URL . 'pages/profile.php?id=' . $viewId . '#listings');
 }
 
-// Fetch listings count for the stat pill
-$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND status = 'active'");
+// Fetch listings count for the stat pill. Owners see their pending review items too.
+$visibleListingStatusSql = $isSelf || isAdmin()
+    ? "status IN ('active', 'pending_approval')"
+    : "status = 'active'";
+$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND {$visibleListingStatusSql}");
 $listingCountStmt->execute([':uid' => $viewId]);
 $listingCount = (int)$listingCountStmt->fetchColumn();
 
-// Fetch all active listings
+// Fetch listings visible on this profile view.
 $stmt = $pdo->prepare("
     SELECT p.*, c.name as category_name, i.image_path
     FROM products p
     JOIN categories c ON p.category_id = c.id
     LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-    WHERE p.user_id = :uid AND p.status = 'active'
+    WHERE p.user_id = :uid AND {$visibleListingStatusSql}
     ORDER BY p.created_at DESC
 ");
 $stmt->execute([':uid' => $viewId]);
@@ -794,7 +797,7 @@ body.dark-mode .btn-white-solid:hover {
         <?php 
         // Mini Analytics: Only show for self
         if ($isSelf): 
-            $featuredOwn = array_filter($userProducts, function($p) { return (int)$p['is_featured'] === 1; });
+            $featuredOwn = array_filter($userProducts, function($p) { return $p['status'] === 'active' && (int)$p['is_featured'] === 1; });
             if (!empty($featuredOwn)):
         ?>
             <div class="card mt-6" style="padding: 1.5rem; border-radius: var(--radius-xl); border: 1px solid rgba(99, 102, 241, 0.2); background: rgba(99, 102, 241, 0.02);">
@@ -824,7 +827,7 @@ body.dark-mode .btn-white-solid:hover {
         <section id="listings">
             <div class="listings-header">
                 <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                    <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg> Active Listings (<?php echo count($userProducts); ?>)
+                    <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg> <?php echo $isSelf ? 'Your Listings' : 'Active Listings'; ?> (<?php echo count($userProducts); ?>)
                 </h2>
                 <?php if ($isSelf): ?>
                     <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem;">
@@ -834,10 +837,11 @@ body.dark-mode .btn-white-solid:hover {
             </div>
 
             <?php if (empty($userProducts)): ?>
-                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">No active listings</p>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;"><?php echo $isSelf ? 'No listings yet' : 'No active listings'; ?></p>
             <?php else: ?>
                 <div class="listing-grid">
                     <?php foreach ($userProducts as $prod): ?>
+                        <?php $isPendingApproval = ($prod['status'] === 'pending_approval'); ?>
                         <div class="listing-card">
                             <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
                                 <img 
@@ -852,6 +856,11 @@ body.dark-mode .btn-white-solid:hover {
                                     <span class="listing-card-cat"><?php echo sanitize($prod['category_name']); ?></span>
                                     <span class="listing-card-price"><?php echo formatPrice($prod['price']); ?></span>
                                 </div>
+                                <?php if ($isSelf && $isPendingApproval): ?>
+                                    <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
+                                        Pending approval
+                                    </div>
+                                <?php endif; ?>
                                 <h3 class="listing-card-title">
                                     <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit;">
                                         <?php echo sanitize($prod['title']); ?>
@@ -889,7 +898,9 @@ body.dark-mode .btn-white-solid:hover {
                                         </form>
 
                                         <!-- Promote Button -->
-                                        <?php if ((int)$prod['is_featured'] === 0): ?>
+                                        <?php if ($isPendingApproval): ?>
+                                        <button disabled class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: var(--warning-bg); color: #b45309; border: 1px solid rgba(180, 83, 9, 0.2); font-weight: 700; cursor: not-allowed; border-radius: var(--radius-md);">Pending Approval</button>
+                                        <?php elseif ((int)$prod['is_featured'] === 0): ?>
                                         <a href="<?php echo BASE_URL; ?>pages/promotions.php?product_id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); font-weight: 700; text-align: center; border-radius: var(--radius-md); display: block;">Boost Listing</a>
                                         <?php else: ?>
                                         <button disabled class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: rgba(34, 197, 94, 0.1); color: #15803d; border: 1px solid rgba(34, 197, 94, 0.2); font-weight: 700; cursor: not-allowed; border-radius: var(--radius-md);">Already Promoted</button>

@@ -25,6 +25,15 @@ if ($paymentType === 'promotion' && $productId <= 0) {
     redirect(BASE_URL . 'pages/promotions.php');
 }
 
+if ($paymentType === 'promotion') {
+    $ownActiveCheck = $pdo->prepare("SELECT id FROM products WHERE id = :pid AND user_id = :uid AND status = 'active'");
+    $ownActiveCheck->execute([':pid' => $productId, ':uid' => currentUserId()]);
+    if (!$ownActiveCheck->fetchColumn()) {
+        setFlash('error', 'Only active listings can be promoted.');
+        redirect(BASE_URL . 'pages/promotions.php');
+    }
+}
+
 // Convert amount to cents/kurus for Stripe
 $unitAmount = (int)($amount * 100);
 
@@ -32,6 +41,9 @@ $unitAmount = (int)($amount * 100);
 $ch = curl_init();
 
 $successUrl = BASE_URL . 'pages/stripe_success.php?session_id={CHECKOUT_SESSION_ID}&type=' . $paymentType;
+if ($paymentType === 'promotion' && $productId > 0) {
+    $successUrl .= '&product_id=' . $productId;
+}
 $cancelUrl  = BASE_URL . (($paymentType === 'donation') ? 'pages/donate.php' : 'pages/promotions.php');
 
 $postFields = [

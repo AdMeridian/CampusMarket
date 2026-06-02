@@ -60,8 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payment_id'], $_POST[
                     $days = max(1, (int) floor($amount / 15));
 
                     // Automatically feature the product with expiration
-                    $updProd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ?");
+                    $updProd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ? AND status = 'active'");
                     $updProd->execute([$days, $payData['product_id']]);
+                    if ($updProd->rowCount() === 0) {
+                        throw new Exception('This listing is not active and cannot be promoted yet.');
+                    }
                 }
             }
 
@@ -87,8 +90,8 @@ $rows = $pdo->query('
 ')->fetchAll();
 ?>
 
-<div class="container mt-8 mb-16">
-    <div class="flex justify-between items-end mb-6" style="gap: 1rem; flex-wrap: wrap;">
+<div class="container mt-8 mb-16 admin-payments-page">
+    <div class="flex justify-between items-end mb-6 admin-page-toolbar" style="gap: 1rem; flex-wrap: wrap;">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Payment Reviews</div>
             <h1 class="mb-0">Promotion & Donation Payments</h1>
@@ -98,7 +101,7 @@ $rows = $pdo->query('
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
-        <table class="table w-full text-left" style="border-collapse: collapse; margin: 0;">
+        <table class="table w-full text-left admin-payments-table" style="border-collapse: collapse; margin: 0; min-width: 980px;">
             <thead>
                 <tr style="background: rgba(248, 250, 252, 0.8);">
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Type</th>
@@ -113,11 +116,16 @@ $rows = $pdo->query('
             <tbody>
                 <?php foreach ($rows as $row): ?>
                     <tr>
-                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);"><?php echo ucfirst(sanitize($row['payment_type'])); ?></td>
-                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);">@<?php echo sanitize($row['username']); ?></td>
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
+                            <span class="badge" style="background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border-light);"><?php echo ucfirst(sanitize($row['payment_type'])); ?></span>
+                        </td>
+                        <td class="p-4 font-medium" style="border-bottom: 1px solid var(--border-light); color: var(--primary);">@<?php echo sanitize($row['username']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <?php if ($row['payment_type'] === 'promotion' && $row['product_title']): ?>
-                                <?php echo sanitize($row['product_title']); ?>
+                                <div class="font-bold" style="line-height: 1.35;"><?php echo sanitize($row['product_title']); ?></div>
+                                <?php if (!empty($row['product_id'])): ?>
+                                    <a href="../pages/product.php?id=<?php echo (int)$row['product_id']; ?>" target="_blank" class="text-muted" style="font-size: 0.78rem;">View listing #<?php echo (int)$row['product_id']; ?></a>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <span class="text-muted">General donation</span>
                             <?php endif; ?>
@@ -132,7 +140,7 @@ $rows = $pdo->query('
                         </td>
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light); min-width: 260px;">
                             <?php if ($row['status'] === 'pending'): ?>
-                                <form method="post" class="m-0" style="display:flex; gap:0.4rem; justify-content:flex-end; align-items:center;">
+                                <form method="post" class="m-0 admin-payment-action-form">
                                     <?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="payment_id" value="<?php echo (int)$row['id']; ?>">
                                     <input type="text" name="admin_note" class="premium-input" placeholder="Admin note" style="max-width: 130px; padding: 0.35rem 0.5rem; font-size: 0.8rem;">
@@ -153,6 +161,30 @@ $rows = $pdo->query('
         <?php endif; ?>
     </div>
 </div>
+
+<style>
+.admin-page-toolbar {
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.admin-payments-table th,
+.admin-payments-table td {
+    vertical-align: middle;
+}
+.admin-payment-action-form {
+    display: grid;
+    grid-template-columns: minmax(130px, 1fr) auto auto;
+    gap: 0.4rem;
+    justify-content: end;
+    align-items: center;
+}
+@media (max-width: 720px) {
+    .admin-page-toolbar {
+        align-items: flex-start !important;
+        flex-direction: column;
+    }
+}
+</style>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
