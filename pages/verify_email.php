@@ -9,6 +9,15 @@ if (($_GET['source'] ?? '') === 'supabase') {
     $tokenHash = trim((string)($_GET['token_hash'] ?? ''));
     $type = trim((string)($_GET['type'] ?? 'email'));
 
+    // Password recovery links must go to the reset password page, not here.
+    if ($type === 'recovery') {
+        if ($tokenHash === '') {
+            setFlash('error', 'Invalid password reset link. Please request a new one.');
+            redirect(BASE_URL . 'pages/forgot_password.php');
+        }
+        redirect(BASE_URL . 'pages/reset_password.php?token_hash=' . urlencode($tokenHash));
+    }
+
     if ($tokenHash === '') {
         setFlash('error', 'Invalid verification link.');
         redirect(BASE_URL . 'pages/login.php');
