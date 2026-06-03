@@ -15,16 +15,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_tag'])) {
     $slug = sanitize(strtolower(str_replace(' ', '-', $name)));
 
     if (!empty($name)) {
-        $stmt = $pdo->prepare("INSERT INTO tags (name, slug) VALUES (?, ?)");
-        $stmt->execute([$name, $slug]);
-        setFlash('success', "Tag '#$name' added successfully.");
+        try {
+            $stmt = $pdo->prepare("INSERT INTO tags (name, slug) VALUES (?, ?)");
+            $stmt->execute([$name, $slug]);
+            setFlash('success', "Tag '#$name' added successfully.");
+        } catch (PDOException $e) {
+            setFlash('error', "Tag '#$name' already exists.");
+        }
     } else {
         setFlash('error', "Tag name cannot be empty.");
     }
     redirect(BASE_URL . '/admin/tags.php');
 }
 
-$tags = $pdo->query("SELECT * FROM tags ORDER BY name ASC")->fetchAll();
+// Handle Delete Tag
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_tag'])) {
+    verifyCsrfToken();
+    $tid = (int)$_POST['tag_id'];
+    if ($tid > 0) {
+        $pdo->prepare("DELETE FROM tags WHERE id = ?")->execute([$tid]);
+        setFlash('success', "Tag deleted.");
+    }
+    redirect(BASE_URL . '/admin/tags.php');
+}
+
+// Fetch tags with usage count
+$tags = $pdo->query("
+    SELECT t.id, t.name, t.slug, COUNT(pt.product_id) AS usage_count
+    FROM tags t
+    LEFT JOIN product_tags pt ON pt.tag_id = t.id
+    GROUP BY t.id, t.name, t.slug
+    ORDER BY t.name ASC
+")->fetchAll();
 
 require_once '../includes/header.php';
 ?>
@@ -34,6 +56,9 @@ require_once '../includes/header.php';
         <div>
             <div class="admin-breadcrumb"><a href="<?php echo BASE_URL; ?>admin/index.php">Dashboard</a> › Tags</div>
             <h1>Manage Interest Tags</h1>
+            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                <?php echo count($tags); ?> tag<?php echo count($tags) !== 1 ? 's' : ''; ?> · AI uses these when auto-tagging listings
+            </p>
         </div>
         <button onclick="document.getElementById('add-tag-card').scrollIntoView({behavior:'smooth'})" class="btn btn-primary">
             + Create Tag
@@ -51,12 +76,14 @@ require_once '../includes/header.php';
                             <th style="width: 60px;">ID</th>
                             <th>Tag</th>
                             <th>System Slug</th>
+                            <th style="width: 100px; text-align: center;">Listings</th>
+                            <th style="width: 80px; text-align: right;">Remove</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($tags)): ?>
                         <tr>
-                            <td colspan="3">
+                            <td colspan="5">
                                 <div class="admin-empty">
                                     <span class="admin-empty-icon"><svg style="width: 32px; height: 32px; display: inline-block; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
                                     No tags yet. Create the first one →
@@ -71,6 +98,20 @@ require_once '../includes/header.php';
                                 <span class="badge badge-secondary" style="font-size: 0.85rem;">#<?php echo sanitize($tag['name']); ?></span>
                             </td>
                             <td><code style="background: var(--bg-main); padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.82rem;"><?php echo sanitize($tag['slug']); ?></code></td>
+                            <td style="text-align: center;">
+                                <?php if ((int)$tag['usage_count'] > 0): ?>
+                                    <span class="badge badge-primary" style="font-size: 0.78rem;"><?php echo (int)$tag['usage_count']; ?></span>
+                                <?php else: ?>
+                                    <span style="color: var(--text-muted); font-size: 0.8rem;">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="text-align: right;">
+                                <form method="POST" style="margin:0;" onsubmit="return confirm('Delete tag #<?php echo sanitize($tag['name']); ?>? This will remove it from all listings.')">
+                                    <?php echo csrfTokenField(); ?>
+                                    <input type="hidden" name="tag_id" value="<?php echo $tag['id']; ?>">
+                                    <button type="submit" name="delete_tag" class="btn btn-danger btn-sm" style="border-radius: var(--radius-lg); padding: 0.25rem 0.6rem; font-size: 0.78rem;" title="Delete tag">✕</button>
+                                </form>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                         <?php endif; ?>
@@ -99,9 +140,9 @@ require_once '../includes/header.php';
             </div>
 
             <div style="margin-top: 1rem; padding: 1rem 1.25rem; background: var(--bg-surface); border: 1px solid var(--border-light); border-left: 4px solid var(--secondary); border-radius: var(--radius-md);">
-                <h4 style="font-size: 0.9rem; margin-bottom: 0.35rem; color: var(--text-main);">Why use tags?</h4>
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.35rem; color: var(--text-main);">AI-Powered Tagging</h4>
                 <p style="font-size: 0.82rem; color: var(--text-muted); margin: 0;">
-                    Tags help students filter beyond categories — e.g. a "Desk" in Furniture tagged <code>#study</code> shows up in study-related searches.
+                    When a seller lists a product, the AI suggests relevant tags from this list based on the title and description. Tags added here are immediately available for suggestion.
                 </p>
             </div>
         </div>

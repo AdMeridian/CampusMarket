@@ -34,6 +34,21 @@ INSERT INTO categories (id, name, slug) VALUES
 (9,  'Dorm & Living Essentials', 'dorm-living-essentials'),
 (10, 'Transportation (Bikes & Scooters)', 'transportation');
 
+-- ─── Tags ───────────────────────────────────────────────────
+INSERT INTO tags (id, name, slug) VALUES
+(1, 'Electronics', 'electronics'),
+(2, 'Books', 'books'),
+(3, 'Study Guides', 'study-guides'),
+(4, 'Dorm Decor', 'dorm-decor'),
+(5, 'Furniture', 'furniture'),
+(6, 'Kitchenwear', 'kitchenwear'),
+(7, 'Bikes', 'bikes'),
+(8, 'Scooters', 'scooters'),
+(9, 'Clothing', 'clothing'),
+(10, 'Stationery', 'stationery'),
+(11, 'Snacks', 'snacks'),
+(12, 'Sports & Fitness', 'sports-fitness');
+
 -- ─── Products (Exactly 10 per category = 100 products) ─────
 INSERT INTO products (id, user_id, category_id, title, description, price, `condition`, status) VALUES
 -- 1. Electronics

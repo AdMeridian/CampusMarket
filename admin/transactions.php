@@ -135,7 +135,7 @@ foreach ($deals as $d) {
 }
 </style>
 
-<div class="container mt-8 mb-16">
+<div class="container mt-24 mb-16">
     <div class="flex justify-between items-end mb-8">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Transactions</div>

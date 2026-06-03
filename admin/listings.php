@@ -17,56 +17,75 @@ try {
     $promoPaymentsTableExists = false;
 }
 
-// Handle Actions
-if (isset($_GET['action']) && isset($_GET['id'])) {
-    $id = (int)$_GET['id'];
+// Handle Actions (Secured via POST & CSRF validation)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
 
-    if ($_GET['action'] === 'delete') {
-        $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
-        $stmt->execute([$id]);
-        setFlash('success', 'Listing deleted.');
-    } elseif ($_GET['action'] === 'feature') {
-        if (!$promoPaymentsTableExists) {
-            setFlash('error', 'Promotion payment table is missing. Apply the schema update first.');
-            redirect('listings.php');
-        }
+    if (isset($_POST['action']) && isset($_POST['id'])) {
+        $id = (int)$_POST['id'];
+        $action = $_POST['action'];
 
-        // FEAT requires an approved, unused promotion payment for this listing.
-        $payStmt = $pdo->prepare("
-            SELECT id
-            FROM promotion_payments
-            WHERE product_id = :pid
-              AND payment_type = 'promotion'
-              AND status = 'approved'
-              AND consumed_at IS NULL
-            ORDER BY approved_at ASC, created_at ASC
-            LIMIT 1
-        ");
-        $payStmt->execute([':pid' => $id]);
-        $paymentId = (int)($payStmt->fetchColumn() ?: 0);
-
-        if ($paymentId <= 0) {
-            setFlash('error', 'Cannot FEAT this listing yet. Seller needs an approved promotion payment.');
-            redirect('listings.php');
-        }
-
-        try {
-            $pdo->beginTransaction();
-            $pdo->prepare("UPDATE products SET is_featured = TRUE WHERE id = ?")->execute([$id]);
-            $pdo->prepare("UPDATE promotion_payments SET consumed_at = NOW(), consumed_for = 'feature' WHERE id = :id")
-                ->execute([':id' => $paymentId]);
-            $pdo->commit();
-            setFlash('success', 'Listing featured using approved promotion payment.');
-        } catch (PDOException $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+        if ($action === 'delete') {
+            $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
+            $stmt->execute([$id]);
+            setFlash('success', 'Listing deleted.');
+        } elseif ($action === 'approve') {
+            // Fetch listing details to notify the owner
+            $stmt = $pdo->prepare("SELECT user_id, title FROM products WHERE id = ?");
+            $stmt->execute([$id]);
+            $prod = $stmt->fetch();
+            if ($prod) {
+                $stmtUpdate = $pdo->prepare("UPDATE products SET status = 'active' WHERE id = ?");
+                $stmtUpdate->execute([$id]);
+                // Notify the seller
+                createNotification($pdo, (int)$prod['user_id'], 'system', 'Listing Approved', "Your listing for '" . $prod['title'] . "' has been approved and is now active.", $id);
+                setFlash('success', 'Listing approved successfully.');
+            } else {
+                setFlash('error', 'Listing not found.');
             }
-            setFlash('error', 'Unable to feature listing right now.');
+        } elseif ($action === 'feature') {
+            if (!$promoPaymentsTableExists) {
+                setFlash('error', 'Promotion payment table is missing. Apply the schema update first.');
+                redirect('listings.php');
+            }
+
+            // FEAT requires an approved, unused promotion payment for this listing.
+            $payStmt = $pdo->prepare("
+                SELECT id
+                FROM promotion_payments
+                WHERE product_id = :pid
+                  AND payment_type = 'promotion'
+                  AND status = 'approved'
+                  AND consumed_at IS NULL
+                ORDER BY approved_at ASC, created_at ASC
+                LIMIT 1
+            ");
+            $payStmt->execute([':pid' => $id]);
+            $paymentId = (int)($payStmt->fetchColumn() ?: 0);
+
+            if ($paymentId <= 0) {
+                setFlash('error', 'Cannot FEAT this listing yet. Seller needs an approved promotion payment.');
+                redirect('listings.php');
+            }
+
+            try {
+                $pdo->beginTransaction();
+                $pdo->prepare("UPDATE products SET is_featured = TRUE WHERE id = ?")->execute([$id]);
+                $pdo->prepare("UPDATE promotion_payments SET consumed_at = NOW(), consumed_for = 'feature' WHERE id = :id")
+                    ->execute([':id' => $paymentId]);
+                $pdo->commit();
+                setFlash('success', 'Listing featured using approved promotion payment.');
+            } catch (PDOException $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                setFlash('error', 'Unable to feature listing right now.');
+            }
+        } elseif ($action === 'unfeature') {
+            $stmt = $pdo->prepare("UPDATE products SET is_featured = FALSE WHERE id = ?");
+            $stmt->execute([$id]);
+            setFlash('success', 'Listing unfeatured.');
         }
-    } elseif ($_GET['action'] === 'unfeature') {
-        $stmt = $pdo->prepare("UPDATE products SET is_featured = FALSE WHERE id = ?");
-        $stmt->execute([$id]);
-        setFlash('success', 'Listing unfeatured.');
     }
 
     redirect('listings.php');
@@ -101,7 +120,7 @@ if ($promoPaymentsTableExists) {
 $listings = $stmt->fetchAll();
 ?>
 
-<div class="container mt-8 mb-16 admin-listings-page">
+<div class="container mt-24 mb-16 admin-listings-page">
     <div class="flex justify-between items-end mb-8 admin-page-toolbar">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> > Listings</div>
@@ -140,6 +159,13 @@ $listings = $stmt->fetchAll();
                                 <?php if ((int)$item['available_promo_credits'] > 0): ?>
                                     <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><?php echo (int)$item['available_promo_credits']; ?> Promo Credit</span>
                                 <?php endif; ?>
+                                <?php if ($item['status'] === 'pending_approval'): ?>
+                                    <span class="badge badge-pending" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);">Pending Approval</span>
+                                <?php elseif ($item['status'] === 'flagged'): ?>
+                                    <span class="badge badge-poor" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);">Flagged</span>
+                                <?php elseif ($item['status'] === 'sold'): ?>
+                                    <span class="badge badge-dismissed" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);">Sold</span>
+                                <?php endif; ?>
                                 </div>
                             </div>
                             <div style="font-size: 0.78rem; color: var(--text-muted);">ID #<?php echo $item['id']; ?></div>
@@ -153,15 +179,39 @@ $listings = $stmt->fetchAll();
                         </td>
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light);">
                             <div class="admin-action-row">
+                                <?php if ($item['status'] === 'pending_approval'): ?>
+                                    <form method="POST" style="margin: 0; display: inline-block;">
+                                        <?php echo csrfTokenField(); ?>
+                                        <input type="hidden" name="action" value="approve">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn btn-success btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Approve Listing">Approve</button>
+                                    </form>
+                                <?php endif; ?>
+
                                 <?php if ($item['is_featured']): ?>
-                                    <a href="?action=unfeature&id=<?php echo $item['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Unfeature">UNFEAT</a>
+                                    <form method="POST" style="margin: 0; display: inline-block;">
+                                        <?php echo csrfTokenField(); ?>
+                                        <input type="hidden" name="action" value="unfeature">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Unfeature">UNFEAT</button>
+                                    </form>
                                 <?php elseif ((int)$item['available_promo_credits'] > 0): ?>
-                                    <a href="?action=feature&id=<?php echo $item['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Feature">FEAT</a>
+                                    <form method="POST" style="margin: 0; display: inline-block;">
+                                        <?php echo csrfTokenField(); ?>
+                                        <input type="hidden" name="action" value="feature">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Feature">FEAT</button>
+                                    </form>
                                 <?php else: ?>
                                     <span class="btn btn-secondary btn-sm opacity-50" style="border-radius: var(--radius-lg);">No credits</span>
                                 <?php endif; ?>
                                 <a href="../pages/product.php?id=<?php echo $item['id']; ?>" target="_blank" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View</a>
-                                <a href="?action=delete&id=<?php echo $item['id']; ?>" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" onclick="return confirm('Delete this listing permanently?')">Delete</a>
+                                <form method="POST" style="margin: 0; display: inline-block;" onsubmit="return confirm('Delete this listing permanently?')">
+                                    <?php echo csrfTokenField(); ?>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                    <button type="submit" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Delete permanently">Delete</button>
+                                </form>
                             </div>
                         </td>
                     </tr>

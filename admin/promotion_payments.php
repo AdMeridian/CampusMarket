@@ -90,7 +90,7 @@ $rows = $pdo->query('
 ')->fetchAll();
 ?>
 
-<div class="container mt-8 mb-16 admin-payments-page">
+<div class="container mt-24 mb-16 admin-payments-page">
     <div class="flex justify-between items-end mb-6 admin-page-toolbar" style="gap: 1rem; flex-wrap: wrap;">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Payment Reviews</div>
