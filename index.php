@@ -133,9 +133,7 @@ if (!empty($featuredProducts)):
 
         <div class="scroll-row">
             <?php foreach ($featuredProducts as $prod): ?>
-                <div class="featured-card-wrap">
-                    <?php include 'includes/product_card_template.php'; ?>
-                </div>
+                <?php include 'includes/product_card_template.php'; ?>
             <?php endforeach; ?>
         </div>
     </div>
