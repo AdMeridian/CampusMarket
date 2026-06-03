@@ -108,7 +108,7 @@ $payments = $paymentsStmt->fetchAll();
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: 4rem 0;">
+<div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: calc(80px + 2rem) 0 4rem;">
     <!-- Subtle Background Glows -->
     <!-- Background removed for flat aesthetic -->
 
