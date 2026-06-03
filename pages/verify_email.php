@@ -41,7 +41,6 @@ if (($_GET['source'] ?? '') === 'supabase') {
         ]);
         $body   = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($status >= 200 && $status < 300) {
             $userDecoded = json_decode((string)$body, true);

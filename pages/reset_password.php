@@ -64,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
         $body   = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($status >= 200 && $status < 300) {
             // Fetch email from Supabase using the access token to safely update the local DB
@@ -82,7 +81,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $userBody = curl_exec($chUser);
             $userStatus = (int) curl_getinfo($chUser, CURLINFO_HTTP_CODE);
-            curl_close($chUser);
 
             if ($userStatus >= 200 && $userStatus < 300) {
                 $userDecoded = json_decode((string)$userBody, true);

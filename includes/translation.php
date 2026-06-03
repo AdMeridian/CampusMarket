@@ -66,7 +66,6 @@ class TranslationService {
 
         $response = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($httpCode < 200 || $httpCode >= 300 || $response === false) {
             error_log("[TranslationService] API error HTTP $httpCode: $response");
@@ -119,7 +118,6 @@ class TranslationService {
 
         $response = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($httpCode < 200 || $httpCode >= 300 || $response === false) {
             return 'unknown';

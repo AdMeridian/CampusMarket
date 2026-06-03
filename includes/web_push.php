@@ -36,9 +36,6 @@ function triggerWebPushBestEffort(int $userId, string $title, string $body, stri
             CURLOPT_TIMEOUT => 2,
         ]);
         curl_exec($ch);
-        if (PHP_VERSION_ID < 80000) {
-            curl_close($ch);
-        }
     } catch (Throwable $e) {
         // Intentionally swallow; push is best-effort.
         return;

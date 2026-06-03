@@ -68,9 +68,6 @@ curl_setopt($ch, CURLOPT_USERPWD, STRIPE_SECRET_KEY . ':');
 
 $result = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-if (PHP_VERSION_ID < 80000) {
-    curl_close($ch);
-}
 
 $response = json_decode($result, true);
 
