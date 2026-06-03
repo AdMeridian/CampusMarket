@@ -29,9 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $originHost = $_SERVER['HTTP_HOST'] ?? '';
         $originScheme = $isSecureRequest ? 'https' : 'http';
+        // Use extensionless URL — Vercel's front controller 301-redirects
+        // .php → no-.php, which can drop the hash fragment (#access_token=...)
+        // on some browsers (Outlook embedded, older Safari, Android WebViews).
+        // Sending the clean URL avoids the redirect entirely.
         $emailRedirectTo = $originHost !== ''
-            ? ($originScheme . '://' . $originHost . '/pages/reset_password.php')
-            : (BASE_URL . 'pages/reset_password.php');
+            ? ($originScheme . '://' . $originHost . '/pages/reset_password')
+            : (BASE_URL . 'pages/reset_password');
 
         // Call Supabase password recovery endpoint.
         $response = supabaseAuthRequest('POST', 'recover', [
