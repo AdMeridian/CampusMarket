@@ -52,7 +52,7 @@ CREATE TABLE products (
     discount_percent TINYINT   NOT NULL DEFAULT 0,
     discount_set_at DATETIME   NULL,
     `condition`   ENUM('new', 'like_new', 'used', 'poor') NOT NULL DEFAULT 'used',
-    status      ENUM('active', 'sold', 'flagged')       NOT NULL DEFAULT 'active',
+    status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
     views       INT            NOT NULL DEFAULT 0,

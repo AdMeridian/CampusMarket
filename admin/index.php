@@ -13,13 +13,14 @@ $pageTitle = "Admin Dashboard";
 
 // Fetch Stats
 $stats = [
-    'listings'        => $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn(),
-    'active_listings' => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 'active'")->fetchColumn(),
-    'users'           => $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user'")->fetchColumn(),
-    'orders'          => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
-    'pending_orders'  => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
-    'reports'         => $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'")->fetchColumn(),
-    'completed_deals' => $pdo->query("SELECT COUNT(*) FROM deal_confirmations WHERE status = 'completed'")->fetchColumn(),
+    'listings'                  => $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn(),
+    'active_listings'           => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 'active'")->fetchColumn(),
+    'pending_approval_listings' => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 'pending_approval'")->fetchColumn(),
+    'users'                     => $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user'")->fetchColumn(),
+    'orders'                    => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
+    'pending_orders'            => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
+    'reports'                   => $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'")->fetchColumn(),
+    'completed_deals'           => $pdo->query("SELECT COUNT(*) FROM deal_confirmations WHERE status = 'completed'")->fetchColumn(),
 ];
 
 // Top sellers by completed transactions
@@ -405,7 +406,7 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="stat-card" style="border-left-color: var(--primary);">
             <div class="stat-card-label">Total Listings</div>
             <div class="stat-card-num"><?php echo $stats['listings']; ?></div>
-            <div class="stat-card-sub"><?php echo $stats['active_listings']; ?> currently active</div>
+            <div class="stat-card-sub"><?php echo $stats['active_listings']; ?> active · <?php echo $stats['pending_approval_listings']; ?> pending</div>
         </div>
         <div class="stat-card" style="border-left-color: var(--success);">
             <div class="stat-card-label">Registered Users</div>
@@ -441,6 +442,16 @@ $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="reports-alert-sub">Reports are waiting for your review</div>
                 </div>
                 <div class="reports-alert-num"><?php echo $stats['reports']; ?></div>
+            </a>
+            <?php endif; ?>
+
+            <?php if ($stats['pending_approval_listings'] > 0): ?>
+            <a href="listings.php" class="reports-alert" style="background: #eff6ff; border-color: #bfdbfe; border-left-color: #3b82f6;">
+                <div>
+                    <div class="reports-alert-text" style="color: #1e3a8a;"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Listings Pending Approval</div>
+                    <div class="reports-alert-sub" style="color: #1e40af;">New listings are waiting for administrative approval</div>
+                </div>
+                <div class="reports-alert-num" style="color: #2563eb;"><?php echo $stats['pending_approval_listings']; ?></div>
             </a>
             <?php endif; ?>
 

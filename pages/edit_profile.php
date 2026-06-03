@@ -175,7 +175,7 @@ $pageTitle = __('profile.edit_title');
 require_once '../includes/header.php';
 ?>
 
-<div class="container mt-12 mb-20 flex justify-center">
+<div class="container mt-24 mb-20 flex justify-center">
   <div class="glass-panel" style="width: 100%; max-width: 650px; border-radius: var(--radius-lg); overflow: hidden;">
       <div style="background: var(--bg-surface); padding: 2rem; border-bottom: 1px solid var(--border-light);">
         <div class="flex items-center justify-between">

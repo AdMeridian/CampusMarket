@@ -18,12 +18,14 @@ $createdProductStatus = '';
 // Handle Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
-    $title       = sanitize($_POST['title']);
-    $categoryId  = (int)$_POST['category_id'];
-    $price       = (float)$_POST['price'];
-    $condition   = sanitize($_POST['condition']);
-    $description = sanitize($_POST['description']);
-    $userId      = currentUserId();
+    $title          = sanitize($_POST['title']);
+    $categoryId     = (int)$_POST['category_id'];
+    $price          = (float)$_POST['price'];
+    $condition      = sanitize($_POST['condition']);
+    $description    = sanitize($_POST['description']);
+    $userId         = currentUserId();
+    // Collect manually-selected tag IDs from the pill UI
+    $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
 
     // Collect Image Data for Moderation
     $imagesData = [];
@@ -90,18 +92,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($aiResult['passed'] && $aiResult['confidence'] >= 0.9) {
-                // Auto-approve and auto-tag
                 $status = 'active';
-                // Insert generated tags
-                if (!empty($aiResult['tags'])) {
-                    $stmtTag = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) SELECT :pid, id FROM tags WHERE name = ANY(:tags) ON CONFLICT DO NOTHING");
-                    $stmtTag->execute([':pid' => $productId, ':tags' => ($driver === 'pgsql' && is_array($aiResult['tags'])) ? '{' . implode(',', $aiResult['tags']) . '}' : $aiResult['tags']]);
-                }
             } else {
-                // Flag for moderation
                 $status = 'pending_approval';
                 $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
                 $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+            }
+
+            // 3. Save tags — manual selection first, then AI-generated as fallback
+            $tagsToSave = [];
+            if (!empty($selectedTagIds)) {
+                // User explicitly picked tags from the pill UI
+                $tagsToSave = $selectedTagIds;
+            } elseif ($status === 'active' && !empty($aiResult['tags'])) {
+                // Auto-approved with no manual selection: resolve AI tag names → IDs
+                $placeholders = implode(',', array_fill(0, count($aiResult['tags']), '?'));
+                $nameStmt = $pdo->prepare("SELECT id FROM tags WHERE name IN ($placeholders)");
+                $nameStmt->execute($aiResult['tags']);
+                $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
+            }
+            if (!empty($tagsToSave)) {
+                $tagInsert = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING");
+                foreach ($tagsToSave as $tid) {
+                    $tagInsert->execute([$productId, (int)$tid]);
+                }
             }
             
             $pdo->commit();
@@ -116,8 +130,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch Categories
+// Fetch Categories & Tags
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
+$allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
+$prevTags   = array_map('intval', $_POST['tags'] ?? []);
 
 $pageTitle = __('create_listing.page_title');
 include '../includes/header.php';
@@ -230,6 +246,34 @@ include '../includes/header.php';
                     <div id="preview" class="flex flex-wrap gap-4 mt-5"></div>
                 </div>
 
+                <!-- ── Tags Section ───────────────────────────────── -->
+                <div class="form-group" id="tags-section">
+                    <div class="flex items-center justify-between mb-2" style="flex-wrap: wrap; gap: 0.5rem;">
+                        <label class="font-bold" style="color: var(--text-main);">
+                            Tags
+                            <span style="font-weight: 400; font-size: 0.82rem; color: var(--text-muted); margin-left: 0.4rem;">— select up to 5 that fit</span>
+                        </label>
+                        <button type="button" id="suggestTagsBtn"
+                            style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.9rem; border-radius: var(--radius-lg); border: 1px solid var(--primary); background: var(--primary-light); color: var(--primary); font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: var(--transition);">
+                            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            Suggest Tags
+                        </button>
+                    </div>
+                    <div id="tags-status" style="font-size: 0.78rem; color: var(--text-muted); min-height: 1.2em; margin-bottom: 0.5rem;"></div>
+                    <div class="tag-pill-grid" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <?php foreach ($allTags as $tag): ?>
+                        <label class="tag-pill" style="cursor: pointer;">
+                            <input type="checkbox" name="tags[]" value="<?php echo $tag['id']; ?>"
+                                   id="tag-<?php echo $tag['id']; ?>"
+                                   class="tag-pill-check"
+                                   <?php echo in_array((int)$tag['id'], $prevTags) ? 'checked' : ''; ?>
+                                   style="position: absolute; opacity: 0; width: 0; height: 0;">
+                            <span class="tag-pill-label">#<?php echo sanitize($tag['name']); ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
                 <hr style="border-color: rgba(0,0,0,0.05); margin: 1rem 0;">
 
                 <div class="flex justify-between items-center">
@@ -273,7 +317,6 @@ include '../includes/header.php';
         transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    /* Selected State */
     .hidden-radio:checked + .custom-radio {
         border-color: var(--primary);
         box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
@@ -283,7 +326,6 @@ include '../includes/header.php';
         transform: scale(1);
     }
 
-    /* Card highlighting */
     .condition-label:has(.hidden-radio:checked) {
         background: rgba(99, 102, 241, 0.05);
         box-shadow: var(--shadow-md);
@@ -296,6 +338,61 @@ include '../includes/header.php';
     }
 
     textarea { resize: vertical; }
+
+    /* ── Tag Pills ─────────────────────────────────────────── */
+    .tag-pill { position: relative; display: inline-block; }
+
+    .tag-pill-label {
+        display: inline-block;
+        padding: 0.3rem 0.75rem;
+        border-radius: var(--radius-full);
+        border: 1.5px solid var(--border-light);
+        background: var(--bg-main);
+        color: var(--text-muted);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        user-select: none;
+    }
+
+    .tag-pill-label:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    .tag-pill-check:checked ~ .tag-pill-label {
+        border-color: var(--primary);
+        background: var(--primary-light);
+        color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+
+    .tag-pill-label.ai-suggested {
+        animation: pillPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes pillPop {
+        0%   { transform: scale(1); }
+        50%  { transform: scale(1.18); }
+        100% { transform: scale(1); }
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+    }
+
+    #suggestTagsBtn:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    #suggestTagsBtn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
 </style>
 
 <script>
@@ -448,6 +545,107 @@ document.getElementById('imgInput').addEventListener('change', async function(e)
     submitBtn.innerText = createListingI18n.publishLabel;
     uploadHelp.innerText = createListingI18n.uploadHelp;
     uploadHelp.style.color = "";
+});
+
+// ── Suggest Tags ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    const suggestBtn  = document.getElementById('suggestTagsBtn');
+    const statusEl    = document.getElementById('tags-status');
+    const MAX_PILLS   = 5;
+
+    if (!suggestBtn) return;
+
+    // Enforce max 5 tag selections
+    document.querySelectorAll('.tag-pill-check').forEach(function (chk) {
+        chk.addEventListener('change', function () {
+            const checked = document.querySelectorAll('.tag-pill-check:checked');
+            if (checked.length > MAX_PILLS) {
+                this.checked = false;
+                statusEl.textContent = 'You can select up to ' + MAX_PILLS + ' tags.';
+                statusEl.style.color = '#dc2626';
+                return;
+            }
+            statusEl.textContent = '';
+            statusEl.style.color = '';
+        });
+    });
+
+    suggestBtn.addEventListener('click', async function () {
+        const title = (document.querySelector('input[name="title"]')?.value || '').trim();
+        const desc  = (document.querySelector('textarea[name="description"]')?.value || '').trim();
+
+        if (title.length < 3) {
+            statusEl.textContent = 'Add a title first so the AI has something to work with.';
+            statusEl.style.color = '#d97706';
+            return;
+        }
+
+        suggestBtn.disabled = true;
+        suggestBtn.innerHTML = '<svg style="width:14px;height:14px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Thinking…';
+        statusEl.textContent = 'Asking AI for tag suggestions…';
+        statusEl.style.color = 'var(--primary)';
+
+        // Get CSRF token from the hidden field
+        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+        try {
+            const formData = new FormData();
+            formData.append('title',       title);
+            formData.append('description', desc);
+            formData.append('csrf_token',  csrfToken);
+
+            const res  = await fetch('api_suggest_tags.php', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.error) {
+                statusEl.textContent = 'Could not get suggestions: ' + data.error;
+                statusEl.style.color = '#dc2626';
+                return;
+            }
+
+            const suggested = data.tags || [];
+            if (suggested.length === 0) {
+                statusEl.textContent = data.note || 'No matching tags found — select manually.';
+                statusEl.style.color = '#d97706';
+                return;
+            }
+
+            // Check the suggested pills (up to MAX_PILLS total)
+            let applied = 0;
+            const alreadyChecked = document.querySelectorAll('.tag-pill-check:checked').length;
+            let slots = MAX_PILLS - alreadyChecked;
+
+            suggested.forEach(function (id) {
+                if (slots <= 0) return;
+                const chk   = document.getElementById('tag-' + id);
+                const label = chk?.nextElementSibling;
+                if (chk && !chk.checked) {
+                    chk.checked = true;
+                    if (label) {
+                        label.classList.add('ai-suggested');
+                        setTimeout(() => label.classList.remove('ai-suggested'), 400);
+                    }
+                    applied++;
+                    slots--;
+                }
+            });
+
+            if (applied > 0) {
+                statusEl.textContent = '✓ ' + applied + ' tag' + (applied > 1 ? 's' : '') + ' suggested by AI — you can adjust freely.';
+                statusEl.style.color = 'var(--success, #059669)';
+            } else {
+                statusEl.textContent = 'Suggested tags are already selected.';
+                statusEl.style.color = 'var(--text-muted)';
+            }
+
+        } catch (err) {
+            statusEl.textContent = 'Network error — please try again.';
+            statusEl.style.color = '#dc2626';
+        } finally {
+            suggestBtn.disabled = false;
+            suggestBtn.innerHTML = '<svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Suggest Tags';
+        }
+    });
 });
 </script>
 
