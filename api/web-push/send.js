@@ -91,8 +91,15 @@ module.exports = async (req, res) => {
         keys: { p256dh: s.p256dh, auth: s.auth },
       };
 
+      const options = {
+        TTL: 86400, // 24 hours
+        headers: {
+          'Urgency': 'high'
+        }
+      };
+
       try {
-        await webpush.sendNotification(subscription, notificationPayload);
+        await webpush.sendNotification(subscription, notificationPayload, options);
         sent += 1;
       } catch (e) {
         failed += 1;

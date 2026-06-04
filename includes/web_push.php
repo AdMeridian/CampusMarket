@@ -33,7 +33,7 @@ function triggerWebPushBestEffort(int $userId, string $title, string $body, stri
                 'Content-Type: application/json',
                 'X-Internal-Push-Key: ' . $internalKey,
             ],
-            CURLOPT_TIMEOUT => 2,
+            CURLOPT_TIMEOUT => 5,
         ]);
         curl_exec($ch);
     } catch (Throwable $e) {
