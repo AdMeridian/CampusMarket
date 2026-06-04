@@ -5,6 +5,7 @@
     const baseUrl = window.__baseUrl || '/';
     const normalizePath = (p) => baseUrl.replace(/\/+$/, '') + '/' + p.replace(/^\/+/, '');
     let refreshTimer = null;
+    let pollingIntervalId = null;
 
     // Polling fallback (works even if Supabase is not configured on the server).
     async function refreshCounts() {
@@ -22,6 +23,11 @@
     function scheduleRefresh() {
         if (refreshTimer) clearTimeout(refreshTimer);
         refreshTimer = setTimeout(refreshCounts, 120);
+    }
+
+    function startPolling(intervalMs) {
+        if (pollingIntervalId) clearInterval(pollingIntervalId);
+        pollingIntervalId = setInterval(refreshCounts, intervalMs);
     }
 
     function updateBadges(messages, notifs) {
@@ -99,10 +105,20 @@
         return result === 'granted';
     };
 
-    // If Supabase is missing, still keep the UI fresh (badges + page auto-refresh hooks).
+    // ── Refresh immediately when user switches back to the tab ───────────────
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshCounts();
+    });
+
+    // ── Refresh on window focus (e.g. alt-tab back to browser) ──────────────
+    window.addEventListener('focus', refreshCounts);
+
+    // ── Initial fetch on load ────────────────────────────────────────────────
+    refreshCounts();
+
+    // If Supabase is missing, keep the UI fresh with polling only.
     if (!supabase || !userMeta) {
-        refreshCounts();
-        setInterval(refreshCounts, 15000);
+        startPolling(15000);
         return;
     }
 
@@ -111,16 +127,23 @@
 
     console.log('Realtime notifications initialized for user:', currentUserId);
 
-    // Subscribe to messages table
+    // ── Reliable polling always runs alongside Supabase realtime ────────────
+    // Realtime events can be missed due to network blips, reconnects, or
+    // Supabase table replication not being enabled — polling guarantees
+    // the badge stays accurate even when realtime delivery fails.
+    startPolling(30000);
+
+    // ── Supabase Realtime subscriptions ─────────────────────────────────────
+
+    // Subscribe to messages table (INSERT = new incoming message)
     supabase
         .channel('messages-unread')
-        .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
             table: 'messages',
             filter: `receiver_id=eq.${currentUserId}`
         }, (payload) => {
-            console.log('New message received:', payload.new);
             scheduleRefresh();
             showBrowserNotification(
                 'New message',
@@ -128,18 +151,23 @@
                 normalizePath('pages/inbox.php')
             );
         })
-        .subscribe();
+        .subscribe((status) => {
+            // If realtime fails for messages, speed up polling to compensate
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                console.warn('Messages realtime channel error:', status, '— falling back to 10s poll');
+                startPolling(10000);
+            }
+        });
 
-    // Subscribe to notifications table
+    // Subscribe to notifications table (INSERT = new notification)
     supabase
         .channel('notifications-unread')
-        .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
             table: 'notifications',
             filter: `user_id=eq.${currentUserId}`
         }, (payload) => {
-            console.log('New notification received:', payload.new);
             scheduleRefresh();
             showBrowserNotification(
                 payload?.new?.title || 'New notification',
@@ -147,24 +175,26 @@
                 normalizePath('pages/notifications.php')
             );
         })
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                console.warn('Notifications realtime channel error:', status, '— falling back to 10s poll');
+                startPolling(10000);
+            }
+        });
 
-    // Also listen for UPDATE (when marked as read in another tab)
+    // Subscribe to UPDATE events (e.g. marked-as-read in another tab)
     supabase
         .channel('sync-read-status')
-        .on('postgres_changes', { 
-            event: 'UPDATE', 
-            schema: 'public', 
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
             table: 'messages'
         }, () => scheduleRefresh())
-        .on('postgres_changes', { 
-            event: 'UPDATE', 
-            schema: 'public', 
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
             table: 'notifications'
         }, () => scheduleRefresh())
         .subscribe();
-
-    // Initial sync for open tabs
-    refreshCounts();
 
 })();
