@@ -222,6 +222,12 @@ CREATE TABLE email_verifications (
     INDEX idx_user (user_id)
 ) ENGINE=InnoDB;
 
+-- ─────────────────────────────────────────────────────────
+-- 15. User Activity Tracking
+-- ─────────────────────────────────────────────────────────
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS last_seen_at DATETIME NULL DEFAULT NULL;
+
 -- Promotion payments (manual verification workflow)
 CREATE TABLE IF NOT EXISTS promotion_payments (
     id              INT AUTO_INCREMENT PRIMARY KEY,

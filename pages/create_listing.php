@@ -27,105 +27,116 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
 
-    // Collect Image Data for Moderation
-    $imagesData = [];
-    if (!empty($_FILES['images']['name'][0])) {
-        $files = $_FILES['images'];
-        for ($i = 0; $i < count($files['name']); $i++) {
-            if ($i >= MAX_IMAGES) break;
-            if ($files['error'][$i] === UPLOAD_ERR_OK) {
-                $tmp = $files['tmp_name'][$i];
-                $mime = $files['type'][$i];
-                if (strpos($mime, 'image/') === 0) {
-                    $base64 = base64_encode(file_get_contents($tmp));
-                    $imagesData[] = [
-                        'mime' => $mime,
-                        'base64' => $base64
-                    ];
-                }
-            }
-        }
+    // Validate Title and Image Presence
+    if (empty($title) || mb_strlen($title) < 3) {
+        $error = __('create_listing.title_required');
+    } elseif (mb_strlen($title) > 100) {
+        $error = __('create_listing.title_too_long');
+    } elseif (empty($_FILES['images']['name'][0]) || $_FILES['images']['error'][0] === UPLOAD_ERR_NO_FILE) {
+        $error = __('create_listing.image_required');
     }
 
-    // Call AI Moderation Before Database Changes
-    $aiResult = aiModerateListing($title, $description, $imagesData);
-
-    if ($aiResult['is_blurry']) {
-        $error = "This photo looks blurry. Please retake or upload a clearer image.";
-    } else {
-        try {
-            $pdo->beginTransaction();
-
-            // 1. Insert Product
-            $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-            $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, {$conditionQuote}, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
-            $stmt->execute([$userId, $categoryId, $title, $description, $price, $condition]);
-            $productId = $pdo->lastInsertId();
-
-            // 2. Handle Image Uploads
-            if (!empty($_FILES['images']['name'][0])) {
-                $files = $_FILES['images'];
-                for ($i = 0; $i < count($files['name']); $i++) {
-                    if ($i >= MAX_IMAGES) break; // Limit per listing
-
-                    $fileData = [
-                        'name'     => $files['name'][$i],
-                        'type'     => $files['type'][$i],
-                        'tmp_name' => $files['tmp_name'][$i],
-                        'error'    => $files['error'][$i],
-                        'size'     => $files['size'][$i]
-                    ];
-
-                    $upload = handleUpload($fileData, 'products/');
-                    if ($upload['success']) {
-                        $isPrimary = ($i === 0);
-                        $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (:pid, :path, :primary)");
-                        $stmtImg->bindValue(':pid', $productId, PDO::PARAM_INT);
-                        $stmtImg->bindValue(':path', $upload['path'], PDO::PARAM_STR);
-                        $stmtImg->bindValue(':primary', $isPrimary, PDO::PARAM_BOOL);
-                        $stmtImg->execute();
-                    } else {
-                        throw new Exception("Image upload failed: " . $upload['error']);
+    if (!$error) {
+        // Collect Image Data for Moderation
+        $imagesData = [];
+        if (!empty($_FILES['images']['name'][0])) {
+            $files = $_FILES['images'];
+            for ($i = 0; $i < count($files['name']); $i++) {
+                if ($i >= MAX_IMAGES) break;
+                if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                    $tmp = $files['tmp_name'][$i];
+                    $mime = $files['type'][$i];
+                    if (strpos($mime, 'image/') === 0) {
+                        $base64 = base64_encode(file_get_contents($tmp));
+                        $imagesData[] = [
+                            'mime' => $mime,
+                            'base64' => $base64
+                        ];
                     }
                 }
             }
+        }
 
-            if ($aiResult['passed'] && $aiResult['confidence'] >= 0.9) {
-                $status = 'active';
-            } else {
-                $status = 'pending_approval';
-                $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
-                $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
-            }
+        // Call AI Moderation Before Database Changes
+        $aiResult = aiModerateListing($title, $description, $imagesData);
 
-            // 3. Save tags — manual selection first, then AI-generated as fallback
-            $tagsToSave = [];
-            if (!empty($selectedTagIds)) {
-                // User explicitly picked tags from the pill UI
-                $tagsToSave = $selectedTagIds;
-            } elseif ($status === 'active' && !empty($aiResult['tags'])) {
-                // Auto-approved with no manual selection: resolve AI tag names → IDs
-                $placeholders = implode(',', array_fill(0, count($aiResult['tags']), '?'));
-                $nameStmt = $pdo->prepare("SELECT id FROM tags WHERE name IN ($placeholders)");
-                $nameStmt->execute($aiResult['tags']);
-                $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
-            }
-            if (!empty($tagsToSave)) {
-                $tagInsert = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING");
-                foreach ($tagsToSave as $tid) {
-                    $tagInsert->execute([$productId, (int)$tid]);
+        if ($aiResult['is_blurry']) {
+            $error = "This photo looks blurry. Please retake or upload a clearer image.";
+        } else {
+            try {
+                $pdo->beginTransaction();
+
+                // 1. Insert Product
+                $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, {$conditionQuote}, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $condition]);
+                $productId = $pdo->lastInsertId();
+
+                // 2. Handle Image Uploads
+                if (!empty($_FILES['images']['name'][0])) {
+                    $files = $_FILES['images'];
+                    for ($i = 0; $i < count($files['name']); $i++) {
+                        if ($i >= MAX_IMAGES) break; // Limit per listing
+
+                        $fileData = [
+                            'name'     => $files['name'][$i],
+                            'type'     => $files['type'][$i],
+                            'tmp_name' => $files['tmp_name'][$i],
+                            'error'    => $files['error'][$i],
+                            'size'     => $files['size'][$i]
+                        ];
+
+                        $upload = handleUpload($fileData, 'products/');
+                        if ($upload['success']) {
+                            $isPrimary = ($i === 0);
+                            $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (:pid, :path, :primary)");
+                            $stmtImg->bindValue(':pid', $productId, PDO::PARAM_INT);
+                            $stmtImg->bindValue(':path', $upload['path'], PDO::PARAM_STR);
+                            $stmtImg->bindValue(':primary', $isPrimary, PDO::PARAM_BOOL);
+                            $stmtImg->execute();
+                        } else {
+                            throw new Exception("Image upload failed: " . $upload['error']);
+                        }
+                    }
                 }
-            }
-            
-            $pdo->commit();
-            $success = true;
-            $createdProductId = (int)$productId;
-            $createdProductStatus = $status;
 
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $error = __('create_listing.error_msg', ['error' => $e->getMessage()]);
+                if ($aiResult['passed'] && $aiResult['confidence'] >= 0.9) {
+                    $status = 'active';
+                } else {
+                    $status = 'pending_approval';
+                    $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
+                    $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+                }
+
+                // 3. Save tags — manual selection first, then AI-generated as fallback
+                $tagsToSave = [];
+                if (!empty($selectedTagIds)) {
+                    // User explicitly picked tags from the pill UI
+                    $tagsToSave = $selectedTagIds;
+                } elseif ($status === 'active' && !empty($aiResult['tags'])) {
+                    // Auto-approved with no manual selection: resolve AI tag names → IDs
+                    $placeholders = implode(',', array_fill(0, count($aiResult['tags']), '?'));
+                    $nameStmt = $pdo->prepare("SELECT id FROM tags WHERE name IN ($placeholders)");
+                    $nameStmt->execute($aiResult['tags']);
+                    $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
+                }
+                if (!empty($tagsToSave)) {
+                    $tagInsert = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING");
+                    foreach ($tagsToSave as $tid) {
+                        $tagInsert->execute([$productId, (int)$tid]);
+                    }
+                }
+                
+                $pdo->commit();
+                $success = true;
+                $createdProductId = (int)$productId;
+                $createdProductStatus = $status;
+
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $error = __('create_listing.error_msg', ['error' => $e->getMessage()]);
+            }
         }
     }
 }
@@ -170,7 +181,7 @@ include '../includes/header.php';
 
 
 
-    <div class="w-full max-w-3xl">
+    <div class="w-full max-w-3xl" style="min-width: 0;">
         <div class="text-center mb-8">
             <h1 class="mb-2" style="font-size: 2.75rem;"><?= __('create_listing.title') ?></h1>
             <p class="text-muted text-lg"><?= __('create_listing.subtitle') ?></p>
@@ -182,8 +193,8 @@ include '../includes/header.php';
             </div>
         <?php endif; ?>
 
-        <div class="glass-panel" style="padding: 2.5rem; border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10;">
-            <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid gap-6">
+        <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
+            <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6">
                 <?php echo csrfTokenField(); ?>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
@@ -392,6 +403,20 @@ include '../includes/header.php';
     #suggestTagsBtn:disabled {
         opacity: 0.55;
         cursor: not-allowed;
+    }
+
+    .max-w-3xl {
+        max-width: 768px;
+        width: 100%;
+    }
+
+    .create-listing-card {
+        padding: 1.25rem;
+    }
+    @media (min-width: 768px) {
+        .create-listing-card {
+            padding: 2.5rem;
+        }
     }
 </style>
 

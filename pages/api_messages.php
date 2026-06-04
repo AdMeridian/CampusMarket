@@ -811,4 +811,45 @@ if ($action === 'set_language') {
     exit;
 }
 
+// ─── Get User Presence ───────────────────────────────────
+if ($action === 'get_presence') {
+    $targetUserId = (int)($_GET['user_id'] ?? 0);
+    if ($targetUserId <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Missing user_id']);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT last_seen_at FROM users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row || !$row['last_seen_at']) {
+            ob_clean();
+            echo json_encode(['success' => true, 'status' => 'offline', 'mins' => null]);
+            exit;
+        }
+
+        $diffSeconds = time() - strtotime($row['last_seen_at']);
+
+        if ($diffSeconds <= 120) {
+            $status = 'online';
+            $mins   = null;
+        } elseif ($diffSeconds <= 3600) {
+            $status = 'recently';
+            $mins   = (int) ceil($diffSeconds / 60);
+        } else {
+            $status = 'offline';
+            $mins   = null;
+        }
+
+        ob_clean();
+        echo json_encode(['success' => true, 'status' => $status, 'mins' => $mins]);
+    } catch (\Throwable $e) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'DB error']);
+    }
+    exit;
+}
+
 echo json_encode(['error' => 'Invalid action']);

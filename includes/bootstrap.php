@@ -138,6 +138,19 @@ if (isLoggedIn()) {
         // Start a new session for flash messages
         session_name(SESSION_NAME);
         session_start();
+    } else {
+        // ─── Update last_seen_at (throttled: once per 60 s per session) ───
+        $uid = currentUserId();
+        $lastPing = $_SESSION['last_seen_ping'] ?? 0;
+        if ((time() - $lastPing) >= 60) {
+            try {
+                $pdo->prepare("UPDATE users SET last_seen_at = NOW() WHERE id = ?")
+                    ->execute([$uid]);
+                $_SESSION['last_seen_ping'] = time();
+            } catch (\Throwable $e) {
+                // Column may not exist yet on older installs — fail silently
+            }
+        }
     }
 }
 

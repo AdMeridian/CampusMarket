@@ -21,7 +21,7 @@ if ($productId > 0) {
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
 
-    $stmt = $pdo->prepare("SELECT username, avatar, role FROM users WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT username, avatar, role, last_seen_at FROM users WHERE id = :id");
     $stmt->execute([':id' => $otherUserId]);
     $otherUser = $stmt->fetch();
 
@@ -44,7 +44,7 @@ if ($productId > 0) {
     }
 } else {
     // Support or Direct Message Context
-    $stmt = $pdo->prepare("SELECT username, avatar, role FROM users WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT username, avatar, role, last_seen_at FROM users WHERE id = :id");
     $stmt->execute([':id' => $otherUserId]);
     $otherUser = $stmt->fetch();
     
@@ -69,6 +69,23 @@ if ($productId > 0) {
     $sellerId = -1; // Not a seller conversation
 }
 
+// Compute initial presence status from last_seen_at
+function computePresence(?string $lastSeenAt): array {
+    if (!$lastSeenAt) {
+        return ['status' => 'offline', 'label' => null];
+    }
+    $diffSeconds = time() - strtotime($lastSeenAt);
+    if ($diffSeconds <= 120) {
+        return ['status' => 'online',  'label' => null];
+    } elseif ($diffSeconds <= 3600) {
+        $mins = (int) ceil($diffSeconds / 60);
+        return ['status' => 'recently', 'label' => $mins];
+    } else {
+        return ['status' => 'offline', 'label' => null];
+    }
+}
+$otherPresence = computePresence($otherUser['last_seen_at'] ?? null);
+
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -91,8 +108,23 @@ require_once __DIR__ . '/../includes/header.php';
                             <h3 class="mb-0 font-bold text-main hover:text-primary transition-colors" style="line-height: 1.2; margin: 0;">@<?= htmlspecialchars($otherUser['username']) ?></h3>
                         </a>
                     <?php endif; ?>
-                    <p class="text-muted small mb-0 flex items-center gap-1" style="margin: 0; margin-top: 2px;">
-                        <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span> <?= __('chat.active_recently') ?>
+                    <p id="user-presence" class="text-muted small mb-0 flex items-center gap-1" style="margin: 0; margin-top: 2px;">
+                        <?php
+                        $presenceColor = match($otherPresence['status']) {
+                            'online'   => '#10b981',
+                            'recently' => '#f59e0b',
+                            default    => '#94a3b8',
+                        };
+                        $presenceText = match($otherPresence['status']) {
+                            'online'   => __('chat.online_now'),
+                            'recently' => ($otherPresence['label'] === 1
+                                ? __('chat.active_1min_ago')
+                                : __('chat.active_mins_ago', ['mins' => $otherPresence['label']])),
+                            default    => __('chat.offline'),
+                        };
+                        ?>
+                        <span id="presence-dot" style="display:inline-block;width:8px;height:8px;background:<?= $presenceColor ?>;border-radius:50%;flex-shrink:0;"></span>
+                        <span id="presence-text"><?= htmlspecialchars($presenceText) ?></span>
                     </p>
                 </div>
             </div>
@@ -796,6 +828,37 @@ function confirmDeal(prodId = null, isSellerOverride = null) {
             }
         });
 }
+
+// ─── Presence polling ─────────────────────────────────────
+const PRESENCE_OTHER_USER_ID = <?= $otherUserId ?>;
+
+function refreshPresence() {
+    fetch(`api_messages.php?action=get_presence&user_id=${PRESENCE_OTHER_USER_ID}&_=${Date.now()}`, { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            const dot  = document.getElementById('presence-dot');
+            const text = document.getElementById('presence-text');
+            if (!dot || !text) return;
+
+            const colorMap  = { online: '#10b981', recently: '#f59e0b', offline: '#94a3b8' };
+            const statusKey = data.status;
+            dot.style.background = colorMap[statusKey] || '#94a3b8';
+
+            if (statusKey === 'online') {
+                text.textContent = __('chat.online_now');
+            } else if (statusKey === 'recently') {
+                const mins = data.mins;
+                text.textContent = mins === 1 ? __('chat.active_1min_ago') : __('chat.active_mins_ago', { mins });
+            } else {
+                text.textContent = __('chat.offline');
+            }
+        })
+        .catch(() => {});
+}
+
+// Poll presence every 30 s
+setInterval(refreshPresence, 30000);
 
 // Initial fetch
 fetchMessages();
