@@ -239,7 +239,7 @@ if (count($_SESSION['chatbot_history']) > 20) {
 }
 
 // ─── 5. Gemini AI Fallback Call ───
-$apiKey = getenv('GEMINI_API_KEY');
+$apiKey = getenv('CHATBOT_GEMINI_API_KEY') ?: getenv('GEMINI_API_KEY');
 if (!$apiKey) {
     echo json_encode([
         'success' => true,
