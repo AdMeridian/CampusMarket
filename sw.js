@@ -36,6 +36,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
+
+  // Ignore unsupported schemes from browser extensions and other non-HTTP requests.
+  if (!/^https?:$/i.test(requestUrl.protocol)) {
+    return;
+  }
   
   // HTML / Navigation requests: always fetch from network, fallback to offline.html
   const isHtmlRequest = event.request.mode === "navigate";
