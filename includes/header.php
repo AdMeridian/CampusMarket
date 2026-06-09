@@ -79,7 +79,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="<?php echo BASE_URL; ?>public/js/supabase-client.js"></script>
     <?php endif; ?>
-    <script>window.__csrfToken = <?php echo json_encode($_SESSION['csrf_token'] ?? ''); ?>;</script>
+    <script>window.__csrfToken = <?php echo json_encode(csrfToken()); ?>;</script>
     
     <!-- i18n Client Data -->
     <script>

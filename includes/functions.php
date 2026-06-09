@@ -717,9 +717,13 @@ function formatJoinDate(string $timestamp): string {
  * Return a hidden <input> containing the current CSRF token.
  * Drop this inside every <form method="post">.
  */
+function csrfToken(): string {
+    return $_SESSION['csrf_token'] ?? $_COOKIE['csrf_token'] ?? '';
+}
+
 function csrfTokenField(): string {
     return '<input type="hidden" name="csrf_token" value="'
-        . htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8')
+        . htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8')
         . '">';
 }
 
