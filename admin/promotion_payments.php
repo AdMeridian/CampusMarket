@@ -21,10 +21,22 @@ if (!$promoPaymentsTableExists) {
     redirect('listings.php');
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payment_id'], $_POST['action'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     verifyCsrfToken();
-    $paymentId = (int)$_POST['payment_id'];
     $action = sanitize($_POST['action']);
+
+    if ($action === 'clear_supporters') {
+        try {
+            $stmt = $pdo->prepare("DELETE FROM promotion_payments WHERE payment_type = 'donation' AND status = 'approved'");
+            $stmt->execute();
+            setFlash('success', 'Supporter Hall of Fame has been reset.');
+        } catch (Exception $e) {
+            setFlash('error', 'Failed to reset supporters: ' . $e->getMessage());
+        }
+        redirect('promotion_payments.php');
+    }
+
+    $paymentId = (int)($_POST['payment_id'] ?? 0);
     $adminNote = sanitize($_POST['admin_note'] ?? '');
 
     if ($paymentId > 0 && in_array($action, ['approve', 'reject'], true)) {
@@ -97,7 +109,13 @@ $rows = $pdo->query('
             <h1 class="mb-0">Promotion & Donation Payments</h1>
             <p class="text-muted mb-2">Donations support CampusMarket generally and do not become promotion credits. Promotion requests can later be consumed to feature an approved listing.</p>
         </div>
-        <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($rows); ?> Requests</div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($rows); ?> Requests</div>
+            <form method="post" style="margin: 0;">
+                <?php echo csrfTokenField(); ?>
+                <button type="submit" name="action" value="clear_supporters" class="btn btn-danger btn-sm" onclick="return confirm('This will remove all approved donations from the Supporter Hall of Fame. Continue?');">Reset Hall of Fame</button>
+            </form>
+        </div>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
