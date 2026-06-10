@@ -546,6 +546,45 @@ function getTopCategories(PDO $pdo): array {
 }
 
 /**
+ * Core marketplace tags used by AI suggestions and the create-listing form.
+ */
+function getDefaultMarketplaceTags(): array {
+    return [
+        ['Electronics', 'electronics'],
+        ['Books', 'books'],
+        ['Study Guides', 'study-guides'],
+        ['Dorm Decor', 'dorm-decor'],
+        ['Furniture', 'furniture'],
+        ['Kitchenwear', 'kitchenwear'],
+        ['Bikes', 'bikes'],
+        ['Scooters', 'scooters'],
+        ['Clothing', 'clothing'],
+        ['Stationery', 'stationery'],
+        ['Snacks', 'snacks'],
+        ['Sports & Fitness', 'sports-fitness'],
+    ];
+}
+
+/**
+ * Re-insert any missing default tags (safe to run multiple times).
+ */
+function seedDefaultTags(PDO $pdo): int {
+    $added = 0;
+    $check = $pdo->prepare('SELECT id FROM tags WHERE slug = ? LIMIT 1');
+    $insert = $pdo->prepare('INSERT INTO tags (name, slug) VALUES (?, ?)');
+
+    foreach (getDefaultMarketplaceTags() as [$name, $slug]) {
+        $check->execute([$slug]);
+        if (!$check->fetchColumn()) {
+            $insert->execute([$name, $slug]);
+            $added++;
+        }
+    }
+
+    return $added;
+}
+
+/**
  * Remove all donation payment records (test checkout data, Hall of Fame, etc.).
  * Promotion payments are not affected.
  */

@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_tag'])) {
     } else {
         setFlash('error', "Tag name cannot be empty.");
     }
-    redirect(BASE_URL . '/admin/tags.php');
+    redirect(BASE_URL . 'admin/tags.php');
 }
 
 // Handle Delete Tag
@@ -36,7 +36,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_tag'])) {
         $pdo->prepare("DELETE FROM tags WHERE id = ?")->execute([$tid]);
         setFlash('success', "Tag deleted.");
     }
-    redirect(BASE_URL . '/admin/tags.php');
+    redirect(BASE_URL . 'admin/tags.php');
+}
+
+// Restore missing default tags (idempotent)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['restore_default_tags'])) {
+    verifyCsrfToken();
+    try {
+        $added = seedDefaultTags($pdo);
+        if ($added > 0) {
+            setFlash('success', "Restored {$added} default tag(s). AI suggestions and listing tags are available again.");
+        } else {
+            setFlash('success', 'All default tags are already present.');
+        }
+    } catch (PDOException $e) {
+        setFlash('error', 'Could not restore default tags: ' . $e->getMessage());
+    }
+    redirect(BASE_URL . 'admin/tags.php');
 }
 
 // Fetch tags with usage count
@@ -60,10 +76,29 @@ require_once '../includes/header.php';
                 <?php echo count($tags); ?> tag<?php echo count($tags) !== 1 ? 's' : ''; ?> · AI uses these when auto-tagging listings
             </p>
         </div>
-        <button onclick="document.getElementById('add-tag-card').scrollIntoView({behavior:'smooth'})" class="btn btn-primary">
-            + Create Tag
-        </button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <form method="POST" style="margin: 0;" onsubmit="return confirm('Restore the 12 default marketplace tags? Existing custom tags are kept.');">
+                <?php echo csrfTokenField(); ?>
+                <button type="submit" name="restore_default_tags" class="btn btn-secondary">Restore Defaults</button>
+            </form>
+            <button onclick="document.getElementById('add-tag-card').scrollIntoView({behavior:'smooth'})" class="btn btn-primary">
+                + Create Tag
+            </button>
+        </div>
     </div>
+
+    <?php if (empty($tags)): ?>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; background: #fff7ed; border: 1px solid #fed7aa; border-left: 4px solid #f97316; border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+        <div>
+            <div style="font-weight: 700; color: #9a3412; margin-bottom: 0.25rem;">No tags available</div>
+            <div style="font-size: 0.85rem; color: #c2410c;">Sellers cannot pick tags and AI suggestions will not work until defaults are restored.</div>
+        </div>
+        <form method="POST" style="margin: 0;" onsubmit="return confirm('Restore all 12 default marketplace tags?');">
+            <?php echo csrfTokenField(); ?>
+            <button type="submit" name="restore_default_tags" class="btn btn-primary">Restore Default Tags</button>
+        </form>
+    </div>
+    <?php endif; ?>
 
     <div class="admin-two-col">
 
@@ -86,7 +121,7 @@ require_once '../includes/header.php';
                             <td colspan="5">
                                 <div class="admin-empty">
                                     <span class="admin-empty-icon"><svg style="width: 32px; height: 32px; display: inline-block; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
-                                    No tags yet. Create the first one →
+                                    No tags yet. <strong>Restore defaults</strong> to re-enable AI tagging →
                                 </div>
                             </td>
                         </tr>
@@ -106,7 +141,7 @@ require_once '../includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td style="text-align: right;">
-                                <form method="POST" style="margin:0;" onsubmit="return confirm('Delete tag #<?php echo sanitize($tag['name']); ?>? This will remove it from all listings.')">
+                                <form method="POST" style="margin:0;" onsubmit="return confirm('Delete tag #<?php echo sanitize($tag['name']); ?>?<?php echo count($tags) <= 1 ? ' This is the last tag — AI suggestions and seller tag picks will stop working.' : ' This will remove it from all listings.'; ?>');">
                                     <?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="tag_id" value="<?php echo $tag['id']; ?>">
                                     <button type="submit" name="delete_tag" class="btn btn-danger btn-sm" style="border-radius: var(--radius-lg); padding: 0.25rem 0.6rem; font-size: 0.78rem;" title="Delete tag">✕</button>

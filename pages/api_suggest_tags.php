@@ -33,6 +33,16 @@ $aiResult = aiModerateListing($title, $description, []);
 // Fetch all master tags from DB
 $masterTags = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+if (empty($masterTags)) {
+    echo json_encode([
+        'tags'    => [],
+        'ai_tags' => $aiResult['tags'] ?? [],
+        'passed'  => $aiResult['passed'] ?? false,
+        'note'    => 'No tags in the system. Ask an admin to restore default tags under Admin → Tags.',
+    ]);
+    exit;
+}
+
 $suggestedIds = [];
 
 if (!empty($aiResult['tags']) && !empty($masterTags)) {
@@ -63,6 +73,8 @@ echo json_encode([
     'tags'      => array_unique($suggestedIds),
     'ai_tags'   => $aiResult['tags'],     // raw AI output (useful for debugging)
     'passed'    => $aiResult['passed'],
-    'note'      => empty($suggestedIds) ? 'No strong matches found — select manually.' : '',
+    'note'      => empty($suggestedIds)
+        ? (empty($aiResult['tags']) ? 'No strong matches found — select manually.' : 'AI suggested: ' . implode(', ', $aiResult['tags']) . ' — no matching tags in the system yet.')
+        : '',
 ]);
 exit;
