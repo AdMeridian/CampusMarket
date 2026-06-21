@@ -178,6 +178,7 @@ require_once __DIR__ . '/../includes/header.php';
         
         <!-- Deal Handshake Bar -->
         <div id="deal-handshake-bar" style="display:none; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 0.9rem 1.25rem; background: var(--bg-surface);">
+            <p class="text-muted small mb-3" style="line-height: 1.5; margin-top: 0;"><?= __('chat.orders_deal_explainer') ?></p>
             <!-- Content injected by JS based on deal status -->
         </div>
         

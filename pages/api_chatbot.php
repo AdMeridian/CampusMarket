@@ -9,6 +9,20 @@ ini_set('display_errors', 0);
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
+
+$ipBucket = 'chatbot:ip:' . clientIpAddress();
+$ipLimit = rateLimitAllow($pdo, $ipBucket, 40, 3600);
+if (!$ipLimit['allowed']) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'rate_limit',
+        'response' => i18nGetLocale() === 'tr'
+            ? 'Çok fazla istek gönderildi. Lütfen bir süre sonra tekrar deneyin.'
+            : 'Too many requests from your network. Please try again later.',
+    ]);
+    exit;
+}
 
 // Safe default admin ID in case database query fails early
 $adminId = 1;

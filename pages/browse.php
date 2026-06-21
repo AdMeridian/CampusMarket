@@ -14,29 +14,7 @@ $params = [];
 $filterSql = '';
 
 if ($search !== '') {
-    $searchTerms = expandSearchQuery($search);
-    $termConditions = [];
-    
-    foreach ($searchTerms as $term) {
-        $termConditions[] = "(
-            LOWER(p.title) LIKE ?
-            OR LOWER(p.description) LIKE ?
-            OR LOWER(c.name) LIKE ?
-            OR EXISTS (
-                SELECT 1 FROM product_tags pt
-                JOIN tags t ON pt.tag_id = t.id
-                WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
-            )
-        )";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-    }
-    
-    if (!empty($termConditions)) {
-        $filterSql .= " AND (" . implode(" OR ", $termConditions) . ")";
-    }
+    $filterSql .= productSearchFilterSql($search, $params);
 }
 if ($category) {
     $filterSql .= " AND p.category_id = ?";

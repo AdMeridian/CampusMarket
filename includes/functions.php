@@ -987,3 +987,71 @@ function expandSearchQuery(string $query): array {
     return array_unique($terms);
 }
 
+/**
+ * Build SQL filter for product search (FTS + LIKE fallback for tags/categories).
+ */
+function productSearchFilterSql(string $search, array &$params, string $productAlias = 'p', string $categoryAlias = 'c'): string {
+    if (trim($search) === '') {
+        return '';
+    }
+
+    $searchTerms = expandSearchQuery($search);
+    if (empty($searchTerms)) {
+        return '';
+    }
+
+    $termConditions = [];
+    foreach ($searchTerms as $term) {
+        $ftsTerm = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $term));
+        if ($ftsTerm === '') {
+            $ftsTerm = $term;
+        }
+
+        $termConditions[] = "(
+            ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
+            OR LOWER({$productAlias}.title) LIKE ?
+            OR LOWER({$productAlias}.description) LIKE ?
+            OR LOWER({$categoryAlias}.name) LIKE ?
+            OR EXISTS (
+                SELECT 1 FROM product_tags pt
+                JOIN tags t ON pt.tag_id = t.id
+                WHERE pt.product_id = {$productAlias}.id AND LOWER(t.name) LIKE ?
+            )
+        )";
+        $params[] = $ftsTerm;
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+        $params[] = "%$term%";
+    }
+
+    return ' AND (' . implode(' OR ', $termConditions) . ')';
+}
+
+/**
+ * Cached category list for navigation (short TTL file cache).
+ */
+function getNavCategories(PDO $pdo): array {
+    $cacheFile = sys_get_temp_dir() . '/cm_nav_categories_v1.json';
+    $ttl = 300;
+
+    if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < $ttl) {
+        $cached = json_decode((string) file_get_contents($cacheFile), true);
+        if (is_array($cached)) {
+            return $cached;
+        }
+    }
+
+    $rows = $pdo->query('SELECT id, name FROM categories ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
+    @file_put_contents($cacheFile, json_encode($rows));
+
+    return $rows;
+}
+
+function invalidateNavCategoriesCache(): void {
+    $cacheFile = sys_get_temp_dir() . '/cm_nav_categories_v1.json';
+    if (is_file($cacheFile)) {
+        @unlink($cacheFile);
+    }
+}
+

@@ -3,8 +3,9 @@
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/bootstrap.php';
 requireAdmin();
+require_once __DIR__ . '/../includes/admin_audit.php';
 
-$pageTitle = 'Manage Users';
+$pageTitle = __('admin.manage_users');
 $currentAdminId = currentUserId();
 
 function adminUsersFindSupabaseUuid(string $userEmail): ?string {
@@ -81,7 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['id'
             }
         }
 
-        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'User promoted to Admin locally' . $syncMsg : 'User promoted to Admin.'));
+        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'User promoted to Admin locally' . $syncMsg : __('admin.flash_user_promoted')));
+        logAdminAction($pdo, 'make_admin', 'user', $id, ['email' => $userEmail]);
     } elseif ($action === 'remove_admin') {
         $stmt = $pdo->prepare("UPDATE users SET role = 'user' WHERE id = ?");
         $stmt->execute([$id]);
@@ -100,7 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['id'
             }
         }
 
-        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'Admin privileges removed locally' . $syncMsg : 'Admin privileges removed.'));
+        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'Admin privileges removed locally' . $syncMsg : __('admin.flash_user_demoted')));
+        logAdminAction($pdo, 'remove_admin', 'user', $id, ['email' => $userEmail]);
     } elseif ($action === 'delete') {
         $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
         $stmt->execute([$id]);
@@ -117,7 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['id'
             }
         }
 
-        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'User account deleted locally' . $syncMsg : 'User account deleted.'));
+        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'User account deleted locally' . $syncMsg : __('admin.flash_user_deleted')));
+        logAdminAction($pdo, 'delete_user', 'user', $id, ['email' => $userEmail]);
     } else {
         setFlash('error', 'Unknown action.');
     }
@@ -135,7 +139,7 @@ include '../includes/header.php';
     <div class="flex justify-between items-end mb-8">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Users</div>
-            <h1 class="mb-0">User Management</h1>
+            <h1 class="mb-0"><?= __('admin.manage_users') ?></h1>
         </div>
         <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($users); ?> Registered Users</div>
     </div>

@@ -3,8 +3,9 @@
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/bootstrap.php';
 requireAdmin();
+require_once __DIR__ . '/../includes/admin_audit.php';
 
-$pageTitle = "Moderation Queue";
+$pageTitle = __('admin.moderation_queue');
 
 // Handle Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['report_id'])) {
@@ -14,7 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['rep
 
     if ($action === 'dismiss') {
         $pdo->prepare("UPDATE reports SET status = 'dismissed' WHERE id = ?")->execute([$reportId]);
-        setFlash('success', 'Report dismissed.');
+        setFlash('success', __('admin.flash_report_dismissed'));
+        logAdminAction($pdo, 'dismiss_report', 'report', $reportId);
     } elseif ($action === 'flag') {
         $stmt = $pdo->prepare("SELECT product_id FROM reports WHERE id = ?");
         $stmt->execute([$reportId]);
@@ -23,10 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['rep
             $pdo->prepare("UPDATE products SET status = 'flagged' WHERE id = ?")->execute([$productId]);
             $pdo->prepare("UPDATE reports SET status = 'reviewed' WHERE id = ?")->execute([$reportId]);
             setFlash('error', 'Item flagged and hidden from the marketplace.');
+            logAdminAction($pdo, 'flag_report', 'report', $reportId, ['product_id' => (int)$productId]);
         }
     } elseif ($action === 'resolve') {
         $pdo->prepare("UPDATE reports SET status = 'reviewed' WHERE id = ?")->execute([$reportId]);
         setFlash('success', 'Report marked as resolved.');
+        logAdminAction($pdo, 'resolve_report', 'report', $reportId);
     }
     redirect(BASE_URL . 'admin/reports.php');
 }

@@ -54,14 +54,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Forgot Password';
+$pageTitle = __('auth.forgot_title');
 require_once '../includes/header.php';
 ?>
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-head">
-            <h1>Forgot your password?</h1>
-            <p>Enter your email below and we’ll send you a link to reset your password.</p>
+            <h1><?= __('auth.forgot_title') ?></h1>
+            <p><?= __('auth.forgot_subtitle') ?></p>
         </div>
         <?php if (!empty($errors['form'])): ?>
             <div class="flash flash-error mb-8"><?php echo sanitize($errors['form']); ?></div>

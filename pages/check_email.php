@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Verify your email';
+$pageTitle = __('auth.check_email_title');
 require_once '../includes/header.php';
 ?>
 
@@ -41,8 +41,8 @@ require_once '../includes/header.php';
           <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
         </svg>
       </div>
-      <h1>Check your email</h1>
-      <p>We sent a verification link to <strong><?php echo sanitize($pendingEmail); ?></strong>.</p>
+      <h1><?= __('auth.check_email_title') ?></h1>
+      <p><?= __('auth.check_email_subtitle', ['email' => '<strong>' . sanitize($pendingEmail) . '</strong>']) ?></p>
     </div>
 
     <?php if ($resendMessage !== ''): ?>
@@ -55,12 +55,12 @@ require_once '../includes/header.php';
     <div class="verify-email-tips mb-8">
       <p><strong>Next steps</strong></p>
       <ol>
-        <li>Open your university inbox and look for an email from CampusMarket.</li>
-        <li>Click the verification link in that email.</li>
-        <li>Come back here and log in once verified.</li>
+        <li><?= __('auth.check_email_step1') ?></li>
+        <li><?= __('auth.check_email_step2') ?></li>
+        <li><?= __('auth.check_email_step3') ?></li>
       </ol>
       <p class="verify-email-spam-tip">
-        Don&rsquo;t see it within a few minutes? Check your <strong>Spam</strong> or <strong>Junk</strong> folder and mark the message as &ldquo;Not spam&rdquo; so future emails arrive in your inbox.
+        <?= __('auth.check_email_spam') ?>
       </p>
       <p class="verify-email-spam-tip" style="border-top: none; padding-top: 0.5rem;">
         After you log in, you can enable <strong>phone notifications</strong> for new messages and marketplace activity.
@@ -70,12 +70,12 @@ require_once '../includes/header.php';
     <form method="post" class="mb-6">
       <?php echo csrfTokenField(); ?>
       <button type="submit" class="btn btn-secondary w-full py-3" style="border-radius: var(--radius-md); font-weight: 600;">
-        Resend verification email
+        <?= __('auth.resend_btn') ?>
       </button>
     </form>
 
     <a href="<?php echo BASE_URL; ?>pages/login.php?redirect=/pages/profile.php" class="btn btn-primary w-full py-4 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600; font-size: 1.05rem; letter-spacing: 0.01em; text-align: center; display: block; text-decoration: none;">
-      I&rsquo;ve verified &mdash; log in
+      <?= __('auth.back_to_login') ?>
     </a>
 
     <p class="auth-foot mt-10">

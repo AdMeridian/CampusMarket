@@ -2,8 +2,8 @@
 // includes/header.php
 require_once __DIR__ . '/bootstrap.php';
 
-// Fetch categories for global search
-$navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC")->fetchAll();
+// Fetch categories for global search (cached)
+$navCategories = getNavCategories($pdo);
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo i18nGetLocale(); ?>">
@@ -18,8 +18,8 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="CampusMarket">
     <link rel="manifest" href="<?php echo BASE_URL; ?>manifest.webmanifest">
-    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>public/images/logo.png">
-    <link rel="apple-touch-icon" href="<?php echo BASE_URL; ?>public/images/logo.png">
+    <link rel="icon" type="image/svg+xml" href="<?php echo BASE_URL; ?>public/images/icon-192.svg">
+    <link rel="apple-touch-icon" href="<?php echo BASE_URL; ?>public/images/icon-192.svg">
     <?php if (isLoggedIn()): ?>
     <meta name="user-id" content="<?php echo currentUserId(); ?>">
     <?php endif; ?>

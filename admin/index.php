@@ -3,14 +3,16 @@
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/bootstrap.php';
 requireAdmin();
+require_once __DIR__ . '/../includes/admin_audit.php';
 
-$pageTitle = "Admin Dashboard";
+$pageTitle = __('admin.dashboard_title');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'clear_donations') {
     verifyCsrfToken();
     try {
         $removed = clearDonationData($pdo);
         setFlash('success', "Cleared {$removed} donation record(s). Ready for go-live.");
+        logAdminAction($pdo, 'clear_donations', 'system', null, ['removed' => $removed]);
     } catch (Exception $e) {
         setFlash('error', 'Failed to clear donation data: ' . $e->getMessage());
     }
