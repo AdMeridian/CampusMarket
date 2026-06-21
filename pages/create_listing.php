@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if ($aiResult['passed'] && $aiResult['confidence'] >= 0.9) {
+                if ($aiResult['passed'] && $aiResult['confidence'] >= AI_MODERATION_MIN_CONFIDENCE) {
                     $status = 'active';
                 } else {
                     $status = 'pending_approval';

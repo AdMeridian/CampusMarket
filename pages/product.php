@@ -109,6 +109,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     }
 }
 
+// Handle Description Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_description') {
+    verifyCsrfToken();
+    $newDescription = trim(sanitize($_POST['description'] ?? ''));
+    if ($newDescription === '') {
+        setFlash('error', __('product.description_required'));
+    } else {
+        $stmtUp = $pdo->prepare("UPDATE products SET description = :description, updated_at = NOW() WHERE id = :id");
+        $stmtUp->execute([':description' => $newDescription, ':id' => $productId]);
+        setFlash('success', __('product.description_updated'));
+        redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+    }
+}
+
 // Handle Mark as Sold (Now moves to bin too)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'mark_sold') {
     verifyCsrfToken();
@@ -934,7 +948,16 @@ body.dark-mode .scc-badge {
                         <h3 class="m-0 font-bold text-main" style="font-size: 1.4rem; color: var(--text-main);"><?= __('product.description_title') ?></h3>
                     </div>
                     <div style="line-height: 2; color: var(--text-muted); font-size: 1.15rem;">
-                        <?php echo nl2br(sanitize($product['description'])); ?>
+                        <?php if ($isOwner): ?>
+                            <form method="post">
+                                <?php echo csrfTokenField(); ?>
+                                <input type="hidden" name="action" value="update_description">
+                                <textarea name="description" rows="6" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg); line-height: 1.6; font-size: 1rem; margin-bottom: 0.75rem;" required><?php echo htmlspecialchars($product['description']); ?></textarea>
+                                <button type="submit" class="btn btn-primary btn-sm"><?= __('product.update_description') ?></button>
+                            </form>
+                        <?php else: ?>
+                            <?php echo nl2br(sanitize($product['description'])); ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 

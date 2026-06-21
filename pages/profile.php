@@ -73,6 +73,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], 
                 $upd->execute([':price' => $newPrice, ':pid' => $productId]);
                 setFlash('success', 'Price updated successfully.');
             }
+        } elseif ($action === 'update_description') {
+            $newDescription = trim(sanitize($_POST['description'] ?? ''));
+            if ($newDescription === '') {
+                setFlash('error', __('product.description_required'));
+            } else {
+                $upd = $pdo->prepare("UPDATE products SET description = :description, updated_at = NOW() WHERE id = :pid");
+                $upd->execute([':description' => $newDescription, ':pid' => $productId]);
+                setFlash('success', __('product.description_updated'));
+            }
         } elseif ($action === 'delete_listing') {
             $upd = $pdo->prepare("UPDATE products SET status = 'deleted', deleted_at = NOW(), updated_at = NOW() WHERE id = :pid");
             if ($upd->execute([':pid' => $productId])) {
@@ -879,6 +888,14 @@ body.dark-mode .btn-white-solid:hover {
                                                 <input type="number" name="new_price" step="0.01" value="<?php echo (float)$prod['price']; ?>" class="premium-input" style="flex: 1; padding: 0.35rem 0.45rem; font-size: 0.82rem;" placeholder="Price">
                                                 <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Update</button>
                                             </div>
+                                        </form>
+
+                                        <form method="post" style="margin: 0;">
+                                            <?php echo csrfTokenField(); ?>
+                                            <input type="hidden" name="action" value="update_description">
+                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
+                                            <textarea name="description" rows="3" class="premium-input" style="width: 100%; padding: 0.45rem; font-size: 0.82rem; margin-bottom: 0.35rem;" placeholder="<?= __('product.description_title') ?>" required><?php echo htmlspecialchars($prod['description'] ?? ''); ?></textarea>
+                                            <button type="submit" class="btn btn-secondary btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;"><?= __('product.update_description') ?></button>
                                         </form>
 
                                         <!-- Discount Form -->

@@ -107,6 +107,9 @@ if (!defined('WEB_PUSH_PUBLIC_KEY')) {
     define('WEB_PUSH_PUBLIC_KEY', getenv('WEB_PUSH_PUBLIC_KEY') ?: '');
 }
 
+// AI listing moderation — auto-approve when passed and confidence meets this (0–1).
+define('AI_MODERATION_MIN_CONFIDENCE', 0.75);
+
 /**
  * Server-only secret for signing the stateless session cookie.
  * Falls back to INTERNAL_PUSH_KEY so existing deployments keep working.
