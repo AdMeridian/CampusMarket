@@ -684,6 +684,7 @@ body.dark-mode .btn-white-solid:hover {
                     <a href="logout.php" class="btn btn-white" style="background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
                 <?php elseif (isLoggedIn()): ?>
                     <a href="messages.php?other_user_id=<?php echo $user['id']; ?>&product_id=0" class="btn btn-white-solid"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
+                    <a href="<?php echo BASE_URL; ?>pages/report.php?user_id=<?php echo (int)$user['id']; ?>" class="btn btn-white" style="background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35);"><?= __('report.report_user') ?></a>
                 <?php endif; ?>
             </div>
 

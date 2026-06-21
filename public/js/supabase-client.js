@@ -10,7 +10,7 @@
   window.CampusMarketSupabase = window.supabase.createClient(url, anonKey, {
     auth: {
       persistSession: false,
-      autoRefreshToken: true,
+      autoRefreshToken: false,
       detectSessionInUrl: false,
     },
     realtime: {
@@ -20,16 +20,18 @@
     },
   });
 
+  // Chatbot edge functions work for guests via the anon key JWT.
+  window.CampusMarketSupabaseReady = Promise.resolve(true);
+
   var session = window.__supabaseSession || null;
   if (!session || !session.access_token) {
-    window.CampusMarketSupabaseReady = Promise.resolve(false);
     return;
   }
 
   window.CampusMarketSupabaseReady = window.CampusMarketSupabase.auth
     .setSession({
       access_token: session.access_token,
-      refresh_token: session.refresh_token || "",
+      refresh_token: "",
     })
     .then(function (result) {
       return !result.error;

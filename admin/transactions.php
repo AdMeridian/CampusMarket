@@ -1,13 +1,7 @@
 <?php
 // admin/transactions.php
-require_once __DIR__ . '/../config/constants.php';
-require_once __DIR__ . '/../includes/header.php';
-
-// Auth Check (Admin Only)
-if (!isAdmin()) {
-    setFlash('error', 'Unauthorized access.');
-    redirect('../index.php');
-}
+require_once __DIR__ . '/../includes/bootstrap.php';
+requireAdmin();
 
 $pageTitle = "Verified Transactions";
 
@@ -57,6 +51,8 @@ $totalValue = 0;
 foreach ($deals as $d) {
     $totalValue += (float)$d['product_price'];
 }
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <style>

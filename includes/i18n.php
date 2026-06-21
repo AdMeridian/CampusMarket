@@ -44,7 +44,17 @@ function i18nLoadFile(string $locale): array {
     }
     $content = file_get_contents($path);
     $data = json_decode($content, true);
-    return is_array($data) ? $data : [];
+    $base = is_array($data) ? $data : [];
+
+    $extraPath = ROOT_PATH . 'public/lang/' . basename($locale) . '.extra.json';
+    if (file_exists($extraPath)) {
+        $extra = json_decode((string) file_get_contents($extraPath), true);
+        if (is_array($extra)) {
+            $base = array_merge($base, $extra);
+        }
+    }
+
+    return $base;
 }
 
 /**

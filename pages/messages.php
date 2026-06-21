@@ -133,9 +133,6 @@ require_once __DIR__ . '/../includes/header.php';
             <button id="clear-chat-btn" type="button" class="btn btn-sm btn-danger" style="border-radius: var(--radius-md); font-size: 0.75rem; padding: 0.35rem 0.75rem; border: none;" onclick="clearChat()">
                 <?= __('chat.clear_chat') ?>
             </button>
-            <button id="translate-toggle" type="button" class="btn btn-sm btn-secondary" style="border-radius: var(--radius-md); font-size: 0.75rem; padding: 0.35rem 0.75rem;">
-                Translate: Off
-            </button>
             <?php if ($productId > 0): ?>
                 <div>
                     <p class="mb-0 text-muted small uppercase tracking-wider font-bold" style="font-size: 0.65rem;"><?= __('chat.regarding_item') ?></p>
@@ -178,6 +175,7 @@ require_once __DIR__ . '/../includes/header.php';
         
         <!-- Deal Handshake Bar -->
         <div id="deal-handshake-bar" style="display:none; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 0.9rem 1.25rem; background: var(--bg-surface);">
+            <p class="text-muted small mb-3" style="line-height: 1.5; margin-top: 0;"><?= __('chat.orders_deal_explainer') ?></p>
             <!-- Content injected by JS based on deal status -->
         </div>
         
@@ -303,32 +301,117 @@ const isAdmin = <?= isAdmin() ? 'true' : 'false' ?>;
 const chatBox = document.getElementById('chat-box');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
-const translateToggleBtn = document.getElementById('translate-toggle');
 let loadingDiv = document.getElementById('chat-loading');
 const realtimeRoom = `chat:${productId}:${[<?= $currentUserId ?>, otherUserId].sort((a, b) => a - b).join(':')}`;
 let realtimeChannel = null;
 let pollIntervalId = null;
-let translateEnabled = localStorage.getItem('cm_translate_messages') === '1';
+let translationConfigured = <?= getTranslationService()->isConfigured() ? 'true' : 'false' ?>;
+const translatedStorageKey = `cm_translated_${productId}_${otherUserId}`;
+let translatedMessageIds = new Set();
 
-function updateTranslateToggleUi() {
-    if (!translateToggleBtn) return;
-    translateToggleBtn.textContent = `Translate: ${translateEnabled ? 'On' : 'Off'}`;
+try {
+    const storedTranslated = sessionStorage.getItem(translatedStorageKey);
+    if (storedTranslated) {
+        translatedMessageIds = new Set(JSON.parse(storedTranslated));
+    }
+} catch (e) {
+    translatedMessageIds = new Set();
 }
 
-if (translateToggleBtn) {
-    updateTranslateToggleUi();
-    translateToggleBtn.addEventListener('click', () => {
-        translateEnabled = !translateEnabled;
-        localStorage.setItem('cm_translate_messages', translateEnabled ? '1' : '0');
-        updateTranslateToggleUi();
-        fetchMessages();
+function saveTranslatedIds() {
+    try {
+        sessionStorage.setItem(translatedStorageKey, JSON.stringify([...translatedMessageIds]));
+    } catch (e) {}
+}
+
+function buildTranslatedBodyHtml(translatedText, originalText, sourceLang) {
+    const langName = CampusMarketI18n.getLangName(sourceLang);
+    const translatedLabel = __('chat.translated_from', { lang: langName });
+    const viewOriginalText = __('chat.view_original');
+
+    return `
+        <div class="message-text-content translated-text" style="font-size: 1rem;">${translatedText}</div>
+        <div class="message-text-content original-text" style="font-size: 1rem; display: none; opacity: 0.85; font-style: italic;">${originalText}</div>
+        <div class="translation-meta" style="font-size: 0.7rem; opacity: 0.7; margin-top: 6px; display: flex; align-items: center; gap: 6px; border-top: 1px dashed var(--border-light); padding-top: 4px;">
+            <span>🌐 ${translatedLabel}</span>
+            <button type="button" class="btn-toggle-translation" onclick="toggleOriginalText(this)" style="background: none; border: none; padding: 0; margin: 0; color: var(--primary); font-size: 0.7rem; cursor: pointer; text-decoration: underline; font-weight: bold;">${viewOriginalText}</button>
+        </div>
+    `;
+}
+
+function buildIncomingBodyHtml(msg) {
+    const showTranslated = translatedMessageIds.has(msg.id) && msg.cached_translation;
+    if (showTranslated) {
+        return buildTranslatedBodyHtml(msg.cached_translation, msg.original_text, msg.cached_source_lang);
+    }
+
+    const translateBtn = translationConfigured
+        ? `<div class="translation-actions" style="margin-top: 6px;">
+            <button type="button" class="btn-translate-msg" onclick="translateSingleMessage(${msg.id}, this)" style="background: none; border: none; padding: 0; margin: 0; color: var(--primary); font-size: 0.72rem; cursor: pointer; text-decoration: underline; font-weight: 600;">${__('chat.translate')}</button>
+        </div>`
+        : '';
+
+    return `
+        <div class="message-text-content" style="font-size: 1rem;">${msg.body}</div>
+        ${translateBtn}
+    `;
+}
+
+window.translateSingleMessage = function(messageId, btn) {
+    if (!translationConfigured) return;
+
+    const previousLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = __('chat.translating');
+
+    const formData = new FormData();
+    formData.append('action', 'translate_message');
+    formData.append('message_id', messageId);
+    formData.append('product_id', productId);
+    formData.append('other_user_id', otherUserId);
+    formData.append('csrf_token', window.__csrfToken || '');
+
+    fetch('api_messages.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            btn.disabled = false;
+            btn.textContent = previousLabel;
+            alert(data.error || __('chat.translate_failed'));
+            return;
+        }
+
+        if (data.already_same_language) {
+            btn.remove();
+            return;
+        }
+
+        translatedMessageIds.add(messageId);
+        saveTranslatedIds();
+
+        const bubble = chatBox.querySelector(`[data-message-id="${messageId}"]`);
+        const bodyWrap = bubble ? bubble.querySelector('.message-body-wrap') : null;
+        if (bodyWrap) {
+            bodyWrap.innerHTML = buildTranslatedBodyHtml(
+                data.translated_text,
+                data.original_text,
+                data.source_lang
+            );
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = previousLabel;
+        alert(__('chat.translate_failed'));
     });
-}
+};
 
 function fetchMessages() {
     const cacheBuster = Date.now();
-    const translateParam = translateEnabled ? 1 : 0;
-    fetch(`api_messages.php?action=fetch&product_id=${productId}&other_user_id=${otherUserId}&translate=${translateParam}&_=${cacheBuster}`, {
+    fetch(`api_messages.php?action=fetch&product_id=${productId}&other_user_id=${otherUserId}&_=${cacheBuster}`, {
         cache: 'no-store'
     })
         .then(res => {
@@ -337,6 +420,9 @@ function fetchMessages() {
         })
         .then(data => {
             if (data.success) {
+                if (typeof data.translation_configured === 'boolean') {
+                    translationConfigured = data.translation_configured;
+                }
                 renderMessages(data.messages);
             } else {
                 console.warn('API error:', data.error);
@@ -386,6 +472,7 @@ function renderMessages(messages) {
 
         const msgDiv = document.createElement('div');
         msgDiv.className = 'message-bubble';
+        msgDiv.dataset.messageId = String(msg.id);
         msgDiv.style.maxWidth = '75%';
         msgDiv.style.padding = '0.875rem 1.25rem';
         msgDiv.style.boxShadow = 'none';
@@ -415,21 +502,9 @@ function renderMessages(messages) {
         
         let timeStr = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-        let bodyHtml = `<div class="message-text-content" style="font-size: 1rem;">${msg.body}</div>`;
-        if (!msg.is_mine && msg.is_translated) {
-            const langName = CampusMarketI18n.getLangName(msg.source_lang);
-            const translatedLabel = __('chat.translated_from', { lang: langName });
-            const viewOriginalText = __('chat.view_original');
-            
-            bodyHtml = `
-                <div class="message-text-content translated-text" style="font-size: 1rem;">${msg.body}</div>
-                <div class="message-text-content original-text" style="font-size: 1rem; display: none; opacity: 0.85; font-style: italic;">${msg.original_text}</div>
-                <div class="translation-meta" style="font-size: 0.7rem; opacity: 0.7; margin-top: 6px; display: flex; align-items: center; gap: 6px; border-top: 1px dashed var(--border-light); padding-top: 4px;">
-                    <span>🌐 ${translatedLabel}</span>
-                    <button type="button" class="btn-toggle-translation" onclick="toggleOriginalText(this)" style="background: none; border: none; padding: 0; margin: 0; color: var(--primary); font-size: 0.7rem; cursor: pointer; text-decoration: underline; font-weight: bold;">${viewOriginalText}</button>
-                </div>
-            `;
-        }
+        let bodyHtml = msg.is_mine
+            ? `<div class="message-body-wrap"><div class="message-text-content" style="font-size: 1rem;">${msg.body}</div></div>`
+            : `<div class="message-body-wrap">${buildIncomingBodyHtml(msg)}</div>`;
 
         msgDiv.innerHTML = `
             ${canDelete ? `<button class="btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">

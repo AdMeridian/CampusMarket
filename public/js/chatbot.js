@@ -1,8 +1,7 @@
 /* public/js/chatbot.js */
-// Chatbot Lifecycle, API interactions, Language Adaptation, and Admin Redirection
+// Chatbot: Supabase Edge Function (Gemini) with PHP fallback
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Elements
     const chatbotFab = document.getElementById('cm-chatbot-fab');
     const chatbotWindow = document.getElementById('cm-chatbot-window');
     const chatbotClose = document.getElementById('cm-chatbot-close');
@@ -14,36 +13,35 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Active Admin ID (fetched dynamically from layout helper)
-    const adminId = parseInt(chatbotWindow.getAttribute('data-admin-id') || '1');
-
-    // i18n Strings (Adaptive base)
+    const adminId = parseInt(chatbotWindow.getAttribute('data-admin-id') || '1', 10);
     const locale = window.__locale || 'en';
     const isTurkish = locale === 'tr';
+    const siteBaseUrl = window.__baseUrl || '/';
+    const HISTORY_KEY = 'cm_chatbot_history_v2';
+    let conversationHistory = loadHistory();
+    let isSubmitting = false;
 
     const strings = {
-        welcome: isTurkish 
+        welcome: isTurkish
             ? "Merhaba! 👋 Ben CampusMarket yapay zeka asistanıyım. Kampüs pazar yeri kuralları, ödemeler, güvenli alışveriş ve ilan yükleme hakkında sorularınızı yanıtlayabilirim. Nasıl yardımcı olabilirim?"
             : "Hello! 👋 I'm the CampusMarket AI assistant. I can answer questions regarding campus marketplace guidelines, secure payments, safety rules, and listing creation. How can I help you today?",
-        placeholder: isTurkish
-            ? "Sorunuzu buraya yazın..."
-            : "Type your question here...",
-        adminAlertTitle: isTurkish
-            ? "Yöneticiye Ulaşın"
-            : "Contact Administrator",
+        placeholder: isTurkish ? "Sorunuzu buraya yazın..." : "Type your question here...",
+        adminAlertTitle: isTurkish ? "Yöneticiye Ulaşın" : "Contact Administrator",
         adminAlertDesc: isTurkish
             ? "Maalesef bu sorunun cevabını bilmiyorum. Destek almak için lütfen doğrudan yöneticiyle sohbet başlatın."
             : "I'm sorry, I don't know the answer to that question. To get help, please start a direct conversation with the administrator.",
-        adminBtnText: isTurkish
-            ? "Yönetici Sohbetini Aç"
-            : "Open Admin Chatbox"
+        adminBtnText: isTurkish ? "Yönetici Sohbetini Aç" : "Open Admin Chatbox",
+        connectionError: isTurkish
+            ? "Bağlantı hatası. İnternet bağlantınızı kontrol edip tekrar deneyin."
+            : "Connection error. Please check your internet connection and try again.",
+        genericError: isTurkish
+            ? "Bir hata oluştu. Lütfen daha sonra tekrar deneyin."
+            : "An error occurred. Please try again later.",
     };
 
-    // Initialize UI
     chatbotInput.placeholder = strings.placeholder;
     appendBotMessage(strings.welcome);
 
-    // Toggle Chat Window
     chatbotFab.addEventListener('click', () => {
         const isOpen = chatbotWindow.classList.contains('open');
         if (isOpen) {
@@ -51,10 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             chatbotWindow.classList.add('open');
             chatbotInput.focus();
-            // Clear notification pulse after first open
-            chatbotFab.classList.add('read-active');
-            chatbotFab.style.setProperty('--cm-pulse-opacity', '0');
-            chatbotFab.className = 'cm-chatbot-fab'; // strips notification pseudo-classes
+            chatbotFab.className = 'cm-chatbot-fab';
         }
     });
 
@@ -62,63 +57,111 @@ document.addEventListener('DOMContentLoaded', () => {
         chatbotWindow.classList.remove('open');
     });
 
-    // Form Submission
     chatbotForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
         const messageText = chatbotInput.value.trim();
         if (!messageText) return;
 
-        // Append User Message
+        isSubmitting = true;
+        chatbotForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
+
         appendUserMessage(messageText);
         chatbotInput.value = '';
-        chatbotInput.focus();
 
-        // Render Typing Indicator
         const typingEl = showTypingIndicator();
 
         try {
-            const response = await fetch(`${window.__baseUrl || '/'}pages/api_chatbot.php`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: messageText })
-            });
-
+            const data = await sendChatMessage(messageText);
             removeTypingIndicator(typingEl);
 
-            if (!response.ok) {
-                throw new Error('API failure');
+            if (!data) {
+                appendBotMessage(strings.connectionError);
+                return;
             }
 
-            const data = await response.json();
             if (data.success) {
                 if (data.unknown) {
                     appendAdminEscalationCard(data.admin_id || adminId);
                 } else {
                     appendBotMessage(data.response);
+                    pushHistoryTurn('user', messageText);
+                    pushHistoryTurn('model', data.response);
                 }
+            } else if (data.error === 'rate_limit') {
+                appendBotMessage(`⚠️ ${data.response || strings.genericError}`);
             } else {
-                if (data.error === 'rate_limit') {
-                    appendBotMessage(`⚠️ ${data.response}`);
-                } else {
-                    appendBotMessage(isTurkish 
-                        ? "Bir hata oluştu. Lütfen daha sonra tekrar deneyin." 
-                        : "An error occurred. Please try again later."
-                    );
-                }
+                appendBotMessage(strings.genericError);
             }
         } catch (err) {
             removeTypingIndicator(typingEl);
             console.error('Chatbot error:', err);
-            appendBotMessage(isTurkish 
-                ? "Bağlantı hatası. İnternet bağlantınızı kontrol edip tekrar deneyin." 
-                : "Connection error. Please check your internet connection and try again."
-            );
+            appendBotMessage(strings.connectionError);
+        } finally {
+            isSubmitting = false;
+            chatbotForm.querySelector('button[type="submit"]')?.removeAttribute('disabled');
+            chatbotInput.focus();
         }
     });
 
-    // Message Render Helpers
+    async function sendChatMessage(messageText) {
+        const payload = {
+            message: messageText,
+            history: conversationHistory,
+            locale,
+            site_base_url: siteBaseUrl,
+        };
+
+        const supabase = window.CampusMarketSupabase;
+        if (supabase && typeof supabase.functions?.invoke === 'function') {
+            const { data, error } = await supabase.functions.invoke('chatbot', { body: payload });
+            if (!error && data) {
+                return data;
+            }
+            console.warn('Edge chatbot failed, falling back to PHP:', error);
+        }
+
+        const response = await fetch(`${siteBaseUrl}pages/api_chatbot.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        return response.json();
+    }
+
+    function loadHistory() {
+        try {
+            const raw = sessionStorage.getItem(HISTORY_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function saveHistory() {
+        try {
+            sessionStorage.setItem(HISTORY_KEY, JSON.stringify(conversationHistory.slice(-20)));
+        } catch {
+            // ignore quota errors
+        }
+    }
+
+    function pushHistoryTurn(role, text) {
+        conversationHistory.push({ role, parts: [{ text }] });
+        if (conversationHistory.length > 20) {
+            conversationHistory = conversationHistory.slice(-20);
+        }
+        saveHistory();
+    }
+
     function appendUserMessage(text) {
         const bubble = document.createElement('div');
         bubble.className = 'cm-chat-bubble user';
@@ -138,9 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function appendAdminEscalationCard(targetAdminId) {
         const card = document.createElement('div');
         card.className = 'cm-fallback-card';
-
-        // Direct escalation link to inbox admin chatbox
-        const chatboxUrl = `${window.__baseUrl || '/'}pages/messages.php?other_user_id=${targetAdminId}&product_id=0`;
+        const chatboxUrl = `${siteBaseUrl}pages/messages.php?other_user_id=${targetAdminId}&product_id=0`;
 
         card.innerHTML = `
             <div class="cm-fallback-title">
@@ -181,17 +222,14 @@ document.addEventListener('DOMContentLoaded', () => {
         chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
     }
 
-    // Mini Safe Markdown Parser ([text](url) -> anchor tags)
     function parseSimpleMarkdown(text) {
-        // Escape HTML to block script injection (XSS)
         let escaped = text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
 
-        // Convert [Title](URL) into safe anchor tags
         return escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
     }
 });

@@ -2,13 +2,10 @@
 // admin/listings.php
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/bootstrap.php';
+requireAdmin();
+require_once __DIR__ . '/../includes/admin_audit.php';
 
-if (!isAdmin()) {
-    setFlash('error', 'Unauthorized access.');
-    redirect(BASE_URL . 'index.php');
-}
-
-$pageTitle = "Manage Listings";
+$pageTitle = __('admin.manage_listings');
 $promoPaymentsTableExists = false;
 try {
     $promoPaymentsTableExists = (bool)$pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'promotion_payments' LIMIT 1")->fetchColumn();
@@ -27,7 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'delete') {
             $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
             $stmt->execute([$id]);
-            setFlash('success', 'Listing deleted.');
+            setFlash('success', __('admin.flash_listing_deleted'));
+            logAdminAction($pdo, 'delete_listing', 'product', $id);
         } elseif ($action === 'approve') {
             // Fetch listing details to notify the owner
             $stmt = $pdo->prepare("SELECT user_id, title FROM products WHERE id = ?");
@@ -38,7 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtUpdate->execute([$id]);
                 // Notify the seller
                 createNotification($pdo, (int)$prod['user_id'], 'system', 'Listing Approved', "Your listing for '" . $prod['title'] . "' has been approved and is now active.", $id);
-                setFlash('success', 'Listing approved successfully.');
+                setFlash('success', __('admin.flash_listing_approved'));
+                logAdminAction($pdo, 'approve_listing', 'product', $id, ['title' => $prod['title']]);
             } else {
                 setFlash('error', 'Listing not found.');
             }
@@ -74,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ->execute([':id' => $paymentId]);
                 $pdo->commit();
                 setFlash('success', 'Listing featured using approved promotion payment.');
+                logAdminAction($pdo, 'feature_listing', 'product', $id, ['payment_id' => $paymentId]);
             } catch (PDOException $e) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
@@ -84,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE products SET is_featured = FALSE WHERE id = ?");
             $stmt->execute([$id]);
             setFlash('success', 'Listing unfeatured.');
+            logAdminAction($pdo, 'unfeature_listing', 'product', $id);
         }
     }
 

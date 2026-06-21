@@ -3,6 +3,7 @@
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
 require_once '../includes/auth_check.php';
+require_once '../includes/admin_audit.php';
 
 requireAdmin();
 
@@ -19,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_category'])) {
             $stmt = $pdo->prepare("INSERT INTO categories (name, slug) VALUES (?, ?)");
             $stmt->execute([$name, $slug]);
             setFlash('success', "Category '$name' added successfully.");
+            invalidateNavCategoriesCache();
+            logAdminAction($pdo, 'add_category', 'category', (int)$pdo->lastInsertId(), ['name' => $name]);
         } catch (PDOException $e) {
             setFlash('error', "Category '$name' could not be added — slug may already exist.");
         }
@@ -40,6 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_category'])) {
             $stmt = $pdo->prepare("UPDATE categories SET name = ?, slug = ? WHERE id = ?");
             $stmt->execute([$name, $slug, $id]);
             setFlash('success', "Category '$name' updated successfully.");
+            invalidateNavCategoriesCache();
+            logAdminAction($pdo, 'edit_category', 'category', $id, ['name' => $name]);
         } catch (PDOException $e) {
             setFlash('error', "Could not update category — slug may already be in use.");
         }
@@ -64,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_category'])) {
         } else {
             $pdo->prepare("DELETE FROM categories WHERE id = ?")->execute([$id]);
             setFlash('success', 'Category deleted.');
+            invalidateNavCategoriesCache();
+            logAdminAction($pdo, 'delete_category', 'category', $id);
         }
     }
     redirect(BASE_URL . 'admin/categories.php');

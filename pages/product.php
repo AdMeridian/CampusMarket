@@ -228,14 +228,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             $stmtDel = $pdo->prepare("DELETE FROM product_images WHERE id = ?");
             $stmtDel->execute([$imageId]);
             
-            // Delete file if local
+            // Remove file from storage (Supabase or local uploads)
             $path = $img['image_path'];
-            if (strpos($path, 'http') !== 0) {
-                $absPath = __DIR__ . '/../public/' . ltrim($path, '/');
-                if (file_exists($absPath)) {
-                    @unlink($absPath);
-                }
-            }
+            deleteStoredImageFile($path);
             
             // If it was primary, assign a new primary
             if ($img['is_primary']) {
@@ -943,11 +938,14 @@ body.dark-mode .scc-badge {
                     </div>
                 </div>
 
-            <?php if (!$isOwner): ?>
+            <?php if (!$isOwner && isLoggedIn()): ?>
             <!-- Action Buttons for Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
                 <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale">
                     <?= __('product.message_seller') ?>
+                </a>
+                <a href="<?php echo BASE_URL; ?>pages/report.php?product_id=<?php echo (int)$product['id']; ?>" class="btn btn-secondary flex-grow justify-center py-3 text-sm hover-scale" style="border-radius: var(--radius-lg);">
+                    <?= __('report.report_listing') ?>
                 </a>
             </div>
             <?php endif; ?>

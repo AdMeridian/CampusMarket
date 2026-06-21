@@ -4,7 +4,7 @@ require_once __DIR__ . '/../includes/bootstrap.php';
 requireLogin();
 
 if (isAdmin()) {
-    setFlash('error', 'Administrators do not have personal orders. Use the Admin Panel to view all orders.');
+    setFlash('error', __('orders.admin_redirect'));
     redirect(BASE_URL . 'admin/orders.php');
 }
 
@@ -73,13 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         (int)$order['product_id']
                     );
 
-                    setFlash('success', 'Thanks for reviewing the seller.');
+                    setFlash('success', __('orders.flash_review_thanks'));
                 } elseif ($action === 'confirm' && $isSeller && $order['status'] === 'pending') {
                     $pdo->prepare("UPDATE orders SET status = 'completed' WHERE id = ?")->execute([$orderId]);
                     $pdo->prepare("UPDATE products SET status = 'sold' WHERE id = ?")->execute([$order['product_id']]);
                     $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE product_id = ? AND id != ? AND status = 'pending'")->execute([$order['product_id'], $orderId]);
                     createNotification($pdo, $order['buyer_id'], 'order', 'Order Confirmed!', "Your order for '{$order['product_title']}' was confirmed.", $orderId);
-                    setFlash('success', 'Order confirmed and product marked as sold.');
+                    setFlash('success', __('orders.flash_confirmed'));
                 } elseif ($action === 'cancel' && ($isSeller || $isBuyer) && $order['status'] === 'pending') {
                     $newStatus = $isBuyer ? 'not taken' : 'cancelled';
                     $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?")->execute([$newStatus, $orderId]);
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $notifyId = $isSeller ? $order['buyer_id'] : $order['seller_id'];
                     $cancelerRole = $isSeller ? 'Seller' : 'Buyer';
                     createNotification($pdo, $notifyId, 'system', 'Order Cancelled', "The $cancelerRole cancelled the order for '{$order['product_title']}'.", $orderId);
-                    setFlash('info', 'Order cancelled.');
+                    setFlash('info', __('orders.flash_cancelled'));
                 }
 
                 $pdo->commit();
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
-                setFlash('error', $e instanceof RuntimeException ? $e->getMessage() : 'Update failed.');
+                setFlash('error', $e instanceof RuntimeException ? $e->getMessage() : __('orders.flash_update_failed'));
             }
         }
     }
@@ -165,7 +165,7 @@ foreach ($pendingReviews as $row) {
 }
 $promptReview = $pendingReviews[0] ?? null;
 
-$pageTitle = 'My Transactions';
+$pageTitle = __('orders.hub_title');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -206,9 +206,14 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 
+    <div class="glass-panel p-5 mb-8" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); background: var(--bg-surface);">
+        <h2 class="mb-2" style="font-size: 1.05rem; color: var(--text-main);"><?= __('orders.how_it_works_title') ?></h2>
+        <p class="text-muted mb-0" style="line-height: 1.6;"><?= __('orders.how_it_works_body') ?></p>
+    </div>
+
     <div class="text-center mb-12">
-        <h1 class="mb-2 page-hero-title">Transaction Hub</h1>
-        <p class="text-muted text-lg">Track your purchases and manage your sales</p>
+        <h1 class="mb-2 page-hero-title"><?= __('orders.hub_title') ?></h1>
+        <p class="text-muted text-lg"><?= __('orders.hub_subtitle') ?></p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 relative z-10">
@@ -217,7 +222,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="p-3 shadow-md" style="background: var(--primary); border-radius: 12px; color: white;">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                 </div>
-                <h2 class="mb-0" style="font-size: 1.5rem;">My Purchases</h2>
+                <h2 class="mb-0" style="font-size: 1.5rem;"><?= __('orders.my_purchases') ?></h2>
                 <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($buyingOrders); ?> Orders</div>
             </div>
 

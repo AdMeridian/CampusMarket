@@ -54,14 +54,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Forgot Password';
+$pageTitle = __('auth.forgot_title');
 require_once '../includes/header.php';
 ?>
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-head">
-            <h1>Forgot your password?</h1>
-            <p>Enter your email below and we’ll send you a link to reset your password.</p>
+            <h1><?= __('auth.forgot_title') ?></h1>
+            <p><?= __('auth.forgot_subtitle') ?></p>
         </div>
         <?php if (!empty($errors['form'])): ?>
             <div class="flash flash-error mb-8"><?php echo sanitize($errors['form']); ?></div>
@@ -73,7 +73,7 @@ require_once '../includes/header.php';
             <div class="form-row mb-6">
                 <label for="email" class="form-label">Email address</label>
                 <input type="email" id="email" name="email" value="<?php echo sanitize($email); ?>"
-                       placeholder="you@std.neu.edu.tr" class="premium-input w-full" required autocomplete="email">
+                       placeholder="20227014@ciu.edu.tr" class="premium-input w-full" required autocomplete="email">
                 <?php if (!empty($errors['email'])): ?>
                     <div class="text-sm text-red-500 mt-1"><?php echo sanitize($errors['email']); ?></div>
                 <?php endif; ?>

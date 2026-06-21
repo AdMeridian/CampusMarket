@@ -1,6 +1,7 @@
 <?php
 // pages/create_stripe_session.php
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/stripe_fulfillment.php';
 requireLogin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -11,13 +12,31 @@ verifyCsrfToken();
 
 $paymentType = sanitize($_POST['payment_type'] ?? '');
 $productId   = (int)($_POST['product_id'] ?? 0);
-$amount      = (float)($_POST['amount'] ?? 0);
+$postedAmount = (float)($_POST['amount'] ?? 0);
+$promotionDays = 0;
 
 $redirectPath = ($paymentType === 'donation') ? 'pages/donate.php' : 'pages/promotions.php';
 
-if (!in_array($paymentType, ['promotion', 'donation'], true) || $amount <= 0) {
+if (!in_array($paymentType, ['promotion', 'donation'], true)) {
     setFlash('error', 'Invalid payment details.');
     redirect(BASE_URL . $redirectPath);
+}
+
+if ($paymentType === 'promotion') {
+    $resolved = resolvePromotionPayment($postedAmount);
+    if ($resolved === null) {
+        setFlash('error', 'Invalid promotion amount. Choose ₺50, ₺100, ₺200, or a custom amount of at least ₺15.');
+        redirect(BASE_URL . 'pages/promotions.php');
+    }
+    $amount = $resolved['amount'];
+    $promotionDays = $resolved['days'];
+} else {
+    $donationAmount = resolveDonationPayment($postedAmount);
+    if ($donationAmount === null) {
+        setFlash('error', 'Invalid donation amount.');
+        redirect(BASE_URL . 'pages/donate.php');
+    }
+    $amount = $donationAmount;
 }
 
 if ($paymentType === 'promotion' && $productId <= 0) {
@@ -34,10 +53,8 @@ if ($paymentType === 'promotion') {
     }
 }
 
-// Convert amount to cents/kurus for Stripe
-$unitAmount = (int)($amount * 100);
+$unitAmount = (int) round($amount * 100);
 
-// Use cURL for Stripe API (no SDK required)
 $ch = curl_init();
 
 $successUrl = BASE_URL . 'pages/stripe_success.php?session_id={CHECKOUT_SESSION_ID}&type=' . $paymentType;
@@ -57,7 +74,8 @@ $postFields = [
     'metadata[user_id]' => currentUserId(),
     'metadata[product_id]' => $productId,
     'metadata[payment_type]' => $paymentType,
-    'metadata[amount]' => $amount
+    'metadata[amount]' => $amount,
+    'metadata[promotion_days]' => $promotionDays,
 ];
 
 curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/checkout/sessions');
@@ -72,11 +90,10 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $response = json_decode($result, true);
 
 if ($httpCode === 200 && isset($response['url'])) {
-    // Redirect to Stripe Checkout
-    header("Location: " . $response['url']);
+    header('Location: ' . $response['url']);
     exit;
-} else {
-    $errorMsg = $response['error']['message'] ?? 'Stripe communication error.';
-    setFlash('error', 'Could not initiate Stripe session: ' . $errorMsg);
-    redirect(BASE_URL . $redirectPath);
 }
+
+$errorMsg = $response['error']['message'] ?? 'Stripe communication error.';
+setFlash('error', 'Could not initiate Stripe session: ' . $errorMsg);
+redirect(BASE_URL . $redirectPath);

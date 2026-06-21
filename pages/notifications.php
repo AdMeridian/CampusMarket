@@ -239,7 +239,7 @@ body.dark-mode .convo-card.unread {
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
             <button type="button" id="enable-browser-notifs" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus);">
-                Enable Browser Alerts
+                Enable Notifications
             </button>
             <?php if (!empty($notifications)): ?>
                 <form method="post" class="m-0">
@@ -317,72 +317,25 @@ body.dark-mode .convo-card.unread {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const btn = document.getElementById('enable-browser-notifs');
-    if (!btn) return;
-
-    function urlBase64ToUint8Array(base64String) {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-    }
-
-    async function saveSubscription(subscription) {
-        const res = await fetch(window.__baseUrl + 'pages/api_push_subscriptions.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': window.__csrfToken || ''
-            },
-            body: JSON.stringify({
-                action: 'subscribe',
-                subscription
-            })
+    if (btn && window.CampusMarketPush) {
+        btn.addEventListener('click', async function() {
+            const result = await window.CampusMarketPush.subscribe();
+            if (result.ok) {
+                alert('Notifications enabled. You will receive alerts for messages and activity.');
+            }
         });
-        return res.ok;
-    }
 
-    btn.addEventListener('click', async function() {
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-
-        if (isIOS && !isStandalone) {
-            alert('To enable browser alerts on your iPhone/iPad, please add this app to your Home Screen first:\n\n1. Tap the Share button in Safari (square with up arrow)\n2. Scroll down and select "Add to Home Screen"\n3. Open the app from your Home Screen and try again.');
-            return;
-        }
-
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            alert('Push notifications are not supported on this device/browser.');
-            return;
-        }
-
-        const vapidPublicKey = window.__env?.WEB_PUSH_PUBLIC_KEY || '';
-        if (!vapidPublicKey) {
+        window.CampusMarketPush.hasActiveSubscription().then(function (enabled) {
+            if (enabled) {
+                btn.textContent = 'Notifications enabled';
+                btn.disabled = true;
+            }
+        });
+    } else if (btn) {
+        btn.addEventListener('click', function () {
             alert('Push notifications are not configured yet. Please add WEB_PUSH_PUBLIC_KEY on the server.');
-            return;
-        }
-
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            alert('Browser alerts were blocked. You can enable them from browser site settings.');
-            return;
-        }
-
-        const reg = await navigator.serviceWorker.ready;
-        let subscription = await reg.pushManager.getSubscription();
-        if (!subscription) {
-            subscription = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-            });
-        }
-
-        const ok = await saveSubscription(subscription.toJSON());
-        alert(ok ? 'Browser alerts enabled.' : 'Subscription saved locally but server sync failed.');
-    });
+        });
+    }
 
     let lastUnreadNotifs = <?= (int)$navUnreadNotifs ?>;
     let reloadTimer = null;

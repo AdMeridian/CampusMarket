@@ -1,4 +1,4 @@
-const CACHE_VERSION = "campusmarket-v6";
+const CACHE_VERSION = "campusmarket-v7";
 const OFFLINE_URL = "public/offline.html";
 
 const CORE_ASSETS = [
@@ -6,6 +6,7 @@ const CORE_ASSETS = [
   "public/css/style.css",
   "public/js/theme.js",
   "public/js/pwa.js",
+  "public/js/push-notifications.js",
   "public/images/logo.png",
   OFFLINE_URL
 ];

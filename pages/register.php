@@ -13,20 +13,27 @@ if (isLoggedIn()) {
 }
 
 $errors = [];
-$old    = ['username' => '', 'email' => '', 'phone' => ''];
+$old    = ['username' => '', 'email' => '', 'email_local' => '', 'university_domain' => '', 'phone' => ''];
+$universityDomains = allowedUniversityDomains();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     verifyCsrfToken();
     // Gather + normalize
     $username = trim($_POST['username'] ?? '');
-    $email    = trim(strtolower($_POST['email'] ?? ''));
+    $emailLocal = trim(strtolower($_POST['email_local'] ?? ''));
+    $universityDomain = trim(strtolower($_POST['university_domain'] ?? ''));
+    $email    = $emailLocal !== '' && $universityDomain !== ''
+        ? buildUniversityEmail($emailLocal, $universityDomain)
+        : trim(strtolower($_POST['email'] ?? ''));
     $phone    = trim($_POST['phone'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm  = $_POST['password_confirm'] ?? '';
 
     $old['username'] = $username;
     $old['email']    = $email;
+    $old['email_local'] = $emailLocal;
+    $old['university_domain'] = $universityDomain;
     $old['phone']    = $phone;
 
     // Validate username
@@ -37,17 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Validate email — format first, then domain allowlist
-    if ($email === '') {
-        $errors['email'] = 'Email is required.';
+    if ($emailLocal === '' || $universityDomain === '') {
+        $errors['email'] = 'Select your university and enter your student email address.';
+    } elseif (!array_key_exists($universityDomain, $universityDomains)) {
+        $errors['email'] = 'Please select a valid university.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100) {
         $errors['email'] = 'Please enter a valid email address.';
     } elseif (!isAllowedUniversityEmail($email)) {
         $errors['email'] = 'Only university emails are allowed (' . allowedDomainsList() . ').';
-    } else {
-        $parts = explode('@', $email);
-        if ($parts[1] === 'std.neu.edu.tr' && !preg_match('/^\d+$/', $parts[0])) {
-            $errors['email'] = 'For std.neu.edu.tr, the email must start with your student number (e.g., 20227014@std.neu.edu.tr).';
-        }
+    } elseif (($studentEmailError = validateUniversityStudentEmail($email)) !== null) {
+        $errors['email'] = $studentEmailError;
     }
 
     // Validate phone (optional)
@@ -89,16 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Persist with Supabase Auth + local app profile (no auto-login)
     if (!$errors) {
-        $isSecureRequest = (
-            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
-            || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
-        );
-        $originHost = $_SERVER['HTTP_HOST'] ?? '';
-        $originScheme = $isSecureRequest ? 'https' : 'http';
-        $emailRedirectTo = $originHost !== ''
-            ? ($originScheme . '://' . $originHost . '/pages/verify_email.php?source=supabase')
-            : (BASE_URL . 'pages/verify_email.php?source=supabase');
+        $emailRedirectTo = supabaseSignupRedirectUrl();
 
         $signup = supabaseAuthRequest('POST', 'signup', [
             'email' => $email,
@@ -145,11 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdo->beginTransaction();
         try {
-            $studentId = null;
-            $parts = explode('@', $email);
-            if ($parts[1] === 'std.neu.edu.tr') {
-                $studentId = $parts[0];
-            }
+            $studentId = studentIdFromUniversityEmail($email);
 
             $ins = $pdo->prepare("
                 INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified)
@@ -190,17 +183,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $pdo->commit();
-            setFlash('success', 'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.');
-            redirect(BASE_URL . 'pages/login.php?redirect=/pages/profile.php');
+            $_SESSION['pending_verify_email'] = $email;
+            redirect(BASE_URL . 'pages/check_email.php');
         } catch (Throwable $e) {
             $pdo->rollBack();
             $dbErr = strtolower($e->getMessage());
             error_log('[register] DB error: ' . $e->getMessage());
             if (str_contains($dbErr, 'duplicate key') || str_contains($dbErr, 'unique') || str_contains($dbErr, 'already exists')) {
-                // Supabase signup already succeeded; duplicate local insert can happen
-                // due to retries/race conditions. Continue with verification flow.
-                setFlash('success', 'Account created. Check your inbox at ' . sanitize($email) . ' to verify your email before logging in.');
-                redirect(BASE_URL . 'pages/login.php?redirect=/pages/profile.php');
+                $_SESSION['pending_verify_email'] = $email;
+                redirect(BASE_URL . 'pages/check_email.php');
             } else {
                 $errors['form'] = 'Could not save your account. Please try again or contact support.';
             }
@@ -241,16 +232,34 @@ require_once '../includes/header.php';
     </div>
 
     <div class="form-row mb-5">
-      <label for="email" class="form-label">University email</label>
-      <input type="email" id="email" name="email"
-             value="<?php echo sanitize($old['email']); ?>"
-             placeholder="you@std.neu.edu.tr"
-             maxlength="100" required autocomplete="email"
-             class="premium-input <?php echo isset($errors['email']) ? 'input-invalid' : ''; ?>">
+      <label for="university_domain" class="form-label">University</label>
+      <select id="university_domain" name="university_domain" required
+              class="premium-input <?php echo isset($errors['email']) ? 'input-invalid' : ''; ?>">
+        <option value="">Select your university</option>
+        <?php foreach ($universityDomains as $domain => $label): ?>
+          <option value="<?php echo sanitize($domain); ?>"
+            <?php echo $old['university_domain'] === $domain ? 'selected' : ''; ?>>
+            <?php echo sanitize($label); ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+
+    <div class="form-row mb-5">
+      <label for="email_local" class="form-label">University email</label>
+      <div class="email-compose <?php echo isset($errors['email']) ? 'input-invalid' : ''; ?>">
+        <input type="text" id="email_local" name="email_local"
+               value="<?php echo sanitize($old['email_local']); ?>"
+               placeholder="20227014"
+               maxlength="64" required autocomplete="username"
+               class="premium-input email-compose-input"
+               aria-describedby="email_domain_suffix">
+        <span id="email_domain_suffix" class="email-compose-suffix">@<?php echo sanitize($old['university_domain'] !== '' ? $old['university_domain'] : 'university.edu.tr'); ?></span>
+      </div>
       <?php if (isset($errors['email'])): ?>
         <div class="error"><?php echo sanitize($errors['email']); ?></div>
       <?php else: ?>
-        <div class="hint">Allowed: <?php echo sanitize(allowedDomainsList()); ?></div>
+        <div class="hint">Enter the part before the @ in your student email (letters and numbers are fine).</div>
       <?php endif; ?>
     </div>
 
@@ -347,6 +356,18 @@ require_once '../includes/header.php';
 </div>
 
 <script>
+  (function () {
+    var domainSelect = document.getElementById('university_domain');
+    var suffix = document.getElementById('email_domain_suffix');
+    if (domainSelect && suffix) {
+      function syncSuffix() {
+        suffix.textContent = domainSelect.value ? '@' + domainSelect.value : '@university.edu.tr';
+      }
+      domainSelect.addEventListener('change', syncSuffix);
+      syncSuffix();
+    }
+  })();
+
   document.querySelectorAll('.password-toggle').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var input = document.getElementById(btn.dataset.target);

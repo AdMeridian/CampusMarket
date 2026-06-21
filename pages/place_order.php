@@ -48,8 +48,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes = sanitize($_POST['notes'] ?? '');
     
     if (empty($meetingPoint)) {
-        $error = "Meeting point is required.";
+        $error = __('place_order.error_meeting');
     } else {
+        $pendingOrder = $pdo->prepare("SELECT id FROM orders WHERE buyer_id = :buyer_id AND product_id = :product_id AND status = 'pending' LIMIT 1");
+        $pendingOrder->execute([':buyer_id' => $currentUserId, ':product_id' => $productId]);
+        if ($pendingOrder->fetchColumn()) {
+            $error = __('place_order.error_duplicate');
+        } else {
         try {
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("INSERT INTO orders (buyer_id, product_id, amount, status, meeting_point, notes) VALUES (:buyer_id, :product_id, :amount, 'pending', :meeting_point, :notes)");
@@ -57,12 +62,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $orderId = $pdo->lastInsertId();
             createNotification($pdo, $product['user_id'], 'order', "New Order Placed!", "Someone wants to buy '{$product['title']}'. Check your sales!", $orderId);
             $pdo->commit();
-            setFlash('success', 'Order placed! The seller has been notified.');
+            setFlash('success', __('place_order.success'));
             redirect(BASE_URL . '/pages/my_orders.php');
         } catch (PDOException $e) { $pdo->rollBack(); $error = "Something went wrong. Please try again."; }
+        }
     }
 }
-$pageTitle = "Complete Your Order";
+$pageTitle = __('place_order.title');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

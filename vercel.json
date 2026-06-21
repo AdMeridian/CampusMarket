@@ -6,6 +6,9 @@
     },
     "api/web-push/send.js": {
       "maxDuration": 10
+    },
+    "api/stripe/webhook.js": {
+      "maxDuration": 10
     }
   },
   "headers": [
@@ -60,7 +63,11 @@
       "dest": "/api/web-push/send"
     },
     {
-      "src": "/((?!public/|manifest\\.webmanifest|sw\\.js|favicon\\.|robots\\.txt|api/web-push/).*)$",
+      "src": "/api/stripe/webhook",
+      "dest": "/api/stripe/webhook"
+    },
+    {
+      "src": "/((?!public/|manifest\\.webmanifest|sw\\.js|favicon\\.|robots\\.txt|api/web-push/|api/stripe/).*)$",
       "dest": "/api/index.php"
     }
   ]

@@ -106,3 +106,17 @@ if (!defined('STRIPE_SECRET_KEY')) {
 if (!defined('WEB_PUSH_PUBLIC_KEY')) {
     define('WEB_PUSH_PUBLIC_KEY', getenv('WEB_PUSH_PUBLIC_KEY') ?: '');
 }
+
+/**
+ * Server-only secret for signing the stateless session cookie.
+ * Falls back to INTERNAL_PUSH_KEY so existing deployments keep working.
+ */
+if (!function_exists('sessionStatelessSecret')) {
+    function sessionStatelessSecret(): string {
+        $secret = trim((string) (getenv('SESSION_STATELESS_SECRET') ?: ''));
+        if ($secret !== '') {
+            return $secret;
+        }
+        return trim((string) (getenv('INTERNAL_PUSH_KEY') ?: ''));
+    }
+}
