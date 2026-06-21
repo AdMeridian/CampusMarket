@@ -36,14 +36,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['rep
 }
 
 // Fetch pending reports
-$stmt = $pdo->query("
-    SELECT r.*, p.title as product_title, u.username as reporter_name
-    FROM reports r
-    LEFT JOIN products p ON r.product_id = p.id
-    LEFT JOIN users u ON r.reporter_id = u.id
-    WHERE r.status = 'pending'
-    ORDER BY r.created_at ASC
-");
+try {
+    $stmt = $pdo->query("
+        SELECT r.*, p.title as product_title, u.username as reporter_name,
+               ru.username as reported_username
+        FROM reports r
+        LEFT JOIN products p ON r.product_id = p.id
+        LEFT JOIN users u ON r.reporter_id = u.id
+        LEFT JOIN users ru ON r.reported_user_id = ru.id
+        WHERE r.status = 'pending'
+        ORDER BY r.created_at ASC
+    ");
+} catch (PDOException $e) {
+    $stmt = $pdo->query("
+        SELECT r.*, p.title as product_title, u.username as reporter_name
+        FROM reports r
+        LEFT JOIN products p ON r.product_id = p.id
+        LEFT JOIN users u ON r.reporter_id = u.id
+        WHERE r.status = 'pending'
+        ORDER BY r.created_at ASC
+    ");
+}
 $reports = $stmt->fetchAll();
 
 require_once __DIR__ . '/../includes/header.php';
@@ -82,10 +95,14 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php foreach ($reports as $r): ?>
                         <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                             <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                                <div class="font-bold text-main"><?php echo sanitize($r['product_title'] ?? 'General Support / Bug'); ?></div>
                                 <?php if ($r['product_id']): ?>
+                                    <div class="font-bold text-main"><?php echo sanitize($r['product_title'] ?? 'Deleted listing'); ?></div>
                                     <a href="../pages/product.php?id=<?php echo $r['product_id']; ?>" target="_blank" class="small text-primary hover-scale inline-block mt-1" style="text-decoration: none; font-weight: 600;">View Live Item ↗</a>
+                                <?php elseif (!empty($r['reported_user_id'])): ?>
+                                    <div class="font-bold text-main">@<?php echo sanitize($r['reported_username'] ?? 'Deleted user'); ?></div>
+                                    <a href="../pages/profile.php?id=<?php echo (int)$r['reported_user_id']; ?>" target="_blank" class="small text-primary hover-scale inline-block mt-1" style="text-decoration: none; font-weight: 600;">View Profile ↗</a>
                                 <?php else: ?>
+                                    <div class="font-bold text-main">General Support / Bug</div>
                                     <span class="small text-muted inline-block mt-1" style="font-weight: 500;">General Platform Issue</span>
                                 <?php endif; ?>
                             </td>

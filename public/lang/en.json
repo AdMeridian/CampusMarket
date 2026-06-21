@@ -106,7 +106,7 @@
     "profile.email_note": "Verified university emails cannot be changed. Contact support if you lost access.",
     "profile.save_changes": "Save Changes",
     "profile.preferred_language": "Preferred Language",
-    "profile.language_note": "The entire interface and message translations will use this language.",
+    "profile.language_note": "The entire interface and chat message translations will use this language. Change it here anytime.",
     "profile.updated_success": "Profile updated successfully!",
     "footer.tagline": "The premier student-to-student marketplace. Buy, sell, and trade safely within your university community.",
     "footer.quick_links": "Quick Links",

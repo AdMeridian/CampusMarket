@@ -111,58 +111,6 @@ $navCategories = getNavCategories($pdo);
     </script>
     <script defer src="/_vercel/speed-insights/script.js"></script>
     
-    <!-- Language Selector Styles -->
-    <style>
-        .lang-dropdown { position: relative; display: inline-flex; }
-        .lang-dropdown-btn {
-            background: var(--bg-main);
-            border: 1px solid var(--border-light);
-            cursor: pointer;
-            padding: 0.5rem;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            border-radius: var(--radius-md);
-            transition: var(--transition);
-            font-size: 0.82rem;
-            font-weight: 700;
-            height: 38px;
-            box-sizing: border-box;
-        }
-        #lang-dropdown-mobile .lang-dropdown-btn {
-            width: 38px;
-            justify-content: center;
-            padding: 0;
-        }
-        #lang-dropdown-desktop .lang-dropdown-btn {
-            padding: 0 0.75rem;
-        }
-        .lang-dropdown-btn:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-            border-color: var(--primary);
-        }
-        .lang-dropdown-content {
-            display: none; position: absolute; top: 100%; right: 0; z-index: 1000;
-            min-width: 150px; background: var(--bg-surface); border: 1px solid var(--border-light);
-            border-radius: var(--radius-md); box-shadow: var(--shadow-lg); overflow: hidden;
-            margin-top: 0.35rem; animation: langDropIn 0.15s ease;
-        }
-        @keyframes langDropIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-        .lang-dropdown:hover .lang-dropdown-content,
-        .lang-dropdown.open .lang-dropdown-content { display: block; }
-        .lang-option {
-            display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem;
-            color: var(--text-main); text-decoration: none; font-size: 0.88rem;
-            font-weight: 500; transition: background 0.15s ease; cursor: pointer; border: none;
-            background: none; width: 100%; text-align: left;
-        }
-        .lang-option:hover { background: rgba(99,102,241,0.06); }
-        .lang-option.active { color: var(--primary); font-weight: 700; background: rgba(99,102,241,0.04); }
-        .lang-option-check { width: 16px; text-align: center; font-size: 0.75rem; }
-    </style>
-
 </head>
 <body>
  
@@ -176,25 +124,6 @@ $navCategories = getNavCategories($pdo);
         
         <!-- Mobile Tools (Visible only on mobile next to the logo) -->
         <div class="lg-hidden flex items-center gap-2" style="margin-left: auto;">
-
-            <!-- Language Selector (Mobile) -->
-            <div class="lang-dropdown" id="lang-dropdown-mobile">
-                <button type="button" class="lang-dropdown-btn" aria-label="<?= __('lang.selector_label') ?>" onclick="this.parentElement.classList.toggle('open')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                    </svg>
-                </button>
-                <div class="lang-dropdown-content">
-                    <?php foreach (SUPPORTED_LANGUAGES as $code => $name): ?>
-                    <button type="button" class="lang-option <?= $code === i18nGetLocale() ? 'active' : '' ?>" onclick="changeLang('<?= $code ?>')">
-                        <span class="lang-option-check"><?= $code === i18nGetLocale() ? '✓' : '' ?></span>
-                        <span><?= htmlspecialchars($name) ?></span>
-                    </button>
-                    <?php endforeach; ?>
-                </div>
-            </div>
             <button id="theme-toggle-mobile" class="theme-toggle" aria-label="Toggle dark mode">
                 <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
             </button>
@@ -225,25 +154,6 @@ $navCategories = getNavCategories($pdo);
                 <span>Back</span>
             </button>
             <div class="flex" style="align-items: center; gap: 0.25rem;">
-                <!-- Language Selector (Desktop) -->
-                <div class="lang-dropdown" id="lang-dropdown-desktop">
-                    <button type="button" class="lang-dropdown-btn" aria-label="<?= __('lang.selector_label') ?>" onclick="this.parentElement.classList.toggle('open')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 17px; height: 17px;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="2" y1="12" x2="22" y2="12"></line>
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                        </svg>
-                        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em;"><?= strtoupper(i18nGetLocale()) ?></span>
-                    </button>
-                    <div class="lang-dropdown-content">
-                        <?php foreach (SUPPORTED_LANGUAGES as $code => $name): ?>
-                        <button type="button" class="lang-option <?= $code === i18nGetLocale() ? 'active' : '' ?>" onclick="changeLang('<?= $code ?>')">
-                            <span class="lang-option-check"><?= $code === i18nGetLocale() ? '✓' : '' ?></span>
-                            <span><?= htmlspecialchars($name) ?></span>
-                        </button>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
                 <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
                     <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
                 </button>
@@ -257,6 +167,7 @@ $navCategories = getNavCategories($pdo);
                 ?>
                 <?php if (isAdmin()): ?>
                     <a href="<?php echo BASE_URL; ?>admin/index.php" style="color: var(--secondary); font-weight: bold;"><?= __('nav.admin_panel') ?></a>
+                    <a href="<?php echo BASE_URL; ?>pages/edit_profile.php#preferred_language"><?= __('nav.language_settings', ['lang' => SUPPORTED_LANGUAGES[i18nGetLocale()] ?? strtoupper(i18nGetLocale())]) ?></a>
                     <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="flex items-center gap-1" title="<?= __('nav.inbox') ?>">
                         <?= __('nav.inbox') ?> <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
@@ -286,6 +197,7 @@ $navCategories = getNavCategories($pdo);
                             <a href="<?php echo BASE_URL; ?>pages/wishlist.php"><?= __('nav.wishlist') ?></a>
                             <a href="<?php echo BASE_URL; ?>pages/promotions.php"><?= __('nav.promotions') ?></a>
                             <a href="<?php echo BASE_URL; ?>pages/profile.php"><?= __('nav.my_profile') ?></a>
+                            <a href="<?php echo BASE_URL; ?>pages/edit_profile.php#preferred_language"><?= __('nav.language_settings', ['lang' => SUPPORTED_LANGUAGES[i18nGetLocale()] ?? strtoupper(i18nGetLocale())]) ?></a>
                             <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" style="color: var(--secondary); font-weight: bold;"><?= __('nav.contact_support') ?></a>
                             <div style="border-top: 1px solid var(--border-light); margin: 0.5rem 0;"></div>
                             <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);"><?= __('nav.logout') ?></a>
@@ -335,36 +247,6 @@ $navCategories = getNavCategories($pdo);
 <script src="<?php echo BASE_URL; ?>public/js/push-notifications.js?v=<?php echo $pushJsVer; ?>"></script>
 <?php endif; ?>
 <?php endif; ?>
-
-<script>
-function changeLang(langCode) {
-    const formData = new FormData();
-    formData.append('action', 'set_language');
-    formData.append('language', langCode);
-    formData.append('csrf_token', window.__csrfToken || '');
-
-    fetch(window.__baseUrl + 'pages/api_messages.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            window.location.reload();
-        }
-    })
-    .catch(err => console.error('Language change error:', err));
-}
-
-// Close lang dropdowns when clicking outside
-document.addEventListener('click', function(e) {
-    document.querySelectorAll('.lang-dropdown.open').forEach(function(dd) {
-        if (!dd.contains(e.target)) {
-            dd.classList.remove('open');
-        }
-    });
-});
-</script>
 
 <?php if ($flash = getFlash()): ?>
 <div class="flash-toast-container">

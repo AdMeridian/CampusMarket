@@ -77,7 +77,6 @@ if ($action === 'search_users') {
 if ($action === 'fetch') {
     try {
         $productId = (int)($_GET['product_id'] ?? 0);
-    $translateRequested = (string)($_GET['translate'] ?? '0') === '1';
     $otherUserId = (int)($_GET['other_user_id'] ?? 0);
     
     if ($otherUserId <= 0) {
@@ -151,47 +150,39 @@ if ($action === 'fetch') {
     ]);
     $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Format response
+    // Format response (original text only; per-message translate is a separate action)
     $results = [];
-    $translator = $translateRequested ? getTranslationService() : null;
     foreach ($messages as $msg) {
-        $body = $msg['body'];
         $originalText = $msg['body'];
-        $isTranslated = false;
-        $sourceLang = '';
+        $cachedTranslation = null;
+        $cachedSourceLang = '';
 
-        if ($translateRequested && $msg['sender_id'] != $currentUserId) {
-            if ($msg['translated_text'] !== null) {
-                if ($msg['source_lang'] !== $myLang && $msg['source_lang'] !== 'unknown') {
-                    $body = $msg['translated_text'];
-                    $isTranslated = true;
-                    $sourceLang = $msg['source_lang'];
-                }
-            } elseif ($translator && $translator->isConfigured()) {
-                // Translate on-the-fly and cache
-                $transResult = $translator->translateMessage((int)$msg['id'], $msg['body'], $myLang, $pdo);
-                if ($transResult['source_lang'] !== $myLang && $transResult['source_lang'] !== 'unknown') {
-                    $body = $transResult['translated_text'];
-                    $isTranslated = true;
-                    $sourceLang = $transResult['source_lang'];
-                }
-            }
+        if ($msg['sender_id'] != $currentUserId && $msg['translated_text'] !== null) {
+            $cachedTranslation = $msg['translated_text'];
+            $cachedSourceLang = (string)($msg['source_lang'] ?? '');
         }
 
         $results[] = [
             'id' => $msg['id'],
-            'body' => htmlspecialchars($body, ENT_QUOTES, 'UTF-8'),
+            'body' => htmlspecialchars($originalText, ENT_QUOTES, 'UTF-8'),
             'original_text' => htmlspecialchars($originalText, ENT_QUOTES, 'UTF-8'),
-            'is_translated' => $isTranslated,
-            'source_lang' => $sourceLang,
+            'cached_translation' => $cachedTranslation !== null
+                ? htmlspecialchars($cachedTranslation, ENT_QUOTES, 'UTF-8')
+                : null,
+            'cached_source_lang' => $cachedSourceLang,
             'is_mine' => $msg['sender_id'] == $currentUserId,
             'sender_name' => $msg['sender_name'],
             'created_at' => date('Y-m-d H:i:s', strtotime($msg['created_at']))
         ];
     }
-    
+
+    $translator = getTranslationService();
     ob_clean();
-    echo json_encode(['success' => true, 'messages' => $results]);
+    echo json_encode([
+        'success' => true,
+        'messages' => $results,
+        'translation_configured' => $translator->isConfigured(),
+    ]);
     exit;
 } catch (Exception $e) {
     logApiError("Fetch Error: " . $e->getMessage());
@@ -771,6 +762,90 @@ if ($action === 'clear_chat') {
         }
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
+    exit;
+}
+
+// ─── Per-message translation ───────────────────────
+if ($action === 'translate_message') {
+    verifyCsrfTokenJson();
+
+    $messageId = (int)($_POST['message_id'] ?? 0);
+    $productId = (int)($_POST['product_id'] ?? 0);
+    $otherUserId = (int)($_POST['other_user_id'] ?? 0);
+
+    if ($messageId <= 0 || $otherUserId <= 0) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Missing parameters']);
+        exit;
+    }
+
+    if (!isValidConversation($pdo, $productId, $currentUserId, $otherUserId)) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Invalid conversation context']);
+        exit;
+    }
+
+    $translator = getTranslationService();
+    if (!$translator->isConfigured()) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Translation unavailable']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT m.id, m.body, m.sender_id, m.receiver_id
+        FROM messages m
+        WHERE m.id = :id
+          AND (
+              (m.sender_id = :uid1 AND m.receiver_id = :other1 AND m.deleted_by_sender = 0) OR
+              (m.sender_id = :other2 AND m.receiver_id = :uid2 AND m.deleted_by_receiver = 0)
+          )
+        LIMIT 1
+    ");
+    $stmt->execute([
+        ':id' => $messageId,
+        ':uid1' => $currentUserId,
+        ':other1' => $otherUserId,
+        ':other2' => $otherUserId,
+        ':uid2' => $currentUserId,
+    ]);
+    $message = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$message) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Message not found']);
+        exit;
+    }
+
+    if ((int)$message['sender_id'] === $currentUserId) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Cannot translate your own message']);
+        exit;
+    }
+
+    $myLang = i18nGetLocale();
+    $originalText = (string)$message['body'];
+    $transResult = $translator->translateMessage($messageId, $originalText, $myLang, $pdo);
+
+    if ($transResult['source_lang'] === $myLang || $transResult['source_lang'] === 'unknown') {
+        ob_clean();
+        echo json_encode([
+            'success' => true,
+            'already_same_language' => true,
+            'message_id' => $messageId,
+            'original_text' => htmlspecialchars($originalText, ENT_QUOTES, 'UTF-8'),
+        ]);
+        exit;
+    }
+
+    ob_clean();
+    echo json_encode([
+        'success' => true,
+        'message_id' => $messageId,
+        'translated_text' => htmlspecialchars($transResult['translated_text'], ENT_QUOTES, 'UTF-8'),
+        'original_text' => htmlspecialchars($originalText, ENT_QUOTES, 'UTF-8'),
+        'source_lang' => $transResult['source_lang'],
+    ]);
     exit;
 }
 

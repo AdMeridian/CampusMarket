@@ -184,11 +184,13 @@ CREATE TABLE reports (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     reporter_id INT  NOT NULL,
     product_id  INT  NULL,
+    reported_user_id INT NULL,
     reason      TEXT NOT NULL,
     status      ENUM('pending', 'reviewed', 'dismissed') NOT NULL DEFAULT 'pending',
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (reporter_id) REFERENCES users(id)    ON DELETE CASCADE,
-    FOREIGN KEY (product_id)  REFERENCES products(id) ON DELETE CASCADE
+    FOREIGN KEY (product_id)  REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (reported_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
