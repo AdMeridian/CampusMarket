@@ -167,7 +167,6 @@ $navCategories = getNavCategories($pdo);
                 ?>
                 <?php if (isAdmin()): ?>
                     <a href="<?php echo BASE_URL; ?>admin/index.php" style="color: var(--secondary); font-weight: bold;"><?= __('nav.admin_panel') ?></a>
-                    <a href="<?php echo BASE_URL; ?>pages/edit_profile.php#preferred_language"><?= __('nav.language_settings', ['lang' => SUPPORTED_LANGUAGES[i18nGetLocale()] ?? strtoupper(i18nGetLocale())]) ?></a>
                     <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="flex items-center gap-1" title="<?= __('nav.inbox') ?>">
                         <?= __('nav.inbox') ?> <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
