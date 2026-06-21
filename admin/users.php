@@ -3,52 +3,79 @@
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/bootstrap.php';
 
-// Auth Check
 if (!isAdmin()) {
     setFlash('error', 'Unauthorized access.');
     redirect('../index.php');
 }
 
-$pageTitle = "Manage Users";
+$pageTitle = 'Manage Users';
+$currentAdminId = currentUserId();
 
-// Handle Actions
-if (isset($_GET['action']) && isset($_GET['id'])) {
-    $id = (int)$_GET['id'];
-    
-    // Fetch email of target user to match in Supabase
-    $emailStmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
-    $emailStmt->execute([$id]);
-    $userEmail = $emailStmt->fetchColumn();
-
-    $supabaseUserUuid = null;
-    $supabaseConfigured = false;
-    $serviceRoleKey = supabaseServiceRoleKey();
-    if (supabaseUrl() !== '' && $serviceRoleKey !== '') {
-        $supabaseConfigured = true;
+function adminUsersFindSupabaseUuid(string $userEmail): ?string {
+    if ($userEmail === '' || supabaseUrl() === '' || supabaseServiceRoleKey() === '') {
+        return null;
     }
 
-    if ($userEmail && $supabaseConfigured) {
-        // Query the list of users from Supabase Auth admin API (limit to 1000)
-        $authResponse = supabaseAdminRequest('GET', 'admin/users?per_page=1000');
-        if ($authResponse['ok'] && isset($authResponse['data']['users'])) {
-            foreach ($authResponse['data']['users'] as $su) {
-                if (isset($su['email']) && strtolower($su['email']) === strtolower($userEmail)) {
-                    $supabaseUserUuid = $su['id'];
-                    break;
-                }
-            }
+    $authResponse = supabaseAdminRequest('GET', 'admin/users?per_page=1000');
+    if (!$authResponse['ok'] || empty($authResponse['data']['users'])) {
+        return null;
+    }
+
+    foreach ($authResponse['data']['users'] as $su) {
+        if (isset($su['email']) && strtolower((string) $su['email']) === strtolower($userEmail)) {
+            return $su['id'] ?? null;
         }
     }
 
-    if ($_GET['action'] === 'make_admin') {
+    return null;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['id'])) {
+    verifyCsrfToken();
+
+    $action = sanitize((string) $_POST['action']);
+    $id = (int) $_POST['id'];
+
+    if ($id <= 0) {
+        setFlash('error', 'Invalid user selected.');
+        redirect('users.php');
+    }
+
+    $targetStmt = $pdo->prepare('SELECT id, email, role FROM users WHERE id = ? LIMIT 1');
+    $targetStmt->execute([$id]);
+    $targetUser = $targetStmt->fetch();
+
+    if (!$targetUser) {
+        setFlash('error', 'User not found.');
+        redirect('users.php');
+    }
+
+    if ($id === $currentAdminId && in_array($action, ['remove_admin', 'delete'], true)) {
+        setFlash('error', 'You cannot perform this action on your own account.');
+        redirect('users.php');
+    }
+
+    if ($action === 'remove_admin' && ($targetUser['role'] ?? '') === 'admin') {
+        $adminCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+        if ($adminCount <= 1) {
+            setFlash('error', 'Cannot remove the last admin account.');
+            redirect('users.php');
+        }
+    }
+
+    $userEmail = (string) ($targetUser['email'] ?? '');
+    $supabaseUserUuid = adminUsersFindSupabaseUuid($userEmail);
+    $supabaseConfigured = supabaseUrl() !== '' && supabaseServiceRoleKey() !== '';
+
+    if ($action === 'make_admin') {
         $stmt = $pdo->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
         $stmt->execute([$id]);
-        
+
         $syncMsg = '';
         if ($supabaseConfigured) {
             if ($supabaseUserUuid) {
                 $res = supabaseAdminRequest('PUT', 'admin/users/' . $supabaseUserUuid, [
-                    'app_metadata' => ['role' => 'admin']
+                    'app_metadata' => ['role' => 'admin'],
                 ]);
                 if (!$res['ok']) {
                     $syncMsg = ' (Warning: Supabase sync failed: ' . ($res['error'] ?? 'Unknown error') . ')';
@@ -57,21 +84,17 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                 $syncMsg = ' (Warning: User not found in Supabase Auth)';
             }
         }
-        
-        if ($syncMsg !== '') {
-            setFlash('warning', 'User promoted to Admin locally' . $syncMsg);
-        } else {
-            setFlash('success', 'User promoted to Admin.');
-        }
-    } elseif ($_GET['action'] === 'remove_admin') {
+
+        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'User promoted to Admin locally' . $syncMsg : 'User promoted to Admin.'));
+    } elseif ($action === 'remove_admin') {
         $stmt = $pdo->prepare("UPDATE users SET role = 'user' WHERE id = ?");
         $stmt->execute([$id]);
-        
+
         $syncMsg = '';
         if ($supabaseConfigured) {
             if ($supabaseUserUuid) {
                 $res = supabaseAdminRequest('PUT', 'admin/users/' . $supabaseUserUuid, [
-                    'app_metadata' => ['role' => 'user']
+                    'app_metadata' => ['role' => 'user'],
                 ]);
                 if (!$res['ok']) {
                     $syncMsg = ' (Warning: Supabase sync failed: ' . ($res['error'] ?? 'Unknown error') . ')';
@@ -80,16 +103,12 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                 $syncMsg = ' (Warning: User not found in Supabase Auth)';
             }
         }
-        
-        if ($syncMsg !== '') {
-            setFlash('warning', 'Admin privileges removed locally' . $syncMsg);
-        } else {
-            setFlash('success', 'Admin privileges removed.');
-        }
-    } elseif ($_GET['action'] === 'delete') {
-        $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+
+        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'Admin privileges removed locally' . $syncMsg : 'Admin privileges removed.'));
+    } elseif ($action === 'delete') {
+        $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
         $stmt->execute([$id]);
-        
+
         $syncMsg = '';
         if ($supabaseConfigured) {
             if ($supabaseUserUuid) {
@@ -101,18 +120,16 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                 $syncMsg = ' (Warning: User not found in Supabase Auth)';
             }
         }
-        
-        if ($syncMsg !== '') {
-            setFlash('warning', 'User account deleted locally' . $syncMsg);
-        } else {
-            setFlash('success', 'User account deleted.');
-        }
+
+        setFlash($syncMsg !== '' ? 'warning' : 'success', ($syncMsg !== '' ? 'User account deleted locally' . $syncMsg : 'User account deleted.'));
+    } else {
+        setFlash('error', 'Unknown action.');
     }
+
     redirect('users.php');
 }
 
-// Fetch Users
-$stmt = $pdo->query("SELECT * FROM users ORDER BY created_at DESC");
+$stmt = $pdo->query('SELECT * FROM users ORDER BY created_at DESC');
 $users = $stmt->fetchAll();
 
 include '../includes/header.php';
@@ -164,18 +181,37 @@ include '../includes/header.php';
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light);">
                             <div class="flex justify-end gap-2">
                                 <?php if ($u['role'] === 'admin'): ?>
-                                    <a href="?action=remove_admin&id=<?php echo $u['id']; ?>" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Demote</a>
+                                    <?php if ((int) $u['id'] !== $currentAdminId): ?>
+                                    <form method="post" style="margin: 0;" onsubmit="return confirm('Remove admin privileges from this user?');">
+                                        <?php echo csrfTokenField(); ?>
+                                        <input type="hidden" name="action" value="remove_admin">
+                                        <input type="hidden" name="id" value="<?php echo (int) $u['id']; ?>">
+                                        <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Demote</button>
+                                    </form>
+                                    <?php endif; ?>
                                 <?php else: ?>
-                                    <a href="?action=make_admin&id=<?php echo $u['id']; ?>" class="btn btn-primary btn-sm hover-scale shadow-sm" style="background: var(--secondary); border-radius: var(--radius-lg);">Make Admin</a>
+                                    <form method="post" style="margin: 0;">
+                                        <?php echo csrfTokenField(); ?>
+                                        <input type="hidden" name="action" value="make_admin">
+                                        <input type="hidden" name="id" value="<?php echo (int) $u['id']; ?>">
+                                        <button type="submit" class="btn btn-primary btn-sm hover-scale shadow-sm" style="background: var(--secondary); border-radius: var(--radius-lg);">Make Admin</button>
+                                    </form>
                                 <?php endif; ?>
-                                <a href="?action=delete&id=<?php echo $u['id']; ?>" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" onclick="return confirm('Delete this user account? This cannot be undone.')">Delete</a>
+                                <?php if ((int) $u['id'] !== $currentAdminId): ?>
+                                <form method="post" style="margin: 0;" onsubmit="return confirm('Delete this user account? This cannot be undone.');">
+                                    <?php echo csrfTokenField(); ?>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?php echo (int) $u['id']; ?>">
+                                    <button type="submit" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Delete</button>
+                                </form>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
-        
+
         <?php if (empty($users)): ?>
             <div class="text-center p-8 text-muted">
                 No users found.

@@ -153,3 +153,46 @@ function resendSignupVerificationEmail(string $email): array {
     // Supabase may return errors for unknown emails; keep the response generic.
     return ['ok' => true, 'message' => 'If an account exists for this email, a new verification link has been sent.'];
 }
+
+/**
+ * Extract marketplace bucket object path from a public Supabase Storage URL.
+ */
+function supabaseStorageObjectPathFromUrl(string $path): ?string {
+    if (!preg_match('#/storage/v1/object/(?:public/)?marketplace/(.+)$#i', $path, $matches)) {
+        return null;
+    }
+    return rawurldecode($matches[1]);
+}
+
+/**
+ * Delete an object from the marketplace Supabase Storage bucket (service role).
+ */
+function deleteSupabaseStorageObject(string $imagePath): bool {
+    $objectPath = supabaseStorageObjectPathFromUrl($imagePath);
+    if ($objectPath === null) {
+        return false;
+    }
+
+    $serviceRoleKey = supabaseServiceRoleKey();
+    if ($serviceRoleKey === '' || supabaseUrl() === '') {
+        return false;
+    }
+
+    $encodedPath = implode('/', array_map('rawurlencode', explode('/', $objectPath)));
+    $url = rtrim(supabaseUrl(), '/') . '/storage/v1/object/marketplace/' . $encodedPath;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'DELETE',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $serviceRoleKey,
+            'apikey: ' . $serviceRoleKey,
+        ],
+    ]);
+    curl_exec($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    return $httpCode >= 200 && $httpCode < 300;
+}

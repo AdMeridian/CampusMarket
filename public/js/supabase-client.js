@@ -10,7 +10,7 @@
   window.CampusMarketSupabase = window.supabase.createClient(url, anonKey, {
     auth: {
       persistSession: false,
-      autoRefreshToken: true,
+      autoRefreshToken: false,
       detectSessionInUrl: false,
     },
     realtime: {
@@ -29,7 +29,7 @@
   window.CampusMarketSupabaseReady = window.CampusMarketSupabase.auth
     .setSession({
       access_token: session.access_token,
-      refresh_token: session.refresh_token || "",
+      refresh_token: "",
     })
     .then(function (result) {
       return !result.error;

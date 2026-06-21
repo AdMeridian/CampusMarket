@@ -228,14 +228,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             $stmtDel = $pdo->prepare("DELETE FROM product_images WHERE id = ?");
             $stmtDel->execute([$imageId]);
             
-            // Delete file if local
+            // Remove file from storage (Supabase or local uploads)
             $path = $img['image_path'];
-            if (strpos($path, 'http') !== 0) {
-                $absPath = __DIR__ . '/../public/' . ltrim($path, '/');
-                if (file_exists($absPath)) {
-                    @unlink($absPath);
-                }
-            }
+            deleteStoredImageFile($path);
             
             // If it was primary, assign a new primary
             if ($img['is_primary']) {

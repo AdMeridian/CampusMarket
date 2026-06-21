@@ -81,8 +81,7 @@ $navCategories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC"
         };
         <?php if (isLoggedIn() && !empty($_SESSION['supabase_access_token'])): ?>
         window.__supabaseSession = {
-            access_token: <?php echo json_encode($_SESSION['supabase_access_token']); ?>,
-            refresh_token: <?php echo json_encode($_SESSION['supabase_refresh_token'] ?? ''); ?>
+            access_token: <?php echo json_encode($_SESSION['supabase_access_token']); ?>
         };
         <?php endif; ?>
     </script>

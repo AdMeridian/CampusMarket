@@ -7,16 +7,11 @@ $condition = $_GET['condition'] ?? '';
 $minPrice = $_GET['min_price'] ?? '';
 $maxPrice = $_GET['max_price'] ?? '';
 $sort = $_GET['sort'] ?? 'newest';
+$page = max(1, (int)($_GET['page'] ?? 1));
 
 // Filters and sorting logic
 $params = [];
-$sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_path,
-               (p.price * (100 - p.discount_percent) / 100) AS effective_price
-        FROM products p 
-        JOIN categories c ON p.category_id = c.id 
-        JOIN users u ON p.user_id = u.id 
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'";
+$filterSql = '';
 
 if ($search !== '') {
     $searchTerms = expandSearchQuery($search);
@@ -40,25 +35,42 @@ if ($search !== '') {
     }
     
     if (!empty($termConditions)) {
-        $sql .= " AND (" . implode(" OR ", $termConditions) . ")";
+        $filterSql .= " AND (" . implode(" OR ", $termConditions) . ")";
     }
 }
 if ($category) {
-    $sql .= " AND p.category_id = ?";
+    $filterSql .= " AND p.category_id = ?";
     $params[] = $category;
 }
 if ($condition) {
-    $sql .= " AND p.condition = ?";
+    $filterSql .= " AND p.condition = ?";
     $params[] = $condition;
 }
 if ($minPrice) {
-    $sql .= " AND (p.price * (100 - p.discount_percent) / 100) >= ?";
+    $filterSql .= " AND (p.price * (100 - p.discount_percent) / 100) >= ?";
     $params[] = $minPrice;
 }
 if ($maxPrice) {
-    $sql .= " AND (p.price * (100 - p.discount_percent) / 100) <= ?";
+    $filterSql .= " AND (p.price * (100 - p.discount_percent) / 100) <= ?";
     $params[] = $maxPrice;
 }
+
+$fromSql = " FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        JOIN users u ON p.user_id = u.id 
+        WHERE p.status = 'active'" . $filterSql;
+
+$countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
+$countStmt->execute($params);
+$totalItems = (int) $countStmt->fetchColumn();
+
+$sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_path,
+               (p.price * (100 - p.discount_percent) / 100) AS effective_price
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        JOIN users u ON p.user_id = u.id 
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active'" . $filterSql;
 
 $sql .= " ORDER BY CASE WHEN p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW()) THEN 1 ELSE 0 END DESC, ";
 switch ($sort) {
@@ -75,9 +87,18 @@ switch ($sort) {
     default: $sql .= "p.created_at DESC"; break;
 }
 
+$sql .= " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
+
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $products = $stmt->fetchAll();
+
+$paginationQuery = $_GET;
+unset($paginationQuery['page']);
+$paginationBase = 'browse.php';
+if (!empty($paginationQuery)) {
+    $paginationBase .= '?' . http_build_query($paginationQuery);
+}
 
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
 
@@ -236,7 +257,7 @@ include '../includes/header.php';
                 <div class="mb-8 browse-results-header">
                     <!-- Item Count -->
                     <div class="item-count-badge" style="background: var(--bg-card); color: var(--text-main); padding: 0.4rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border-light); flex-shrink: 0;">
-                        <?= __('browse.items_count', ['count' => count($products)]) ?>
+                        <?= __('browse.items_count', ['count' => $totalItems]) ?>
                     </div>
 
                     <!-- Search Bar (In Between) -->
@@ -297,6 +318,7 @@ include '../includes/header.php';
                             <?php include '../includes/product_card_template.php'; ?>
                         <?php endforeach; ?>
                     </div>
+                    <?php echo paginationLinks($totalItems, $page, $paginationBase); ?>
                 <?php endif; ?>
             </main>
         </div>

@@ -228,7 +228,6 @@ function handleUpload(array $file, string $subfolder = 'products/'): array {
     $supabaseUrl = supabaseUrl();
     $supabaseKey = supabaseAnonKey();
     $supabaseServiceKey = function_exists('supabaseServiceRoleKey') ? supabaseServiceRoleKey() : '';
-    error_log("handleUpload debug: URL='" . $supabaseUrl . "', KeyLen=" . strlen($supabaseKey) . ", ServiceKeyLen=" . strlen($supabaseServiceKey));
 
     if (empty($supabaseUrl) || empty($supabaseKey)) {
         // Local upload fallback if Supabase not configured
@@ -304,6 +303,28 @@ function uploadImage(array $file, string $subfolder = 'products') {
     return $result['success'] ? $result['path'] : false;
 }
 
+/**
+ * Delete a stored image from Supabase Storage or the local uploads folder.
+ */
+function deleteStoredImageFile(string $path): bool {
+    $path = trim($path);
+    if ($path === '') {
+        return false;
+    }
+
+    if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+        require_once __DIR__ . '/../config/supabase.php';
+        return deleteSupabaseStorageObject($path);
+    }
+
+    $absPath = __DIR__ . '/../public/' . ltrim($path, '/');
+    if (is_file($absPath)) {
+        return @unlink($absPath);
+    }
+
+    return false;
+}
+
 // ─── Pagination ──────────────────────────────────────────
 
 /**
@@ -320,16 +341,17 @@ function paginationLinks(int $totalItems, int $currentPage, string $baseUrl): st
     $totalPages = (int) ceil($totalItems / ITEMS_PER_PAGE);
     if ($totalPages <= 1) return '';
 
+    $separator = str_contains($baseUrl, '?') ? '&' : '?';
     $html  = '<div class="pagination">';
     if ($currentPage > 1) {
-        $html .= '<a href="' . $baseUrl . '?page=' . ($currentPage - 1) . '" class="btn-page">← Prev</a>';
+        $html .= '<a href="' . $baseUrl . $separator . 'page=' . ($currentPage - 1) . '" class="btn-page">← Prev</a>';
     }
     for ($i = 1; $i <= $totalPages; $i++) {
         $active = $i === $currentPage ? ' active' : '';
-        $html  .= '<a href="' . $baseUrl . '?page=' . $i . '" class="btn-page' . $active . '">' . $i . '</a>';
+        $html  .= '<a href="' . $baseUrl . $separator . 'page=' . $i . '" class="btn-page' . $active . '">' . $i . '</a>';
     }
     if ($currentPage < $totalPages) {
-        $html .= '<a href="' . $baseUrl . '?page=' . ($currentPage + 1) . '" class="btn-page">Next →</a>';
+        $html .= '<a href="' . $baseUrl . $separator . 'page=' . ($currentPage + 1) . '" class="btn-page">Next →</a>';
     }
     $html .= '</div>';
     return $html;
