@@ -1,13 +1,7 @@
 <?php
 // admin/orders.php
-require_once __DIR__ . '/../config/constants.php';
-require_once __DIR__ . '/../includes/header.php';
-
-// Auth Check (Admin Only)
-if (!isAdmin()) {
-    setFlash('error', 'Unauthorized access.');
-    redirect('../index.php');
-}
+require_once __DIR__ . '/../includes/bootstrap.php';
+requireAdmin();
 
 $pageTitle = "Order Oversight";
 
@@ -25,6 +19,8 @@ $stmt = $pdo->query("
     ORDER BY o.created_at DESC
 ");
 $orders = $stmt->fetchAll();
+
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="container mt-24 mb-16">

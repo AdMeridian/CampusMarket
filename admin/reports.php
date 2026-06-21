@@ -2,11 +2,7 @@
 // admin/reports.php
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/bootstrap.php';
-
-if (!isAdmin()) {
-    setFlash('error', 'Unauthorized access.');
-    redirect(BASE_URL . 'index.php');
-}
+requireAdmin();
 
 $pageTitle = "Moderation Queue";
 
