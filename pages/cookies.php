@@ -19,40 +19,7 @@ require_once __DIR__ . '/../includes/header.php';
             <p><?= __('policy.cookies.s1_body') ?></p>
 
             <h3 style="margin-top: 1.5rem; color: var(--primary);"><?= __('policy.cookies.s2_title') ?></h3>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 0.75rem;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border-light); text-align: left;">
-                            <th style="padding: 0.5rem;"><?= __('policy.cookies.col_name') ?></th>
-                            <th style="padding: 0.5rem;"><?= __('policy.cookies.col_purpose') ?></th>
-                            <th style="padding: 0.5rem;"><?= __('policy.cookies.col_type') ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-bottom: 1px solid var(--border-light);">
-                            <td style="padding: 0.5rem;"><code>csrf_token</code></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.row_csrf') ?></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.type_essential') ?></td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-light);">
-                            <td style="padding: 0.5rem;"><code>campusmarket_sess_stateless</code></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.row_session') ?></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.type_essential') ?></td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid var(--border-light);">
-                            <td style="padding: 0.5rem;"><code>campusmarket_lang</code></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.row_lang') ?></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.type_functional') ?></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 0.5rem;"><code>PHPSESSID</code></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.row_php') ?></td>
-                            <td style="padding: 0.5rem;"><?= __('policy.cookies.type_essential') ?></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);"><?= __('policy.cookies.no_tracking') ?></p>
+            <p><?= __('policy.cookies.s2_body') ?></p>
 
             <h3 style="margin-top: 1.5rem; color: var(--primary);"><?= __('policy.cookies.s3_title') ?></h3>
             <p><?= __('policy.cookies.s3_body') ?></p>
