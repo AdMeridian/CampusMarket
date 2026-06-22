@@ -108,7 +108,7 @@ if (!defined('WEB_PUSH_PUBLIC_KEY')) {
 }
 
 // AI listing moderation — auto-approve when passed and confidence meets this (0–1).
-define('AI_MODERATION_MIN_CONFIDENCE', 0.75);
+define('AI_MODERATION_MIN_CONFIDENCE', 0.65);
 
 /**
  * Server-only secret for signing the stateless session cookie.

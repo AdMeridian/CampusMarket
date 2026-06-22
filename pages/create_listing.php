@@ -2,6 +2,7 @@
 // pages/create_listing.php
 require_once '../includes/bootstrap.php';
 require_once '../includes/ai_moderator.php';
+require_once '../includes/listing_moderation.php';
 requireLogin();
 
 // Admins are moderators only — they cannot create listings
@@ -101,12 +102,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if ($aiResult['passed'] && $aiResult['confidence'] >= AI_MODERATION_MIN_CONFIDENCE) {
+                if (aiModeratorShouldAutoApprove($aiResult)) {
                     $status = 'active';
                 } else {
                     $status = 'pending_approval';
                     $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
                     $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+                    notifyAdminsPendingListing(
+                        $pdo,
+                        (int)$productId,
+                        $title,
+                        (string)($aiResult['reason'] ?? '')
+                    );
                 }
 
                 // 3. Save tags — manual selection first, then AI-generated as fallback

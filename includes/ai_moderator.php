@@ -2,22 +2,32 @@
 // includes/ai_moderator.php
 // AI Listing Guard using Gemini API to evaluate listing quality and generate tags.
 
+function aiModeratorEnv(string $key): ?string {
+    $value = getenv($key);
+    if ($value !== false && trim((string)$value) !== '') {
+        return trim((string)$value);
+    }
+    if (isset($_ENV[$key]) && trim((string)$_ENV[$key]) !== '') {
+        return trim((string)$_ENV[$key]);
+    }
+    if (isset($_SERVER[$key]) && trim((string)$_SERVER[$key]) !== '') {
+        return trim((string)$_SERVER[$key]);
+    }
+    return null;
+}
+
 function aiModeratorApiKey(): ?string {
     foreach (['GEMINI_API_KEY', 'CHATBOT_GEMINI_API_KEY'] as $name) {
-        $value = getenv($name);
-        if ($value !== false && trim((string)$value) !== '') {
-            return trim((string)$value);
+        $value = aiModeratorEnv($name);
+        if ($value !== null) {
+            return $value;
         }
     }
     return null;
 }
 
 function aiModeratorOpenRouterKey(): ?string {
-    $value = getenv('OPEN_ROUTER_API_KEY');
-    if ($value !== false && trim((string)$value) !== '') {
-        return trim((string)$value);
-    }
-    return null;
+    return aiModeratorEnv('OPEN_ROUTER_API_KEY');
 }
 
 function aiModeratorParseJson(string $text): ?array {
@@ -65,10 +75,11 @@ function aiModeratorNormalizeResult(array $result): array {
         'confidence' => $confidence,
         'tags' => array_values(array_filter(array_map('strval', $tags))),
         'reason' => trim((string)($result['reason'] ?? '')),
+        'mode' => (string)($result['mode'] ?? 'vision'),
     ];
 }
 
-function aiModeratorFailure(string $reason): array {
+function aiModeratorFailure(string $reason, string $mode = 'error'): array {
     error_log('[ai_moderator] ' . $reason);
     return [
         'passed' => false,
@@ -76,19 +87,72 @@ function aiModeratorFailure(string $reason): array {
         'confidence' => 0.0,
         'tags' => [],
         'reason' => $reason,
+        'mode' => $mode,
     ];
 }
 
-function aiModerateListing(string $title, string $description, array $imagesData = []): array {
-    $apiKey = aiModeratorApiKey();
-    $openRouterKey = aiModeratorOpenRouterKey();
+function aiModeratorBuildPrompt(string $title, string $description, bool $vision): string {
+    $visionNote = $vision
+        ? "4. Image match: photos should reasonably match the title/description. Minor angle/lighting issues are OK for used campus items."
+        : "4. No images were analyzed — judge title and description only.";
 
-    if (!$apiKey && !$openRouterKey) {
-        return aiModeratorFailure('No AI API keys configured; manual moderation required.');
+    return "You are an AI moderator for a student campus marketplace.\n"
+        . "Approve legitimate used goods sold by students. Be practical, not overly strict.\n\n"
+        . "Checks:\n"
+        . "1. Image quality (if images provided): only set is_blurry=true if photos are unreadable or extremely blurry.\n"
+        . "2. Prohibited content: weapons, drugs, alcohol/tobacco/vape, adult content, exam/test banks, scams.\n"
+        . "3. For normal textbooks, electronics, furniture, clothing, etc., set passed=true with confidence 0.8+ when clearly legitimate.\n"
+        . "{$visionNote}\n\n"
+        . "Return ONLY JSON with keys: passed (boolean), is_blurry (boolean), confidence (0-1 number), tags (3-5 single words), reason (short string).\n\n"
+        . "Title: \"{$title}\"\n"
+        . "Description: \"{$description}\"";
+}
+
+/** @return array{mime:string,base64:string}|null */
+function aiModeratorPrepareImage(string $binary, string $mime): ?array {
+    if ($binary === '') {
+        return null;
     }
 
-    $prompt = "You are an AI moderator for a student marketplace. Evaluate the listing with the given title, description, and attached images.\nCheck for the following:\n1. Image Quality: Are any of the images very blurry, extremely low resolution, or completely unreadable? If so, set 'is_blurry' to true.\n2. Content Match: Do the images match the title and description? (e.g., if it's a Lenovo laptop, does it actually look like one?)\n3. Prohibited Content & Policy Compliance: Is the listing safe, lawful, and compliant with university campus policies? Do NOT allow weapons, firearms, ammunition, knives, illegal substances, drugs, prescription medications, alcohol, tobacco/vape products, recalled items, adult content, academic dishonesty materials (exams, test banks, graded homework), or anything else that violates university rules. If any of these are detected, 'passed' must be set to false.\n\nReturn ONLY a JSON object with these keys:\n- passed (boolean): true if trustworthy, policy-compliant, and images match.\n- is_blurry (boolean): true if ANY image is too blurry/unreadable.\n- confidence (number 0 to 1): your confidence in the decision.\n- tags (array of 3-5 single-word strings): product tags.\n- reason (string): short explanation.\n\nTitle: \"{$title}\"\nDescription: \"{$description}\"";
+    if (function_exists('imagecreatefromstring')) {
+        $img = @imagecreatefromstring($binary);
+        if ($img !== false) {
+            $width = imagesx($img);
+            $height = imagesy($img);
+            $maxEdge = 1280;
 
+            if ($width > 0 && $height > 0 && ($width > $maxEdge || $height > $maxEdge)) {
+                $scale = min($maxEdge / $width, $maxEdge / $height);
+                $newW = max(1, (int)round($width * $scale));
+                $newH = max(1, (int)round($height * $scale));
+                $resized = imagecreatetruecolor($newW, $newH);
+                if ($resized !== false) {
+                    imagecopyresampled($resized, $img, 0, 0, 0, 0, $newW, $newH, $width, $height);
+                    imagedestroy($img);
+                    $img = $resized;
+                }
+            }
+
+            ob_start();
+            imagejpeg($img, null, 82);
+            $jpeg = ob_get_clean();
+            imagedestroy($img);
+
+            if ($jpeg !== false && $jpeg !== '') {
+                return ['mime' => 'image/jpeg', 'base64' => base64_encode($jpeg)];
+            }
+        }
+    }
+
+    if (strlen($binary) > 3 * 1024 * 1024) {
+        error_log('[ai_moderator] image too large and GD unavailable; skipping vision');
+        return null;
+    }
+
+    return ['mime' => $mime, 'base64' => base64_encode($binary)];
+}
+
+function aiModeratorCallGemini(string $apiKey, string $prompt, array $imagesData): array {
     $parts = [['text' => $prompt]];
     foreach ($imagesData as $img) {
         $parts[] = [
@@ -100,107 +164,154 @@ function aiModerateListing(string $title, string $description, array $imagesData
     }
 
     $requestBody = [
-        'contents' => [
-            ['role' => 'user', 'parts' => $parts],
-        ],
-        'generationConfig' => [
-            'responseMimeType' => 'application/json',
-        ],
+        'contents' => [['role' => 'user', 'parts' => $parts]],
+        'generationConfig' => ['responseMimeType' => 'application/json'],
     ];
 
-    $models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-    $httpCode = 0;
-    $response = '';
-    $usedOpenRouter = false;
+    $models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+    $lastCode = 0;
+    $lastBody = '';
 
-    if ($apiKey) {
-        foreach ($models as $model) {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
-            curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-            $response = curl_exec($ch);
-            $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($httpCode === 200) {
-                break;
-            }
-            error_log("[ai_moderator] Gemini {$model} failed HTTP {$httpCode}: " . substr((string)$response, 0, 300));
-        }
-    } else {
-        $httpCode = 0;
-    }
-
-    if ($httpCode !== 200 && $openRouterKey) {
-        $usedOpenRouter = true;
-        $messages = [
-            [
-                'role' => 'user',
-                'content' => [
-                    ['type' => 'text', 'text' => $prompt],
-                ],
-            ],
-        ];
-
-        foreach ($imagesData as $img) {
-            $messages[0]['content'][] = [
-                'type' => 'image_url',
-                'image_url' => [
-                    'url' => "data:{$img['mime']};base64,{$img['base64']}",
-                ],
-            ];
-        }
-
-        $orRequestBody = [
-            'model' => 'google/gemini-2.0-flash',
-            'response_format' => ['type' => 'json_object'],
-            'messages' => $messages,
-        ];
-
-        $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer {$openRouterKey}",
-            'Content-Type: application/json',
+    foreach ($models as $model) {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_POSTFIELDS => json_encode($requestBody),
+            CURLOPT_TIMEOUT => 25,
         ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($orRequestBody));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
         $response = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode !== 200) {
-            error_log("[ai_moderator] OpenRouter failed HTTP {$httpCode}: " . substr((string)$response, 0, 300));
+        if ($httpCode === 200) {
+            $data = json_decode((string)$response, true);
+            $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $parsed = aiModeratorParseJson($text);
+            if ($parsed !== null) {
+                $result = aiModeratorNormalizeResult($parsed);
+                $result['mode'] = empty($imagesData) ? 'text' : 'vision';
+                return ['ok' => true, 'result' => $result];
+            }
+            $lastCode = 200;
+            $lastBody = 'AI response not JSON formatted.';
+            continue;
         }
+
+        $lastCode = $httpCode;
+        $lastBody = substr((string)$response, 0, 300);
+        error_log("[ai_moderator] Gemini {$model} failed HTTP {$httpCode}: {$lastBody}");
     }
 
+    return ['ok' => false, 'code' => $lastCode, 'error' => $lastBody];
+}
+
+function aiModeratorCallOpenRouter(string $openRouterKey, string $prompt, array $imagesData): array {
+    $content = [['type' => 'text', 'text' => $prompt]];
+    foreach ($imagesData as $img) {
+        $content[] = [
+            'type' => 'image_url',
+            'image_url' => ['url' => "data:{$img['mime']};base64,{$img['base64']}"],
+        ];
+    }
+
+    $orRequestBody = [
+        'model' => 'google/gemini-2.0-flash',
+        'response_format' => ['type' => 'json_object'],
+        'messages' => [['role' => 'user', 'content' => $content]],
+    ];
+
+    $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Bearer {$openRouterKey}",
+            'Content-Type: application/json',
+        ],
+        CURLOPT_POSTFIELDS => json_encode($orRequestBody),
+        CURLOPT_TIMEOUT => 25,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
     if ($httpCode !== 200) {
-        return aiModeratorFailure("AI API error (HTTP {$httpCode})");
+        error_log("[ai_moderator] OpenRouter failed HTTP {$httpCode}: " . substr((string)$response, 0, 300));
+        return ['ok' => false, 'code' => $httpCode, 'error' => (string)$response];
     }
 
     $data = json_decode((string)$response, true);
-    $text = '';
-    if (is_array($data) && isset($data['candidates'])) {
-        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    } elseif (is_array($data) && isset($data['choices'])) {
-        $text = $data['choices'][0]['message']['content'] ?? '';
-    }
-
+    $text = $data['choices'][0]['message']['content'] ?? '';
     $parsed = aiModeratorParseJson($text);
     if ($parsed === null) {
-        return aiModeratorFailure('AI response not JSON formatted.');
+        return ['ok' => false, 'code' => 200, 'error' => 'AI response not JSON formatted.'];
     }
 
     $result = aiModeratorNormalizeResult($parsed);
-    if ($usedOpenRouter) {
-        error_log('[ai_moderator] used OpenRouter fallback');
+    $result['mode'] = empty($imagesData) ? 'text' : 'vision';
+    return ['ok' => true, 'result' => $result];
+}
+
+function aiModeratorEvaluate(string $title, string $description, array $imagesData): array {
+    $apiKey = aiModeratorApiKey();
+    $openRouterKey = aiModeratorOpenRouterKey();
+
+    if (!$apiKey && !$openRouterKey) {
+        return aiModeratorFailure('No AI API keys configured; manual moderation required.');
     }
-    error_log('[ai_moderator] decision passed=' . ($result['passed'] ? '1' : '0') . ' confidence=' . $result['confidence'] . ' reason=' . $result['reason']);
+
+    $prompt = aiModeratorBuildPrompt($title, $description, !empty($imagesData));
+
+    if ($apiKey) {
+        $gemini = aiModeratorCallGemini($apiKey, $prompt, $imagesData);
+        if (!empty($gemini['ok'])) {
+            return $gemini['result'];
+        }
+    }
+
+    if ($openRouterKey) {
+        $or = aiModeratorCallOpenRouter($openRouterKey, $prompt, $imagesData);
+        if (!empty($or['ok'])) {
+            return $or['result'];
+        }
+    }
+
+    return aiModeratorFailure('AI API error (vision/text request failed)');
+}
+
+function aiModerateListing(string $title, string $description, array $imagesData = []): array {
+    $preparedImages = [];
+    foreach (array_slice($imagesData, 0, 1) as $img) {
+        $mime = (string)($img['mime'] ?? 'image/jpeg');
+        $raw = isset($img['base64']) ? base64_decode((string)$img['base64'], true) : false;
+        if ($raw === false) {
+            continue;
+        }
+        $prepared = aiModeratorPrepareImage($raw, $mime);
+        if ($prepared !== null) {
+            $preparedImages[] = $prepared;
+        }
+    }
+
+    $result = aiModeratorEvaluate($title, $description, $preparedImages);
+
+    if (empty($result['passed']) && ($result['mode'] ?? '') === 'error' && !empty($preparedImages)) {
+        error_log('[ai_moderator] vision failed; retrying text-only');
+        $textResult = aiModeratorEvaluate($title, $description, []);
+        if (!empty($textResult['passed']) && ($textResult['confidence'] ?? 0) >= AI_MODERATION_MIN_CONFIDENCE) {
+            $textResult['reason'] = 'Text-only moderation (image check unavailable): ' . ($textResult['reason'] ?? '');
+            $textResult['mode'] = 'text_fallback';
+            $result = $textResult;
+        }
+    }
+
+    error_log('[ai_moderator] decision passed=' . (!empty($result['passed']) ? '1' : '0')
+        . ' confidence=' . ($result['confidence'] ?? 0)
+        . ' mode=' . ($result['mode'] ?? '?')
+        . ' reason=' . ($result['reason'] ?? ''));
 
     return $result;
 }

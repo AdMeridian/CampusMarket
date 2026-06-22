@@ -457,7 +457,7 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
             <?php if ($stats['pending_approval_listings'] > 0): ?>
-            <a href="listings.php" class="reports-alert" style="background: #eff6ff; border-color: #bfdbfe; border-left-color: #3b82f6;">
+            <a href="listings.php?status=pending_approval" class="reports-alert" style="background: #eff6ff; border-color: #bfdbfe; border-left-color: #3b82f6;">
                 <div>
                     <div class="reports-alert-text" style="color: #1e3a8a;"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Listings Pending Approval</div>
                     <div class="reports-alert-sub" style="color: #1e40af;">New listings are waiting for administrative approval</div>
