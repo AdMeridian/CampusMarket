@@ -11,18 +11,16 @@
  */
 
 /* ─────────────────────────────────────────────────────────────
- * University-email allowlist
+ * University domains (registration dropdown — convenience only)
  *
- * Key   = exact lowercase domain (after the @)
- * Value = friendly label for UI/error messages
- *
- * Add new domains here as the team approves more institutions.
- * No code changes needed elsewhere.
+ * Any *@*.edu.tr address is accepted at signup. This list is for
+ * quick selection in the UI; use "Other" for subdomains like staff.*.
  * ───────────────────────────────────────────────────────────── */
 if (!function_exists('allowedUniversityDomains')) {
     function allowedUniversityDomains(): array {
         return [
             'std.neu.edu.tr'     => 'Near East University (Student)',
+            'staff.neu.edu.tr'   => 'Near East University (Staff)',
             'ciu.edu.tr'         => 'Cyprus International University',
             'baucyprus.edu.tr'   => 'Bahçeşehir Cyprus University',
             'eul.edu.tr'         => 'European University of Lefke',
@@ -30,13 +28,34 @@ if (!function_exists('allowedUniversityDomains')) {
             'gau.edu.tr'         => 'Girne American University',
             'metu.edu.tr'        => 'Middle East Technical University NCC',
             'kyrenia.edu.tr'     => 'University of Kyrenia',
-            // 'staff.neu.edu.tr'   => 'Near East University (Staff)',
         ];
     }
 }
 
+/** Select option value for a custom *.edu.tr domain on the registration form. */
+if (!function_exists('universityDomainCustomOption')) {
+    function universityDomainCustomOption(): string {
+        return '__custom_edu_tr__';
+    }
+}
+
 /**
- * True if the email is well-formed AND its domain is on the allowlist.
+ * True when the domain is a Turkish university address (e.g. ciu.edu.tr, staff.neu.edu.tr).
+ */
+if (!function_exists('isEduTrEmailDomain')) {
+    function isEduTrEmailDomain(string $domain): bool {
+        $domain = strtolower(trim($domain));
+        if ($domain === '' || $domain === 'edu.tr') {
+            return false;
+        }
+
+        return str_ends_with($domain, '.edu.tr');
+    }
+}
+
+/**
+ * True if the email is well-formed AND uses an allowed campus domain.
+ * Any *@*.edu.tr address is accepted (students and staff).
  */
 if (!function_exists('isAllowedUniversityEmail')) {
     function isAllowedUniversityEmail(string $email): bool {
@@ -49,28 +68,22 @@ if (!function_exists('isAllowedUniversityEmail')) {
             return false;
         }
         $domain = substr($email, $atIdx + 1);
-        
-        // Check public university domains
-        if (array_key_exists($domain, allowedUniversityDomains())) {
-            return true;
-        }
-        
-        // Silently allow admin/hidden domains without listing them in public UI
+
         $hiddenDomains = ['campusmarketplace.site'];
-        if (in_array($domain, $hiddenDomains)) {
+        if (in_array($domain, $hiddenDomains, true)) {
             return true;
         }
-        
-        return false;
+
+        return isEduTrEmailDomain($domain);
     }
 }
 
 /**
- * Public university domains require a student-style local part before the @.
+ * Legacy hook — student-number rules are not enforced; staff use the same .edu.tr rule.
  */
 if (!function_exists('universityEmailRequiresStudentNumber')) {
     function universityEmailRequiresStudentNumber(string $domain): bool {
-        return array_key_exists(strtolower($domain), allowedUniversityDomains());
+        return false;
     }
 }
 
@@ -95,14 +108,18 @@ if (!function_exists('validateUniversityStudentEmail')) {
         }
         $local  = substr($email, 0, $atIdx);
         $domain = substr($email, $atIdx + 1);
-        if (!universityEmailRequiresStudentNumber($domain)) {
+        if (!isEduTrEmailDomain($domain)) {
             return null;
         }
         if ($local === '' || strlen($local) > 64) {
-            return 'Enter the part before the @ in your university email (e.g., 20227014 or u20227014).';
+            return function_exists('__')
+                ? __('auth.register_error_email_local_empty')
+                : 'Enter the part before the @ in your university email.';
         }
         if (!preg_match('/^[a-z0-9][a-z0-9._+-]*$/i', $local)) {
-            return 'University email can only use letters, numbers, dots, hyphens, and underscores before the @.';
+            return function_exists('__')
+                ? __('auth.register_error_email_local_format')
+                : 'University email can only use letters, numbers, dots, hyphens, and underscores before the @.';
         }
         return null;
     }
@@ -136,13 +153,11 @@ if (!function_exists('studentIdFromUniversityEmail')) {
 }
 
 /**
- * Comma-separated list of allowed @domain tags, e.g. "@std.neu.edu.tr".
- * Used in placeholders and error messages so they stay in sync with the dict.
+ * Human-readable hint for error messages.
  */
 if (!function_exists('allowedDomainsList')) {
     function allowedDomainsList(): string {
-        $domains = array_keys(allowedUniversityDomains());
-        return implode(', ', array_map(fn($d) => '@' . $d, $domains));
+        return '@*.edu.tr';
     }
 }
 

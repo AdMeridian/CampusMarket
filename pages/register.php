@@ -1,6 +1,6 @@
 <?php
 // pages/register.php — Member 2
-// Create a CampusMarket account with university-email allowlist
+// Create a CampusMarket account with a *.edu.tr university email
 // and email verification via Supabase Auth. No auto-login: user must verify
 // before they can sign in.
 
@@ -13,8 +13,16 @@ if (isLoggedIn()) {
 }
 
 $errors = [];
-$old    = ['username' => '', 'email' => '', 'email_local' => '', 'university_domain' => '', 'phone' => ''];
+$old    = [
+    'username' => '',
+    'email' => '',
+    'email_local' => '',
+    'university_domain' => '',
+    'university_domain_custom' => '',
+    'phone' => '',
+];
 $universityDomains = allowedUniversityDomains();
+$customDomainOption = universityDomainCustomOption();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -22,7 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Gather + normalize
     $username = trim($_POST['username'] ?? '');
     $emailLocal = trim(strtolower($_POST['email_local'] ?? ''));
-    $universityDomain = trim(strtolower($_POST['university_domain'] ?? ''));
+    $universitySelect = trim(strtolower($_POST['university_domain'] ?? ''));
+    $universityDomainCustom = trim(strtolower($_POST['university_domain_custom'] ?? ''));
+    $universityDomain = ($universitySelect === $customDomainOption)
+        ? $universityDomainCustom
+        : $universitySelect;
     $email    = $emailLocal !== '' && $universityDomain !== ''
         ? buildUniversityEmail($emailLocal, $universityDomain)
         : trim(strtolower($_POST['email'] ?? ''));
@@ -33,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $old['username'] = $username;
     $old['email']    = $email;
     $old['email_local'] = $emailLocal;
-    $old['university_domain'] = $universityDomain;
+    $old['university_domain'] = $universitySelect;
+    $old['university_domain_custom'] = $universityDomainCustom;
     $old['phone']    = $phone;
 
     // Validate username
@@ -43,10 +56,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['username'] = __('auth.register_error_username_format');
     }
 
-    if ($emailLocal === '' || $universityDomain === '') {
+    if ($emailLocal === '' || $universitySelect === '') {
         $errors['email'] = __('auth.register_error_email_university');
-    } elseif (!array_key_exists($universityDomain, $universityDomains)) {
-        $errors['email'] = __('auth.register_error_email_invalid_uni');
+    } elseif ($universitySelect === $customDomainOption && $universityDomainCustom === '') {
+        $errors['email'] = __('auth.register_error_email_custom_domain');
+    } elseif (!isEduTrEmailDomain($universityDomain)) {
+        $errors['email'] = __('auth.register_error_email_edutr');
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100) {
         $errors['email'] = __('auth.register_error_email_invalid');
     } elseif (!isAllowedUniversityEmail($email)) {
@@ -243,7 +258,22 @@ require_once '../includes/header.php';
             <?php echo sanitize($label); ?>
           </option>
         <?php endforeach; ?>
+        <option value="<?php echo sanitize($customDomainOption); ?>"
+          <?php echo $old['university_domain'] === $customDomainOption ? 'selected' : ''; ?>>
+          <?php echo sanitize(__('auth.register_university_other')); ?>
+        </option>
       </select>
+    </div>
+
+    <div class="form-row mb-5" id="university_domain_custom_row"
+         style="<?php echo $old['university_domain'] === $customDomainOption ? '' : 'display:none;'; ?>">
+      <label for="university_domain_custom" class="form-label"><?= __('auth.register_university_custom_label') ?></label>
+      <input type="text" id="university_domain_custom" name="university_domain_custom"
+             value="<?php echo sanitize($old['university_domain_custom']); ?>"
+             placeholder="<?= addslashes(__('auth.register_university_custom_placeholder')) ?>"
+             maxlength="100" autocomplete="off"
+             class="premium-input <?php echo isset($errors['email']) ? 'input-invalid' : ''; ?>">
+      <div class="hint"><?= __('auth.register_university_custom_hint') ?></div>
     </div>
 
     <div class="form-row mb-5">
@@ -255,7 +285,12 @@ require_once '../includes/header.php';
                maxlength="64" required autocomplete="username"
                class="premium-input email-compose-input"
                aria-describedby="email_domain_suffix">
-        <span id="email_domain_suffix" class="email-compose-suffix">@<?php echo sanitize($old['university_domain'] !== '' ? $old['university_domain'] : 'university.edu.tr'); ?></span>
+        <span id="email_domain_suffix" class="email-compose-suffix">@<?php
+          $suffixDomain = $old['university_domain'] === $customDomainOption
+              ? ($old['university_domain_custom'] !== '' ? $old['university_domain_custom'] : 'school.edu.tr')
+              : ($old['university_domain'] !== '' ? $old['university_domain'] : 'university.edu.tr');
+          echo sanitize($suffixDomain);
+        ?></span>
       </div>
       <?php if (isset($errors['email'])): ?>
         <div class="error"><?php echo sanitize($errors['email']); ?></div>
@@ -362,15 +397,29 @@ require_once '../includes/header.php';
 
 <script>
   (function () {
+    var customOption = <?php echo json_encode($customDomainOption); ?>;
     var domainSelect = document.getElementById('university_domain');
+    var customRow = document.getElementById('university_domain_custom_row');
+    var customInput = document.getElementById('university_domain_custom');
     var suffix = document.getElementById('email_domain_suffix');
-    if (domainSelect && suffix) {
-      function syncSuffix() {
-        suffix.textContent = domainSelect.value ? '@' + domainSelect.value : '@university.edu.tr';
+    if (!domainSelect || !suffix) return;
+
+    function syncEmailUi() {
+      var isCustom = domainSelect.value === customOption;
+      if (customRow) {
+        customRow.style.display = isCustom ? '' : 'none';
       }
-      domainSelect.addEventListener('change', syncSuffix);
-      syncSuffix();
+      var domain = isCustom
+        ? (customInput && customInput.value ? customInput.value : 'school.edu.tr')
+        : (domainSelect.value || 'university.edu.tr');
+      suffix.textContent = '@' + domain;
     }
+
+    domainSelect.addEventListener('change', syncEmailUi);
+    if (customInput) {
+      customInput.addEventListener('input', syncEmailUi);
+    }
+    syncEmailUi();
   })();
 
   document.querySelectorAll('.password-toggle').forEach(function (btn) {
