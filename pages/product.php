@@ -349,6 +349,17 @@ $pageTitle = $product['title'];
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
+<?php if (!IS_LOCALHOST): ?>
+<script>
+    if (typeof posthog !== 'undefined') {
+        posthog.capture('listing_viewed', {
+            listing_id: <?php echo json_encode($productId); ?>,
+            category: <?php echo json_encode($product['category_name']); ?>
+        });
+    }
+</script>
+<?php endif; ?>
+
 <style>
 /* Graph line draw animation */
 @keyframes drawLine {

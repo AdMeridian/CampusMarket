@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chatbotWindow.classList.remove('open');
         } else {
             chatbotWindow.classList.add('open');
+            if (typeof posthog !== 'undefined') posthog.capture('chatbot_opened', { language: locale });
             chatbotInput.focus();
             chatbotFab.className = 'cm-chatbot-fab';
         }
@@ -68,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatbotForm.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
 
         appendUserMessage(messageText);
+        if (typeof posthog !== 'undefined') posthog.capture('chatbot_message_sent');
         chatbotInput.value = '';
 
         const typingEl = showTypingIndicator();

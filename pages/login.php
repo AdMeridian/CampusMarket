@@ -156,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_id']  = (int) $user['id'];
                 $_SESSION['role']     = $user['role'];
                 $_SESSION['username'] = $user['username'];
+                $_SESSION['user_email'] = $user['email'];
                 $_SESSION['supabase_access_token'] = (string) ($auth['data']['access_token'] ?? '');
                 $_SESSION['supabase_refresh_token'] = (string) ($auth['data']['refresh_token'] ?? '');
 
@@ -163,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 syncSupabaseAppUserMetadata($pdo, (int)$user['id'], (string)$user['role']);
 
                 $_SESSION['prompt_push'] = true;
+                $_SESSION['posthog_event'] = ['name' => 'user_logged_in', 'properties' => []];
                 setFlash('success', __('auth.welcome_back', ['username' => sanitize($user['username'])]));
 
                 $target = $_GET['redirect'] ?? '';
