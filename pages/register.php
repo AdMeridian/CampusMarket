@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['password_confirm'] = 'Passwords do not match.';
     }
     if (empty($_POST['terms'])) {
-        $errors['terms'] = 'You must agree to the Terms of Service and Privacy Policy.';
+        $errors['terms'] = __('auth.register_terms_error');
     }
 
     // Uniqueness check (case-insensitive on email)
@@ -342,7 +342,11 @@ require_once '../includes/header.php';
     <div class="form-row" style="display: flex; align-items: flex-start; gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 2rem;">
       <input type="checkbox" id="terms" name="terms" value="1" style="width: 20px; height: 20px; margin-top: 0.2rem; cursor: pointer;" required <?php echo isset($_POST['terms']) ? 'checked' : ''; ?>>
       <label for="terms" style="font-weight: 500; font-size: 0.95rem; color: var(--text-muted); margin: 0; line-height: 1.5; cursor: pointer;">
-        I agree to the <a href="<?php echo BASE_URL; ?>pages/terms.php" style="font-weight: 600; text-decoration: underline;" target="_blank">Terms of Service</a> and <a href="<?php echo BASE_URL; ?>pages/privacy.php" style="font-weight: 600; text-decoration: underline;" target="_blank">Privacy Policy</a>.
+        <?= __('auth.register_terms_agree', [
+            'terms_url' => BASE_URL . 'pages/terms.php',
+            'privacy_url' => BASE_URL . 'pages/privacy.php',
+            'rules_url' => BASE_URL . 'pages/rules.php',
+        ]) ?>
       </label>
     </div>
     <?php if (isset($errors['terms'])): ?>
