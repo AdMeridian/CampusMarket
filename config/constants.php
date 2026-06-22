@@ -66,6 +66,9 @@ if (substr($base_url, -1) !== '/') {
 
 define('BASE_URL',    $base_url);
 
+// Environment Detection
+define('IS_LOCALHOST', $isLocalHost);
+
 // File Paths
 define('ROOT_PATH',   __DIR__ . '/../');
 define('UPLOAD_PATH', ROOT_PATH . 'public/uploads/');

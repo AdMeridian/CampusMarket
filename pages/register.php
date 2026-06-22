@@ -184,6 +184,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             $_SESSION['pending_verify_email'] = $email;
+            $_SESSION['posthog_event'] = [
+                'name' => 'user_signed_up',
+                'properties' => ['university' => $universityDomain]
+            ];
             redirect(BASE_URL . 'pages/check_email.php');
         } catch (Throwable $e) {
             $pdo->rollBack();

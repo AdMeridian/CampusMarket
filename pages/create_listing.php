@@ -158,6 +158,16 @@ include '../includes/header.php';
 ?>
 
 <?php if ($success && $createdProductId > 0): ?>
+<?php if (!IS_LOCALHOST): ?>
+<script>
+    if (typeof posthog !== 'undefined') {
+        posthog.capture('listing_created', {
+            category: <?php echo json_encode($categories[array_search((int)$_POST['category_id'], array_column($categories, 'id'))]['name'] ?? ''); ?>,
+            price: <?php echo json_encode((float)$_POST['price']); ?>
+        });
+    }
+</script>
+<?php endif; ?>
 <div class="container mt-24 mb-20">
     <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2rem; border-radius: var(--radius-xl); text-align: center;">
         <h1 class="mb-2" style="font-size: 2rem;"><?= __('create_listing.success_msg') ?></h1>

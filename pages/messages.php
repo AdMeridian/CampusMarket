@@ -578,6 +578,7 @@ chatForm.addEventListener('submit', (e) => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            if (typeof posthog !== 'undefined') posthog.capture('message_sent');
             if (realtimeChannel) {
                 realtimeChannel.send({
                     type: 'broadcast',
@@ -897,6 +898,13 @@ function confirmDeal(prodId = null, isSellerOverride = null) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                if (typeof posthog !== 'undefined') {
+                    if (data.action === 'awaiting_seller') {
+                        posthog.capture('deal_initiated', { listing_id: finalProductId });
+                    } else if (data.action === 'delisted') {
+                        posthog.capture('deal_confirmed', { listing_id: finalProductId });
+                    }
+                }
                 checkDealStatus();
             } else {
                 alert('Error: ' + (data.error || 'Unknown'));
