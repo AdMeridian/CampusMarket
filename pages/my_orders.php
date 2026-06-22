@@ -235,7 +235,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 <?php else: ?>
                     <?php foreach ($buyingOrders as $order): ?>
-                        <div class="glass-panel p-5 order-hub-card hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); transition: all 0.3s;">
+                        <div id="order-<?php echo (int)$order['id']; ?>" class="glass-panel p-5 order-hub-card hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); transition: all 0.3s;">
                             <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
                                 <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="<?php echo sanitize($order['product_title']); ?>">
                             </div>
@@ -294,7 +294,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 <?php else: ?>
                     <?php foreach ($sellingOrders as $order): ?>
-                        <div class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #f59e0b; transition: all 0.3s; <?php echo $order['status'] === 'pending' ? 'background: rgba(245, 158, 11, 0.05);' : ''; ?>">
+                        <div id="order-<?php echo (int)$order['id']; ?>" class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #f59e0b; transition: all 0.3s; <?php echo $order['status'] === 'pending' ? 'background: rgba(245, 158, 11, 0.05);' : ''; ?>">
                             <div class="flex gap-5 items-start mb-4">
                                 <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
                                     <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="<?php echo sanitize($order['product_title']); ?>">
@@ -395,5 +395,20 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('order_id');
+    if (!orderId) return;
+    const target = document.getElementById('order-' + orderId);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.style.boxShadow = '0 0 0 2px var(--primary)';
+    setTimeout(function () {
+        target.style.boxShadow = '';
+    }, 2500);
+});
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

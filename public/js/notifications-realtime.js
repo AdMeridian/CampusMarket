@@ -192,11 +192,31 @@
                 filter: 'user_id=eq.' + currentUserId,
             }, (payload) => {
                 bumpBadge('notifications');
-                showBrowserNotification(
-                    payload?.new?.title || 'New notification',
-                    payload?.new?.body || 'You have a new activity update.',
-                    normalizePath('pages/notifications.php')
-                );
+                const row = payload?.new || {};
+                const params = new URLSearchParams({
+                    type: row.type || 'system',
+                    title: row.title || '',
+                    ref: String(row.reference_id || ''),
+                });
+                fetch(normalizePath('pages/api_notification_url.php?' + params.toString()), {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/json' },
+                })
+                    .then((response) => response.ok ? response.json() : null)
+                    .then((data) => {
+                        showBrowserNotification(
+                            row.title || 'New notification',
+                            row.body || 'You have a new activity update.',
+                            data?.url || normalizePath('pages/notifications.php')
+                        );
+                    })
+                    .catch(() => {
+                        showBrowserNotification(
+                            row.title || 'New notification',
+                            row.body || 'You have a new activity update.',
+                            normalizePath('pages/notifications.php')
+                        );
+                    });
             })
             .subscribe((status) => {
                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {

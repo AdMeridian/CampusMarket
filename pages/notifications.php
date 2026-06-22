@@ -161,6 +161,24 @@ body.dark-mode .convo-card.unread {
     font-weight: 500;
 }
 
+.convo-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    border-color: var(--border-focus);
+}
+
+.convo-arrow {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    opacity: 0.45;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.convo-card:hover .convo-arrow {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
 /* Unread dot */
 .convo-unread-dot {
     width: 8px;
@@ -270,13 +288,18 @@ body.dark-mode .convo-card.unread {
                 <?php 
                     $isUnread = !$n['is_read'];
                     $isOrder = ($n['type'] === 'order');
-                    $accentColor = $isOrder ? 'var(--primary)' : 'var(--secondary)';
+                    $isMessage = ($n['type'] === 'message');
+                    $targetUrl = notificationTargetUrl($pdo, $n, $currentUserId);
+                    $activityLabel = notificationActivityLabel((string)$n['type'], (string)$n['title']);
+                    $accentColor = $isOrder ? 'var(--primary)' : ($isMessage ? 'var(--accent)' : 'var(--secondary)');
                 ?>
-                <div class="convo-card <?= $isUnread ? 'unread' : '' ?>" style="border-left: 3px solid <?= $accentColor ?>;">
+                <a href="<?= htmlspecialchars($targetUrl) ?>" class="convo-card <?= $isUnread ? 'unread' : '' ?>" style="border-left: 3px solid <?= $accentColor ?>;">
                     <!-- Icon Avatar -->
                     <div class="convo-avatar" style="color: var(--text-muted);">
                         <?php if ($isOrder): ?>
                             <svg style="width: 20px; height: 20px; color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        <?php elseif ($isMessage): ?>
+                            <svg style="width: 20px; height: 20px; color: var(--accent);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/></svg>
                         <?php else: ?>
                             <svg style="width: 20px; height: 20px; color: var(--secondary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                         <?php endif; ?>
@@ -290,25 +313,23 @@ body.dark-mode .convo-card.unread {
                         </div>
                         
                         <div class="convo-product" style="color: <?= $accentColor ?>;">
-                            <?= $isOrder ? 'Order Update' : 'System Update' ?>
+                            <?= htmlspecialchars($activityLabel) ?>
                         </div>
                         
                         <p class="convo-body" style="white-space: normal; line-height: 1.5; color: var(--text-main);">
                             <?= htmlspecialchars($n['body']) ?>
                         </p>
-                        
-                        <?php if ($isOrder): ?>
-                            <div style="margin-top: 0.75rem;">
-                                <a href="my_orders.php" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-light); font-size: 0.8rem; padding: 0.35rem 0.8rem;">View Order Details →</a>
-                            </div>
-                        <?php endif; ?>
                     </div>
 
                     <!-- Indicators -->
                     <?php if ($isUnread): ?>
                         <div class="convo-unread-dot" style="background: <?= $accentColor ?>;"></div>
                     <?php endif; ?>
-                </div>
+
+                    <svg class="convo-arrow" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>

@@ -360,6 +360,180 @@ function paginationLinks(int $totalItems, int $currentPage, string $baseUrl): st
 // ─── Notifications ───────────────────────────────────────
 
 /**
+ * Resolve the other participant in a product conversation for deep links.
+ */
+function notificationConversationPartnerId(PDO $pdo, int $currentUserId, int $productId): int {
+    if ($productId > 0) {
+        $stmt = $pdo->prepare("
+            SELECT sender_id, receiver_id
+            FROM messages
+            WHERE (sender_id = :uid OR receiver_id = :uid)
+              AND product_id = :pid
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([':uid' => $currentUserId, ':pid' => $productId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            return ((int)$row['sender_id'] === $currentUserId)
+                ? (int)$row['receiver_id']
+                : (int)$row['sender_id'];
+        }
+
+        $stmt = $pdo->prepare('SELECT user_id FROM products WHERE id = ?');
+        $stmt->execute([$productId]);
+        $sellerId = (int)$stmt->fetchColumn();
+        if ($sellerId > 0 && $sellerId !== $currentUserId) {
+            return $sellerId;
+        }
+        if ($sellerId > 0 && $sellerId === $currentUserId) {
+            $stmt = $pdo->prepare("
+                SELECT buyer_id FROM orders
+                WHERE product_id = ? AND buyer_id != ?
+                ORDER BY id DESC
+                LIMIT 1
+            ");
+            $stmt->execute([$productId, $currentUserId]);
+            $buyerId = (int)$stmt->fetchColumn();
+            if ($buyerId > 0) {
+                return $buyerId;
+            }
+        }
+        return 0;
+    }
+
+    $adminStmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+    $adminId = (int)$adminStmt->fetchColumn();
+    return ($adminId > 0 && $adminId !== $currentUserId) ? $adminId : 0;
+}
+
+/**
+ * Build a messages.php URL for a product conversation.
+ */
+function notificationMessagesUrl(PDO $pdo, int $currentUserId, int $productId): string {
+    $base = rtrim(BASE_URL, '/') . '/pages/messages.php';
+    $otherUserId = notificationConversationPartnerId($pdo, $currentUserId, $productId);
+    if ($otherUserId > 0) {
+        return $base . '?product_id=' . $productId . '&other_user_id=' . $otherUserId;
+    }
+    if ($productId > 0) {
+        return rtrim(BASE_URL, '/') . '/pages/product.php?id=' . $productId;
+    }
+    return rtrim(BASE_URL, '/') . '/pages/inbox.php';
+}
+
+/**
+ * Human-readable category label for activity feed rows.
+ */
+function notificationActivityLabel(string $type, string $title): string {
+    if ($title === 'Listing pending approval') {
+        return 'Listing Approval';
+    }
+    if ($title === 'Listing Approved') {
+        return 'Listing Update';
+    }
+    if ($title === 'New Seller Review') {
+        return 'Review';
+    }
+    if (str_contains($title, 'Report') || str_contains($title, 'report')) {
+        return 'Report Update';
+    }
+    if ($title === 'Order Cancelled') {
+        return 'Order Update';
+    }
+
+    return match ($type) {
+        'message' => 'Message',
+        'order' => 'Order Update',
+        'wishlist' => 'Wishlist',
+        default => 'System Update',
+    };
+}
+
+/**
+ * Whether a user account has the admin role.
+ */
+function notificationUserIsAdmin(PDO $pdo, int $userId): bool {
+    static $cache = [];
+    if (array_key_exists($userId, $cache)) {
+        return $cache[$userId];
+    }
+    $stmt = $pdo->prepare('SELECT role FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $cache[$userId] = ((string)$stmt->fetchColumn() === 'admin');
+    return $cache[$userId];
+}
+
+/**
+ * Resolve where an activity notification should navigate.
+ */
+function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId): string {
+    $type = (string)($notification['type'] ?? 'system');
+    $title = (string)($notification['title'] ?? '');
+    $refId = isset($notification['reference_id']) ? (int)$notification['reference_id'] : 0;
+    $base = rtrim(BASE_URL, '/') . '/';
+
+    if ($type === 'message') {
+        return notificationMessagesUrl($pdo, $currentUserId, $refId);
+    }
+
+    if ($type === 'order') {
+        if (in_array($title, ['Deal Confirmed!', 'Deal Confirmation Request'], true) && $refId > 0) {
+            return notificationMessagesUrl($pdo, $currentUserId, $refId);
+        }
+        if ($refId > 0) {
+            return $base . 'pages/my_orders.php?order_id=' . $refId;
+        }
+        return $base . 'pages/my_orders.php';
+    }
+
+    if ($type === 'wishlist') {
+        return $refId > 0
+            ? $base . 'pages/product.php?id=' . $refId
+            : $base . 'pages/wishlist.php';
+    }
+
+    if ($title === 'Listing pending approval' && notificationUserIsAdmin($pdo, $currentUserId)) {
+        return $base . 'admin/listings.php?status=pending_approval';
+    }
+    if ($title === 'Listing Approved' && $refId > 0) {
+        return $base . 'pages/product.php?id=' . $refId;
+    }
+    if ($title === 'New Seller Review' && $refId > 0) {
+        return $base . 'pages/product.php?id=' . $refId;
+    }
+    if ($title === 'Order Cancelled' && $refId > 0) {
+        return $base . 'pages/my_orders.php?order_id=' . $refId;
+    }
+    if ($refId > 0) {
+        try {
+            $stmt = $pdo->prepare('SELECT 1 FROM reports WHERE id = ? AND reporter_id = ?');
+            $stmt->execute([$refId, $currentUserId]);
+            if ($stmt->fetchColumn()) {
+                return $base . 'pages/my_reports.php';
+            }
+        } catch (Throwable $e) {
+            // ignore
+        }
+    }
+
+    return $base . 'pages/profile.php';
+}
+
+/**
+ * Path-only URL for web push payloads.
+ */
+function notificationTargetPath(PDO $pdo, array $notification, int $userId): string {
+    $full = notificationTargetUrl($pdo, $notification, $userId);
+    $base = rtrim(BASE_URL, '/');
+    if (str_starts_with($full, $base)) {
+        $path = substr($full, strlen($base));
+        return $path !== '' ? $path : '/pages/notifications.php';
+    }
+    return '/pages/notifications.php';
+}
+
+/**
  * Create a notification for a user
  */
 function createNotification(PDO $pdo, int $userId, string $type, string $title, string $body, ?int $referenceId = null): void {
@@ -378,10 +552,12 @@ function createNotification(PDO $pdo, int $userId, string $type, string $title, 
     // Web push (best-effort): send background push if configured.
     try {
         require_once __DIR__ . '/web_push.php';
-        $targetUrl = '/pages/notifications.php';
-        if ($type === 'message') {
-            $targetUrl = '/pages/inbox.php';
-        }
+        $targetUrl = notificationTargetPath($pdo, [
+            'type' => $type,
+            'title' => $title,
+            'body' => $body,
+            'reference_id' => $referenceId,
+        ], $userId);
         triggerWebPushBestEffort($userId, $title, $body, $targetUrl);
     } catch (Throwable $e) {
         // ignore

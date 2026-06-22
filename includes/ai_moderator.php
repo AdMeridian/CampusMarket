@@ -168,7 +168,7 @@ function aiModeratorCallGemini(string $apiKey, string $prompt, array $imagesData
         'generationConfig' => ['responseMimeType' => 'application/json'],
     ];
 
-    $models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+    $models = ['gemini-3.1-flash-lite', 'gemini-2.0-flash'];
     $lastCode = 0;
     $lastBody = '';
 
@@ -216,41 +216,58 @@ function aiModeratorCallOpenRouter(string $openRouterKey, string $prompt, array 
         ];
     }
 
-    $orRequestBody = [
-        'model' => 'google/gemini-2.0-flash',
-        'response_format' => ['type' => 'json_object'],
-        'messages' => [['role' => 'user', 'content' => $content]],
+    // Free OpenRouter models only (rate-limited; no purchased credits required).
+    $models = [
+        'openrouter/free',
+        'google/gemma-4-31b-it:free',
+        'google/gemma-4-26b-a4b-it:free',
     ];
 
-    $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer {$openRouterKey}",
-            'Content-Type: application/json',
-        ],
-        CURLOPT_POSTFIELDS => json_encode($orRequestBody),
-        CURLOPT_TIMEOUT => 25,
-    ]);
-    $response = curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $lastCode = 0;
+    $lastBody = '';
 
-    if ($httpCode !== 200) {
-        error_log("[ai_moderator] OpenRouter failed HTTP {$httpCode}: " . substr((string)$response, 0, 300));
-        return ['ok' => false, 'code' => $httpCode, 'error' => (string)$response];
+    foreach ($models as $model) {
+        $orRequestBody = [
+            'model' => $model,
+            'response_format' => ['type' => 'json_object'],
+            'messages' => [['role' => 'user', 'content' => $content]],
+        ];
+
+        $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                "Authorization: Bearer {$openRouterKey}",
+                'Content-Type: application/json',
+            ],
+            CURLOPT_POSTFIELDS => json_encode($orRequestBody),
+            CURLOPT_TIMEOUT => 25,
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if ($httpCode === 200) {
+            $data = json_decode((string)$response, true);
+            $text = $data['choices'][0]['message']['content'] ?? '';
+            $parsed = aiModeratorParseJson($text);
+            if ($parsed === null) {
+                $lastCode = 200;
+                $lastBody = 'AI response not JSON formatted.';
+                continue;
+            }
+
+            $result = aiModeratorNormalizeResult($parsed);
+            $result['mode'] = empty($imagesData) ? 'text' : 'vision';
+            return ['ok' => true, 'result' => $result];
+        }
+
+        $lastCode = $httpCode;
+        $lastBody = substr((string)$response, 0, 300);
+        error_log("[ai_moderator] OpenRouter {$model} failed HTTP {$httpCode}: {$lastBody}");
     }
 
-    $data = json_decode((string)$response, true);
-    $text = $data['choices'][0]['message']['content'] ?? '';
-    $parsed = aiModeratorParseJson($text);
-    if ($parsed === null) {
-        return ['ok' => false, 'code' => 200, 'error' => 'AI response not JSON formatted.'];
-    }
-
-    $result = aiModeratorNormalizeResult($parsed);
-    $result['mode'] = empty($imagesData) ? 'text' : 'vision';
-    return ['ok' => true, 'result' => $result];
+    return ['ok' => false, 'code' => $lastCode, 'error' => $lastBody];
 }
 
 function aiModeratorEvaluate(string $title, string $description, array $imagesData): array {
