@@ -38,37 +38,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validate username
     if ($username === '') {
-        $errors['username'] = 'Username is required.';
+        $errors['username'] = __('auth.register_error_username_required');
     } elseif (!preg_match('/^[A-Za-z0-9_]{3,50}$/', $username)) {
-        $errors['username'] = '3–50 characters. Letters, numbers, underscores only.';
+        $errors['username'] = __('auth.register_error_username_format');
     }
 
-    // Validate email — format first, then domain allowlist
     if ($emailLocal === '' || $universityDomain === '') {
-        $errors['email'] = 'Select your university and enter your student email address.';
+        $errors['email'] = __('auth.register_error_email_university');
     } elseif (!array_key_exists($universityDomain, $universityDomains)) {
-        $errors['email'] = 'Please select a valid university.';
+        $errors['email'] = __('auth.register_error_email_invalid_uni');
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100) {
-        $errors['email'] = 'Please enter a valid email address.';
+        $errors['email'] = __('auth.register_error_email_invalid');
     } elseif (!isAllowedUniversityEmail($email)) {
-        $errors['email'] = 'Only university emails are allowed (' . allowedDomainsList() . ').';
+        $errors['email'] = __('auth.register_error_email_domains', ['domains' => allowedDomainsList()]);
     } elseif (($studentEmailError = validateUniversityStudentEmail($email)) !== null) {
         $errors['email'] = $studentEmailError;
     }
 
-    // Validate phone (optional)
     if ($phone !== '' && !preg_match('/^[\d\s\-\+\(\)]{7,20}$/', $phone)) {
-        $errors['phone'] = 'Phone number looks invalid.';
+        $errors['phone'] = __('auth.register_error_phone');
     }
 
-    // Validate password
     if (strlen($password) < 8) {
-        $errors['password'] = 'Password must be at least 8 characters.';
+        $errors['password'] = __('auth.register_error_password_length');
     } elseif (!preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password)) {
-        $errors['password'] = 'Password must contain at least one letter and one number.';
+        $errors['password'] = __('auth.register_error_password_format');
     }
     if ($password !== $confirm) {
-        $errors['password_confirm'] = 'Passwords do not match.';
+        $errors['password_confirm'] = __('auth.register_error_password_mismatch');
     }
     if (empty($_POST['terms'])) {
         $errors['terms'] = __('auth.register_terms_error');
@@ -85,10 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dup = $stmt->fetch();
         if ($dup) {
             if (strcasecmp($dup['username'], $username) === 0) {
-                $errors['username'] = 'That username is already taken.';
+                $errors['username'] = __('auth.register_error_username_taken');
             }
             if (strcasecmp($dup['email'], $email) === 0) {
-                $errors['email'] = 'An account with that email already exists.';
+                $errors['email'] = __('auth.register_error_email_exists');
             }
         }
     }
@@ -116,21 +113,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log('[register] Supabase signup error status=' . $status . ' error=' . $rawErr);
 
             if (str_contains($rawErr, 'already registered') || str_contains($rawErr, 'user already registered')) {
-                $errors['email'] = 'An account with that email already exists.';
+                $errors['email'] = __('auth.register_error_email_exists');
             } elseif (str_contains($rawErr, 'redirect') || str_contains($rawErr, 'emailredirectto')) {
-                $errors['form'] = 'Signup is blocked by email redirect configuration. Please contact support.';
+                $errors['form'] = __('auth.register_error_redirect');
             } elseif ($status === 429 || str_contains($rawErr, 'rate limit')) {
-                $errors['form'] = 'Too many signup attempts. Please wait a minute and try again.';
+                $errors['form'] = __('auth.register_error_rate_limit');
             } elseif ($status === 403 || str_contains($rawErr, 'signup_disabled')) {
-                $errors['form'] = 'Signup is currently disabled by authentication settings.';
+                $errors['form'] = __('auth.register_error_signup_disabled');
             } elseif (str_contains($rawErr, 'password') && (str_contains($rawErr, 'compromised') || str_contains($rawErr, 'leaked') || str_contains($rawErr, 'pwned'))) {
-                $errors['password'] = 'This password appears in known data breaches. Please choose a different password.';
+                $errors['password'] = __('auth.register_error_password_breach');
             } elseif (str_contains($rawErr, 'password')) {
-                $errors['password'] = 'Password was rejected by the auth provider. Please choose a stronger password.';
+                $errors['password'] = __('auth.register_error_password_rejected');
             } elseif (str_contains($rawErr, 'email') && str_contains($rawErr, 'invalid')) {
-                $errors['email'] = 'Please enter a valid email address.';
+                $errors['email'] = __('auth.register_error_email_invalid');
             } else {
-                $errors['form'] = 'Could not create account. Please try again or contact support.';
+                $errors['form'] = __('auth.register_error_create');
             }
         }
     }
@@ -197,13 +194,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['pending_verify_email'] = $email;
                 redirect(BASE_URL . 'pages/check_email.php');
             } else {
-                $errors['form'] = 'Could not save your account. Please try again or contact support.';
+                $errors['form'] = __('auth.register_error_save');
             }
         }
     }
 }
 
-$pageTitle = 'Create account';
+$pageTitle = __('auth.register_page_title');
 require_once '../includes/header.php';
 ?>
 
@@ -211,8 +208,8 @@ require_once '../includes/header.php';
 <div class="auth-page">
   <div class="auth-card">
   <div class="auth-head text-center mb-8">
-    <h1>Create your account</h1>
-    <p>University email required. We'll send you a link to verify it.</p>
+    <h1><?= __('auth.register_title') ?></h1>
+    <p><?= __('auth.register_subtitle_email') ?></p>
   </div>
 
   <?php if (!empty($errors['form'])): ?>
@@ -222,24 +219,24 @@ require_once '../includes/header.php';
   <form method="post" novalidate>
     <?php echo csrfTokenField(); ?>
     <div class="form-row mb-5">
-      <label for="username" class="form-label">Username</label>
+      <label for="username" class="form-label"><?= __('auth.register_username_label') ?></label>
       <input type="text" id="username" name="username"
              value="<?php echo sanitize($old['username']); ?>"
-             placeholder="e.g. ahmet_yilmaz"
+             placeholder="<?= addslashes(__('auth.register_username_placeholder')) ?>"
              maxlength="50" required autofocus autocomplete="username"
              class="premium-input <?php echo isset($errors['username']) ? 'input-invalid' : ''; ?>">
       <?php if (isset($errors['username'])): ?>
         <div class="error"><?php echo sanitize($errors['username']); ?></div>
       <?php else: ?>
-        <div class="hint">3–50 characters. Letters, numbers, underscores.</div>
+        <div class="hint"><?= __('auth.register_username_hint') ?></div>
       <?php endif; ?>
     </div>
 
     <div class="form-row mb-5">
-      <label for="university_domain" class="form-label">University</label>
+      <label for="university_domain" class="form-label"><?= __('auth.register_university_label') ?></label>
       <select id="university_domain" name="university_domain" required
               class="premium-input <?php echo isset($errors['email']) ? 'input-invalid' : ''; ?>">
-        <option value="">Select your university</option>
+        <option value=""><?= __('auth.register_university_placeholder') ?></option>
         <?php foreach ($universityDomains as $domain => $label): ?>
           <option value="<?php echo sanitize($domain); ?>"
             <?php echo $old['university_domain'] === $domain ? 'selected' : ''; ?>>
@@ -250,11 +247,11 @@ require_once '../includes/header.php';
     </div>
 
     <div class="form-row mb-5">
-      <label for="email_local" class="form-label">University email</label>
+      <label for="email_local" class="form-label"><?= __('auth.register_email_label') ?></label>
       <div class="email-compose <?php echo isset($errors['email']) ? 'input-invalid' : ''; ?>">
         <input type="text" id="email_local" name="email_local"
                value="<?php echo sanitize($old['email_local']); ?>"
-               placeholder="20227014"
+               placeholder="<?= addslashes(__('auth.register_email_placeholder')) ?>"
                maxlength="64" required autocomplete="username"
                class="premium-input email-compose-input"
                aria-describedby="email_domain_suffix">
@@ -263,12 +260,12 @@ require_once '../includes/header.php';
       <?php if (isset($errors['email'])): ?>
         <div class="error"><?php echo sanitize($errors['email']); ?></div>
       <?php else: ?>
-        <div class="hint">Enter the part before the @ in your student email (letters and numbers are fine).</div>
+        <div class="hint"><?= __('auth.register_email_hint') ?></div>
       <?php endif; ?>
     </div>
 
     <div class="form-row mb-5">
-      <label for="phone" class="form-label">Phone <span class="form-label--muted">(optional)</span></label>
+      <label for="phone" class="form-label"><?= __('auth.register_phone_label') ?> <span class="form-label--muted"><?= __('auth.register_phone_optional') ?></span></label>
       <input type="tel" id="phone" name="phone"
              value="<?php echo sanitize($old['phone']); ?>"
              placeholder="+90 555 123 4567"
@@ -280,13 +277,13 @@ require_once '../includes/header.php';
     </div>
 
     <div class="form-row mb-5">
-      <label for="password" class="form-label">Password</label>
+      <label for="password" class="form-label"><?= __('auth.register_password_label') ?></label>
       <div class="input-with-toggle">
         <input type="password" id="password" name="password"
-               placeholder="At least 8 characters"
+               placeholder="<?= addslashes(__('auth.register_password_placeholder')) ?>"
                minlength="8" required autocomplete="new-password"
                class="premium-input <?php echo isset($errors['password']) ? 'input-invalid' : ''; ?>">
-        <button type="button" class="password-toggle" data-target="password" aria-label="Show password">
+        <button type="button" class="password-toggle" data-target="password" aria-label="<?= htmlspecialchars(__('auth.show_password')) ?>">
           <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -306,18 +303,18 @@ require_once '../includes/header.php';
       <?php if (isset($errors['password'])): ?>
         <div class="error"><?php echo sanitize($errors['password']); ?></div>
       <?php else: ?>
-        <div class="hint">Mix letters and numbers. At least 8 characters.</div>
+        <div class="hint"><?= __('auth.register_password_hint') ?></div>
       <?php endif; ?>
     </div>
 
     <div class="form-row mb-6">
-      <label for="password_confirm" class="form-label">Confirm password</label>
+      <label for="password_confirm" class="form-label"><?= __('auth.register_confirm_label') ?></label>
       <div class="input-with-toggle">
         <input type="password" id="password_confirm" name="password_confirm"
-               placeholder="Re-enter your password"
+               placeholder="<?= addslashes(__('auth.register_confirm_placeholder')) ?>"
                minlength="8" required autocomplete="new-password"
                class="premium-input <?php echo isset($errors['password_confirm']) ? 'input-invalid' : ''; ?>">
-        <button type="button" class="password-toggle" data-target="password_confirm" aria-label="Show password">
+        <button type="button" class="password-toggle" data-target="password_confirm" aria-label="<?= htmlspecialchars(__('auth.show_password')) ?>">
           <svg class="icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -353,12 +350,12 @@ require_once '../includes/header.php';
       <div class="error" style="margin-top: -1rem; margin-bottom: 1rem; color: #b91c1c; font-size: 0.85rem;"><?php echo sanitize($errors['terms']); ?></div>
     <?php endif; ?>
 
-    <button type="submit" class="btn btn-primary w-full py-4 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600; font-size: 1.1rem; letter-spacing: 0.01em;">Create account</button>
+    <button type="submit" class="btn btn-primary w-full py-4 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600; font-size: 1.1rem; letter-spacing: 0.01em;"><?= __('auth.register_submit') ?></button>
   </form>
 
   <p class="auth-foot mt-10">
-    Already have an account?
-    <a href="<?php echo BASE_URL; ?>pages/login.php" style="font-weight: 600;">Log in</a>
+    <?= __('auth.register_already_have') ?>
+    <a href="<?php echo BASE_URL; ?>pages/login.php" style="font-weight: 600;"><?= __('auth.register_log_in') ?></a>
   </p>
 </div>
 </div>
@@ -383,7 +380,7 @@ require_once '../includes/header.php';
       var show = input.type === 'password';
       input.type = show ? 'text' : 'password';
       btn.classList.toggle('is-shown', show);
-      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      btn.setAttribute('aria-label', show ? <?= json_encode(__('auth.hide_password')) ?> : <?= json_encode(__('auth.show_password')) ?>);
     });
   });
 </script>

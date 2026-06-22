@@ -2,30 +2,25 @@
 // pages/donate.php
 require_once __DIR__ . '/../includes/bootstrap.php';
 
-$pageTitle = 'Support CampusMarket';
+$pageTitle = __('donate.page_title');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: calc(80px + 2rem) 0 4rem;">
-    <!-- Background removed for flat aesthetic -->
-
     <div class="container" style="max-width: 1000px; padding: 0 1.5rem;">
-        <!-- Header -->
         <div class="text-center mb-16">
             <div class="inline-flex items-center gap-2 mb-4 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
-                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Small Gift • Big Change
+                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <?= __('donate.badge') ?>
             </div>
-            <h1 class="font-bold mb-6 text-main hero-title" style="font-size: 4rem; letter-spacing: -0.03em; line-height: 1.1;">Building the <br><span>Future Together</span></h1>
+            <h1 class="font-bold mb-6 text-main hero-title" style="font-size: 4rem; letter-spacing: -0.03em; line-height: 1.1;"><?= __('donate.headline') ?></h1>
             <p class="text-main mx-auto" style="font-size: 1.1rem; line-height: 1.6; font-weight: 500; opacity: 0.8; text-align: center; width: 100%;">
-                Your contributions help us maintain a safe, student-first marketplace. <br class="hidden lg:block"> 100% of donations go directly into platform improvements and community events.
+                <?= __('donate.intro') ?>
             </p>
         </div>
 
         <div class="flex flex-col lg:flex-row gap-10 items-stretch">
-            
-            <!-- Left: High-Contrast Payment Form -->
             <div class="glass-panel" style="flex: 1.2; width: 100%; border-radius: 32px; border: 1px solid rgba(99, 102, 241, 0.15); box-shadow: 0 25px 60px rgba(0,0,0,0.08); background: white; padding: 2.5rem 2rem; display: flex; flex-direction: column; align-items: center;">
-                <h3 class="mb-6 font-bold text-main uppercase tracking-widest text-center" style="font-size: 0.8rem; letter-spacing: 0.15em;">Select Your Amount</h3>
+                <h3 class="mb-6 font-bold text-main uppercase tracking-widest text-center" style="font-size: 0.8rem; letter-spacing: 0.15em;"><?= __('donate.select_amount') ?></h3>
                 
                 <form action="create_stripe_session.php" method="POST" id="donation-form" style="width: 100%;">
                     <?php echo csrfTokenField(); ?>
@@ -38,7 +33,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
 
                     <div class="mb-0 text-center">
-                        <label class="block mb-2 font-bold uppercase tracking-wider text-main" style="font-size: 0.75rem; opacity: 0.7;">Or enter a custom amount</label>
+                        <label class="block mb-2 font-bold uppercase tracking-wider text-main" style="font-size: 0.75rem; opacity: 0.7;"><?= __('donate.custom_amount') ?></label>
                         <div style="position: relative; max-width: 220px; margin: 0 auto;">
                             <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-main); font-weight: 900; font-size: 1.1rem; opacity: 0.3;">₺</span>
                             <input type="number" id="custom-amount" name="amount" step="0.01" min="1" value="50" 
@@ -50,13 +45,13 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <div class="text-center" style="margin-top: 2rem;">
                         <button type="submit" class="cta-button" id="submit-btn">
-                            Donate with Stripe
+                            <?= __('donate.submit') ?>
                         </button>
                         
                         <div class="flex items-center justify-center gap-4 mt-8" style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
                             <div class="flex items-center gap-2 opacity-60">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="color: #22c55e;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                                <span class="font-bold uppercase tracking-widest" style="font-size: 0.65rem;">Secure Encryption</span>
+                                <span class="font-bold uppercase tracking-widest" style="font-size: 0.65rem;"><?= __('donate.secure') ?></span>
                             </div>
                             <div style="width: 1px; height: 12px; background: #cbd5e1;"></div>
                             <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" height="15" alt="Stripe" style="opacity: 0.6;">
@@ -70,24 +65,24 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
                     <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
                     <div>
-                        <h5 class="font-bold text-xl mb-1">100% Ad-Free</h5>
-                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;">We never sell your data or display intrusive ads. Your support keeps it that way.</p>
+                        <h5 class="font-bold text-xl mb-1"><?= __('donate.perk_adfree_title') ?></h5>
+                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;"><?= __('donate.perk_adfree_body') ?></p>
                     </div>
                 </div>
                 
                 <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
                     <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></div>
                     <div>
-                        <h5 class="font-bold text-xl mb-1">Community Safety</h5>
-                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;">Funding the verification tools and moderation that keep our campus marketplace safe.</p>
+                        <h5 class="font-bold text-xl mb-1"><?= __('donate.perk_safety_title') ?></h5>
+                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;"><?= __('donate.perk_safety_body') ?></p>
                     </div>
                 </div>
 
                 <div class="flex flex-col items-center text-center lg:flex-row lg:text-left gap-4">
                     <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg></div>
                     <div>
-                        <h5 class="font-bold text-xl mb-1">Supporter Status</h5>
-                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;">Every donor receives a permanent star on their profile and a place in the Hall of Fame.</p>
+                        <h5 class="font-bold text-xl mb-1"><?= __('donate.perk_supporter_title') ?></h5>
+                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;"><?= __('donate.perk_supporter_body') ?></p>
                     </div>
                 </div>
             </div>

@@ -15,14 +15,14 @@ if (empty($sessionId)) {
 
 $session = fetchStripeCheckoutSession($sessionId);
 if (!$session) {
-    setFlash('error', 'Could not verify payment with Stripe.');
+    setFlash('error', __('stripe.flash_verify_failed'));
     redirect(BASE_URL . $redirectPath);
 }
 
 $meta = is_array($session['metadata'] ?? null) ? $session['metadata'] : [];
 $sessionUserId = (int) ($meta['user_id'] ?? 0);
 if ($sessionUserId !== currentUserId()) {
-    setFlash('error', 'This payment session does not belong to your account.');
+    setFlash('error', __('stripe.flash_wrong_account'));
     redirect(BASE_URL . $redirectPath);
 }
 
@@ -38,15 +38,15 @@ if ($paymentType === 'promotion' && $productId) {
 
 if ($result['ok']) {
     if (!empty($result['already_processed'])) {
-        setFlash('info', 'This payment was already processed.');
+        setFlash('info', __('stripe.flash_already_processed'));
     } else {
         setFlash(
             'success',
-            'Payment successful! Your ' . ($paymentType === 'promotion' ? 'listing is now featured.' : 'donation has been received. Thank you!')
+            $paymentType === 'promotion' ? __('stripe.flash_promo_success') : __('stripe.flash_donate_success')
         );
     }
 } else {
-    setFlash('error', 'Payment confirmed but database update failed. Please contact support with Session ID: ' . sanitize($sessionId));
+    setFlash('error', __('stripe.flash_db_failed', ['session_id' => sanitize($sessionId)]));
 }
 
 redirect(BASE_URL . $redirectPath);

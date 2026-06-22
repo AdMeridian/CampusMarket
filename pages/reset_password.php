@@ -19,13 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ]);
 
         if (!$verify['ok']) {
-            setFlash('error', 'This password reset link is invalid or has expired. Please request a new one.');
+            setFlash('error', __('auth.reset_flash_invalid'));
             redirect(BASE_URL . 'pages/forgot_password');
         }
 
         $accessToken = $verify['data']['access_token'] ?? '';
         if ($accessToken === '') {
-            setFlash('error', 'Could not verify reset link. Please request a new one.');
+            setFlash('error', __('auth.reset_flash_verify_failed'));
             redirect(BASE_URL . 'pages/forgot_password');
         }
     }
@@ -40,11 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postToken       = trim($_POST['access_token'] ?? '');
 
     if (strlen($newPassword) < 8) {
-        $errors['password'] = 'Password must be at least 8 characters.';
+        $errors['password'] = __('auth.reset_error_length');
     } elseif ($newPassword !== $confirmPassword) {
-        $errors['confirm_password'] = 'Passwords do not match.';
+        $errors['confirm_password'] = __('auth.reset_error_mismatch');
     } elseif ($postToken === '') {
-        $errors['form'] = 'Session expired or invalid reset link. Please request a new one.';
+        $errors['form'] = __('auth.reset_error_session');
     }
 
     if (empty($errors)) {
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success = true;
         } else {
             $decoded = json_decode((string)$body, true);
-            $errors['form'] = 'Failed to update password: ' . ($decoded['msg'] ?? $decoded['message'] ?? 'Unknown error. Please try again.');
+            $errors['form'] = __('auth.reset_error_update', ['error' => $decoded['msg'] ?? $decoded['message'] ?? 'Unknown error. Please try again.']);
         }
     }
 
@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $hasToken = ($accessToken !== '');
-$pageTitle = 'Reset Password';
+$pageTitle = __('auth.reset_page_title');
 require_once '../includes/header.php';
 ?>
 
@@ -116,33 +116,31 @@ require_once '../includes/header.php';
                 <div style="width: 64px; height: 64px; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; animation: pop .5s cubic-bezier(.34,1.56,.64,1);">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <h1>Password updated!</h1>
-                <p>Your password has been changed successfully. You can now log in with your new password.</p>
+                <h1><?= __('auth.reset_success_title') ?></h1>
+                <p><?= __('auth.reset_success_body') ?></p>
             <?php else: ?>
                 <div style="width: 64px; height: 64px; background: rgba(99,102,241,0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:30px;height:30px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                 </div>
-                <h1>Set new password</h1>
-                <p>Choose a strong password for your CampusMarket account.</p>
+                <h1><?= __('auth.reset_form_title') ?></h1>
+                <p><?= __('auth.reset_form_subtitle') ?></p>
             <?php endif; ?>
         </div>
 
         <?php if ($success): ?>
             <a href="<?= BASE_URL ?>pages/login" class="btn btn-primary w-full py-4 shadow-sm"
                style="border-radius: var(--radius-md); font-weight: 600; font-size: 1.1rem; display: block; text-align: center;">
-                Log in now
+                <?= __('auth.reset_login_now') ?>
             </a>
         <?php else: ?>
-            <!-- Loading state (for hash parsing delay) -->
             <div id="reset-loading-container" style="<?= $hasToken ? 'display: none;' : '' ?> text-align: center; padding: 2rem 0;">
                 <div class="spinner mb-4" style="border: 4px solid rgba(99,102,241,0.1); border-top-color: var(--primary); border-radius: 50%; width: 40px; height: 40px; margin: 0 auto; animation: spin 1s linear infinite;"></div>
-                <p style="color: var(--text-muted);">Verifying your reset session...</p>
+                <p style="color: var(--text-muted);"><?= __('auth.reset_verifying') ?></p>
             </div>
 
-            <!-- Error state -->
             <div id="reset-error-container" style="display: none;">
-                <div class="flash flash-error mb-6">Invalid, expired, or missing password reset link. Please request a new one.</div>
-                <a href="<?= BASE_URL ?>pages/forgot_password" class="btn btn-primary w-full py-4 text-center" style="display: block;">Request new link</a>
+                <div class="flash flash-error mb-6"><?= __('auth.reset_link_invalid') ?></div>
+                <a href="<?= BASE_URL ?>pages/forgot_password" class="btn btn-primary w-full py-4 text-center" style="display: block;"><?= __('auth.reset_request_new') ?></a>
             </div>
 
             <!-- Form container -->
@@ -157,11 +155,11 @@ require_once '../includes/header.php';
                     <input type="hidden" name="access_token" id="access_token_input" value="<?= htmlspecialchars($accessToken) ?>">
 
                     <div class="form-row mb-5">
-                        <label for="password" class="form-label">New Password</label>
+                        <label for="password" class="form-label"><?= __('auth.reset_new_password') ?></label>
                         <div class="password-wrapper">
                             <input type="password" id="password" name="password"
                                    class="premium-input w-full" required autocomplete="new-password"
-                                   placeholder="At least 8 characters">
+                                   placeholder="<?= addslashes(__('auth.register_password_placeholder')) ?>">
                             <button type="button" class="pw-toggle" aria-label="Toggle password visibility" onclick="togglePw('password', this)">
                                 <svg class="eye-icon eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 <svg class="eye-icon eye-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -173,11 +171,11 @@ require_once '../includes/header.php';
                     </div>
 
                     <div class="form-row mb-6">
-                        <label for="confirm_password" class="form-label">Confirm New Password</label>
+                        <label for="confirm_password" class="form-label"><?= __('auth.reset_confirm_password') ?></label>
                         <div class="password-wrapper">
                             <input type="password" id="confirm_password" name="confirm_password"
                                    class="premium-input w-full" required autocomplete="new-password"
-                                   placeholder="Re-enter your new password">
+                                   placeholder="<?= addslashes(__('auth.reset_confirm_placeholder')) ?>">
                             <button type="button" class="pw-toggle" aria-label="Toggle password visibility" onclick="togglePw('confirm_password', this)">
                                 <svg class="eye-icon eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 <svg class="eye-icon eye-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -190,12 +188,12 @@ require_once '../includes/header.php';
 
                     <button type="submit" class="btn btn-primary w-full py-4 shadow-sm"
                             style="border-radius: var(--radius-md); font-weight: 600; font-size: 1.1rem;">
-                        Update Password
+                        <?= __('auth.reset_submit') ?>
                     </button>
                 </form>
 
                 <p class="auth-foot mt-8">
-                    Remembered it? <a href="<?= BASE_URL ?>pages/login" style="font-weight: 600;">Log in</a>
+                    <?= __('auth.reset_remembered') ?> <a href="<?= BASE_URL ?>pages/login" style="font-weight: 600;"><?= __('auth.login_btn') ?></a>
                 </p>
             </div>
         <?php endif; ?>
@@ -271,7 +269,7 @@ function togglePw(fieldId, btn) {
     input.type = isHidden ? 'text' : 'password';
     btn.querySelector('.eye-open').style.display  = isHidden ? 'none'  : '';
     btn.querySelector('.eye-closed').style.display = isHidden ? ''     : 'none';
-    btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    btn.setAttribute('aria-label', isHidden ? <?= json_encode(__('auth.hide_password')) ?> : <?= json_encode(__('auth.show_password')) ?>);
 }
 </script>
 

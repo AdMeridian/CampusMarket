@@ -1,19 +1,17 @@
 <?php
-$pageTitle = "Notifications";
 require_once __DIR__ . '/../includes/bootstrap.php';
+$pageTitle = __('activity.page_title');
 requireLogin();
 
 $currentUserId = currentUserId();
 
-// Handle specific actions like marking single/all as read
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
     if (isset($_POST['action']) && $_POST['action'] === 'mark_all') {
         $stmt = $pdo->prepare("UPDATE notifications SET is_read = TRUE WHERE user_id = :uid");
         $stmt->execute([':uid' => $currentUserId]);
-        setFlash('success', 'All notifications marked as read.');
+        setFlash('success', __('activity.flash_mark_all'));
     }
-    // Additional logic to handle single read could go here
     redirect(BASE_URL . '/pages/notifications.php');
 }
 
@@ -231,7 +229,7 @@ body.dark-mode .convo-card.unread {
     <!-- Inbox Tabs -->
     <div class="flex gap-4 mb-8" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
         <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" style="font-weight: 500;">
-            <span>Messages</span>
+            <span><?= __('inbox.messages_tab') ?></span>
             <?php 
                 $navUnreadMessages = countUnreadMessages($pdo, $currentUserId);
                 if ($navUnreadMessages > 0): 
@@ -240,7 +238,7 @@ body.dark-mode .convo-card.unread {
             <?php endif; ?>
         </a>
         <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2" style="font-weight: 700; border-bottom: 2px solid var(--accent); color: var(--accent);">
-            <span>Activity</span>
+            <span><?= __('inbox.activity_tab') ?></span>
             <?php 
                 $navUnreadNotifs = countUnreadNotifications($pdo, $currentUserId);
                 if ($navUnreadNotifs > 0): 
@@ -253,18 +251,18 @@ body.dark-mode .convo-card.unread {
     <!-- Header -->
     <div class="inbox-header">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <h1>Activity Updates</h1>
+            <h1><?= __('activity.title') ?></h1>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
             <button type="button" id="enable-browser-notifs" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus);">
-                Enable Notifications
+                <?= __('activity.enable_notifs') ?>
             </button>
             <?php if (!empty($notifications)): ?>
                 <form method="post" class="m-0">
                     <?php echo csrfTokenField(); ?>
                     <button type="submit" name="action" value="mark_all" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; border: 1px solid var(--border-focus); display: flex; align-items: center; gap: 0.35rem;">
                         <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        Mark All Read
+                        <?= __('activity.mark_all_read') ?>
                     </button>
                 </form>
             <?php endif; ?>
@@ -277,9 +275,9 @@ body.dark-mode .convo-card.unread {
             <svg class="inbox-empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
             </svg>
-            <h3>All caught up</h3>
-            <p>You have no new updates or activity notifications at this time.</p>
-            <a href="<?= BASE_URL ?>/pages/browse.php" class="btn btn-primary" style="border-radius: var(--radius-lg); padding: 0.6rem 1.75rem; font-weight: 600; font-size: 0.9rem;">Explore CampusMarket</a>
+            <h3><?= __('activity.empty_title') ?></h3>
+            <p><?= __('activity.empty_desc') ?></p>
+            <a href="<?= BASE_URL ?>/pages/browse.php" class="btn btn-primary" style="border-radius: var(--radius-lg); padding: 0.6rem 1.75rem; font-weight: 600; font-size: 0.9rem;"><?= __('activity.explore') ?></a>
         </div>
     <?php else: ?>
         <!-- Notification List -->
@@ -342,19 +340,19 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', async function() {
             const result = await window.CampusMarketPush.subscribe();
             if (result.ok) {
-                alert('Notifications enabled. You will receive alerts for messages and activity.');
+                alert(<?= json_encode(__('activity.push_enabled')) ?>);
             }
         });
 
         window.CampusMarketPush.hasActiveSubscription().then(function (enabled) {
             if (enabled) {
-                btn.textContent = 'Notifications enabled';
+                btn.textContent = <?= json_encode(__('activity.notifs_enabled')) ?>;
                 btn.disabled = true;
             }
         });
     } else if (btn) {
         btn.addEventListener('click', function () {
-            alert('Push notifications are not configured yet. Please add WEB_PUSH_PUBLIC_KEY on the server.');
+            alert(<?= json_encode(__('activity.push_not_configured')) ?>);
         });
     }
 

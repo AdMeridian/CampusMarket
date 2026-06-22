@@ -3,7 +3,7 @@
 require_once '../includes/bootstrap.php';
 
 if (!isLoggedIn()) {
-    setFlash('error', 'Please log in to access your Recycle Bin.');
+    setFlash('error', __('recycle.login_required'));
     redirect(BASE_URL . 'pages/login.php');
 }
 
@@ -11,19 +11,16 @@ $userId = (int)currentUserId();
 $errors = [];
 $success = '';
 
-// Auto-cleanup: Delete items older than 30 days (cross-database compatibility)
 $isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
 $intervalSql = $isPostgres ? "NOW() - INTERVAL '30 days'" : "NOW() - INTERVAL 30 DAY";
 $cleanup = $pdo->prepare("DELETE FROM products WHERE status = 'deleted' AND deleted_at < $intervalSql");
 $cleanup->execute();
 
-// Handle actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
     $productId = (int)($_POST['product_id'] ?? 0);
     $action = $_POST['action'] ?? '';
 
-    // Verify ownership
     $stmt = $pdo->prepare("SELECT id FROM products WHERE id = ? AND user_id = ? AND status = 'deleted'");
     $stmt->execute([$productId, $userId]);
     $product = $stmt->fetch();
@@ -32,20 +29,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'restore') {
             $upd = $pdo->prepare("UPDATE products SET status = 'active', deleted_at = NULL, updated_at = NOW() WHERE id = ?");
             if ($upd->execute([$productId])) {
-                setFlash('success', 'Listing restored successfully!');
+                setFlash('success', __('recycle.flash_restored'));
                 redirect(BASE_URL . 'pages/recycle_bin.php');
             }
         } elseif ($action === 'delete_permanent') {
             $del = $pdo->prepare("DELETE FROM products WHERE id = ?");
             if ($del->execute([$productId])) {
-                setFlash('success', 'Listing deleted permanently.');
+                setFlash('success', __('recycle.flash_deleted'));
                 redirect(BASE_URL . 'pages/recycle_bin.php');
             }
         }
     }
 }
 
-// Fetch deleted products
 $stmt = $pdo->prepare("
     SELECT p.*, c.name as category_name 
     FROM products p
@@ -56,7 +52,7 @@ $stmt = $pdo->prepare("
 $stmt->execute([$userId]);
 $deletedProducts = $stmt->fetchAll();
 
-$pageTitle = 'Recycle Bin';
+$pageTitle = __('recycle.page_title');
 require_once '../includes/header.php';
 ?>
 
@@ -64,20 +60,20 @@ require_once '../includes/header.php';
     <div class="container py-12">
         <div class="flex flex-col md-flex-row justify-between items-start md-items-center mb-10 gap-4">
             <div>
-                <h1 class="mb-2" style="font-weight: 800;">Recycle Bin</h1>
-                <p class="text-muted" style="font-weight: 500; font-size: 1.1rem;">Items here will be permanently deleted after 30 days.</p>
+                <h1 class="mb-2" style="font-weight: 800;"><?= __('recycle.title') ?></h1>
+                <p class="text-muted" style="font-weight: 500; font-size: 1.1rem;"><?= __('recycle.subtitle') ?></p>
             </div>
             <a href="profile.php" class="btn btn-outline flex items-center gap-2" style="border-radius: 12px; font-weight: 700;">
                 <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" /></svg>
-                Back to Profile
+                <?= __('recycle.back_profile') ?>
             </a>
         </div>
 
         <?php if (empty($deletedProducts)): ?>
             <div class="glass-panel p-16 text-center" style="border-radius: 24px; border: 2px dashed var(--border-light); background: transparent;">
-                <h2 class="mb-4" style="font-weight: 800;">Your bin is empty</h2>
-                <p class="text-muted max-w-md mx-auto mb-8" style="font-weight: 500;">When you delete a listing, it will stay here for 30 days before being permanently removed.</p>
-                <a href="browse.php" class="btn btn-primary" style="padding: 0.75rem 2rem; border-radius: 12px; font-weight: 700;">Browse Marketplace</a>
+                <h2 class="mb-4" style="font-weight: 800;"><?= __('recycle.empty_title') ?></h2>
+                <p class="text-muted max-w-md mx-auto mb-8" style="font-weight: 500;"><?= __('recycle.empty_desc') ?></p>
+                <a href="browse.php" class="btn btn-primary" style="padding: 0.75rem 2rem; border-radius: 12px; font-weight: 700;"><?= __('recycle.browse') ?></a>
             </div>
         <?php else: ?>
             <div class="grid grid-cols-1 md-grid-cols-2 lg-grid-cols-3 gap-8">
@@ -98,12 +94,12 @@ require_once '../includes/header.php';
                             ?>
                             <img src="<?php echo $imageSrc; ?>" alt="<?php echo sanitize($prod['title']); ?>" style="width: 100%; height: 100%; object-fit: cover;">
                             <div class="absolute top-4 right-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-full text-[0.65rem] font-black shadow-lg <?php echo $daysLeft < 5 ? 'text-error' : 'text-slate-600'; ?>" style="letter-spacing: 0.08em; border: 1px solid rgba(0,0,0,0.05); color: <?php echo $daysLeft < 5 ? 'var(--error)' : '#475569'; ?>; background: white;">
-                                <?php echo $daysLeft; ?> DAYS REMAINING
+                                <?= __('recycle.days_remaining', ['days' => $daysLeft]) ?>
                             </div>
                         </div>
                         
                         <div class="p-6 flex-grow">
-                            <span class="text-[0.65rem] font-black uppercase text-indigo-500 mb-2 block" style="letter-spacing: 0.15em; opacity: 0.8; color: var(--primary);"><?php echo sanitize($prod['category_name'] ?? 'Uncategorized'); ?></span>
+                            <span class="text-[0.65rem] font-black uppercase text-indigo-500 mb-2 block" style="letter-spacing: 0.15em; opacity: 0.8; color: var(--primary);"><?php echo sanitize($prod['category_name'] ?? __('recycle.uncategorized')); ?></span>
                             <h3 class="mb-2" style="font-size: 1.35rem; font-weight: 800; color: var(--text-main);"><?php echo sanitize($prod['title']); ?></h3>
                             <p class="text-muted text-sm mb-6 line-clamp-2" style="font-weight: 500; line-height: 1.6;"><?php echo sanitize($prod['description']); ?></p>
                             
@@ -113,10 +109,10 @@ require_once '../includes/header.php';
                                     <input type="hidden" name="product_id" value="<?php echo $prod['id']; ?>">
                                     <input type="hidden" name="action" value="restore">
                                     <button type="submit" class="btn btn-outline w-full py-3 hover-scale" style="border-radius: 14px; font-weight: 800; border-color: var(--primary); color: var(--primary); font-size: 0.9rem; background: transparent;">
-                                        Restore Item
+                                        <?= __('recycle.restore') ?>
                                     </button>
                                 </form>
-                                <form method="post" onsubmit="return confirm('Delete this listing forever? This action cannot be undone.')">
+                                <form method="post" onsubmit="return confirm(<?= json_encode(__('recycle.confirm_delete')) ?>)">
                                     <?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="product_id" value="<?php echo $prod['id']; ?>">
                                     <input type="hidden" name="action" value="delete_permanent">

@@ -44,22 +44,22 @@ foreach ($categories as &$cat) {
 unset($cat);
 ?>
 <?php
-$pageTitle = "CampusMarket – Buy & Sell on Campus";
+$pageTitle = __('home.index_page_title');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <!-- HERO SECTION -->
 <div class="hero-wrap" style="background: var(--primary); padding: 5rem 0; margin-bottom: 4rem; color: white; position: relative; overflow: hidden; border-radius: 0 0 40px 40px;">
     <div class="container relative z-10 text-center">
-        <p class="text-indigo-100 font-bold uppercase tracking-widest mb-4" style="font-size: 0.85rem;">Buy. Sell. Connect.</p>
-        <h1 class="font-black mb-6" style="font-size: 3.5rem; line-height: 1.1; letter-spacing: -2px;">Everything students need, <br>all in one place.</h1>
-        <p class="text-xl text-indigo-50 mb-10 max-w-2xl mx-auto" style="opacity: 0.9;">Find great deals on books, gadgets, furniture, notes and more — from students, for students.</p>
+        <p class="text-indigo-100 font-bold uppercase tracking-widest mb-4" style="font-size: 0.85rem;"><?= __('home.index_tagline') ?></p>
+        <h1 class="font-black mb-6" style="font-size: 3.5rem; line-height: 1.1; letter-spacing: -2px;"><?= __('home.index_headline') ?></h1>
+        <p class="text-xl text-indigo-50 mb-10 max-w-2xl mx-auto" style="opacity: 0.9;"><?= __('home.index_subline') ?></p>
         <div class="flex justify-center gap-4">
             <a href="browse.php" class="btn btn-white-solid px-8 py-4 text-lg shadow-xl hover-scale" style="border-radius: 16px; font-weight: 800; color: #4f46e5 !important;">
-                Start Browsing
+                <?= __('home.start_browsing') ?>
             </a>
             <a href="create_listing.php" class="btn btn-outline border-white text-white px-8 py-4 text-lg hover-scale" style="border-radius: 16px; font-weight: 800; border-width: 2px;">
-                Sell Something
+                <?= __('home.sell_something') ?>
             </a>
         </div>
     </div>
@@ -70,8 +70,8 @@ require_once __DIR__ . '/../includes/header.php';
 <!-- LATEST LISTINGS -->
 <div class="section">
   <div class="section-header">
-    <h2 class="section-title">Latest Listings</h2>
-    <a href="browse.php" class="view-all">View all →</a>
+    <h2 class="section-title"><?= __('home.latest_listings') ?></h2>
+    <a href="browse.php" class="view-all"><?= __('home.view_all_arrow') ?></a>
   </div>
   <div class="scroll-row">
     <?php foreach($latest_products as $prod): ?>
@@ -84,8 +84,8 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="section" style="background:#fff;border-top:1px solid var(--gray-200);border-bottom:1px solid var(--gray-200);max-width:100%;padding:2.5rem 0;">
 <div style="max-width:1280px;margin:0 auto;padding:0 1.5rem;">
   <div class="section-header">
-    <h2 class="section-title">Popular Categories</h2>
-    <a href="browse.php?view=categories" class="view-all">View all →</a>
+    <h2 class="section-title"><?= __('home.popular_categories') ?></h2>
+    <a href="browse.php?view=categories" class="view-all"><?= __('home.view_all_arrow') ?></a>
   </div>
   <div class="space-y-12">
     <?php foreach($categories as $cat): ?>
@@ -97,7 +97,7 @@ require_once __DIR__ . '/../includes/header.php';
             </span>
             <h2 class="section-title"><?= htmlspecialchars($cat['name']) ?></h2>
           </div>
-          <a href="browse.php?category=<?= $cat['id'] ?>" class="view-all">See more in <?= htmlspecialchars($cat['name']) ?> →</a>
+          <a href="browse.php?category=<?= $cat['id'] ?>" class="view-all"><?= __('home.see_more_in', ['category' => htmlspecialchars($cat['name'])]) ?></a>
         </div>
         <div class="scroll-row">
           <?php foreach($cat['products'] as $prod): ?>

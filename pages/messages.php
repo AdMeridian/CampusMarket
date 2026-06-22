@@ -1,6 +1,7 @@
 <?php
-$pageTitle = "Messages";
+// pages/messages.php
 require_once __DIR__ . '/../includes/bootstrap.php';
+$pageTitle = __('inbox.messages_tab');
 requireLogin();
 
 $productId = (int)($_GET['product_id'] ?? 0);
