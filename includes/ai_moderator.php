@@ -184,7 +184,6 @@ function aiModeratorCallGemini(string $apiKey, string $prompt, array $imagesData
         ]);
         $response = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($httpCode === 200) {
             $data = json_decode((string)$response, true);
@@ -236,7 +235,6 @@ function aiModeratorCallOpenRouter(string $openRouterKey, string $prompt, array 
     ]);
     $response = curl_exec($ch);
     $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
     if ($httpCode !== 200) {
         error_log("[ai_moderator] OpenRouter failed HTTP {$httpCode}: " . substr((string)$response, 0, 300));
