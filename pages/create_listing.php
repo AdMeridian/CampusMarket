@@ -15,6 +15,7 @@ $success = false;
 $error = '';
 $createdProductId = 0;
 $createdProductStatus = '';
+$createdListingMeta = [];
 
 // Handle Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,6 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.title_too_long');
     } elseif (empty($_FILES['images']['name'][0]) || $_FILES['images']['error'][0] === UPLOAD_ERR_NO_FILE) {
         $error = __('create_listing.image_required');
+    } elseif ($categoryId <= 0) {
+        $error = __('create_listing.select_category');
     }
 
     if (!$error) {
@@ -136,9 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $pdo->commit();
-                $success = true;
-                $createdProductId = (int)$productId;
-                $createdProductStatus = $status;
+                redirect(BASE_URL . 'pages/create_listing.php?created=' . (int)$productId);
 
             } catch (Exception $e) {
                 $pdo->rollBack();
@@ -153,17 +154,52 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
 $prevTags   = array_map('intval', $_POST['tags'] ?? []);
 
+// Post/Redirect/Get success screen — load from DB so it works even if session is flaky on mobile.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
+    $createdId = (int)$_GET['created'];
+    if ($createdId > 0) {
+        $createdStmt = $pdo->prepare("
+            SELECT id, status, category_id, price
+            FROM products
+            WHERE id = :id AND user_id = :uid
+            LIMIT 1
+        ");
+        $createdStmt->execute([':id' => $createdId, ':uid' => currentUserId()]);
+        $createdRow = $createdStmt->fetch(PDO::FETCH_ASSOC);
+        if ($createdRow) {
+            $success = true;
+            $createdProductId = (int)$createdRow['id'];
+            $createdProductStatus = (string)$createdRow['status'];
+            $createdListingMeta = [
+                'category_id' => (int)($createdRow['category_id'] ?? 0),
+                'price' => (float)($createdRow['price'] ?? 0),
+            ];
+        }
+    }
+}
+
 $pageTitle = __('create_listing.page_title');
 include '../includes/header.php';
 ?>
 
 <?php if ($success && $createdProductId > 0): ?>
+<?php
+    $createdCategoryName = '';
+    if (!empty($createdListingMeta['category_id'])) {
+        foreach ($categories as $cat) {
+            if ((int)($cat['id'] ?? 0) === (int)$createdListingMeta['category_id']) {
+                $createdCategoryName = (string)($cat['name'] ?? '');
+                break;
+            }
+        }
+    }
+?>
 <?php if (!IS_LOCALHOST): ?>
 <script>
     if (typeof posthog !== 'undefined') {
         posthog.capture('listing_created', {
-            category: <?php echo json_encode($categories[array_search((int)$_POST['category_id'], array_column($categories, 'id'))]['name'] ?? ''); ?>,
-            price: <?php echo json_encode((float)$_POST['price']); ?>
+            category: <?php echo json_encode($createdCategoryName); ?>,
+            price: <?php echo json_encode((float)($createdListingMeta['price'] ?? 0)); ?>
         });
     }
 </script>

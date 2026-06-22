@@ -4,6 +4,10 @@
 // ============================================================
 
 require_once __DIR__ . '/../config/constants.php';
+if (defined('IS_LOCALHOST') && !IS_LOCALHOST) {
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+}
 if (session_status() === PHP_SESSION_NONE) {
     // Security: harden session cookies
     ini_set('session.cookie_httponly', 1);
