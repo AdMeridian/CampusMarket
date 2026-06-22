@@ -92,8 +92,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch Listings
+$statusFilter = sanitize($_GET['status'] ?? '');
+$allowedStatuses = ['pending_approval', 'active', 'flagged', 'sold', 'deleted'];
+$whereSql = '';
+$params = [];
+if ($statusFilter !== '' && in_array($statusFilter, $allowedStatuses, true)) {
+    $whereSql = 'WHERE p.status = :status';
+    $params[':status'] = $statusFilter;
+}
+
 if ($promoPaymentsTableExists) {
-    $stmt = $pdo->query("
+    $stmt = $pdo->prepare("
         SELECT p.*, c.name as category_name, u.username as seller_name,
             (
                 SELECT COUNT(*)
@@ -106,33 +115,46 @@ if ($promoPaymentsTableExists) {
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
+        {$whereSql}
         ORDER BY p.created_at DESC
     ");
 } else {
-    $stmt = $pdo->query("
+    $stmt = $pdo->prepare("
         SELECT p.*, c.name as category_name, u.username as seller_name, 0 as available_promo_credits
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
+        {$whereSql}
         ORDER BY p.created_at DESC
     ");
 }
+$stmt->execute($params);
 $listings = $stmt->fetchAll();
+
+$pendingCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE status = 'pending_approval'")->fetchColumn();
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="container mt-24 mb-16 admin-listings-page">
-    <div class="flex justify-between items-end mb-8 admin-page-toolbar">
+    <div class="flex justify-between items-end mb-4 admin-page-toolbar">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> > Listings</div>
             <h1 class="mb-0">Listing Management</h1>
         </div>
         <div class="flex items-center gap-2">
             <a href="promotion_payments.php" class="btn btn-secondary btn-sm">Review Payments</a>
-            <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($listings); ?> Total Listings</div>
+            <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($listings); ?> listings</div>
         </div>
     </div>
+
+    <nav class="flex gap-2 mb-6 flex-wrap">
+        <a href="listings.php" class="btn btn-sm <?= $statusFilter === '' ? 'btn-primary' : 'btn-secondary' ?>">All</a>
+        <a href="listings.php?status=pending_approval" class="btn btn-sm <?= $statusFilter === 'pending_approval' ? 'btn-primary' : 'btn-secondary' ?>">
+            Pending approval<?= $pendingCount > 0 ? ' (' . $pendingCount . ')' : '' ?>
+        </a>
+        <a href="listings.php?status=active" class="btn btn-sm <?= $statusFilter === 'active' ? 'btn-primary' : 'btn-secondary' ?>">Active</a>
+    </nav>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
         <table class="table w-full text-left admin-listings-table" style="border-collapse: collapse; margin: 0; min-width: 920px;">

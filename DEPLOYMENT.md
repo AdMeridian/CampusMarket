@@ -23,6 +23,7 @@
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`checkout.session.completed`) |
 | `RESEND_API_KEY` | Outbound email (support, message alerts) |
 | `WEB_PUSH_PUBLIC_KEY` / `WEB_PUSH_PRIVATE_KEY` | VAPID keys for push notifications |
+| `GEMINI_API_KEY` | AI listing moderation (create listing) |
 
 Optional: `SESSION_STATELESS_SECRET` (if unset, `INTERNAL_PUSH_KEY` is used).
 
@@ -35,6 +36,12 @@ npx supabase db push --linked --yes
 ```
 
 Migrations live in `supabase/migrations/`.
+
+## Supabase Auth (pre-launch)
+
+In **Supabase Dashboard → Authentication → Providers → Email** (or Password security):
+
+1. Enable **Leaked password protection** (HaveIBeenPwned check) for new signups.
 
 ## Stripe webhook
 
@@ -57,6 +64,7 @@ Push to `member-1` or `main`. Vercel auto-deploys.
 5. Check **My Orders** updates when seller confirms
 6. Test promotion/donation payment (test mode) + webhook delivery **200**
 7. Enable push notifications from Activity page
+8. Re-check **Supabase Dashboard → Database → Advisors** (security + performance) after migrations
 
 ## CI
 
