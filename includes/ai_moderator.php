@@ -124,7 +124,6 @@ function aiModerateListing(string $title, string $description, array $imagesData
             curl_setopt($ch, CURLOPT_TIMEOUT, 20);
             $response = curl_exec($ch);
             $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
 
             if ($httpCode === 200) {
                 break;
@@ -172,7 +171,6 @@ function aiModerateListing(string $title, string $description, array $imagesData
         curl_setopt($ch, CURLOPT_TIMEOUT, 20);
         $response = curl_exec($ch);
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($httpCode !== 200) {
             error_log("[ai_moderator] OpenRouter failed HTTP {$httpCode}: " . substr((string)$response, 0, 300));

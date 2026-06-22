@@ -165,7 +165,10 @@ include '../includes/header.php';
             </a>
         </div>
         <?php else: ?>
-        <p class="text-muted mb-6">This listing needs a manual review before it can go live or be promoted.</p>
+        <p class="text-muted mb-6" style="font-size: 1.05rem; line-height: 1.6;">
+            Your listing is currently <strong>waiting for approval</strong>. An admin will review it shortly.<br>
+            You'll receive a <strong>notification</strong> once it's been approved.
+        </p>
         <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
             View listing status
         </a>
