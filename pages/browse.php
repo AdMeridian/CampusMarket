@@ -70,9 +70,12 @@ switch ($sort) {
         $sql .= "CASE p.condition 
                     WHEN 'new' THEN 1 
                     WHEN 'like_new' THEN 2 
-                    WHEN 'used' THEN 3 
-                    WHEN 'poor' THEN 4 
-                    ELSE 5 END ASC"; 
+                    WHEN 'handmade' THEN 3
+                    WHEN 'one_of_a_kind' THEN 4
+                    WHEN 'made_to_order' THEN 5
+                    WHEN 'used' THEN 6 
+                    WHEN 'poor' THEN 7 
+                    ELSE 8 END ASC"; 
         break;
     default: $sql .= "p.created_at DESC"; break;
 }
@@ -195,7 +198,10 @@ include '../includes/header.php';
                                         'new' => __('browse.cond_new'),
                                         'like_new' => __('browse.cond_like_new'),
                                         'used' => __('browse.cond_used'),
-                                        'poor' => __('browse.cond_poor')
+                                        'poor' => __('browse.cond_poor'),
+                                        'handmade' => __('browse.cond_handmade'),
+                                        'made_to_order' => __('browse.cond_made_to_order'),
+                                        'one_of_a_kind' => __('browse.cond_one_of_a_kind'),
                                     ];
                                     foreach ($conditions as $val => $label): 
                                     ?>

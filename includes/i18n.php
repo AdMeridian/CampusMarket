@@ -187,6 +187,8 @@ function translateCategory(string $name): string {
         'transportation' => 'category.transportation',
         'transportation_bikes_and_scooters' => 'category.transportation',
         'transportation_bikes_scooters' => 'category.transportation',
+        'arts_crafts_and_diy' => 'category.arts_crafts_diy',
+        'arts_crafts_diy' => 'category.arts_crafts_diy',
     ];
     
     $key = $map[$clean] ?? 'category.' . $clean;

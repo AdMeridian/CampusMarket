@@ -53,7 +53,7 @@ CREATE TABLE products (
     price       DECIMAL(10,2)  NOT NULL,
     discount_percent TINYINT   NOT NULL DEFAULT 0,
     discount_set_at DATETIME   NULL,
-    `condition`   ENUM('new', 'like_new', 'used', 'poor') NOT NULL DEFAULT 'used',
+    `condition`   ENUM('new', 'like_new', 'used', 'poor', 'handmade', 'made_to_order', 'one_of_a_kind') NOT NULL DEFAULT 'used',
     status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
     location_town VARCHAR(32)  NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,

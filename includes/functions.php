@@ -174,13 +174,49 @@ function timeAgo(?string $datetime): string {
 /**
  * Get a condition badge label and CSS class
  */
+function resaleConditionSlugs(): array {
+    return ['new', 'like_new', 'used', 'poor'];
+}
+
+function handmadeConditionSlugs(): array {
+    return ['handmade', 'made_to_order', 'one_of_a_kind'];
+}
+
+function allProductConditionSlugs(): array {
+    return array_merge(resaleConditionSlugs(), handmadeConditionSlugs());
+}
+
+function isHandmadeCondition(?string $condition): bool {
+    return in_array($condition, handmadeConditionSlugs(), true);
+}
+
+function isValidProductCondition(?string $condition, ?string $listingKind = null): bool {
+    if ($condition === null || $condition === '') {
+        return false;
+    }
+    if ($listingKind === 'handmade') {
+        return in_array($condition, handmadeConditionSlugs(), true);
+    }
+    if ($listingKind === 'resale') {
+        return in_array($condition, resaleConditionSlugs(), true);
+    }
+    return in_array($condition, allProductConditionSlugs(), true);
+}
+
+function artsCraftsCategorySlug(): string {
+    return 'arts-crafts-diy';
+}
+
 function conditionBadge(?string $condition): array {
     return match($condition) {
-        'new'      => ['label' => __('condition.new'),      'class' => 'badge-new'],
-        'like_new' => ['label' => __('condition.like_new'), 'class' => 'badge-like-new'],
-        'used'     => ['label' => __('condition.used'),     'class' => 'badge-used'],
-        'poor'     => ['label' => __('condition.poor'),     'class' => 'badge-poor'],
-        default    => ['label' => __('condition.unknown'),  'class' => 'badge-used'],
+        'new'           => ['label' => __('condition.new'),           'class' => 'badge-new'],
+        'like_new'      => ['label' => __('condition.like_new'),      'class' => 'badge-like-new'],
+        'used'          => ['label' => __('condition.used'),          'class' => 'badge-used'],
+        'poor'          => ['label' => __('condition.poor'),          'class' => 'badge-poor'],
+        'handmade'      => ['label' => __('condition.handmade'),      'class' => 'badge-handmade'],
+        'made_to_order' => ['label' => __('condition.made_to_order'), 'class' => 'badge-made-to-order'],
+        'one_of_a_kind' => ['label' => __('condition.one_of_a_kind'), 'class' => 'badge-one-of-a-kind'],
+        default         => ['label' => __('condition.unknown'),       'class' => 'badge-used'],
     };
 }
 

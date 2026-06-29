@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $categoryId     = (int)$_POST['category_id'];
     $price          = (float)$_POST['price'];
     $condition      = sanitize($_POST['condition']);
+    $listingKind    = strtolower(trim((string)($_POST['listing_kind'] ?? 'resale')));
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $userId         = currentUserId();
@@ -41,6 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.select_category');
     } elseif (!isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
+    } elseif (!in_array($listingKind, ['resale', 'handmade'], true)) {
+        $listingKind = 'resale';
+    } elseif (!isValidProductCondition($condition, $listingKind)) {
+        $error = __('create_listing.condition_required');
     }
 
     if (!$error) {
@@ -157,6 +162,10 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
 $defaultTown = isLoggedIn() ? (getUserHomeTown((int)currentUserId()) ?? '') : '';
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
+$listingKind = $_POST['listing_kind'] ?? 'resale';
+if (!in_array($listingKind, ['resale', 'handmade'], true)) {
+    $listingKind = 'resale';
+}
 $prevTags   = array_map('intval', $_POST['tags'] ?? []);
 
 // Post/Redirect/Get success screen — load from DB so it works even if session is flaky on mobile.
@@ -268,7 +277,7 @@ include '../includes/header.php';
                         <select name="category_id" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                             <option value=""><?= __('create_listing.select_category') ?></option>
                             <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_POST['category_id']) && $_POST['category_id'] == $cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
+                                <option value="<?php echo $cat['id']; ?>" data-slug="<?php echo htmlspecialchars($cat['slug'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php echo (isset($_POST['category_id']) && $_POST['category_id'] == $cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -293,25 +302,68 @@ include '../includes/header.php';
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.condition_label') ?></label>
-                    <div class="flex flex-wrap gap-6">
-                        <?php 
-                        $opts = [
+                <div class="form-group" id="listing-kind-section">
+                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.listing_kind_label') ?></label>
+                    <div class="flex flex-wrap gap-4">
+                        <?php
+                        $kindOptions = [
+                            'resale' => __('create_listing.kind_resale'),
+                            'handmade' => __('create_listing.kind_handmade'),
+                        ];
+                        foreach ($kindOptions as $kindVal => $kindLabel):
+                        ?>
+                        <label class="condition-label group flex items-center gap-3 cursor-pointer glass-panel transition-all duration-200" style="border-radius: var(--radius-full); border: 2px solid transparent; padding: 0.55rem 1.25rem; min-width: 120px; justify-content: center;">
+                            <input type="radio" name="listing_kind" value="<?php echo $kindVal; ?>" <?php echo $listingKind === $kindVal ? 'checked' : ''; ?> class="hidden-radio listing-kind-radio">
+                            <span class="custom-radio"></span>
+                            <span class="font-semibold text-main"><?php echo $kindLabel; ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="form-group" id="condition-section">
+                    <label class="font-bold mb-2 block" style="color: var(--text-main);" id="condition-section-label"><?= __('create_listing.condition_label') ?></label>
+                    <div id="condition-options-resale" class="condition-options flex flex-wrap gap-6" <?php echo $listingKind === 'handmade' ? 'hidden' : ''; ?>>
+                        <?php
+                        $resaleOpts = [
                             'new' => __('create_listing.cond_new'),
                             'like_new' => __('create_listing.cond_like_new'),
-                            'used' => __('create_listing.cond_used')
+                            'used' => __('create_listing.cond_used'),
                         ];
-                        $default = 'used';
-                        foreach($opts as $val => $label):
+                        $defaultResale = 'used';
+                        foreach ($resaleOpts as $val => $label):
+                            $checked = isset($_POST['condition'])
+                                ? $_POST['condition'] === $val
+                                : ($listingKind === 'resale' && $val === $defaultResale);
                         ?>
                         <label class="condition-label group flex items-center gap-3 cursor-pointer glass-panel transition-all duration-200" style="border-radius: var(--radius-full); border: 2px solid transparent; padding: 0.55rem 1.25rem; min-width: 100px; justify-content: center;">
-                            <input type="radio" name="condition" value="<?php echo $val; ?>" <?php echo (isset($_POST['condition']) ? $_POST['condition'] == $val : $val == $default) ? 'checked' : ''; ?> class="hidden-radio">
+                            <input type="radio" name="condition" value="<?php echo $val; ?>" <?php echo $checked ? 'checked' : ''; ?> class="hidden-radio condition-radio">
                             <span class="custom-radio"></span>
                             <span class="font-semibold text-main"><?php echo $label; ?></span>
                         </label>
                         <?php endforeach; ?>
                     </div>
+                    <div id="condition-options-handmade" class="condition-options flex flex-wrap gap-6" <?php echo $listingKind === 'resale' ? 'hidden' : ''; ?>>
+                        <?php
+                        $handmadeOpts = [
+                            'handmade' => __('create_listing.cond_handmade'),
+                            'made_to_order' => __('create_listing.cond_made_to_order'),
+                            'one_of_a_kind' => __('create_listing.cond_one_of_a_kind'),
+                        ];
+                        $defaultHandmade = 'handmade';
+                        foreach ($handmadeOpts as $val => $label):
+                            $checked = isset($_POST['condition'])
+                                ? $_POST['condition'] === $val
+                                : ($listingKind === 'handmade' && $val === $defaultHandmade);
+                        ?>
+                        <label class="condition-label group flex items-center gap-3 cursor-pointer glass-panel transition-all duration-200" style="border-radius: var(--radius-full); border: 2px solid transparent; padding: 0.55rem 1.25rem; min-width: 100px; justify-content: center;">
+                            <input type="radio" name="condition" value="<?php echo $val; ?>" <?php echo $checked ? 'checked' : ''; ?> class="hidden-radio condition-radio">
+                            <span class="custom-radio"></span>
+                            <span class="font-semibold text-main"><?php echo $label; ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p id="condition-hint-handmade" class="text-muted small mt-3 mb-0" <?php echo $listingKind === 'resale' ? 'hidden' : ''; ?>><?= __('create_listing.handmade_hint') ?></p>
                 </div>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
@@ -746,6 +798,71 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+(function () {
+    const ARTS_SLUG = <?php echo json_encode(artsCraftsCategorySlug()); ?>;
+    const labels = {
+        resale: <?= json_encode(__('create_listing.condition_label')) ?>,
+        handmade: <?= json_encode(__('create_listing.handmade_type_label')) ?>,
+    };
+    const kindRadios = document.querySelectorAll('.listing-kind-radio');
+    const resalePanel = document.getElementById('condition-options-resale');
+    const handmadePanel = document.getElementById('condition-options-handmade');
+    const hint = document.getElementById('condition-hint-handmade');
+    const sectionLabel = document.getElementById('condition-section-label');
+    const categorySelect = document.querySelector('select[name="category_id"]');
+
+    function selectFirstIn(panel) {
+        if (!panel) return;
+        const radios = panel.querySelectorAll('.condition-radio');
+        let picked = false;
+        radios.forEach(function (radio) {
+            if (!picked && radio.checked) {
+                picked = true;
+            }
+        });
+        if (!picked && radios.length) {
+            radios[0].checked = true;
+        }
+    }
+
+    function setListingKind(kind) {
+        const isHandmade = kind === 'handmade';
+        if (resalePanel) resalePanel.hidden = isHandmade;
+        if (handmadePanel) handmadePanel.hidden = !isHandmade;
+        if (hint) hint.hidden = !isHandmade;
+        if (sectionLabel) {
+            sectionLabel.textContent = isHandmade ? labels.handmade : labels.resale;
+        }
+        if (isHandmade) {
+            resalePanel?.querySelectorAll('.condition-radio').forEach(function (r) { r.checked = false; });
+            selectFirstIn(handmadePanel);
+        } else {
+            handmadePanel?.querySelectorAll('.condition-radio').forEach(function (r) { r.checked = false; });
+            selectFirstIn(resalePanel);
+        }
+    }
+
+    kindRadios.forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            if (radio.checked) setListingKind(radio.value);
+        });
+    });
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function () {
+            const opt = categorySelect.options[categorySelect.selectedIndex];
+            const slug = opt ? opt.getAttribute('data-slug') : '';
+            if (slug === ARTS_SLUG) {
+                const handmadeRadio = document.querySelector('.listing-kind-radio[value="handmade"]');
+                if (handmadeRadio) {
+                    handmadeRadio.checked = true;
+                    setListingKind('handmade');
+                }
+            }
+        });
+    }
+})();
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

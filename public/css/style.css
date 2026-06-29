@@ -1107,6 +1107,9 @@ body.dark-mode .flash-error {
 .badge-new { background: var(--success-bg); color: #065f46; }
 .badge-like-new { background: #e0f2fe; color: #075985; }
 .badge-used { background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); }
+.badge-handmade { background: #f3e8ff; color: #6b21a8; }
+.badge-made-to-order { background: #fef3c7; color: #b45309; }
+.badge-one-of-a-kind { background: #fce7f3; color: #9d174d; }
 .badge-poor { background: var(--error-bg); color: #991b1b; }
 .badge-pending { background: var(--warning-bg); color: #b45309; }
 .badge-reviewed { background: var(--success-bg); color: #065f46; }
@@ -1115,6 +1118,9 @@ body.dark-mode .flash-error {
 
 body.dark-mode .badge-new { background: rgba(52, 211, 153, 0.15); color: #34d399; }
 body.dark-mode .badge-like-new { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+body.dark-mode .badge-handmade { background: rgba(167, 139, 250, 0.15); color: #c4b5fd; }
+body.dark-mode .badge-made-to-order { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+body.dark-mode .badge-one-of-a-kind { background: rgba(244, 114, 182, 0.15); color: #f472b6; }
 body.dark-mode .badge-poor { background: rgba(248, 113, 113, 0.15); color: #f87171; }
 body.dark-mode .badge-pending { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
 body.dark-mode .badge-reviewed { background: rgba(52, 211, 153, 0.15); color: #34d399; }
