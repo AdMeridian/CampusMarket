@@ -4,10 +4,21 @@ require_once '../includes/bootstrap.php';
 $search = $_GET['q'] ?? '';
 $category = $_GET['category'] ?? '';
 $condition = $_GET['condition'] ?? '';
+$town = $_GET['town'] ?? '';
+$myTown = isset($_GET['my_town']) && $_GET['my_town'] === '1';
 $minPrice = $_GET['min_price'] ?? '';
 $maxPrice = $_GET['max_price'] ?? '';
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, (int)($_GET['page'] ?? 1));
+
+if ($myTown && isLoggedIn()) {
+    $userTown = getUserHomeTown((int)currentUserId());
+    if ($userTown) {
+        $town = $userTown;
+    }
+}
+
+$userHomeTown = isLoggedIn() ? getUserHomeTown((int)currentUserId()) : null;
 
 // Filters and sorting logic
 $params = [];
@@ -24,6 +35,7 @@ if ($condition) {
     $filterSql .= " AND p.condition = ?";
     $params[] = $condition;
 }
+$filterSql .= locationTownFilterSql('p', $town, $params);
 if ($minPrice) {
     $filterSql .= " AND (p.price * (100 - p.discount_percent) / 100) >= ?";
     $params[] = $minPrice;
@@ -136,6 +148,29 @@ include '../includes/header.php';
                             </div>
                         </div>
                         
+                        <!-- Town Block -->
+                        <div class="filter-block mb-8">
+                            <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
+                                <span><?= __('browse.town') ?></span>
+                            </div>
+                            <div class="relative">
+                                <select name="town" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                    <option value=""><?= __('browse.all_towns') ?></option>
+                                    <?php foreach (locationTownSlugs() as $townSlug): ?>
+                                        <option value="<?php echo $townSlug; ?>" <?php echo $town === $townSlug ? 'selected' : ''; ?>>
+                                            <?php echo formatLocationTown($townSlug); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php if ($userHomeTown): ?>
+                                <a href="<?php echo BASE_URL; ?>pages/browse.php?my_town=1" class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary hover:underline">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    <?= __('browse.my_town', ['town' => formatLocationTown($userHomeTown)]) ?>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+
                         <!-- Price Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
@@ -247,6 +282,7 @@ include '../includes/header.php';
                         </svg>
                         
                         <?php if($category): ?><input type="hidden" name="category" value="<?php echo sanitize($category); ?>"><?php endif; ?>
+                        <?php if($town): ?><input type="hidden" name="town" value="<?php echo sanitize($town); ?>"><?php endif; ?>
                         <?php if($condition): ?><input type="hidden" name="condition" value="<?php echo sanitize($condition); ?>"><?php endif; ?>
                         <?php if($minPrice !== ''): ?><input type="hidden" name="min_price" value="<?php echo sanitize($minPrice); ?>"><?php endif; ?>
                         <?php if($maxPrice !== ''): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
@@ -262,6 +298,7 @@ include '../includes/header.php';
                         <form method="GET" action="browse.php" id="sort-form" class="mb-0">
                             <?php if($search): ?><input type="hidden" name="q" value="<?php echo sanitize($search); ?>"><?php endif; ?>
                             <?php if($category): ?><input type="hidden" name="category" value="<?php echo sanitize($category); ?>"><?php endif; ?>
+                            <?php if($town): ?><input type="hidden" name="town" value="<?php echo sanitize($town); ?>"><?php endif; ?>
                             <?php if($condition): ?><input type="hidden" name="condition" value="<?php echo sanitize($condition); ?>"><?php endif; ?>
                             <?php if($minPrice !== ''): ?><input type="hidden" name="min_price" value="<?php echo sanitize($minPrice); ?>"><?php endif; ?>
                             <?php if($maxPrice !== ''): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
@@ -279,6 +316,12 @@ include '../includes/header.php';
                 <?php if($search): ?>
                     <div class="mb-6 px-2">
                         <span class="text-muted text-sm"><?= __('browse.showing_results', ['query' => sanitize($search)]) ?></span>
+                    </div>
+                <?php endif; ?>
+                <?php if ($town && isValidLocationTown($town)): ?>
+                    <div class="mb-6 px-2 flex flex-wrap items-center gap-2">
+                        <span class="text-muted text-sm"><?= __('browse.filtering_by_town', ['town' => formatLocationTown($town)]) ?></span>
+                        <a href="<?php echo BASE_URL; ?>pages/browse.php?<?php echo http_build_query(array_filter(['q' => $search ?: null, 'category' => $category ?: null, 'condition' => $condition ?: null, 'min_price' => $minPrice !== '' ? $minPrice : null, 'max_price' => $maxPrice !== '' ? $maxPrice : null, 'sort' => $sort !== 'newest' ? $sort : null])); ?>" class="text-sm font-bold text-primary hover:underline"><?= __('browse.clear_town') ?></a>
                     </div>
                 <?php endif; ?>
 

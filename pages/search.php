@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/bootstrap.php';
 
 $query = sanitize($_GET['q'] ?? '');
 $categoryId = $_GET['category'] ?? '';
+$town = $_GET['town'] ?? '';
 $page = max(1, (int)($_GET['page'] ?? 1));
 $pageTitle = __('search.page_title') . ($query ? ": " . $query : "");
 $pageDescription = $query !== ''
@@ -14,7 +15,7 @@ $results = [];
 $totalItems = 0;
 $paginationBase = 'search.php';
 
-if ($query !== '' || $categoryId !== '') {
+if ($query !== '' || $categoryId !== '' || $town !== '') {
     $filterSql = '';
     $params = [];
 
@@ -26,6 +27,8 @@ if ($query !== '' || $categoryId !== '') {
         $filterSql .= " AND p.category_id = ?";
         $params[] = $categoryId;
     }
+
+    $filterSql .= locationTownFilterSql('p', $town, $params);
 
     $fromSql = " FROM products p
             JOIN categories c ON p.category_id = c.id
@@ -85,6 +88,9 @@ require_once __DIR__ . '/../includes/header.php';
             <?php if ($categoryId !== ''): ?>
                 <input type="hidden" name="category" value="<?php echo htmlspecialchars($categoryId); ?>">
             <?php endif; ?>
+            <?php if ($town !== ''): ?>
+                <input type="hidden" name="town" value="<?php echo htmlspecialchars($town); ?>">
+            <?php endif; ?>
             <?php $placeholder = (isLoggedIn() && isAdmin()) ? __('nav.search_placeholder_admin') : __('nav.search_placeholder'); ?>
             <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
             <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
@@ -114,7 +120,14 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
                     <div class="p-5 flex flex-col flex-grow bg-white">
-                        <p class="text-primary font-bold small tracking-wider uppercase mb-1" style="font-size: 0.7rem;"><?php echo sanitize($prod['category_name']); ?></p>
+                        <?php
+                            $searchMeta = [];
+                            if (!empty($prod['location_town']) && $prod['location_town'] !== 'other') {
+                                $searchMeta[] = formatLocationTown($prod['location_town']);
+                            }
+                            $searchMeta[] = sanitize($prod['category_name']);
+                        ?>
+                        <p class="text-primary font-bold small tracking-wider uppercase mb-1" style="font-size: 0.7rem;"><?php echo implode(' · ', $searchMeta); ?></p>
                         <h4 class="mb-3 text-main font-bold" style="font-size: 1.1rem; line-height: 1.4; flex-grow: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?php echo sanitize($prod['title']); ?></h4>
 
                         <div class="flex flex-col gap-2 mt-auto pt-4 border-t border-gray-100">

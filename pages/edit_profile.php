@@ -18,7 +18,7 @@ $uid = (int) currentUserId();
 
 // Load current user (support older local schemas that may not yet have preferred_language).
 try {
-    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language FROM users WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language, home_town FROM users WHERE id = :id');
     $stmt->execute([':id' => $uid]);
     $user = $stmt->fetch();
 } catch (PDOException $e) {
@@ -27,6 +27,7 @@ try {
     $user = $stmt->fetch();
     if ($user) {
         $user['preferred_language'] = DEFAULT_LANGUAGE;
+        $user['home_town'] = null;
     }
 }
 
@@ -46,6 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $phone    = trim($_POST['phone'] ?? '');
     $preferredLanguage = trim($_POST['preferred_language'] ?? '');
+    $homeTown = strtolower(trim((string)($_POST['home_town'] ?? '')));
+    if ($homeTown !== '' && !isValidLocationTown($homeTown)) {
+        $homeTown = '';
+    }
 
     // Username
     if ($username === '') {
@@ -106,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, avatar = :a, preferred_language = :lang
+                    SET username = :u, phone = :p, avatar = :a, preferred_language = :lang, home_town = :town
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -114,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':p'  => $phone !== '' ? $phone : null,
                     ':a'  => $newAvatar,
                     ':lang' => $preferredLanguage,
+                    ':town' => $homeTown !== '' ? $homeTown : null,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
@@ -133,13 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, preferred_language = :lang
+                    SET username = :u, phone = :p, preferred_language = :lang, home_town = :town
                     WHERE id = :id
                 ');
                 $upd->execute([
                     ':u'  => $username,
                     ':p'  => $phone !== '' ? $phone : null,
                     ':lang' => $preferredLanguage,
+                    ':town' => $homeTown !== '' ? $homeTown : null,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
@@ -169,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user['username'] = $username;
     $user['phone']    = $phone;
     $user['preferred_language'] = $preferredLanguage;
+    $user['home_town'] = $homeTown !== '' ? $homeTown : null;
 }
 
 $pageTitle = __('profile.edit_title');
@@ -253,6 +261,19 @@ require_once '../includes/header.php';
                     <?php if (isset($errors['phone'])): ?>
                         <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['phone']); ?></div>
                     <?php endif; ?>
+                </div>
+
+                <div>
+                    <label for="home_town" class="form-label font-bold"><?= __('profile.home_town') ?></label>
+                    <select id="home_town" name="home_town" class="form-control premium-input" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); padding: 0.75rem; border-radius: var(--radius-md);">
+                        <option value=""><?= __('profile.home_town_none') ?></option>
+                        <?php foreach (locationTownSlugs() as $townSlug): ?>
+                            <option value="<?= htmlspecialchars($townSlug) ?>" <?= ($user['home_town'] ?? '') === $townSlug ? 'selected' : '' ?>>
+                                <?= htmlspecialchars(formatLocationTown($townSlug)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="text-muted small mt-2"><?= __('profile.home_town_note') ?></div>
                 </div>
 
                 <div>

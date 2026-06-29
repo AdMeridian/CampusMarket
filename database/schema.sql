@@ -19,6 +19,7 @@ CREATE TABLE users (
     phone         VARCHAR(20)  NULL,
     avatar        VARCHAR(255) NULL,
     account_status    ENUM('active', 'suspended') NOT NULL DEFAULT 'active',
+    home_town         VARCHAR(32)  NULL,
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -54,6 +55,7 @@ CREATE TABLE products (
     discount_set_at DATETIME   NULL,
     `condition`   ENUM('new', 'like_new', 'used', 'poor') NOT NULL DEFAULT 'used',
     status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
+    location_town VARCHAR(32)  NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
     views       INT            NOT NULL DEFAULT 0,
@@ -110,6 +112,17 @@ CREATE TABLE product_views (
     viewed_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 7c. product_shares
+CREATE TABLE product_shares (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    user_id    INT NULL,
+    channel    VARCHAR(32) NOT NULL DEFAULT 'other',
+    shared_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $price          = (float)$_POST['price'];
     $condition      = sanitize($_POST['condition']);
     $description    = sanitize($_POST['description']);
+    $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $userId         = currentUserId();
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
@@ -38,6 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.image_required');
     } elseif ($categoryId <= 0) {
         $error = __('create_listing.select_category');
+    } elseif (!isValidLocationTown($locationTown)) {
+        $error = __('create_listing.town_required');
     }
 
     if (!$error) {
@@ -73,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 1. Insert Product
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, {$conditionQuote}, status) VALUES (?, ?, ?, ?, ?, ?, 'active')");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $condition]);
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, {$conditionQuote}, status, location_town) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $condition, $locationTown]);
                 $productId = $pdo->lastInsertId();
 
                 // 2. Handle Image Uploads
@@ -152,6 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch Categories & Tags
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
+$defaultTown = isLoggedIn() ? (getUserHomeTown((int)currentUserId()) ?? '') : '';
+$selectedTown = $_POST['location_town'] ?? $defaultTown;
 $prevTags   = array_map('intval', $_POST['tags'] ?? []);
 
 // Post/Redirect/Get success screen — load from DB so it works even if session is flaky on mobile.
@@ -268,6 +273,19 @@ include '../includes/header.php';
                         </select>
                     </div>
                     <div class="form-group">
+                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.town_label') ?></label>
+                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                            <option value=""><?= __('create_listing.select_town') ?></option>
+                            <?php foreach (locationTownSlugs() as $townSlug): ?>
+                                <option value="<?php echo $townSlug; ?>" <?php echo $selectedTown === $townSlug ? 'selected' : ''; ?>><?php echo formatLocationTown($townSlug); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-muted small mt-2 mb-0"><?= __('create_listing.town_hint') ?></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group md:col-span-2">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.price_label', ['currency' => APP_CURRENCY]) ?></label>
                         <div class="relative">
                             <input type="number" name="price" step="0.01" value="<?= htmlspecialchars($_POST['price'] ?? '') ?>" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>

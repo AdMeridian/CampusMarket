@@ -1231,3 +1231,50 @@ function invalidateNavCategoriesCache(): void {
     }
 }
 
+/**
+ * Allowed North Cyprus town slugs for listing geotags.
+ */
+function locationTownSlugs(): array {
+    return ['lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele', 'other'];
+}
+
+function isValidLocationTown(?string $town): bool {
+    if ($town === null || $town === '') {
+        return false;
+    }
+    return in_array(strtolower($town), locationTownSlugs(), true);
+}
+
+function formatLocationTown(?string $town): string {
+    if (!isValidLocationTown($town)) {
+        return '';
+    }
+    return __('location.town.' . strtolower($town));
+}
+
+/**
+ * SQL fragment for filtering products by town.
+ */
+function locationTownFilterSql(string $productAlias, ?string $town, array &$params): string {
+    if (!isValidLocationTown($town)) {
+        return '';
+    }
+    $params[] = strtolower($town);
+    return " AND {$productAlias}.location_town = ?";
+}
+
+function getUserHomeTown(?int $userId = null): ?string {
+    global $pdo;
+    if (!$userId) {
+        return null;
+    }
+    try {
+        $stmt = $pdo->prepare('SELECT home_town FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        $town = $stmt->fetchColumn();
+        return isValidLocationTown($town) ? strtolower((string)$town) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+

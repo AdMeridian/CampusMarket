@@ -109,6 +109,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     }
 }
 
+// Handle Location Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_location_town') {
+    verifyCsrfToken();
+    $newTown = strtolower(trim((string)($_POST['location_town'] ?? '')));
+    if (!isValidLocationTown($newTown)) {
+        setFlash('error', __('create_listing.town_required'));
+    } else {
+        $stmtUp = $pdo->prepare("UPDATE products SET location_town = :town, updated_at = NOW() WHERE id = :id");
+        $stmtUp->execute([':town' => $newTown, ':id' => $productId]);
+        setFlash('success', __('product.town_updated'));
+        redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+    }
+}
+
 // Handle Description Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_description') {
     verifyCsrfToken();
@@ -292,10 +306,22 @@ $stmtWish = $pdo->prepare("SELECT COUNT(*) FROM wishlists WHERE product_id = ?")
 $stmtWish->execute([$productId]);
 $wishlistCount = (int)$stmtWish->fetchColumn();
 
+$shareCount = 0;
+$hasProductSharesTable = true;
+try {
+    $pdo->query('SELECT 1 FROM product_shares LIMIT 1');
+    $shareStmt = $pdo->prepare('SELECT COUNT(*) FROM product_shares WHERE product_id = ?');
+    $shareStmt->execute([$productId]);
+    $shareCount = (int)$shareStmt->fetchColumn();
+} catch (PDOException $e) {
+    $hasProductSharesTable = false;
+}
+
 // CUMULATIVE view counts for graph — each point is total views up to that day
 // Points: [5 days ago, 4 days ago, 3 days ago, 2 days ago, yesterday, today]
 $viewCumPoints = [];
 $wishCumPoints = [];
+$shareCumPoints = [];
 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 $viewSql = $driver === 'pgsql' 
     ? "SELECT COUNT(*) FROM product_views WHERE product_id = ? AND viewed_at <= NOW() - (CAST(? AS text) || ' days')::interval"
@@ -304,6 +330,10 @@ $viewSql = $driver === 'pgsql'
 $wishSql = $driver === 'pgsql'
     ? "SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= NOW() - (CAST(? AS text) || ' days')::interval"
     : "SELECT COUNT(*) FROM wishlists WHERE product_id = ? AND created_at <= DATE_SUB(NOW(), INTERVAL ? DAY)";
+
+$shareSql = $driver === 'pgsql'
+    ? "SELECT COUNT(*) FROM product_shares WHERE product_id = ? AND shared_at <= NOW() - (CAST(? AS text) || ' days')::interval"
+    : "SELECT COUNT(*) FROM product_shares WHERE product_id = ? AND shared_at <= DATE_SUB(NOW(), INTERVAL ? DAY)";
 
 for ($d = 5; $d >= 0; $d--) {
     if ($hasProductViewsTable) {
@@ -317,6 +347,14 @@ for ($d = 5; $d >= 0; $d--) {
     $sw = $pdo->prepare($wishSql);
     $sw->execute([$productId, $d]);
     $wishCumPoints[] = (int)$sw->fetchColumn();
+
+    if ($hasProductSharesTable) {
+        $ss = $pdo->prepare($shareSql);
+        $ss->execute([$productId, $d]);
+        $shareCumPoints[] = (int)$ss->fetchColumn();
+    } else {
+        $shareCumPoints[] = 0;
+    }
 }
 
 // Map cumulative counts to SVG Y coordinates
@@ -333,6 +371,7 @@ function cumulToSvgY(array $points, float $bottom = 39.0, float $maxRise = 28.0)
 
 $viewY = cumulToSvgY($viewCumPoints);
 $wishY = cumulToSvgY($wishCumPoints);
+$shareY = cumulToSvgY($shareCumPoints);
 
 // X positions for 6 evenly-spaced points
 $xPos = [0, 20, 40, 60, 80, 100];
@@ -358,6 +397,8 @@ if (($product['status'] ?? '') !== 'active') {
     $seoNoindex = true;
 }
 $seoJsonLd = seoProductJsonLd($product, $seoOgImage, $productId);
+$sharePageUrl = $seoCanonical;
+$shareText = trim($product['title'] . ' — ' . formatPrice(getDiscountedPrice($product)) . ' on CampusMarket');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -606,6 +647,123 @@ body.dark-mode .scc-badge {
 .text-light {
     color: var(--text-light) !important;
 }
+
+.product-share-btn {
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.product-share-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.cm-share-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.cm-share-menu.is-open {
+    pointer-events: auto;
+    opacity: 1;
+}
+
+.cm-share-menu__panel {
+    position: fixed;
+    width: min(280px, calc(100vw - 24px));
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.cm-share-menu__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.cm-share-menu__close {
+    background: none;
+    border: none;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.cm-share-menu__list {
+    display: flex;
+    flex-direction: column;
+    padding: 0.35rem;
+}
+
+.cm-share-menu__item {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 0.75rem 0.85rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.cm-share-menu__item:hover {
+    background: var(--bg-main);
+    color: var(--primary);
+}
+
+.cm-share-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.5rem;
+    transform: translateX(-50%) translateY(12px);
+    z-index: 1400;
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-lg);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.cm-share-toast.is-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.scc-metric-emerald {
+    background: var(--bg-surface);
+    border-color: var(--border-light) !important;
+}
 </style>
 
 <div class="container pt-24 mb-20 relative">
@@ -671,6 +829,14 @@ body.dark-mode .scc-badge {
             <div class="mb-6 border-b border-gray-100 pb-6">
                 <p class="text-primary font-bold tracking-widest uppercase small mb-2" style="font-size: 0.8rem;"><?php echo sanitize(translateCategory($product['category_name'])); ?></p>
                 <h1 class="product-title mb-4 text-main font-bold" style="line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
+                <?php if (!empty($product['location_town']) && isValidLocationTown($product['location_town']) && $product['location_town'] !== 'other'): ?>
+                <div class="mb-4">
+                    <a href="<?php echo BASE_URL; ?>pages/browse.php?town=<?php echo urlencode($product['location_town']); ?>" class="inline-flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors hover-scale" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-main); text-decoration: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <?php echo formatLocationTown($product['location_town']); ?>
+                    </a>
+                </div>
+                <?php endif; ?>
                 <div class="product-meta-row">
                     <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
                     
@@ -685,6 +851,22 @@ body.dark-mode .scc-badge {
                             <span style="font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;"><?= $isSaved ? __('product.saved') : __('product.save') ?></span>
                         </button>
                     </form>
+
+                    <button
+                        type="button"
+                        id="product-share-btn"
+                        class="product-share-btn hover-scale"
+                        data-product-id="<?php echo (int)$productId; ?>"
+                        data-title="<?php echo htmlspecialchars($product['title'], ENT_QUOTES, 'UTF-8'); ?>"
+                        data-text="<?php echo htmlspecialchars($shareText, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-url="<?php echo htmlspecialchars($sharePageUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                        aria-label="<?= htmlspecialchars(__('product.share_listing')) ?>"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 22px; height: 22px;" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/>
+                        </svg>
+                        <span><?= __('product.share') ?></span>
+                    </button>
 
                     <span class="text-muted small px-3 py-1 rounded-lg font-medium" style="background: var(--bg-main); border: 1px solid var(--border-light);"><?= __('product.listed_time', ['time' => timeAgo($product['created_at'])]) ?></span>
                 </div>
@@ -738,7 +920,7 @@ body.dark-mode .scc-badge {
                     </div>
 
                     <!-- Metrics Grid -->
-                    <div class="grid grid-cols-1 md-grid-cols-2 gap-5 mb-7">
+                    <div class="grid grid-cols-1 md-grid-cols-3 gap-5 mb-7">
                         <!-- Card 1: Total Reach -->
                         <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden scc-metric-blue">
                             <div class="relative z-10">
@@ -814,6 +996,40 @@ body.dark-mode .scc-badge {
                                 <path d="<?php echo $wPath; ?>" class="graph-line-wish" stroke="#9333ea" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
+
+                        <!-- Card 3: External shares -->
+                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden scc-metric-emerald">
+                            <div class="relative z-10">
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/></svg>
+                                    </div>
+                                    <span class="text-[0.95rem] font-bold text-muted"><?= __('product.external_shares') ?></span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <h2 class="text-4xl font-black text-main m-0 count-up" data-value="<?php echo $shareCount; ?>">0</h2>
+                                </div>
+                                <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.shared_outside_app') ?></p>
+                            </div>
+                            <?php
+                                $sPath = '';
+                                for ($i = 0; $i < 6; $i++) {
+                                    $cmd = $i === 0 ? 'M' : 'L';
+                                    $sPath .= "$cmd {$xPos[$i]} {$shareY[$i]} ";
+                                }
+                                $sFill = $sPath . "L 100 40 L 0 40 Z";
+                            ?>
+                            <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="shareFill" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#059669" stop-opacity="0.25"/>
+                                        <stop offset="100%" stop-color="#059669" stop-opacity="0.02"/>
+                                    </linearGradient>
+                                </defs>
+                                <path d="<?php echo $sFill; ?>" fill="url(#shareFill)"/>
+                                <path d="<?php echo $sPath; ?>" class="graph-line" stroke="#059669" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
                     </div>
 
                     <!-- PRICING STRATEGY -->
@@ -849,6 +1065,28 @@ body.dark-mode .scc-badge {
                             <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: white; background: #ef4444; border: 1px solid #dc2626; padding: 0 1rem; border-radius: 10px; cursor: pointer;">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                                 <?= __('product.apply_discount') ?>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- LOCATION -->
+                    <div class="mb-8">
+                        <h4 class="font-bold text-main mb-4" style="font-size: 1.15rem; color: var(--text-main);"><?= __('product.listing_location') ?></h4>
+                        <form method="post" class="flex flex-wrap items-center gap-4">
+                            <?php echo csrfTokenField(); ?>
+                            <input type="hidden" name="action" value="update_location_town">
+                            <div class="flex items-center bg-white border border-slate-200 px-4" style="border-radius: 10px; height: 38px; min-width: 200px;">
+                                <select name="location_town" style="width: 100%; background: transparent; border: none; font-size: 0.95rem; font-weight: 700; color: #1e293b; outline: none; cursor: pointer;">
+                                    <?php foreach (locationTownSlugs() as $townSlug): ?>
+                                        <option value="<?php echo $townSlug; ?>" <?php echo (($product['location_town'] ?? 'other') === $townSlug) ? 'selected' : ''; ?>>
+                                            <?php echo formatLocationTown($townSlug); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <button type="submit" class="flex items-center gap-2 font-black text-[0.72rem] uppercase tracking-[0.14em] transition-all hover:brightness-95 shadow-sm" style="height: 38px; color: var(--primary); background: var(--bg-surface); border: 1px solid var(--border-light); padding: 0 1rem; border-radius: 10px; cursor: pointer;">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <?= __('product.update_town') ?>
                             </button>
                         </form>
                     </div>
@@ -990,6 +1228,16 @@ body.dark-mode .scc-badge {
                 <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale">
                     <?= __('product.message_seller') ?>
                 </a>
+                <button
+                    type="button"
+                    class="product-share-btn w-full justify-center py-3 text-lg"
+                    onclick="document.getElementById('product-share-btn').click()"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/>
+                    </svg>
+                    <span><?= __('product.share_listing') ?></span>
+                </button>
                 <a href="<?php echo BASE_URL; ?>pages/report.php?product_id=<?php echo (int)$product['id']; ?>" class="btn btn-secondary flex-grow justify-center py-3 text-sm hover-scale" style="border-radius: var(--radius-lg);">
                     <?= __('report.report_listing') ?>
                 </a>
@@ -1190,5 +1438,23 @@ if (mgmtImgInput) {
     });
 }
 </script>
+
+<?php
+    $shareJsPath = __DIR__ . '/../public/js/product-share.js';
+    $shareJsVer = file_exists($shareJsPath) ? filemtime($shareJsPath) : '1';
+?>
+<script>
+window.__productShareI18n = <?php echo json_encode([
+    'title' => __('product.share_menu_title'),
+    'copy' => __('product.share_copy'),
+    'whatsapp' => __('product.share_whatsapp'),
+    'telegram' => __('product.share_telegram'),
+    'twitter' => __('product.share_x'),
+    'facebook' => __('product.share_facebook'),
+    'copied' => __('product.share_link_copied'),
+    'close' => __('product.share_close'),
+], JSON_UNESCAPED_UNICODE); ?>;
+</script>
+<script src="<?php echo BASE_URL; ?>public/js/product-share.js?v=<?php echo $shareJsVer; ?>"></script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
