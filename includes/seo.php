@@ -4,7 +4,8 @@
  *
  * Pages may set before including header.php:
  *   $pageTitle, $pageDescription, $seoCanonical, $seoNoindex (bool),
- *   $seoOgImage, $seoOgType ('website'|'product'), $seoJsonLd (array)
+ *   $seoOgImage, $seoOgType ('website'|'product'), $seoJsonLd (array),
+ *   $seoOgTitle, $seoOgDescription (optional overrides for social previews)
  */
 
 if (!function_exists('seoFullTitle')) {
@@ -36,6 +37,72 @@ if (!function_exists('seoPageDescription')) {
             return seoDefaultDescription();
         }
         return mb_strlen($desc) > 160 ? mb_substr($desc, 0, 157) . '...' : $desc;
+    }
+}
+
+if (!function_exists('seoOpenGraphTitle')) {
+    function seoOpenGraphTitle(): string {
+        global $seoOgTitle, $pageTitle;
+        if (!empty($seoOgTitle)) {
+            return trim((string)$seoOgTitle);
+        }
+        return seoFullTitle($pageTitle ?? null);
+    }
+}
+
+if (!function_exists('seoOpenGraphDescription')) {
+    function seoOpenGraphDescription(): string {
+        global $seoOgDescription;
+        if (!empty($seoOgDescription)) {
+            $desc = trim((string)$seoOgDescription);
+        } else {
+            $desc = seoPageDescription();
+        }
+        return mb_strlen($desc) > 200 ? mb_substr($desc, 0, 197) . '...' : $desc;
+    }
+}
+
+if (!function_exists('seoProductShareDescription')) {
+    /**
+     * Marketing-focused line for link previews when sharing a listing.
+     */
+    function seoProductShareDescription(array $product): string {
+        $title = trim((string)($product['title'] ?? ''));
+        $price = function_exists('formatPrice') && function_exists('getDiscountedPrice')
+            ? formatPrice(getDiscountedPrice($product))
+            : '';
+
+        $details = [];
+        if (!empty($product['location_town'])
+            && function_exists('isValidLocationTown')
+            && isValidLocationTown($product['location_town'])
+            && $product['location_town'] !== 'other'
+        ) {
+            $details[] = formatLocationTown($product['location_town']);
+        }
+        if (!empty($product['category_name'])) {
+            $details[] = function_exists('translateCategory')
+                ? translateCategory($product['category_name'])
+                : (string)$product['category_name'];
+        }
+        if (function_exists('conditionBadge')) {
+            $badge = conditionBadge($product['condition'] ?? 'used');
+            $details[] = $badge['label'] ?? '';
+        }
+        $details = array_values(array_filter($details));
+
+        $headline = $title;
+        if ($price !== '') {
+            $headline .= ' — ' . $price;
+        }
+
+        $desc = $headline;
+        if ($details !== []) {
+            $desc .= ' · ' . implode(' · ', $details);
+        }
+        $desc .= '. ' . __('seo.share_listing_suffix');
+
+        return mb_strlen($desc) > 200 ? mb_substr($desc, 0, 197) . '...' : $desc;
     }
 }
 
@@ -144,7 +211,9 @@ if (!function_exists('seoJsonLdBlocks')) {
 if (!function_exists('seoRenderHeadTags')) {
     function seoRenderHeadTags(): void {
         $title = seoFullTitle($GLOBALS['pageTitle'] ?? null);
+        $ogTitle = seoOpenGraphTitle();
         $description = seoPageDescription();
+        $ogDescription = seoOpenGraphDescription();
         $canonical = seoCanonicalUrl();
         $noindex = seoIsPrivatePage();
         $ogImage = seoOgImage();
@@ -161,16 +230,16 @@ if (!function_exists('seoRenderHeadTags')) {
         }
 
         echo '<meta property="og:site_name" content="CampusMarket">' . "\n";
-        echo '<meta property="og:title" content="' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-        echo '<meta property="og:description" content="' . htmlspecialchars($description, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+        echo '<meta property="og:title" content="' . htmlspecialchars($ogTitle, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+        echo '<meta property="og:description" content="' . htmlspecialchars($ogDescription, ENT_QUOTES, 'UTF-8') . '">' . "\n";
         echo '<meta property="og:url" content="' . htmlspecialchars($canonical, ENT_QUOTES, 'UTF-8') . '">' . "\n";
         echo '<meta property="og:type" content="' . htmlspecialchars($ogType, ENT_QUOTES, 'UTF-8') . '">' . "\n";
         echo '<meta property="og:image" content="' . htmlspecialchars($ogImage, ENT_QUOTES, 'UTF-8') . '">' . "\n";
         echo '<meta property="og:locale" content="' . htmlspecialchars($ogLocale, ENT_QUOTES, 'UTF-8') . '">' . "\n";
 
         echo '<meta name="twitter:card" content="summary_large_image">' . "\n";
-        echo '<meta name="twitter:title" content="' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-        echo '<meta name="twitter:description" content="' . htmlspecialchars($description, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+        echo '<meta name="twitter:title" content="' . htmlspecialchars($ogTitle, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+        echo '<meta name="twitter:description" content="' . htmlspecialchars($ogDescription, ENT_QUOTES, 'UTF-8') . '">' . "\n";
         echo '<meta name="twitter:image" content="' . htmlspecialchars($ogImage, ENT_QUOTES, 'UTF-8') . '">' . "\n";
 
         foreach (seoJsonLdBlocks() as $block) {

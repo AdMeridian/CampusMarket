@@ -386,10 +386,12 @@ if (isLoggedIn()) {
 
 $pageTitle = $product['title'];
 $primaryImagePath = $images[0]['image_path'] ?? null;
-$pageDescription = trim(strip_tags((string)($product['description'] ?? '')));
-if ($pageDescription === '') {
-    $pageDescription = $product['title'] . ' — ' . __('seo.default_description');
-}
+$rawDescription = trim(strip_tags((string)($product['description'] ?? '')));
+$pageDescription = $rawDescription !== ''
+    ? $rawDescription
+    : seoProductShareDescription($product);
+$seoOgTitle = $product['title'];
+$seoOgDescription = seoProductShareDescription($product);
 $seoOgImage = getProductImage($primaryImagePath);
 $seoOgType = 'product';
 $seoCanonical = rtrim(BASE_URL, '/') . '/pages/product?id=' . $productId;
@@ -398,7 +400,7 @@ if (($product['status'] ?? '') !== 'active') {
 }
 $seoJsonLd = seoProductJsonLd($product, $seoOgImage, $productId);
 $sharePageUrl = $seoCanonical;
-$shareText = trim($product['title'] . ' — ' . formatPrice(getDiscountedPrice($product)) . ' on CampusMarket');
+$shareText = seoProductShareDescription($product);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
