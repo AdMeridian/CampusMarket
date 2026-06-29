@@ -19,8 +19,7 @@
 if (!function_exists('allowedUniversityDomains')) {
     function allowedUniversityDomains(): array {
         return [
-            'std.neu.edu.tr'     => 'Near East University (Student)',
-            'staff.neu.edu.tr'   => 'Near East University (Staff)',
+            nearEastUniversityDomainOption() => 'Near East University',
             'ciu.edu.tr'         => 'Cyprus International University',
             'baucyprus.edu.tr'   => 'Bahçeşehir Cyprus University',
             'eul.edu.tr'         => 'European University of Lefke',
@@ -29,6 +28,39 @@ if (!function_exists('allowedUniversityDomains')) {
             'metu.edu.tr'        => 'Middle East Technical University NCC',
             'kyrenia.edu.tr'     => 'University of Kyrenia',
         ];
+    }
+}
+
+/** Select option value for Near East University (student or staff subdomain). */
+if (!function_exists('nearEastUniversityDomainOption')) {
+    function nearEastUniversityDomainOption(): string {
+        return '__neu__';
+    }
+}
+
+/** Valid @ domains for Near East University accounts. */
+if (!function_exists('nearEastUniversityEmailDomains')) {
+    function nearEastUniversityEmailDomains(): array {
+        return ['std.neu.edu.tr', 'staff.neu.edu.tr'];
+    }
+}
+
+/**
+ * Resolve the email domain from registration form fields.
+ */
+if (!function_exists('resolveRegistrationUniversityDomain')) {
+    function resolveRegistrationUniversityDomain(string $select, string $custom, string $neuDomain = ''): string {
+        if ($select === universityDomainCustomOption()) {
+            return $custom;
+        }
+        if ($select === nearEastUniversityDomainOption()) {
+            $neuDomain = strtolower(trim($neuDomain));
+            if (in_array($neuDomain, nearEastUniversityEmailDomains(), true)) {
+                return $neuDomain;
+            }
+            return '';
+        }
+        return $select;
     }
 }
 
@@ -157,7 +189,9 @@ if (!function_exists('studentIdFromUniversityEmail')) {
  */
 if (!function_exists('allowedDomainsList')) {
     function allowedDomainsList(): string {
-        return '@*.edu.tr';
+        return function_exists('__')
+            ? __('auth.register_allowed_email_hint')
+            : 'university email';
     }
 }
 
