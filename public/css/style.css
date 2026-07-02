@@ -1200,6 +1200,45 @@ body.dark-mode .badge-not-taken { background: rgba(156, 163, 175, 0.1); color: #
   padding-left: 0.25rem;
 }
 
+.footer-social {
+  margin-top: 1.25rem;
+}
+
+.footer-social-label {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--footer-heading);
+}
+
+.footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--footer-heading);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.footer-social-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+  padding-left: 0.85rem;
+}
+
+.footer-social-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
 .footer-bottom {
   text-align: center;
   padding-top: 2rem;
