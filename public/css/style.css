@@ -1665,98 +1665,69 @@ body.dark-mode .auth-card {
     padding-top: 1.5rem;
 }
 
-.cm-push-prompt {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1200;
-    padding: 0.75rem;
-    pointer-events: none;
+/* Push notification toast — same top banner slot as welcome-back flash */
+#cm-push-prompt.cm-push-toast-container--stacked {
+  top: max(9.75rem, calc(var(--safe-top) + 9.75rem));
 }
 
-/* Push notification toast — matches welcome-back flash style at top */
-.cm-push-toast-container {
-    z-index: 1095;
+.flash-toast-container .flash.flash-push {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: color-mix(in srgb, var(--primary) 12%, var(--bg-surface));
+  color: var(--text-main);
+  border-left: 4px solid var(--primary);
 }
 
-.cm-push-toast-container--stacked {
-    top: max(9.75rem, calc(var(--safe-top) + 9.75rem));
+body.dark-mode .flash-toast-container .flash.flash-push {
+  background: color-mix(in srgb, var(--primary) 18%, var(--bg-surface));
+  color: var(--text-main);
 }
 
-.flash-push {
-    background: color-mix(in srgb, var(--primary) 12%, var(--bg-surface));
-    color: var(--text-main);
-    border-left: 4px solid var(--primary);
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
+.cm-push-toast__message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-body.dark-mode .flash-push {
-    background: color-mix(in srgb, var(--primary) 18%, var(--bg-surface));
-    color: var(--text-main);
+.cm-push-toast__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
-.cm-push-toast__main {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
+.cm-push-toast__copy strong {
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: var(--text-main);
 }
 
-.cm-push-toast__icon {
-    flex: 0 0 auto;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in srgb, var(--primary) 16%, transparent);
-    color: var(--primary);
-}
-
-.cm-push-toast__icon svg {
-    width: 18px;
-    height: 18px;
-}
-
-.cm-push-toast__text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-
-.cm-push-toast__text strong {
-    font-size: 0.95rem;
-    line-height: 1.3;
-}
-
-.cm-push-toast__text span {
-    font-size: 0.85rem;
-    line-height: 1.45;
-    color: var(--text-muted);
+.cm-push-toast__copy span {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
 
 .cm-push-toast__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding-left: calc(36px + 0.75rem);
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cm-push-toast__actions .btn {
+  flex: 1 1 auto;
+  min-height: 40px;
+  justify-content: center;
 }
 
 @media (max-width: 480px) {
-    .cm-push-toast__actions {
-        padding-left: 0;
-        width: 100%;
-    }
-
-    .cm-push-toast__actions .btn {
-        flex: 1 1 auto;
-        justify-content: center;
-    }
+  .cm-push-toast__actions .btn {
+    min-height: 44px;
+  }
 }
 
 .cm-push-prompt__content {

@@ -139,13 +139,17 @@
 
   function hidePrompt() {
     const el = document.getElementById('cm-push-prompt');
-    if (el) {
-      el.remove();
+    if (!el) {
+      return;
     }
+    el.innerHTML = '';
+    el.hidden = true;
+    el.setAttribute('aria-hidden', 'true');
+    el.classList.remove('cm-push-toast-container--stacked');
   }
 
   function hasWelcomeToast() {
-    return !!document.querySelector('.flash-toast-container:not(#cm-push-prompt)');
+    return !!document.querySelector('.flash-toast-container:not(#cm-push-prompt):not([hidden])');
   }
 
   function showPrompt() {
@@ -162,33 +166,33 @@
       return;
     }
 
-    if (document.getElementById('cm-push-prompt')) {
+    const toast = document.getElementById('cm-push-prompt');
+    if (!toast) {
+      return;
+    }
+    if (!toast.hidden && toast.innerHTML.trim() !== '') {
       return;
     }
 
     const i18n = labels();
     const isStandalone = isStandalonePwa();
-    const title = isStandalone ? (i18n.titlePwa || 'Turn on notifications') : (i18n.titleBrowser || 'Get notified on your phone');
+    const title = isStandalone ? (i18n.titlePwa || 'Turn on notifications') : (i18n.titleBrowser || 'Get notified on this device');
     const body = isStandalone
       ? (i18n.bodyPwa || 'Alerts for messages, orders, and marketplace activity — even when the app is closed.')
       : (i18n.bodyBrowser || 'Enable notifications to get message and order alerts on this device.');
 
-    const toast = document.createElement('div');
-    toast.id = 'cm-push-prompt';
-    toast.className = 'flash-toast-container cm-push-toast-container';
-    if (hasWelcomeToast()) {
-      toast.classList.add('cm-push-toast-container--stacked');
-    }
+    toast.classList.toggle('cm-push-toast-container--stacked', hasWelcomeToast());
     toast.setAttribute('role', 'region');
     toast.setAttribute('aria-label', title);
+    toast.removeAttribute('aria-hidden');
 
     toast.innerHTML =
       '<div class="flash flash-push">' +
-        '<div class="cm-push-toast__main">' +
-          '<div class="cm-push-toast__icon" aria-hidden="true">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>' +
-          '</div>' +
-          '<div class="cm-push-toast__text">' +
+        '<div class="cm-push-toast__message">' +
+          '<svg style="width:20px;height:20px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+            '<path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>' +
+          '</svg>' +
+          '<div class="cm-push-toast__copy">' +
             '<strong>' + title + '</strong>' +
             '<span>' + body + '</span>' +
           '</div>' +
@@ -199,7 +203,7 @@
         '</div>' +
       '</div>';
 
-    document.body.appendChild(toast);
+    toast.hidden = false;
 
     const enableBtn = toast.querySelector('.cm-push-toast__enable');
     const dismissBtn = toast.querySelector('.cm-push-toast__dismiss');

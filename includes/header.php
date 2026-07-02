@@ -312,3 +312,7 @@ window.__pushI18n = <?php echo json_encode([
     </div>
 </div>
 <?php endif; ?>
+
+<?php if (isLoggedIn() && WEB_PUSH_PUBLIC_KEY !== ''): ?>
+<div id="cm-push-prompt" class="flash-toast-container cm-push-toast-container" hidden aria-hidden="true"></div>
+<?php endif; ?>
