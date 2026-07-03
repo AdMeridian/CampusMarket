@@ -400,6 +400,51 @@ p {
     padding: 0 0.9rem;
     font-size: 0.82rem;
   }
+
+  .mobile-account-nav {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .mobile-nav-label {
+    margin: 0.75rem 0 0;
+    padding: 0.5rem 1rem 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .mobile-nav-account-link {
+    display: block;
+    width: 100%;
+    font-size: 1.1rem;
+    font-weight: 500;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-light);
+    border-radius: 0;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: var(--transition);
+  }
+
+  .mobile-nav-account-link:hover,
+  .mobile-nav-account-link.is-active {
+    color: var(--primary);
+    background: var(--primary-light);
+  }
+
+  .mobile-nav-account-link--support {
+    color: var(--secondary);
+    font-weight: 600;
+  }
+
+  .mobile-nav-account-link--logout {
+    color: var(--error);
+    font-weight: 600;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -620,60 +665,7 @@ p {
 
 @media (max-width: 1023px) {
   .user-dropdown {
-    width: 100%;
-    margin-top: 0.25rem;
-  }
-
-  .nav-links .user-dropdown .user-dropdown-content,
-  .nav-links .user-dropdown .user-dropdown-panel {
-    position: static !important;
-    width: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    box-shadow: none !important;
-    border: 1px solid var(--border-light) !important;
-    background: var(--bg-main) !important;
-    padding: 0.5rem 0.65rem 0.65rem !important;
-    margin: 0 !important;
-    border-radius: var(--radius-lg) !important;
-    animation: none !important;
-  }
-
-  .user-dropdown-group-label {
-    padding-left: 0.5rem;
-  }
-
-  .user-dropdown-item {
-    min-height: 44px;
-    padding: 0.7rem 0.65rem;
-    font-size: 0.95rem;
-  }
-
-  .user-dropdown-group + .user-dropdown-group {
-    margin-top: 0.25rem;
-    padding-top: 0.4rem;
-  }
-
-  .nav-links .user-dropdown-item {
-    display: flex !important;
-    align-items: center;
-    border-bottom: none !important;
-    border-left: none !important;
-    border-radius: var(--radius-md) !important;
-    width: 100%;
-  }
-
-  .nav-links a.nav-link-with-icon {
-    display: flex !important;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .nav-links a.nav-link-with-icon svg {
-    width: 20px !important;
-    height: 20px !important;
-    flex-shrink: 0;
+    display: none !important;
   }
 }
 

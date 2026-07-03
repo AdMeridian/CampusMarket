@@ -207,20 +207,16 @@ $navCategories = getNavCategories($pdo);
                     <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="flex items-center gap-1" title="<?= __('nav.inbox') ?>">
                         <?= __('nav.inbox') ?> <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="flex items-center gap-1 nav-link-with-icon" title="<?= __('nav.notifications') ?>">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                        <span class="nav-link-label lg-hidden"><?= __('nav.notifications') ?></span>
-                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="flex items-center gap-1" title="<?= __('nav.notifications') ?>">
+                        <?= __('nav.notifications') ?> <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error); font-weight: 500;"><?= __('nav.logout') ?></a>
                 <?php else: ?>
                     <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="flex items-center gap-1" title="<?= __('nav.inbox') ?>">
                         <?= __('nav.inbox') ?> <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="flex items-center gap-1 nav-link-with-icon" title="<?= __('nav.notifications') ?>">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                        <span class="nav-link-label lg-hidden"><?= __('nav.notifications') ?></span>
-                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="flex items-center gap-1" title="<?= __('nav.notifications') ?>">
+                        <?= __('nav.notifications') ?> <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 700; color: var(--primary);"><?= __('nav.sell_item') ?></a>
                     
@@ -230,10 +226,11 @@ $navCategories = getNavCategories($pdo);
                         $navItemActive = function (string $needle) use ($navRequestPath): string {
                             return str_contains($navRequestPath, $needle) ? ' is-active' : '';
                         };
+                        require __DIR__ . '/partials/nav_account_mobile.php';
                     ?>
-                    <!-- User Account Dropdown -->
-                    <div class="user-dropdown">
-                        <button type="button" class="user-dropdown-btn lg-flex" aria-expanded="false" aria-haspopup="true">
+                    <!-- User Account Dropdown (desktop) -->
+                    <div class="user-dropdown lg-flex">
+                        <button type="button" class="user-dropdown-btn" aria-expanded="false" aria-haspopup="true">
                             <span><?php echo $navUsername; ?></span>
                             <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </button>
