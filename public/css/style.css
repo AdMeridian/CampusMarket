@@ -379,12 +379,50 @@ p {
     transform: translateX(0);
   }
 
-  .nav-links a:not(.user-dropdown-item) {
+  .nav-links a:not(.user-dropdown-item),
+  .nav-links .mobile-nav-account-link {
+    display: block !important;
+    box-sizing: border-box;
     font-size: 1.1rem;
     padding: 1rem;
     border-bottom: 1px solid var(--border-light);
     width: 100%;
     border-radius: 0;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .nav-links .mobile-nav-account-link.is-active {
+    color: var(--primary);
+    background: var(--primary-light);
+  }
+
+  .mobile-account-nav {
+    display: contents;
+  }
+
+  .nav-links .mobile-nav-label {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0.85rem 1rem 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .nav-links .mobile-nav-account-link--support {
+    color: var(--secondary);
+    font-weight: 600;
+  }
+
+  .nav-links .mobile-nav-account-link--logout {
+    color: var(--error);
+    font-weight: 600;
   }
 
   .search-bar {
@@ -401,53 +439,17 @@ p {
     font-size: 0.82rem;
   }
 
-  .mobile-account-nav {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .mobile-nav-label {
-    margin: 0.75rem 0 0;
-    padding: 0.5rem 1rem 0.25rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .mobile-nav-account-link {
-    display: block;
-    width: 100%;
-    font-size: 1.1rem;
-    font-weight: 500;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-light);
-    border-radius: 0;
-    color: var(--text-muted);
-    text-decoration: none;
-    transition: var(--transition);
-  }
-
-  .mobile-nav-account-link:hover,
-  .mobile-nav-account-link.is-active {
-    color: var(--primary);
-    background: var(--primary-light);
-  }
-
-  .mobile-nav-account-link--support {
-    color: var(--secondary);
-    font-weight: 600;
-  }
-
-  .mobile-nav-account-link--logout {
-    color: var(--error);
-    font-weight: 600;
+  .user-dropdown {
+    display: none !important;
   }
 }
 
 @media (min-width: 1024px) {
+  .user-dropdown {
+    display: inline-block;
+    position: relative;
+  }
+
   .sticky-desktop {
     position: sticky;
     top: 6rem; /* Account for navbar */
@@ -661,12 +663,6 @@ p {
 .user-dropdown-content a:not(.user-dropdown-item):hover {
   background: var(--bg-main);
   color: var(--primary);
-}
-
-@media (max-width: 1023px) {
-  .user-dropdown {
-    display: none !important;
-  }
 }
 
 /* Mobile Search Row Position Adjustment for iPhone Notch & Android S10e */
