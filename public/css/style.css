@@ -413,7 +413,8 @@ p {
   }
 
   .mobile-account-nav {
-    display: contents;
+    display: block;
+    width: 100%;
   }
 
   .nav-links .mobile-nav-label {
@@ -453,7 +454,8 @@ p {
     font-size: 0.82rem;
   }
 
-  .user-dropdown {
+  .user-dropdown,
+  .nav-desktop-dropdown {
     display: none !important;
   }
 }
@@ -486,6 +488,18 @@ p {
   display: flex;
   align-items: center;
   gap: 2rem;
+}
+
+.navbar-nav-cluster {
+  display: contents;
+}
+
+@media (min-width: 1024px) {
+  .navbar-nav-cluster {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
 }
 
 .nav-links a {

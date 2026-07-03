@@ -1,4 +1,4 @@
-const CACHE_VERSION = "campusmarket-v11";
+const CACHE_VERSION = "campusmarket-v12";
 const OFFLINE_URL = "public/offline.html";
 
 const CORE_ASSETS = [
@@ -53,7 +53,24 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Only cache static assets (styles, scripts, images, manifests, fonts)
+  // CSS/JS: network-first so layout fixes reach PWA users without stale cache
+  const isCssOrJs = /\.(css|js)(\?|$)/i.test(requestUrl.pathname + requestUrl.search);
+  if (isCssOrJs) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && (networkResponse.type === "basic" || networkResponse.type === "cors")) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Other static assets: cache-first with background update
   const isStaticAsset = /\.(css|js|png|jpg|jpeg|gif|svg|webp|webmanifest|woff2?|eot|ttf|otf)$/i.test(requestUrl.pathname);
   if (!isStaticAsset) {
     return;

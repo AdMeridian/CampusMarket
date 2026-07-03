@@ -39,6 +39,42 @@ $navCategories = getNavCategories($pdo);
         $cssVer = file_exists($cssPath) ? filemtime($cssPath) : '1';
     ?>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/style.css?v=<?php echo $cssVer; ?>">
+    <style id="nav-critical-css">
+      @media (max-width: 1023px) {
+        .nav-desktop-dropdown { display: none !important; }
+        .mobile-account-nav { display: block !important; width: 100% !important; }
+        #nav-links .mobile-nav-account-link {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+          font-size: 1.1rem !important;
+          padding: 1rem !important;
+          border-bottom: 1px solid var(--border-light, #e5e7eb) !important;
+          border-radius: 0 !important;
+          color: var(--text-muted, #6b7280) !important;
+          text-decoration: none !important;
+          font-weight: 500 !important;
+        }
+        #nav-links .mobile-nav-label {
+          display: block !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          margin: 0 !important;
+          padding: 0.85rem 1rem 0.35rem !important;
+          font-size: 0.68rem !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.06em !important;
+          text-transform: uppercase !important;
+          color: var(--text-muted, #6b7280) !important;
+        }
+        #nav-links .mobile-nav-account-link--support { color: var(--secondary, #059669) !important; font-weight: 600 !important; }
+        #nav-links .mobile-nav-account-link--logout { color: var(--error, #ef4444) !important; font-weight: 600 !important; }
+      }
+      @media (min-width: 1024px) {
+        .mobile-account-nav { display: none !important; }
+      }
+    </style>
     
     <!-- Chatbot Stylesheet -->
     <?php
@@ -180,7 +216,8 @@ $navCategories = getNavCategories($pdo);
             <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
         </form>
 
-        <!-- Navigation Links -->
+        <!-- Navigation -->
+        <div class="navbar-nav-cluster">
         <div class="nav-links" id="nav-links">
             <!-- Mobile menu back/close button (only visible inside the mobile dropdown) -->
             <button id="mobile-menu-close" class="mobile-menu-close-btn" aria-label="Close menu">
@@ -228,11 +265,18 @@ $navCategories = getNavCategories($pdo);
                         };
                         require __DIR__ . '/partials/nav_account_mobile.php';
                     ?>
-                    <!-- User Account Dropdown (desktop only; hidden on mobile via CSS) -->
-                    <div class="user-dropdown">
+                <?php endif; ?>
+            <?php else: ?>
+                <a href="<?php echo BASE_URL; ?>pages/login.php"><?= __('nav.login') ?></a>
+                <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn btn-primary btn-sm" style="color: white !important;"><?= __('nav.signup') ?></a>
+            <?php endif; ?>
+        </div>
+                    <?php if (isLoggedIn() && !isAdmin()): ?>
+                    <!-- Desktop account dropdown (outside mobile drawer) -->
+                    <div class="user-dropdown nav-desktop-dropdown">
                         <button type="button" class="user-dropdown-btn" aria-expanded="false" aria-haspopup="true">
                             <span><?php echo $navUsername; ?></span>
-                            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </button>
 
                         <div class="user-dropdown-content">
@@ -256,11 +300,7 @@ $navCategories = getNavCategories($pdo);
                             </div>
                         </div>
                     </div>
-                <?php endif; ?>
-            <?php else: ?>
-                <a href="<?php echo BASE_URL; ?>pages/login.php"><?= __('nav.login') ?></a>
-                <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn btn-primary btn-sm" style="color: white !important;"><?= __('nav.signup') ?></a>
-            <?php endif; ?>
+                    <?php endif; ?>
         </div>
     </div>
 </nav>
