@@ -10,6 +10,69 @@ function initMobileMenu() {
     const navLinks = document.getElementById('nav-links');
     const mobileMenuCloseBtn = document.getElementById('mobile-menu-close');
     const themeToggleMobile = document.getElementById('theme-toggle-mobile');
+    const mobileMq = window.matchMedia('(max-width: 1023px)');
+
+    function isMobileNav() {
+        return mobileMq.matches;
+    }
+
+    function setMobileNavOpen(isOpen) {
+        if (!navLinks) return;
+
+        navLinks.classList.toggle('active', isOpen);
+
+        if (isMobileNav()) {
+            navLinks.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            document.body.style.overflow = isOpen ? 'hidden' : '';
+        } else {
+            navLinks.removeAttribute('aria-hidden');
+            document.body.style.overflow = '';
+        }
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            const svg = mobileMenuBtn.querySelector('svg');
+            if (svg) {
+                svg.innerHTML = isOpen
+                    ? '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>'
+                    : '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>';
+            }
+        }
+    }
+
+    function closeMobileNav() {
+        setMobileNavOpen(false);
+    }
+
+    function openMobileNav() {
+        setMobileNavOpen(true);
+    }
+
+    function syncMobileNavState() {
+        if (!navLinks) return;
+
+        if (isMobileNav()) {
+            const isOpen = navLinks.classList.contains('active');
+            navLinks.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            if (mobileMenuBtn) {
+                mobileMenuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        } else {
+            navLinks.classList.remove('active');
+            navLinks.removeAttribute('aria-hidden');
+            document.body.style.overflow = '';
+            if (mobileMenuBtn) {
+                mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            }
+        }
+    }
+
+    syncMobileNavState();
+    if (typeof mobileMq.addEventListener === 'function') {
+        mobileMq.addEventListener('change', syncMobileNavState);
+    } else if (typeof mobileMq.addListener === 'function') {
+        mobileMq.addListener(syncMobileNavState);
+    }
 
     if (mobileMenuCloseBtn && navLinks && mobileMenuBtn) {
         mobileMenuCloseBtn.addEventListener('click', function (e) {
@@ -18,25 +81,22 @@ function initMobileMenu() {
             closeMobileNav();
         });
     }
+
     const userDropdownBtns = document.querySelectorAll('.user-dropdown-btn');
 
     if (mobileMenuBtn && navLinks) {
         mobileMenuBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            navLinks.classList.toggle('active');
-            
-            // Change icon if needed
-            const svg = mobileMenuBtn.querySelector('svg');
+
             if (navLinks.classList.contains('active')) {
-                svg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+                closeMobileNav();
             } else {
-                svg.innerHTML = '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>';
+                openMobileNav();
             }
         });
     }
 
-    // Connect mobile theme toggle to the existing theme toggle logic
     if (themeToggleMobile) {
         themeToggleMobile.addEventListener('click', function() {
             const themeToggle = document.getElementById('theme-toggle');
@@ -46,11 +106,10 @@ function initMobileMenu() {
         });
     }
 
-    // Handle user dropdown on click (desktop only; mobile panel is always visible)
     if (userDropdownBtns.length) {
         userDropdownBtns.forEach((btn) => {
             btn.addEventListener('click', function(event) {
-                if (window.matchMedia('(max-width: 1023px)').matches) {
+                if (isMobileNav()) {
                     return;
                 }
 
@@ -78,32 +137,21 @@ function initMobileMenu() {
         });
     }
 
-    function closeMobileNav() {
-        if (!navLinks || !mobileMenuBtn) return;
-        navLinks.classList.remove('active');
-        const svg = mobileMenuBtn.querySelector('svg');
-        if (svg) {
-            svg.innerHTML = '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>';
-        }
-    }
-
     if (navLinks) {
         navLinks.querySelectorAll('a[href]').forEach((link) => {
             link.addEventListener('click', function() {
-                if (window.matchMedia('(max-width: 1023px)').matches) {
+                if (isMobileNav()) {
                     closeMobileNav();
                 }
             });
         });
     }
 
-    // Close menu when clicking outside
     document.addEventListener('click', function(event) {
         if (navLinks && mobileMenuBtn && !navLinks.contains(event.target) && !mobileMenuBtn.contains(event.target) && navLinks.classList.contains('active')) {
             closeMobileNav();
         }
 
-        // Close user dropdown(s) if clicking outside
         document.querySelectorAll('.user-dropdown.active').forEach((openDropdown) => {
             if (!openDropdown.contains(event.target)) {
                 openDropdown.classList.remove('active');
@@ -113,9 +161,13 @@ function initMobileMenu() {
         });
     });
 
-    // Close dropdown with Escape
     document.addEventListener('keydown', function(event) {
         if (event.key !== 'Escape') return;
+
+        if (navLinks && navLinks.classList.contains('active') && isMobileNav()) {
+            closeMobileNav();
+            return;
+        }
 
         document.querySelectorAll('.user-dropdown.active').forEach((openDropdown) => {
             openDropdown.classList.remove('active');
