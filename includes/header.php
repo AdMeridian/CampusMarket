@@ -26,8 +26,9 @@ $navCategories = getNavCategories($pdo);
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="CampusMarket">
     <link rel="manifest" href="<?php echo BASE_URL; ?>manifest.webmanifest">
-    <link rel="icon" type="image/svg+xml" href="<?php echo BASE_URL; ?>public/images/icon-192.svg">
-    <link rel="apple-touch-icon" href="<?php echo BASE_URL; ?>public/images/icon-192.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo BASE_URL; ?>public/images/favicon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?php echo BASE_URL; ?>public/images/icon-192.png">
+    <link rel="apple-touch-icon" href="<?php echo BASE_URL; ?>public/images/apple-touch-icon.png">
     <?php if (isLoggedIn()): ?>
     <meta name="user-id" content="<?php echo currentUserId(); ?>">
     <?php endif; ?>
@@ -187,7 +188,7 @@ $navCategories = getNavCategories($pdo);
                     <line x1="19" y1="12" x2="5" y2="12"></line>
                     <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
-                <span>Back</span>
+                <span><?= __('nav.mobile_menu_back') ?></span>
             </button>
             <div class="flex" style="align-items: center; gap: 0.25rem;">
                 <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
@@ -221,22 +222,72 @@ $navCategories = getNavCategories($pdo);
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 700; color: var(--primary);"><?= __('nav.sell_item') ?></a>
                     
+                    <?php
+                        $navUsername = sanitize($_SESSION['username'] ?? __('nav.account'));
+                        $navRequestPath = $_SERVER['REQUEST_URI'] ?? '';
+                        $navItemActive = function (string $needle) use ($navRequestPath): string {
+                            return str_contains($navRequestPath, $needle) ? ' is-active' : '';
+                        };
+                    ?>
                     <!-- User Account Dropdown -->
                     <div class="user-dropdown">
-                        <button type="button" class="user-dropdown-btn" aria-expanded="false" aria-haspopup="true">
-                            <span><?php echo sanitize($_SESSION['username'] ?? __('nav.account')); ?></span>
-                            <svg viewBox="0 0 20 20" fill="currentColor" style="width: 16px; height: 16px;"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        <button type="button" class="user-dropdown-btn lg-flex" aria-expanded="false" aria-haspopup="true">
+                            <span><?php echo $navUsername; ?></span>
+                            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </button>
-                        <div class="user-dropdown-content">
-                            <a href="<?php echo BASE_URL; ?>pages/my_orders.php"><?= __('nav.my_orders') ?></a>
-                            <a href="<?php echo BASE_URL; ?>pages/my_reports.php"><?= __('nav.my_reports') ?></a>
-                            <a href="<?php echo BASE_URL; ?>pages/wishlist.php"><?= __('nav.wishlist') ?></a>
-                            <a href="<?php echo BASE_URL; ?>pages/promotions.php"><?= __('nav.promotions') ?></a>
-                            <a href="<?php echo BASE_URL; ?>pages/profile.php"><?= __('nav.my_profile') ?></a>
-                            <a href="<?php echo BASE_URL; ?>pages/edit_profile.php#preferred_language"><?= __('nav.language_settings', ['lang' => SUPPORTED_LANGUAGES[i18nGetLocale()] ?? strtoupper(i18nGetLocale())]) ?></a>
-                            <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" style="color: var(--secondary); font-weight: bold;"><?= __('nav.contact_support') ?></a>
-                            <div style="border-top: 1px solid var(--border-light); margin: 0.5rem 0;"></div>
-                            <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error);"><?= __('nav.logout') ?></a>
+
+                        <a href="<?php echo BASE_URL; ?>pages/profile.php" class="user-dropdown-profile lg-hidden">
+                            <span class="user-dropdown-avatar" aria-hidden="true"><?php echo strtoupper(substr($navUsername, 0, 1)); ?></span>
+                            <span class="user-dropdown-profile-text">
+                                <strong>@<?php echo $navUsername; ?></strong>
+                                <span><?= __('nav.view_profile') ?></span>
+                            </span>
+                            <svg class="user-dropdown-profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </a>
+
+                        <div class="user-dropdown-content user-dropdown-panel">
+                            <div class="user-dropdown-group">
+                                <p class="user-dropdown-group-label"><?= __('nav.menu_shopping') ?></p>
+                                <a href="<?php echo BASE_URL; ?>pages/my_orders.php" class="user-dropdown-item<?php echo $navItemActive('my_orders.php'); ?>">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                                    <span><?= __('nav.my_orders') ?></span>
+                                </a>
+                                <a href="<?php echo BASE_URL; ?>pages/my_reports.php" class="user-dropdown-item<?php echo $navItemActive('my_reports.php'); ?>">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                                    <span><?= __('nav.my_reports') ?></span>
+                                </a>
+                                <a href="<?php echo BASE_URL; ?>pages/wishlist.php" class="user-dropdown-item<?php echo $navItemActive('wishlist.php'); ?>">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                    <span><?= __('nav.wishlist') ?></span>
+                                </a>
+                                <a href="<?php echo BASE_URL; ?>pages/promotions.php" class="user-dropdown-item<?php echo $navItemActive('promotions.php'); ?>">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                                    <span><?= __('nav.promotions') ?></span>
+                                </a>
+                            </div>
+
+                            <div class="user-dropdown-group">
+                                <p class="user-dropdown-group-label"><?= __('nav.menu_account') ?></p>
+                                <a href="<?php echo BASE_URL; ?>pages/profile.php" class="user-dropdown-item<?php echo $navItemActive('profile.php'); ?>">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                    <span><?= __('nav.my_profile') ?></span>
+                                </a>
+                                <a href="<?php echo BASE_URL; ?>pages/edit_profile.php#preferred_language" class="user-dropdown-item<?php echo $navItemActive('edit_profile.php'); ?>">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                    <span><?= __('nav.language_settings', ['lang' => SUPPORTED_LANGUAGES[i18nGetLocale()] ?? strtoupper(i18nGetLocale())]) ?></span>
+                                </a>
+                            </div>
+
+                            <div class="user-dropdown-footer">
+                                <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" class="user-dropdown-item user-dropdown-item--support">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                    <span><?= __('nav.contact_support') ?></span>
+                                </a>
+                                <a href="<?php echo BASE_URL; ?>pages/logout.php" class="user-dropdown-item user-dropdown-item--logout">
+                                    <svg class="user-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                    <span><?= __('nav.logout') ?></span>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 <?php endif; ?>

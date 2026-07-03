@@ -15,15 +15,7 @@ function initMobileMenu() {
         mobileMenuCloseBtn.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Hide the mobile menu
-            navLinks.classList.remove('active');
-            
-            // Reset hamburger icon
-            const svg = mobileMenuBtn.querySelector('svg');
-            if (svg) {
-                svg.innerHTML = '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>';
-            }
+            closeMobileNav();
         });
     }
     const userDropdownBtns = document.querySelectorAll('.user-dropdown-btn');
@@ -54,10 +46,14 @@ function initMobileMenu() {
         });
     }
 
-    // Handle user dropdown on click (mobile + desktop)
+    // Handle user dropdown on click (desktop only; mobile panel is always visible)
     if (userDropdownBtns.length) {
         userDropdownBtns.forEach((btn) => {
             btn.addEventListener('click', function(event) {
+                if (window.matchMedia('(max-width: 1023px)').matches) {
+                    return;
+                }
+
                 event.preventDefault();
                 event.stopPropagation();
 
@@ -82,12 +78,29 @@ function initMobileMenu() {
         });
     }
 
+    function closeMobileNav() {
+        if (!navLinks || !mobileMenuBtn) return;
+        navLinks.classList.remove('active');
+        const svg = mobileMenuBtn.querySelector('svg');
+        if (svg) {
+            svg.innerHTML = '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>';
+        }
+    }
+
+    if (navLinks) {
+        navLinks.querySelectorAll('a[href]').forEach((link) => {
+            link.addEventListener('click', function() {
+                if (window.matchMedia('(max-width: 1023px)').matches) {
+                    closeMobileNav();
+                }
+            });
+        });
+    }
+
     // Close menu when clicking outside
     document.addEventListener('click', function(event) {
         if (navLinks && mobileMenuBtn && !navLinks.contains(event.target) && !mobileMenuBtn.contains(event.target) && navLinks.classList.contains('active')) {
-            navLinks.classList.remove('active');
-            const svg = mobileMenuBtn.querySelector('svg');
-            svg.innerHTML = '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>';
+            closeMobileNav();
         }
 
         // Close user dropdown(s) if clicking outside
