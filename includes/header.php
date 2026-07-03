@@ -43,33 +43,75 @@ $navCategories = getNavCategories($pdo);
       @media (max-width: 1023px) {
         .nav-desktop-dropdown { display: none !important; }
         .mobile-account-nav { display: block !important; width: 100% !important; }
-        #nav-links .mobile-nav-account-link {
-          display: block !important;
+        #nav-links { gap: 0 !important; }
+        #nav-links .mobile-nav-section {
           width: 100% !important;
-          max-width: 100% !important;
-          box-sizing: border-box !important;
-          font-size: 1.1rem !important;
-          padding: 1rem !important;
-          border-bottom: 1px solid var(--border-light, #e5e7eb) !important;
-          border-radius: 0 !important;
-          color: var(--text-muted, #6b7280) !important;
-          text-decoration: none !important;
-          font-weight: 500 !important;
-        }
-        #nav-links .mobile-nav-label {
-          display: block !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
           margin: 0 !important;
-          padding: 0.85rem 1rem 0.35rem !important;
-          font-size: 0.68rem !important;
+          padding: 0 !important;
+          border-top: 1px solid var(--border-light, #e5e7eb) !important;
+        }
+        #nav-links .mobile-nav-section-label {
+          display: block !important;
+          margin: 0 !important;
+          padding: 0.9rem 1rem 0.4rem !important;
+          font-size: 0.7rem !important;
           font-weight: 700 !important;
-          letter-spacing: 0.06em !important;
+          letter-spacing: 0.08em !important;
           text-transform: uppercase !important;
           color: var(--text-muted, #6b7280) !important;
+          border: none !important;
+          background: transparent !important;
         }
-        #nav-links .mobile-nav-account-link--support { color: var(--secondary, #059669) !important; font-weight: 600 !important; }
-        #nav-links .mobile-nav-account-link--logout { color: var(--error, #ef4444) !important; font-weight: 600 !important; }
+        #nav-links .mobile-nav-link {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          min-height: 48px !important;
+          padding: 0.85rem 1rem !important;
+          font-size: 1.05rem !important;
+          font-weight: 500 !important;
+          color: var(--text-main, #111827) !important;
+          text-decoration: none !important;
+          border: none !important;
+          border-bottom: 1px solid var(--border-light, #e5e7eb) !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+        }
+        #nav-links .mobile-nav-link.is-active {
+          color: var(--primary, #4f46e5) !important;
+          background: var(--primary-light, #eef2ff) !important;
+        }
+        #nav-links .mobile-nav-link--accent {
+          color: var(--primary, #4f46e5) !important;
+          font-weight: 600 !important;
+        }
+        #nav-links .mobile-nav-link--admin {
+          color: var(--secondary, #059669) !important;
+          font-weight: 600 !important;
+        }
+        #nav-links .mobile-nav-link--support {
+          color: var(--secondary, #059669) !important;
+          font-weight: 600 !important;
+        }
+        #nav-links .mobile-nav-link--danger {
+          color: var(--error, #ef4444) !important;
+          font-weight: 600 !important;
+        }
+        #nav-links .mobile-nav-link--cta {
+          justify-content: center !important;
+          margin: 0.75rem 1rem !important;
+          width: calc(100% - 2rem) !important;
+          border-radius: 0.5rem !important;
+          border: none !important;
+          background: var(--primary, #4f46e5) !important;
+          color: #fff !important;
+          font-weight: 600 !important;
+        }
+        #nav-links .mobile-nav-section--footer .mobile-nav-link:last-child {
+          border-bottom: none !important;
+        }
       }
       @media (min-width: 1024px) {
         .mobile-account-nav { display: none !important; }
@@ -233,29 +275,33 @@ $navCategories = getNavCategories($pdo);
                 </button>
             </div>
 
-            <a href="<?php echo BASE_URL; ?>pages/browse.php"><?= __('nav.browse') ?></a>
+            <a href="<?php echo BASE_URL; ?>pages/browse.php" class="mobile-nav-link"><?= __('nav.browse') ?></a>
             <?php if (isLoggedIn()): ?>
                 <?php 
                     $unreadMessages = countUnreadMessages($pdo, currentUserId()); 
                     $unreadNotifs = countUnreadNotifications($pdo, currentUserId());
                 ?>
                 <?php if (isAdmin()): ?>
-                    <a href="<?php echo BASE_URL; ?>admin/index.php" style="color: var(--secondary); font-weight: bold;"><?= __('nav.admin_panel') ?></a>
-                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="flex items-center gap-1" title="<?= __('nav.inbox') ?>">
-                        <?= __('nav.inbox') ?> <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>admin/index.php" class="mobile-nav-link mobile-nav-link--admin"><?= __('nav.admin_panel') ?></a>
+                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="mobile-nav-link" title="<?= __('nav.inbox') ?>">
+                        <span><?= __('nav.inbox') ?></span>
+                        <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="flex items-center gap-1" title="<?= __('nav.notifications') ?>">
-                        <?= __('nav.notifications') ?> <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link" title="<?= __('nav.notifications') ?>">
+                        <span><?= __('nav.notifications') ?></span>
+                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/logout.php" style="color: var(--error); font-weight: 500;"><?= __('nav.logout') ?></a>
+                    <a href="<?php echo BASE_URL; ?>pages/logout.php" class="mobile-nav-link mobile-nav-link--danger"><?= __('nav.logout') ?></a>
                 <?php else: ?>
-                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="flex items-center gap-1" title="<?= __('nav.inbox') ?>">
-                        <?= __('nav.inbox') ?> <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="mobile-nav-link" title="<?= __('nav.inbox') ?>">
+                        <span><?= __('nav.inbox') ?></span>
+                        <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="flex items-center gap-1" title="<?= __('nav.notifications') ?>">
-                        <?= __('nav.notifications') ?> <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link" title="<?= __('nav.notifications') ?>">
+                        <span><?= __('nav.notifications') ?></span>
+                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php" style="font-weight: 700; color: var(--primary);"><?= __('nav.sell_item') ?></a>
+                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="mobile-nav-link mobile-nav-link--accent"><?= __('nav.sell_item') ?></a>
                     
                     <?php
                         $navUsername = sanitize($_SESSION['username'] ?? __('nav.account'));
@@ -267,8 +313,8 @@ $navCategories = getNavCategories($pdo);
                     ?>
                 <?php endif; ?>
             <?php else: ?>
-                <a href="<?php echo BASE_URL; ?>pages/login.php"><?= __('nav.login') ?></a>
-                <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn btn-primary btn-sm" style="color: white !important;"><?= __('nav.signup') ?></a>
+                <a href="<?php echo BASE_URL; ?>pages/login.php" class="mobile-nav-link"><?= __('nav.login') ?></a>
+                <a href="<?php echo BASE_URL; ?>pages/register.php" class="mobile-nav-link mobile-nav-link--cta btn btn-primary btn-sm"><?= __('nav.signup') ?></a>
             <?php endif; ?>
         </div>
                     <?php if (isLoggedIn() && !isAdmin()): ?>
