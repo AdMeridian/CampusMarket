@@ -87,6 +87,13 @@ define('APP_NAME',         'CampusMarket');
 define('APP_TAGLINE',      'Buy & Sell Within Your Campus');
 define('APP_CURRENCY',     '₺');
 
+/** Supported listing currencies: code => [symbol, i18n label key suffix] */
+define('PRODUCT_CURRENCIES', [
+    'TRY' => ['symbol' => '₺'],
+    'USD' => ['symbol' => '$'],
+]);
+define('DEFAULT_PRODUCT_CURRENCY', 'TRY');
+
 // Social (public profiles)
 define('INSTAGRAM_URL', 'https://www.instagram.com/campusmarketplace_nc/');
 

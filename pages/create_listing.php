@@ -23,6 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title          = sanitize($_POST['title']);
     $categoryId     = (int)$_POST['category_id'];
     $price          = (float)$_POST['price'];
+    $priceCurrency  = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
+    if (!array_key_exists($priceCurrency, PRODUCT_CURRENCIES)) {
+        $priceCurrency = DEFAULT_PRODUCT_CURRENCY;
+    }
     $condition      = sanitize($_POST['condition']);
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
@@ -76,8 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 1. Insert Product
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, {$conditionQuote}, status, location_town) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $condition, $locationTown]);
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown]);
                 $productId = $pdo->lastInsertId();
 
                 // 2. Handle Image Uploads
@@ -285,10 +289,24 @@ include '../includes/header.php';
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="form-group md:col-span-2">
-                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.price_label', ['currency' => APP_CURRENCY]) ?></label>
+                    <div class="form-group">
+                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.currency_label') ?></label>
+                        <select name="price_currency" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                            <?php
+                            $selectedCurrency = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
+                            foreach (PRODUCT_CURRENCIES as $code => $meta):
+                            ?>
+                                <option value="<?php echo $code; ?>" <?php echo $selectedCurrency === $code ? 'selected' : ''; ?>>
+                                    <?= __('create_listing.currency_' . strtolower($code)) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-muted small mt-2 mb-0"><?= __('create_listing.currency_hint') ?></p>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.price_label') ?></label>
                         <div class="relative">
-                            <input type="number" name="price" step="0.01" value="<?= htmlspecialchars($_POST['price'] ?? '') ?>" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                            <input type="number" name="price" step="0.01" min="0.01" value="<?= htmlspecialchars($_POST['price'] ?? '') ?>" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                         </div>
                     </div>
                 </div>

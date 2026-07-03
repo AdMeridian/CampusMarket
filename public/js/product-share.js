@@ -1,5 +1,6 @@
 /**
- * Product listing share — native Web Share API with social/copy fallbacks.
+ * Product listing share — Stories/Status via Web Share API (with image),
+ * plus direct-message and copy-link fallbacks.
  */
 (function (global) {
   function qs(sel) {
@@ -25,7 +26,7 @@
       setTimeout(function () {
         toast.remove();
       }, 300);
-    }, 2400);
+    }, 3200);
   }
 
   function recordShare(productId, channel) {
@@ -55,6 +56,110 @@
     global.open(url, '_blank', 'noopener,noreferrer,width=600,height=520');
   }
 
+  function copyText(text, labels) {
+    if (global.navigator && global.navigator.clipboard && global.navigator.clipboard.writeText) {
+      return global.navigator.clipboard.writeText(text).then(function () {
+        showToast(labels.copied);
+      });
+    }
+    var input = document.createElement('input');
+    input.value = text;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand('copy');
+    input.remove();
+    showToast(labels.copied);
+    return Promise.resolve();
+  }
+
+  function safeFileName(title) {
+    var base = String(title || 'campusmarket-listing')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return (base || 'campusmarket-listing') + '.jpg';
+  }
+
+  function fetchImageAsFile(imageUrl, title) {
+    if (!imageUrl) {
+      return Promise.resolve(null);
+    }
+    return fetch(imageUrl, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error('image_fetch_failed');
+        }
+        return res.blob();
+      })
+      .then(function (blob) {
+        if (!blob || !blob.type || blob.type.indexOf('image/') !== 0) {
+          return null;
+        }
+        return new File([blob], safeFileName(title), { type: blob.type });
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function canSharePayload(payload) {
+    if (!global.navigator || typeof global.navigator.share !== 'function') {
+      return false;
+    }
+    if (typeof global.navigator.canShare === 'function') {
+      try {
+        return global.navigator.canShare(payload);
+      } catch (err) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function buildShareText(data) {
+    return data.text + '\n' + data.url;
+  }
+
+  function shareToStories(data, channel, labels) {
+    var shareText = buildShareText(data);
+
+    return fetchImageAsFile(data.imageUrl, data.title).then(function (file) {
+      var payload = {
+        title: data.title,
+        text: shareText,
+        url: data.url,
+      };
+      if (file) {
+        payload.files = [file];
+      }
+
+      if (canSharePayload(payload)) {
+        return global.navigator
+          .share(payload)
+          .then(function () {
+            recordShare(data.productId, channel);
+            closeMenu();
+          })
+          .catch(function (err) {
+            if (err && err.name === 'AbortError') {
+              return;
+            }
+            return copyText(data.url, labels).then(function () {
+              showToast(labels.storyDesktopHint);
+              recordShare(data.productId, channel);
+              closeMenu();
+            });
+          });
+      }
+
+      return copyText(data.url, labels).then(function () {
+        showToast(labels.storyDesktopHint);
+        recordShare(data.productId, channel);
+        closeMenu();
+      });
+    });
+  }
+
   function buildMenu(btn, data, labels) {
     var menu = document.getElementById('cm-share-menu');
     if (!menu) {
@@ -66,33 +171,36 @@
     }
 
     var encodedUrl = encodeURIComponent(data.url);
-    var encodedText = encodeURIComponent(data.text + ' ' + data.url);
+    var encodedText = encodeURIComponent(buildShareText(data));
 
-    var items = [
+    var storyItems = [
       {
-        key: 'copy',
-        label: labels.copy,
+        key: 'instagram_story',
+        label: labels.instagramStory,
         action: function () {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(data.url).then(function () {
-              showToast(labels.copied);
-            });
-          } else {
-            var input = document.createElement('input');
-            input.value = data.url;
-            document.body.appendChild(input);
-            input.select();
-            document.execCommand('copy');
-            input.remove();
-            showToast(labels.copied);
-          }
-          recordShare(data.productId, 'copy');
-          closeMenu();
+          shareToStories(data, 'instagram_story', labels);
         },
       },
       {
+        key: 'whatsapp_status',
+        label: labels.whatsappStatus,
+        action: function () {
+          shareToStories(data, 'whatsapp_status', labels);
+        },
+      },
+      {
+        key: 'facebook_story',
+        label: labels.facebookStory,
+        action: function () {
+          shareToStories(data, 'facebook_story', labels);
+        },
+      },
+    ];
+
+    var messageItems = [
+      {
         key: 'whatsapp',
-        label: labels.whatsapp,
+        label: labels.whatsappMessage,
         action: function () {
           openWindow('https://wa.me/?text=' + encodedText);
           recordShare(data.productId, 'whatsapp');
@@ -135,6 +243,29 @@
       },
     ];
 
+    var otherItems = [
+      {
+        key: 'copy',
+        label: labels.copy,
+        action: function () {
+          copyText(data.url, labels).then(function () {
+            recordShare(data.productId, 'copy');
+            closeMenu();
+          });
+        },
+      },
+    ];
+
+    if (canSharePayload({ title: data.title, text: buildShareText(data), url: data.url })) {
+      otherItems.unshift({
+        key: 'native',
+        label: labels.moreOptions,
+        action: function () {
+          shareToStories(data, 'native', labels);
+        },
+      });
+    }
+
     menu.innerHTML =
       '<div class="cm-share-menu__panel" role="presentation">' +
       '<div class="cm-share-menu__head">' +
@@ -145,10 +276,31 @@
       labels.close +
       '">&times;</button>' +
       '</div>' +
-      '<div class="cm-share-menu__list"></div>' +
+      '<div class="cm-share-menu__body"></div>' +
       '</div>';
 
-    var list = menu.querySelector('.cm-share-menu__list');
+    var body = menu.querySelector('.cm-share-menu__body');
+    appendSection(body, labels.sectionStories, storyItems, labels.storySectionHint);
+    appendSection(body, labels.sectionMessages, messageItems);
+    appendSection(body, labels.sectionOther, otherItems);
+
+    menu.querySelector('.cm-share-menu__close').addEventListener('click', closeMenu);
+    menu.classList.add('is-open');
+    menu._anchor = btn;
+    positionMenu(menu, btn);
+  }
+
+  function appendSection(container, title, items, hint) {
+    if (!items.length) {
+      return;
+    }
+    var section = document.createElement('div');
+    section.className = 'cm-share-menu__section';
+    section.innerHTML =
+      '<div class="cm-share-menu__section-title">' + title + '</div>' +
+      (hint ? '<p class="cm-share-menu__section-hint">' + hint + '</p>' : '') +
+      '<div class="cm-share-menu__list"></div>';
+    var list = section.querySelector('.cm-share-menu__list');
     items.forEach(function (item) {
       var button = document.createElement('button');
       button.type = 'button';
@@ -158,20 +310,16 @@
       button.addEventListener('click', item.action);
       list.appendChild(button);
     });
-
-    menu.querySelector('.cm-share-menu__close').addEventListener('click', closeMenu);
-    menu.classList.add('is-open');
-    menu._anchor = btn;
-    positionMenu(menu, btn);
+    container.appendChild(section);
   }
 
   function positionMenu(menu, btn) {
     var rect = btn.getBoundingClientRect();
     var panel = menu.querySelector('.cm-share-menu__panel');
     var top = rect.bottom + 8;
-    var left = Math.min(rect.left, global.innerWidth - 280);
-    if (top + 260 > global.innerHeight) {
-      top = Math.max(12, rect.top - 260);
+    var left = Math.min(rect.left, global.innerWidth - 300);
+    if (top + 420 > global.innerHeight) {
+      top = Math.max(12, rect.top - 420);
     }
     panel.style.top = top + 'px';
     panel.style.left = Math.max(12, left) + 'px';
@@ -220,29 +368,11 @@
       title: btn.getAttribute('data-title') || 'CampusMarket',
       text: btn.getAttribute('data-text') || '',
       url: btn.getAttribute('data-url') || global.location.href,
+      imageUrl: btn.getAttribute('data-image-url') || '',
     };
 
-    btn.addEventListener('click', async function () {
-      if (global.navigator && typeof global.navigator.share === 'function') {
-        try {
-          await global.navigator.share({
-            title: data.title,
-            text: data.text,
-            url: data.url,
-          });
-          recordShare(data.productId, 'native');
-          return;
-        } catch (err) {
-          if (err && err.name === 'AbortError') {
-            return;
-          }
-        }
-      }
-      openMenu(btn, data, labels);
+    btn.addEventListener('click', function () {
+      buildMenu(btn, data, labels);
     });
   });
-
-  function openMenu(btn, data, labels) {
-    buildMenu(btn, data, labels);
-  }
 })(window);

@@ -12,7 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $productId = (int)($_POST['product_id'] ?? 0);
 $channel = strtolower(trim((string)($_POST['channel'] ?? 'other')));
-$allowedChannels = ['native', 'copy', 'whatsapp', 'telegram', 'twitter', 'facebook', 'other'];
+$allowedChannels = [
+    'native', 'copy',
+    'instagram_story', 'whatsapp_status', 'facebook_story',
+    'whatsapp', 'telegram', 'twitter', 'facebook', 'other',
+];
 
 if ($productId <= 0) {
     http_response_code(400);

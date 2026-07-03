@@ -274,7 +274,7 @@ if ($action === 'propose') {
     }
     
     // Get product details
-    $stmt = $pdo->prepare("SELECT title, price, discount_percent, user_id FROM products WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id FROM products WHERE id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
     
@@ -291,7 +291,7 @@ if ($action === 'propose') {
     }
     
     // Generate proposed message
-    $quotedPrice = formatPrice(getDiscountedPrice($product));
+    $quotedPrice = formatPrice(getDiscountedPrice($product), productCurrencyCode($product));
     $proposedBody = "Hi! I'm interested in purchasing '" . $product['title'] . "' for " . $quotedPrice . ".";
     
     try {
@@ -327,7 +327,7 @@ if ($action === 'get_propose') {
     }
     
     // Get product details
-    $stmt = $pdo->prepare("SELECT title, price, discount_percent, user_id FROM products WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id FROM products WHERE id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
     
@@ -344,7 +344,7 @@ if ($action === 'get_propose') {
     }
     
     // Generate proposed message
-    $quotedPrice = formatPrice(getDiscountedPrice($product));
+    $quotedPrice = formatPrice(getDiscountedPrice($product), productCurrencyCode($product));
     $proposedBody = "Hi! I'm interested in purchasing '" . $product['title'] . "' for " . $quotedPrice . ".";
     
     echo json_encode(['success' => true, 'proposed_text' => $proposedBody]);
@@ -615,7 +615,7 @@ if ($action === 'confirm_deal') {
 // ─── Get Active Products ────────────────────────
 if ($action === 'get_active_products') {
     $otherUserId = (int)($_GET['other_user_id'] ?? 0);
-    $stmt = $pdo->prepare("SELECT id, title, user_id, price FROM products WHERE user_id IN (:me, :other) AND status = 'active' ORDER BY created_at DESC");
+    $stmt = $pdo->prepare("SELECT id, title, user_id, price, price_currency FROM products WHERE user_id IN (:me, :other) AND status = 'active' ORDER BY created_at DESC");
     $stmt->execute([':me' => $currentUserId, ':other' => $otherUserId]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -626,7 +626,7 @@ if ($action === 'get_active_products') {
             'id' => $p['id'],
             'title' => $p['title'],
             'user_id' => $p['user_id'],
-            'price' => formatPrice($p['price']),
+            'price' => formatPrice($p['price'], productCurrencyCode($p)),
             'is_mine' => $p['user_id'] == $currentUserId
         ];
     }

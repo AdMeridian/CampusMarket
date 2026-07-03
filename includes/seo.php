@@ -69,7 +69,10 @@ if (!function_exists('seoProductShareDescription')) {
     function seoProductShareDescription(array $product): string {
         $title = trim((string)($product['title'] ?? ''));
         $price = function_exists('formatPrice') && function_exists('getDiscountedPrice')
-            ? formatPrice(getDiscountedPrice($product))
+            ? formatPrice(
+                getDiscountedPrice($product),
+                function_exists('productCurrencyCode') ? productCurrencyCode($product) : null
+            )
             : '';
 
         $details = [];
@@ -267,7 +270,7 @@ if (!function_exists('seoProductJsonLd')) {
             'offers' => [
                 '@type' => 'Offer',
                 'url' => rtrim(BASE_URL, '/') . '/pages/product?id=' . $productId,
-                'priceCurrency' => defined('APP_CURRENCY') ? APP_CURRENCY : 'TRY',
+                'priceCurrency' => function_exists('productCurrencyCode') ? productCurrencyCode($product) : 'TRY',
                 'price' => number_format($price, 2, '.', ''),
                 'availability' => $availability,
             ],

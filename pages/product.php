@@ -827,12 +827,42 @@ body.dark-mode .scc-badge {
 
 .cm-share-menu__panel {
     position: fixed;
-    width: min(280px, calc(100vw - 24px));
+    width: min(300px, calc(100vw - 24px));
+    max-height: min(70vh, 520px);
     background: var(--bg-surface);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.cm-share-menu__body {
+    overflow-y: auto;
+    padding: 0.35rem 0.35rem 0.5rem;
+}
+
+.cm-share-menu__section + .cm-share-menu__section {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border-light);
+}
+
+.cm-share-menu__section-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.35rem 0.85rem 0.15rem;
+}
+
+.cm-share-menu__section-hint {
+    margin: 0 0.85rem 0.35rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-light);
 }
 
 .cm-share-menu__head {
@@ -999,6 +1029,7 @@ body.dark-mode .scc-badge {
                         data-title="<?php echo htmlspecialchars($product['title'], ENT_QUOTES, 'UTF-8'); ?>"
                         data-text="<?php echo htmlspecialchars($shareText, ENT_QUOTES, 'UTF-8'); ?>"
                         data-url="<?php echo htmlspecialchars($sharePageUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-image-url="<?php echo htmlspecialchars((string)$seoOgImage, ENT_QUOTES, 'UTF-8'); ?>"
                         aria-label="<?= htmlspecialchars(__('product.share_listing')) ?>"
                     >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 22px; height: 22px;" aria-hidden="true">
@@ -1583,12 +1614,21 @@ if (mgmtImgInput) {
 <script>
 window.__productShareI18n = <?php echo json_encode([
     'title' => __('product.share_menu_title'),
-    'copy' => __('product.share_copy'),
-    'whatsapp' => __('product.share_whatsapp'),
+    'sectionStories' => __('product.share_section_stories'),
+    'sectionMessages' => __('product.share_section_messages'),
+    'sectionOther' => __('product.share_section_other'),
+    'storySectionHint' => __('product.share_story_hint'),
+    'instagramStory' => __('product.share_instagram_story'),
+    'whatsappStatus' => __('product.share_whatsapp_status'),
+    'facebookStory' => __('product.share_facebook_story'),
+    'whatsappMessage' => __('product.share_whatsapp_message'),
     'telegram' => __('product.share_telegram'),
     'twitter' => __('product.share_x'),
     'facebook' => __('product.share_facebook'),
+    'moreOptions' => __('product.share_more_options'),
+    'copy' => __('product.share_copy'),
     'copied' => __('product.share_link_copied'),
+    'storyDesktopHint' => __('product.share_story_desktop_hint'),
     'close' => __('product.share_close'),
 ], JSON_UNESCAPED_UNICODE); ?>;
 </script>

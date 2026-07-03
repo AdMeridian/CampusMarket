@@ -114,7 +114,7 @@ $userProducts = $stmt->fetchAll();
 
 // Fetch sold items (publicly visible on profile to show seller history)
 $soldItems = $pdo->prepare("
-    SELECT p.id, p.title, p.price, p.discount_percent,
+    SELECT p.id, p.title, p.price, p.discount_percent, p.price_currency,
            pi.image_path,
            dc.seller_confirmed_at
     FROM products p
@@ -864,7 +864,7 @@ body.dark-mode .btn-white-solid:hover {
                             <div class="listing-card-body">
                                 <div class="listing-card-meta">
                                     <span class="listing-card-cat"><?php echo sanitize($prod['category_name']); ?></span>
-                                    <span class="listing-card-price"><?php echo formatPrice($prod['price']); ?></span>
+                                    <span class="listing-card-price"><?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?></span>
                                 </div>
                                 <?php if ($isSelf && $isPendingApproval): ?>
                                     <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
@@ -965,7 +965,7 @@ body.dark-mode .btn-white-solid:hover {
                                     <?php echo sanitize($sold['title']); ?>
                                 </p>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem;"><?php echo formatPrice($sold['price']); ?></span>
+                                    <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem;"><?php echo formatPrice($sold['price'], productCurrencyCode($sold)); ?></span>
                                     <span class="sold-badge">SOLD</span>
                                 </div>
                                 <div class="sold-date">

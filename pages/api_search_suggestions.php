@@ -33,7 +33,7 @@ try {
         $params[] = "%$term%";
     }
     
-    $sql = "SELECT p.id, p.title, p.price, p.discount_percent, c.name as category_name, i.image_path 
+    $sql = "SELECT p.id, p.title, p.price, p.discount_percent, p.price_currency, c.name as category_name, i.image_path 
             FROM products p
             JOIN categories c ON p.category_id = c.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
@@ -57,7 +57,7 @@ try {
         
         // calculate final price since discount could be applied
         $final_price = getDiscountedPrice($row);
-        $row['formatted_price'] = formatPrice($final_price);
+        $row['formatted_price'] = formatPrice($final_price, productCurrencyCode($row));
     }
     
     echo json_encode(['success' => true, 'results' => $results]);

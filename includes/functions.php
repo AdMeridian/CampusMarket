@@ -100,10 +100,30 @@ function requireAdmin(): void {
 // ─── Formatting ──────────────────────────────────────────
 
 /**
- * Format a price in Turkish Lira (Local work)
+ * Normalize a product's currency code (TRY or USD).
  */
-function formatPrice($amount): string {
-    return number_format((float)$amount) . ' ' . APP_CURRENCY;
+function productCurrencyCode(array $product): string {
+    $code = strtoupper(trim((string)($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
+    return array_key_exists($code, PRODUCT_CURRENCIES) ? $code : DEFAULT_PRODUCT_CURRENCY;
+}
+
+function currencySymbol(?string $currencyCode = null): string {
+    $code = strtoupper(trim((string)($currencyCode ?? DEFAULT_PRODUCT_CURRENCY)));
+    if (!array_key_exists($code, PRODUCT_CURRENCIES)) {
+        return APP_CURRENCY;
+    }
+    return PRODUCT_CURRENCIES[$code]['symbol'];
+}
+
+/**
+ * Format a monetary amount with the given currency symbol.
+ */
+function formatPrice($amount, ?string $currencyCode = null): string {
+    $value = (float)$amount;
+    $formatted = abs($value - round($value)) < 0.001
+        ? number_format($value, 0)
+        : number_format($value, 2);
+    return $formatted . ' ' . currencySymbol($currencyCode);
 }
 
 /**
@@ -134,12 +154,13 @@ function renderProductPrice(array $product): string {
     $discountPercent = (int)($product['discount_percent'] ?? 0);
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
+    $currency = productCurrencyCode($product);
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span>' . formatPrice($base) . '</span>';
+        return '<span>' . formatPrice($base, $currency) . '</span>';
     }
     return
-        '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final) . '</span> ' .
-        '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . formatPrice($base) . '</span> ' .
+        '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final, $currency) . '</span> ' .
+        '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . formatPrice($base, $currency) . '</span> ' .
         '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">Discounted</span> ' .
         '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>';
 }
