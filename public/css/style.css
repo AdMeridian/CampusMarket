@@ -2187,6 +2187,68 @@ body.dark-mode .flash-toast-container .flash.flash-push {
   white-space: nowrap;
 }
 
+.product-card-price-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.product-card-price-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.product-card-price-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.product-card-price__was {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1.2;
+}
+
+.product-card-price__original {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.product-card-price__pct {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #ef4444;
+  letter-spacing: 0.02em;
+}
+
+.product-card-price__now {
+  font-weight: 800;
+  color: var(--primary);
+  font-size: 1.15rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.product-card-price__now--regular {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.product-card-listed-time {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  white-space: nowrap;
+  padding-bottom: 0.1rem;
+}
+
 .product-card-image-wrap {
     width: 100%;
     aspect-ratio: 4/3;

@@ -43,55 +43,6 @@ $trust   = getSellerTrustScore($pdo, (int)$user['id']);
 $pageTitle = sanitize($user['username']) . "'s Profile";
 $activeTab = ($_GET['tab'] ?? 'listings') === 'about' ? 'about' : 'listings';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSelf && isset($_POST['action'], $_POST['product_id'])) {
-    verifyCsrfToken();
-    $action = sanitize($_POST['action']);
-    $productId = (int)($_POST['product_id'] ?? 0);
-
-    $ownStmt = $pdo->prepare("SELECT * FROM products WHERE id = :pid AND user_id = :uid");
-    $ownStmt->execute([':pid' => $productId, ':uid' => $viewId]);
-    $ownedProduct = $ownStmt->fetch();
-
-    if (!$ownedProduct) {
-        setFlash('error', 'Listing not found.');
-    } else {
-        if ($action === 'set_discount') {
-            $discountPercent = (int)($_POST['discount_percent'] ?? 0);
-            if ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
-                setFlash('error', 'Discount must be between 0 and ' . LISTING_DISCOUNT_MAX_PERCENT . ' percent.');
-            } else {
-                $upd = $pdo->prepare("UPDATE products SET discount_percent = :dp, discount_set_at = NOW() WHERE id = :pid");
-                $upd->execute([':dp' => $discountPercent, ':pid' => $productId]);
-                setFlash('success', $discountPercent > 0 ? 'Discount updated.' : 'Discount removed.');
-            }
-        } elseif ($action === 'update_price') {
-            $newPrice = (float)($_POST['new_price'] ?? 0);
-            if ($newPrice <= 0) {
-                setFlash('error', 'Price must be greater than zero.');
-            } else {
-                $upd = $pdo->prepare("UPDATE products SET price = :price, updated_at = NOW() WHERE id = :pid");
-                $upd->execute([':price' => $newPrice, ':pid' => $productId]);
-                setFlash('success', 'Price updated successfully.');
-            }
-        } elseif ($action === 'update_description') {
-            $newDescription = trim(sanitize($_POST['description'] ?? ''));
-            if ($newDescription === '') {
-                setFlash('error', __('product.description_required'));
-            } else {
-                $upd = $pdo->prepare("UPDATE products SET description = :description, updated_at = NOW() WHERE id = :pid");
-                $upd->execute([':description' => $newDescription, ':pid' => $productId]);
-                setFlash('success', __('product.description_updated'));
-            }
-        } elseif ($action === 'delete_listing') {
-            $upd = $pdo->prepare("UPDATE products SET status = 'deleted', deleted_at = NOW(), updated_at = NOW() WHERE id = :pid");
-            if ($upd->execute([':pid' => $productId])) {
-                setFlash('success', 'Listing moved to Recycle Bin.');
-            }
-        }
-    }
-    redirect(BASE_URL . 'pages/profile.php?id=' . $viewId . '#listings');
-}
-
 // Fetch listings count for the stat pill. Owners see their pending review items too.
 $visibleListingStatusSql = $isSelf || isAdmin()
     ? "status IN ('active', 'pending_approval')"
@@ -886,59 +837,10 @@ body.dark-mode .btn-white-solid:hover {
                                 </h3>
 
                                 <?php if ($isSelf): ?>
-                                    <div class="mt-4" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                                        <!-- Price Update Form -->
-                                        <form method="post" style="margin: 0;">
-                                            <?php echo csrfTokenField(); ?>
-                                            <input type="hidden" name="action" value="update_price">
-                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
-                                            <div style="display: flex; gap: 0.25rem;">
-                                                <input type="number" name="new_price" step="0.01" value="<?php echo (float)$prod['price']; ?>" class="premium-input" style="flex: 1; padding: 0.35rem 0.45rem; font-size: 0.82rem;" placeholder="Price">
-                                                <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Update</button>
-                                            </div>
-                                        </form>
-
-                                        <form method="post" style="margin: 0;">
-                                            <?php echo csrfTokenField(); ?>
-                                            <input type="hidden" name="action" value="update_description">
-                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
-                                            <textarea name="description" rows="3" class="premium-input" style="width: 100%; padding: 0.45rem; font-size: 0.82rem; margin-bottom: 0.35rem;" placeholder="<?= __('product.description_title') ?>" required><?php echo htmlspecialchars($prod['description'] ?? ''); ?></textarea>
-                                            <button type="submit" class="btn btn-secondary btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;"><?= __('product.update_description') ?></button>
-                                        </form>
-
-                                        <!-- Discount Form -->
-                                        <form method="post" class="discount-form">
-                                            <?php echo csrfTokenField(); ?>
-                                            <input type="hidden" name="action" value="set_discount">
-                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
-                                            <div style="display: flex; gap: 0.25rem;">
-                                                <select name="discount_percent" class="premium-input" style="flex: 1; padding: 0.35rem 0.45rem; font-size: 0.82rem;">
-                                                    <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
-                                                        <option value="<?php echo $d; ?>" <?php echo ((int)($prod['discount_percent'] ?? 0) === $d) ? 'selected' : ''; ?>>
-                                                            <?php echo $d === 0 ? 'No discount' : ('-' . $d . '%'); ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                                <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.75rem;">Apply</button>
-                                            </div>
-                                        </form>
-
-                                        <!-- Promote Button -->
-                                        <?php if ($isPendingApproval): ?>
-                                        <button disabled class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: var(--warning-bg); color: #b45309; border: 1px solid rgba(180, 83, 9, 0.2); font-weight: 700; cursor: not-allowed; border-radius: var(--radius-md);">Pending Approval</button>
-                                        <?php elseif ((int)$prod['is_featured'] === 0): ?>
-                                        <a href="<?php echo BASE_URL; ?>pages/promotions.php?product_id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2); font-weight: 700; text-align: center; border-radius: var(--radius-md); display: block;">Boost Listing</a>
-                                        <?php else: ?>
-                                        <button disabled class="btn btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: rgba(34, 197, 94, 0.1); color: #15803d; border: 1px solid rgba(34, 197, 94, 0.2); font-weight: 700; cursor: not-allowed; border-radius: var(--radius-md);">Already Promoted</button>
-                                        <?php endif; ?>
-
-                                        <!-- Delete Form (Move to Bin) -->
-                                        <form method="post" onsubmit="return confirm('Move to Recycle Bin?')">
-                                            <?php echo csrfTokenField(); ?>
-                                            <input type="hidden" name="action" value="delete_listing">
-                                            <input type="hidden" name="product_id" value="<?php echo (int)$prod['id']; ?>">
-                                            <button type="submit" class="btn btn-danger btn-sm w-full" style="padding: 0.35rem 0.6rem; font-size: 0.75rem; background: #fee2e2; color: #ef4444; border: none; font-weight: 700;">Delete Listing</button>
-                                        </form>
+                                    <div class="mt-4" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-primary btn-sm w-full" style="padding: 0.45rem 0.75rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md);">
+                                            <?= __('product.manage_listing') ?>
+                                        </a>
                                     </div>
                                 <?php endif; ?>
                             </div>

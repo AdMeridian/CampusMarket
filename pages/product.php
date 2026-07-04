@@ -1,6 +1,7 @@
 <?php
 // pages/product.php
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/listing_moderation.php';
 
 $productId = (int)($_GET['id'] ?? 0);
 
@@ -121,6 +122,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
         setFlash('success', __('product.town_updated'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     }
+}
+
+// Handle Title Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_title') {
+    verifyCsrfToken();
+    $newTitle = trim(sanitize($_POST['title'] ?? ''));
+    if ($newTitle === '' || mb_strlen($newTitle) < 3) {
+        setFlash('error', __('create_listing.title_required'));
+    } elseif (mb_strlen($newTitle) > 100) {
+        setFlash('error', __('create_listing.title_too_long'));
+    } else {
+        $duplicate = findSellerDuplicateListing($pdo, (int)$product['seller_id'], $newTitle, $productId);
+        if ($duplicate) {
+            setFlash('error', listingModerationDuplicateMessage($duplicate));
+        } else {
+            $stmtUp = $pdo->prepare("UPDATE products SET title = :title, updated_at = NOW() WHERE id = :id");
+            $stmtUp->execute([':title' => $newTitle, ':id' => $productId]);
+            setFlash('success', __('product.title_updated'));
+        }
+    }
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
 }
 
 // Handle Description Update
@@ -1010,7 +1032,26 @@ body.dark-mode .scc-badge {
         <div class="flex flex-col">
             <div class="mb-6 border-b border-gray-100 pb-6">
                 <p class="text-primary font-bold tracking-widest uppercase small mb-2" style="font-size: 0.8rem;"><?php echo sanitize(translateCategory($product['category_name'])); ?></p>
-                <h1 class="product-title mb-4 text-main font-bold" style="line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
+                <?php if ($isOwner): ?>
+                    <form method="post" class="mb-4">
+                        <?php echo csrfTokenField(); ?>
+                        <input type="hidden" name="action" value="update_title">
+                        <label for="listing-title" class="font-bold mb-2 block" style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em;"><?= __('product.listing_title_label') ?></label>
+                        <input
+                            type="text"
+                            id="listing-title"
+                            name="title"
+                            value="<?php echo htmlspecialchars($product['title'], ENT_QUOTES, 'UTF-8'); ?>"
+                            maxlength="100"
+                            required
+                            class="w-full premium-input product-title-edit-input"
+                            style="padding: 0.85rem 1rem; font-size: 1.5rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.75rem;"
+                        >
+                        <button type="submit" class="btn btn-primary btn-sm"><?= __('product.update_title') ?></button>
+                    </form>
+                <?php else: ?>
+                    <h1 class="product-title mb-4 text-main font-bold" style="line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
+                <?php endif; ?>
                 <?php if (!empty($product['location_town']) && isValidLocationTown($product['location_town']) && $product['location_town'] !== 'other'): ?>
                 <div class="mb-4">
                     <a href="<?php echo BASE_URL; ?>pages/browse.php?town=<?php echo urlencode($product['location_town']); ?>" class="inline-flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors hover-scale" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-main); text-decoration: none;">
@@ -1387,7 +1428,7 @@ body.dark-mode .scc-badge {
                         <div class="w-10 h-10 flex items-center justify-center" style="border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary);">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </div>
-                        <h3 class="m-0 font-bold text-main" style="font-size: 1.4rem; color: var(--text-main);"><?= __('product.description_title') ?></h3>
+                        <h3 class="m-0 font-bold text-main" style="font-size: 1.4rem; color: var(--text-main);"><?= $isOwner ? __('product.listing_details_title') : __('product.description_title') ?></h3>
                     </div>
                     <div style="line-height: 2; color: var(--text-muted); font-size: 1.15rem;">
                         <?php if ($isOwner): ?>

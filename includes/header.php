@@ -378,6 +378,9 @@ $navCategories = getNavCategories($pdo);
                         <a href="<?php echo BASE_URL; ?>pages/my_reports.php" class="user-dropdown-item<?php echo $navItemActive('my_reports.php'); ?>"><?= __('nav.my_reports') ?></a>
                         <a href="<?php echo BASE_URL; ?>pages/wishlist.php" class="user-dropdown-item<?php echo $navItemActive('wishlist.php'); ?>"><?= __('nav.wishlist') ?></a>
                         <a href="<?php echo BASE_URL; ?>pages/promotions.php" class="user-dropdown-item<?php echo $navItemActive('promotions.php'); ?>"><?= __('nav.promotions') ?></a>
+                        <?php if (isAgent()): ?>
+                        <a href="<?php echo BASE_URL; ?>pages/manage_listings.php" class="user-dropdown-item<?php echo $navItemActive('manage_listings.php'); ?>"><?= __('nav.manage_listings') ?></a>
+                        <?php endif; ?>
                     </div>
 
                     <div class="user-dropdown-group">

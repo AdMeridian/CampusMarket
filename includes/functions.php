@@ -70,6 +70,13 @@ function isAdmin(): bool {
 }
 
 /**
+ * Check if the logged-in user is a listing agent (managed listings account).
+ */
+function isAgent(): bool {
+    return isset($_SESSION['role']) && $_SESSION['role'] === 'agent';
+}
+
+/**
  * Get the current logged-in user's ID
  */
 function currentUserId(): ?int {
@@ -172,6 +179,27 @@ function renderProductPrice(array $product): string {
         '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . formatPrice($base, $currency) . '</span> ' .
         '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">Discounted</span> ' .
         '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>';
+}
+
+/**
+ * Stacked price layout for product cards (discount details above the sale price).
+ */
+function renderProductCardPrice(array $product): string {
+    $discountPercent = (int)($product['discount_percent'] ?? 0);
+    $base = (float)($product['price'] ?? 0);
+    $final = getDiscountedPrice($product);
+    $currency = productCurrencyCode($product);
+
+    if ($discountPercent <= 0 || $final >= $base) {
+        return '<span class="product-card-price__now product-card-price__now--regular">' . formatPrice($base, $currency) . '</span>';
+    }
+
+    return
+        '<span class="product-card-price__was">' .
+            '<span class="product-card-price__original">' . formatPrice($base, $currency) . '</span>' .
+            '<span class="product-card-price__pct">-' . $discountPercent . '%</span>' .
+        '</span>' .
+        '<span class="product-card-price__now">' . formatPrice($final, $currency) . '</span>';
 }
 
 /**

@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $userId         = currentUserId();
+    $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
 
@@ -45,6 +46,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.select_category');
     } elseif (!isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
+    }
+
+    if (!$error && isAgent()) {
+        $ownerErrors = validateManagedOwnerContact($ownerContact ?? [], true);
+        if (!empty($ownerErrors)) {
+            $error = reset($ownerErrors);
+        }
     }
 
     if (!$error) {
@@ -90,6 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)");
                 $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown]);
                 $productId = $pdo->lastInsertId();
+
+                if (isAgent() && $ownerContact) {
+                    if (!saveManagedListingContact($pdo, (int)$productId, $ownerContact)) {
+                        throw new Exception(__('agent.contact_save_failed'));
+                    }
+                }
 
                 // 2. Handle Image Uploads
                 if (!empty($_FILES['images']['name'][0])) {
@@ -369,6 +383,33 @@ include '../includes/header.php';
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
                     <textarea name="description" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
+
+                <?php if (isAgent()): ?>
+                <div class="form-group agent-owner-contact-panel" style="padding: 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--primary) 6%, var(--bg-surface));">
+                    <div class="mb-4">
+                        <h3 class="mb-1" style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);"><?= __('agent.owner_contact_heading') ?></h3>
+                        <p class="text-muted small mb-0"><?= __('agent.owner_contact_hint') ?></p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="font-bold mb-2 block" for="owner_name"><?= __('agent.owner_name_label') ?></label>
+                            <input type="text" id="owner_name" name="owner_name" maxlength="120" class="w-full premium-input" style="padding: 0.8rem 1rem;" required value="<?= htmlspecialchars($_POST['owner_name'] ?? '') ?>">
+                        </div>
+                        <div>
+                            <label class="font-bold mb-2 block" for="owner_phone"><?= __('agent.owner_phone_label') ?></label>
+                            <input type="tel" id="owner_phone" name="owner_phone" maxlength="20" class="w-full premium-input" style="padding: 0.8rem 1rem;" required value="<?= htmlspecialchars($_POST['owner_phone'] ?? '') ?>">
+                        </div>
+                        <div>
+                            <label class="font-bold mb-2 block" for="owner_email"><?= __('agent.owner_email_label') ?></label>
+                            <input type="email" id="owner_email" name="owner_email" maxlength="100" class="w-full premium-input" style="padding: 0.8rem 1rem;" value="<?= htmlspecialchars($_POST['owner_email'] ?? '') ?>">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="font-bold mb-2 block" for="owner_notes"><?= __('agent.owner_notes_label') ?></label>
+                            <textarea id="owner_notes" name="owner_notes" rows="3" maxlength="2000" class="w-full premium-input" style="padding: 0.8rem 1rem; border-radius: var(--radius-md);" placeholder="<?= htmlspecialchars(__('agent.owner_notes_placeholder')) ?>"><?= htmlspecialchars($_POST['owner_notes'] ?? '') ?></textarea>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
  
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.photos_label') ?></label>
