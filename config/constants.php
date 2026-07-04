@@ -82,6 +82,12 @@ define('MAX_IMAGES',       5);               // max images per product
 // Pagination
 define('ITEMS_PER_PAGE',   12);
 
+// Homepage feeds
+define('HOME_RECENT_LISTING_LIMIT',    8);
+define('HOME_RECENT_LISTING_DAYS',     7);   // only listings from the last N days (weekly)
+define('HOME_CATEGORY_SECTION_LIMIT',  4);   // top categories by active listing count
+define('HOME_PRODUCTS_PER_CATEGORY',   5);
+
 // App Meta
 define('APP_NAME',         'CampusMarket');
 define('APP_TAGLINE',      'Buy & Sell Within Your Campus');

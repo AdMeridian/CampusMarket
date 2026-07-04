@@ -711,22 +711,71 @@ function countUnreadMessages(PDO $pdo, int $userId): int {
 // ─── Marketplace Data Helpers ────────────────────────────
 
 /**
- * Fetch the latest active products for the homepage
+ * Fetch the latest active products for the homepage (within a recent time window).
  */
-function getRecentProducts(PDO $pdo, int $limit = 8): array {
+function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): array {
+    $withinDays = $withinDays ?? (defined('HOME_RECENT_LISTING_DAYS') ? (int) HOME_RECENT_LISTING_DAYS : 30);
+    $withinDays = max(1, $withinDays);
+    $isPgsql = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
+    $dateFilter = $isPgsql
+        ? " AND p.created_at >= NOW() - (CAST(:days AS text) || ' days')::interval"
+        : ' AND p.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)';
+
     $stmt = $pdo->prepare("
         SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'
+        WHERE p.status = 'active'{$dateFilter}
         ORDER BY p.created_at DESC
         LIMIT :limit
     ");
+    $stmt->bindValue(':days', $withinDays, PDO::PARAM_INT);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll();
+}
+
+/**
+ * Top categories with a preview of their newest active listings for the homepage.
+ */
+function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $productsPerCategory = 5): array {
+    $categoryLimit = max(1, $categoryLimit);
+    $productsPerCategory = max(1, $productsPerCategory);
+    $sections = [];
+
+    foreach (getTopCategories($pdo) as $category) {
+        if ((int) ($category['product_count'] ?? 0) <= 0) {
+            continue;
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.id
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+            WHERE p.category_id = :category_id AND p.status = 'active'
+            ORDER BY p.created_at DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':category_id', (int) $category['id'], PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $productsPerCategory, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $sections[] = [
+            'id' => (int) $category['id'],
+            'name' => $category['name'],
+            'products' => $stmt->fetchAll(),
+        ];
+
+        if (count($sections) >= $categoryLimit) {
+            break;
+        }
+    }
+
+    return $sections;
 }
 
 /**

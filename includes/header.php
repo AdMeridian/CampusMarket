@@ -85,11 +85,11 @@ $navCategories = getNavCategories($pdo);
           background: transparent !important;
         }
         #nav-links .mobile-nav-link.is-active {
-          color: var(--primary, #1a7f64) !important;
+          color: var(--primary, #4f46e5) !important;
           background: var(--primary-light, #eef2ff) !important;
         }
         #nav-links .mobile-nav-link--accent {
-          color: var(--primary, #1a7f64) !important;
+          color: var(--primary, #4f46e5) !important;
           font-weight: 600 !important;
         }
         #nav-links .mobile-nav-link--admin {
@@ -110,7 +110,7 @@ $navCategories = getNavCategories($pdo);
           width: calc(100% - 2rem) !important;
           border-radius: 0.5rem !important;
           border: none !important;
-          background: var(--primary, #1a7f64) !important;
+          background: var(--primary, #4f46e5) !important;
           color: #fff !important;
           font-weight: 600 !important;
         }
@@ -123,13 +123,6 @@ $navCategories = getNavCategories($pdo);
         .navbar .container {
           flex-wrap: nowrap !important;
           align-items: center !important;
-        }
-        .navbar .search-bar.navbar-search {
-          flex: 0 0 220px !important;
-          width: 220px !important;
-          max-width: 220px !important;
-          min-width: 180px !important;
-          margin: 0 0.75rem !important;
         }
         #nav-links {
           display: flex !important;
@@ -168,7 +161,7 @@ $navCategories = getNavCategories($pdo);
           margin: 0 !important;
         }
         .nav-notifications-label { display: none !important; }
-        .nav-notifications-icon { display: block !important; width: 18px !important; height: 18px !important; }
+        .nav-notifications-icon { width: 18px !important; height: 18px !important; }
       }
     </style>
     
@@ -302,7 +295,7 @@ $navCategories = getNavCategories($pdo);
         </div>
 
         <!-- Shared Search Bar (Desktop) -->
-        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar navbar-search lg-flex">
+        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar group lg-flex" style="margin: 0 1.25rem;">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -336,8 +329,8 @@ $navCategories = getNavCategories($pdo);
                         <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link nav-notifications-link" title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
-                        <svg class="nav-notifications-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                        <span class="nav-notifications-label"><?= __('nav.notifications') ?></span>
+                        <span class="nav-notifications-label lg-hidden"><?= __('nav.notifications') ?></span>
+                        <svg class="nav-notifications-icon lg-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                         <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/logout.php" class="mobile-nav-link mobile-nav-link--danger"><?= __('nav.logout') ?></a>
@@ -347,8 +340,8 @@ $navCategories = getNavCategories($pdo);
                         <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link nav-notifications-link" title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
-                        <svg class="nav-notifications-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                        <span class="nav-notifications-label"><?= __('nav.notifications') ?></span>
+                        <span class="nav-notifications-label lg-hidden"><?= __('nav.notifications') ?></span>
+                        <svg class="nav-notifications-icon lg-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                         <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="mobile-nav-link mobile-nav-link--accent"><?= __('nav.sell_item') ?></a>

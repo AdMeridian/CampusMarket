@@ -71,7 +71,14 @@
     </div>
 </footer>
 
-<script>const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";</script>
+<script>
+const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
+window.PWA_I18N = {
+  updateTitle: <?php echo json_encode(__('pwa.update_title')); ?>,
+  updateBody: <?php echo json_encode(__('pwa.update_body')); ?>,
+  refresh: <?php echo json_encode(__('pwa.refresh_now')); ?>
+};
+</script>
 <?php
     $pwaJsPath = __DIR__ . '/../public/js/pwa.js';
     $pwaJsVer = file_exists($pwaJsPath) ? filemtime($pwaJsPath) : '1';

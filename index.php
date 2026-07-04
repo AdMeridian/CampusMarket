@@ -9,26 +9,8 @@ $seoJsonLd = seoWebsiteJsonLd();
 require_once __DIR__ . '/includes/header.php';
 
 // Data for homepage
-$recentProducts = getRecentProducts($pdo, 8);
-$topCategories = getTopCategories($pdo);
-
-// Fetch categories and their products (5 each) — done in PHP before HTML output
-$stmtCats = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC LIMIT 4");
-$displayCats = $stmtCats->fetchAll();
-foreach ($displayCats as &$dcat) {
-    $stmtCatP = $pdo->prepare("
-        SELECT p.*, c.name as category_name, i.image_path
-        FROM products p
-        JOIN categories c ON p.category_id = c.id
-        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.category_id = ? AND p.status = 'active'
-        ORDER BY p.created_at DESC
-        LIMIT 5
-    ");
-    $stmtCatP->execute([$dcat['id']]);
-    $dcat['products'] = $stmtCatP->fetchAll();
-}
-unset($dcat);
+$recentProducts = getRecentProducts($pdo, HOME_RECENT_LISTING_LIMIT, HOME_RECENT_LISTING_DAYS);
+$displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HOME_PRODUCTS_PER_CATEGORY);
 ?>
 
 <!-- Hero Section with Background Carousel -->
@@ -177,7 +159,6 @@ if (!empty($featuredProducts)):
 <section class="mt-20">
     <div class="container">
         <?php foreach ($displayCats as $cat): ?>
-            <?php if (empty($cat['products'])) continue; ?>
             <div class="mb-16">
                 <div class="flex justify-between items-end mb-6" style="border-bottom: 2px solid #f1f5f9; padding-bottom: 1rem;">
                     <h2 class="mb-0"><?php echo htmlspecialchars(translateCategory($cat['name'])); ?></h2>

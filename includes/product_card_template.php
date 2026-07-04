@@ -15,28 +15,27 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
     
     <!-- Main Product Link -->
     <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/product.php?id=<?php echo $prod['id']; ?>" style="text-decoration: none; display: flex; flex-direction: column; height: 100%;">
+        <?php if ($isOwner): ?>
+            <div class="product-card-seller product-card-seller--owner">
+                <svg class="product-card-seller__icon" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
+                <span class="product-card-seller__name"><?= __('product.your_listing') ?></span>
+            </div>
+        <?php elseif (!empty($prod['seller_name'])): ?>
+            <div class="product-card-seller">
+                <svg class="product-card-seller__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                <span class="product-card-seller__name">@<?php echo sanitize($prod['seller_name']); ?></span>
+            </div>
+        <?php endif; ?>
+
         <!-- Product Image Container -->
         <div class="product-card-image-wrap" style="border-radius: var(--radius-md); margin-bottom: 1.5rem; position: relative;">
             <?php 
                 $imgUrl = getProductImage($prod['image_path'] ?? null);
             ?>
             <img src="<?php echo $imgUrl; ?>" alt="<?php echo sanitize($prod['title']); ?>">
-            
-            <!-- Seller Badge (Top Right) -->
-            <?php if ($isOwner): ?>
-                <div style="position: absolute; top: 0.75rem; right: 0.75rem; background: var(--bg-surface); color: var(--primary); padding: 0.35rem 0.6rem; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; border-radius: var(--radius-md); z-index: 10; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light); display: flex; align-items: center; gap: 4px;">
-                    <svg class="w-2 h-2" fill="currentColor" viewBox="0 0 20 20" style="width: 10px; height: 10px;"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
-                    <?= __('product.your_listing') ?>
-                </div>
-            <?php elseif (!empty($prod['seller_name'])): ?>
-                <div style="position: absolute; top: 0.75rem; right: 0.75rem; background: var(--glass-bg); color: var(--text-main); padding: 0.35rem 0.6rem; font-size: 0.65rem; font-weight: 600; border-radius: var(--radius-md); z-index: 10; border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 4px; backdrop-filter: blur(4px);">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 12px; height: 12px; opacity: 0.7;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                    @<?php echo sanitize($prod['seller_name']); ?>
-                </div>
-            <?php endif; ?>
 
             <!-- Status Badges Container (Top Left) -->
-            <div style="position: absolute; top: 0.75rem; left: 0.75rem; z-index: 5; display: flex; gap: 0.4rem; flex-wrap: wrap; max-width: calc(100% - 8.5rem);">
+            <div class="product-card-badges">
                 <?php 
                 $cond = $prod['condition'] ?? 'used';
                 $badge = conditionBadge($cond); 

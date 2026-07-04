@@ -58,6 +58,11 @@ if ($isAllowedStaticPath) {
         if (isset($mimeMap[$ext])) {
             header('Content-Type: ' . $mimeMap[$ext]);
         }
+        if ($normalizedPath === '/sw.js') {
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
         readfile($realStatic);
         exit;
     }
