@@ -26,6 +26,10 @@ if ($envBaseUrl) {
         || str_starts_with($currentHost, '127.0.0.1:');
     if (!$isLocalHost && $envHost === $currentHost) {
         $base_url = $protocol . $host;
+    } elseif (!$isLocalHost && $envHost !== '' && $envHost !== $currentHost) {
+        // Vercel preview / staging hosts (e.g. *.vercel.app) must serve assets from
+        // the same origin — CSP blocks cross-origin CSS/JS when BASE_URL is production-only.
+        $base_url = $protocol . $host . '/';
     }
 } else {
     $isLocalHost = in_array(strtolower($host), ['localhost', '127.0.0.1'], true)
