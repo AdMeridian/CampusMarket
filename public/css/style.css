@@ -2147,53 +2147,44 @@ body.dark-mode .flash-toast-container .flash.flash-push {
 }
 
 /* --- Product Image Standards --- */
-.product-card-seller {
+.product-card-seller-slot {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 0.5rem;
   min-width: 0;
-  margin-bottom: 0.75rem;
-  font-size: 0.78rem;
+}
+
+.product-card-seller-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-main);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(4px);
 }
 
-.product-card-seller--owner {
+.product-card-seller-pill--owner {
   color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--bg-surface);
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-sm);
 }
 
-.product-card-seller__icon {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  opacity: 0.85;
-}
-
-.product-card-seller__name {
+.product-card-seller-pill__text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-main);
-}
-
-.product-card-seller--owner .product-card-seller__name {
-  color: var(--primary);
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
-.product-card-badges {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  z-index: 5;
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  max-width: calc(100% - 1.5rem);
 }
 
 .product-card-image-wrap {
