@@ -1,15 +1,16 @@
 // public/js/theme.js
 document.addEventListener('DOMContentLoaded', () => {
-    const themeToggle = document.getElementById('theme-toggle');
     const body = document.body;
 
-    if (themeToggle) {
-        themeToggle.addEventListener('click', () => {
-            body.classList.toggle('dark-mode');
-            const isDark = body.classList.contains('dark-mode');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        });
+    function toggleTheme() {
+        body.classList.toggle('dark-mode');
+        const isDark = body.classList.contains('dark-mode');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
+
+    document.querySelectorAll('#theme-toggle, #theme-toggle-mobile').forEach((btn) => {
+        btn.addEventListener('click', toggleTheme);
+    });
 
     // Navbar Scroll Effect
     const navbar = document.querySelector('.navbar');

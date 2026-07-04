@@ -48,6 +48,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$error) {
+        $duplicate = findSellerDuplicateListing($pdo, $userId, $title);
+        if ($duplicate) {
+            $error = listingModerationDuplicateMessage($duplicate);
+        }
+    }
+
+    if (!$error) {
         // Collect Image Data for Moderation
         $imagesData = [];
         if (!empty($_FILES['images']['name'][0])) {
@@ -72,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $aiResult = aiModerateListing($title, $description, $imagesData);
 
         if ($aiResult['is_blurry']) {
-            $error = "This photo looks blurry. Please retake or upload a clearer image.";
+            $error = listingModerationBlurryMessage($aiResult);
         } else {
             try {
                 $pdo->beginTransaction();
@@ -116,13 +123,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $status = 'active';
                 } else {
                     $status = 'pending_approval';
+                    $sellerNote = listingModerationSellerFacingReason($aiResult);
                     $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
                     $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+                    listingModerationSaveNote($pdo, (int)$productId, $sellerNote);
                     notifyAdminsPendingListing(
                         $pdo,
                         (int)$productId,
                         $title,
-                        (string)($aiResult['reason'] ?? '')
+                        $sellerNote
+                    );
+                    notifySellerPendingListing(
+                        $pdo,
+                        (int)$userId,
+                        (int)$productId,
+                        $title,
+                        $sellerNote
                     );
                 }
 
@@ -168,13 +184,24 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
     $createdId = (int)$_GET['created'];
     if ($createdId > 0) {
         $createdStmt = $pdo->prepare("
-            SELECT id, status, category_id, price
+            SELECT id, status, category_id, price, moderation_note
             FROM products
             WHERE id = :id AND user_id = :uid
             LIMIT 1
         ");
-        $createdStmt->execute([':id' => $createdId, ':uid' => currentUserId()]);
-        $createdRow = $createdStmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $createdStmt->execute([':id' => $createdId, ':uid' => currentUserId()]);
+            $createdRow = $createdStmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $createdStmt = $pdo->prepare("
+                SELECT id, status, category_id, price
+                FROM products
+                WHERE id = :id AND user_id = :uid
+                LIMIT 1
+            ");
+            $createdStmt->execute([':id' => $createdId, ':uid' => currentUserId()]);
+            $createdRow = $createdStmt->fetch(PDO::FETCH_ASSOC);
+        }
         if ($createdRow) {
             $success = true;
             $createdProductId = (int)$createdRow['id'];
@@ -182,6 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
             $createdListingMeta = [
                 'category_id' => (int)($createdRow['category_id'] ?? 0),
                 'price' => (float)($createdRow['price'] ?? 0),
+                'moderation_note' => trim((string)($createdRow['moderation_note'] ?? '')),
             ];
         }
     }
@@ -227,12 +255,18 @@ include '../includes/header.php';
             </a>
         </div>
         <?php else: ?>
-        <p class="text-muted mb-6" style="font-size: 1.05rem; line-height: 1.6;">
-            Your listing is currently <strong>waiting for approval</strong>. An admin will review it shortly.<br>
-            You'll receive a <strong>notification</strong> once it's been approved.
+        <?php $pendingNote = trim((string)($createdListingMeta['moderation_note'] ?? '')); ?>
+        <p class="text-muted mb-4" style="font-size: 1.05rem; line-height: 1.6;">
+            <?= __('create_listing.moderation_pending_intro') ?>
         </p>
+        <?php if ($pendingNote !== ''): ?>
+        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; text-align: left;">
+            <p class="mb-1 font-bold" style="color: var(--text-main); font-size: 0.9rem;"><?= __('create_listing.moderation_pending_reason_label') ?></p>
+            <p class="mb-0 text-muted" style="line-height: 1.55;"><?= sanitize($pendingNote) ?></p>
+        </div>
+        <?php endif; ?>
         <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
-            View listing status
+            <?= __('create_listing.moderation_view_listing') ?>
         </a>
         <?php endif; ?>
     </div>
@@ -259,7 +293,7 @@ include '../includes/header.php';
         <?php endif; ?>
 
         <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
-            <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6">
+            <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 js-form-loading" data-loading-text="<?= htmlspecialchars(__('create_listing.publishing'), ENT_QUOTES, 'UTF-8') ?>">
                 <?php echo csrfTokenField(); ?>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>

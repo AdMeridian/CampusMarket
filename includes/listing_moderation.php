@@ -70,9 +70,52 @@ if (!function_exists('notifyAdminsPendingListing')) {
     }
 }
 
+if (!function_exists('normalizeListingTitle')) {
+    function normalizeListingTitle(string $title): string {
+        $normalized = mb_strtolower(trim($title), 'UTF-8');
+        return preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+    }
+}
+
+if (!function_exists('findSellerDuplicateListing')) {
+    /**
+     * Detect an active/pending listing from the same seller with the same normalized title.
+     */
+    function findSellerDuplicateListing(PDO $pdo, int $userId, string $title, int $excludeProductId = 0): ?array {
+        if ($userId <= 0) {
+            return null;
+        }
+        $normalized = normalizeListingTitle($title);
+        if ($normalized === '') {
+            return null;
+        }
+
+        $sql = "
+            SELECT id, title, status
+            FROM products
+            WHERE user_id = :uid
+              AND status IN ('active', 'pending_approval')
+              AND LOWER(TRIM(title)) = :norm
+        ";
+        if ($excludeProductId > 0) {
+            $sql .= ' AND id != :exclude';
+        }
+        $sql .= ' LIMIT 1';
+
+        $stmt = $pdo->prepare($sql);
+        $params = [':uid' => $userId, ':norm' => $normalized];
+        if ($excludeProductId > 0) {
+            $params[':exclude'] = $excludeProductId;
+        }
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+}
+
 if (!function_exists('aiModeratorShouldAutoApprove')) {
     function aiModeratorShouldAutoApprove(array $aiResult): bool {
-        if (!empty($aiResult['is_blurry'])) {
+        if (!empty($aiResult['is_blurry']) || !empty($aiResult['is_duplicate'])) {
             return false;
         }
         if (empty($aiResult['passed'])) {
@@ -80,5 +123,125 @@ if (!function_exists('aiModeratorShouldAutoApprove')) {
         }
         $confidence = (float)($aiResult['confidence'] ?? 0);
         return $confidence >= AI_MODERATION_MIN_CONFIDENCE;
+    }
+}
+
+if (!function_exists('listingModerationSanitizeSellerNote')) {
+    function listingModerationSanitizeSellerNote(string $reason): string {
+        $reason = trim($reason);
+        if ($reason === '') {
+            return '';
+        }
+
+        $prefix = 'Text-only moderation (image check unavailable):';
+        if (stripos($reason, $prefix) === 0) {
+            $reason = trim(substr($reason, strlen($prefix)));
+        }
+
+        if (mb_strlen($reason) > 500) {
+            $reason = mb_substr($reason, 0, 497) . '...';
+        }
+
+        return $reason;
+    }
+}
+
+if (!function_exists('listingModerationDuplicateMessage')) {
+    function listingModerationDuplicateMessage(?array $duplicate): string {
+        if (!$duplicate) {
+            return __('create_listing.duplicate_listing');
+        }
+
+        $title = trim((string)($duplicate['title'] ?? ''));
+        if ($title !== '') {
+            return __('create_listing.duplicate_listing_detail', ['title' => $title]);
+        }
+
+        return __('create_listing.duplicate_listing');
+    }
+}
+
+if (!function_exists('listingModerationBlurryMessage')) {
+    function listingModerationBlurryMessage(array $aiResult): string {
+        $detail = listingModerationSanitizeSellerNote((string)($aiResult['reason'] ?? ''));
+        if ($detail !== '') {
+            return __('create_listing.moderation_blurry_with_reason', ['reason' => $detail]);
+        }
+
+        return __('create_listing.moderation_blurry');
+    }
+}
+
+if (!function_exists('listingModerationSellerFacingReason')) {
+    function listingModerationSellerFacingReason(array $aiResult): string {
+        $raw = listingModerationSanitizeSellerNote((string)($aiResult['reason'] ?? ''));
+        $mode = (string)($aiResult['mode'] ?? '');
+
+        if ($mode === 'error') {
+            if (
+                stripos($raw, 'No AI API keys') !== false
+                || stripos($raw, 'AI API error') !== false
+                || stripos($raw, 'manual moderation') !== false
+            ) {
+                return __('create_listing.moderation_manual_review');
+            }
+        }
+
+        if ($raw !== '') {
+            return $raw;
+        }
+
+        if (empty($aiResult['passed'])) {
+            return __('create_listing.moderation_pending_generic');
+        }
+
+        $confidence = (float)($aiResult['confidence'] ?? 0);
+        if ($confidence < AI_MODERATION_MIN_CONFIDENCE) {
+            return __('create_listing.moderation_low_confidence');
+        }
+
+        return __('create_listing.moderation_pending_generic');
+    }
+}
+
+if (!function_exists('listingModerationSaveNote')) {
+    function listingModerationSaveNote(PDO $pdo, int $productId, string $note): void {
+        if ($productId <= 0) {
+            return;
+        }
+
+        $note = trim($note);
+        if ($note === '') {
+            return;
+        }
+
+        try {
+            $stmt = $pdo->prepare('UPDATE products SET moderation_note = :note WHERE id = :id');
+            $stmt->execute([':note' => $note, ':id' => $productId]);
+        } catch (Throwable $e) {
+            error_log('[listing_moderation] saveNote failed: ' . $e->getMessage());
+        }
+    }
+}
+
+if (!function_exists('notifySellerPendingListing')) {
+    function notifySellerPendingListing(PDO $pdo, int $userId, int $productId, string $title, string $sellerNote): void {
+        if ($userId <= 0 || $productId <= 0 || trim($title) === '') {
+            return;
+        }
+
+        $title = trim($title);
+        $sellerNote = trim($sellerNote);
+        $notifTitle = 'Listing under review';
+        $notifBody = __('create_listing.moderation_notif_body', ['title' => $title]);
+        if ($sellerNote !== '') {
+            $notifBody .= ' ' . __('create_listing.moderation_notif_reason', ['reason' => $sellerNote]);
+        }
+
+        try {
+            createNotification($pdo, $userId, 'system', $notifTitle, $notifBody, $productId);
+        } catch (Throwable $e) {
+            error_log('[listing_moderation] notifySellerPendingListing failed: ' . $e->getMessage());
+        }
     }
 }

@@ -936,6 +936,19 @@ body.dark-mode .scc-badge {
 </style>
 
 <div class="container pt-24 mb-20 relative">
+    <?php if ($isOwner && ($product['status'] ?? '') === 'pending_approval'): ?>
+        <?php $moderationNote = trim((string)($product['moderation_note'] ?? '')); ?>
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #3b82f6; color: #1e3a8a; padding: 1.25rem 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+            <h4 class="mb-1 font-bold" style="font-size: 1.05rem; color: #1e40af;"><?= __('product.moderation_pending_banner') ?></h4>
+            <p class="mb-0" style="line-height: 1.55; font-size: 0.95rem;">
+                <?php if ($moderationNote !== ''): ?>
+                    <?= __('product.moderation_pending_note', ['reason' => sanitize($moderationNote)]) ?>
+                <?php else: ?>
+                    <?= __('create_listing.moderation_pending_generic') ?>
+                <?php endif; ?>
+            </p>
+        </div>
+    <?php endif; ?>
     <?php if ($isOwner): ?>
         <div class="seller-management-banner" style="background: var(--primary); color: white; padding: 1.25rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1);">
             <div class="flex items-center gap-4">

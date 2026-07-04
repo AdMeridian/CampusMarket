@@ -102,6 +102,9 @@ if (!function_exists('sendVerificationEmail')) {
     <p style="margin:24px 0 0 0; color:#94a3b8; font-size:12px; line-height:1.5;">
       This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
     </p>
+    <p style="margin:20px 0 0 0; color:#94a3b8; font-size:12px; line-height:1.5; text-align:center;">
+      CampusMarket · <a href="https://campusmarketplace.site" style="color:#94a3b8;">campusmarketplace.site</a>
+    </p>
   </div>
 </body>
 </html>
@@ -134,6 +137,7 @@ if (!function_exists('sendMarketplaceAlertEmail')) {
       <a href="{$safeUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 22px;text-decoration:none;border-radius:8px;font-weight:600;">{$safeCta}</a>
     </p>
     <p style="margin:12px 0 0 0;color:#94a3b8;font-size:12px;">You are receiving this because activity happened on your {$appName} account.</p>
+    <p style="margin:12px 0 0 0;color:#94a3b8;font-size:12px;text-align:center;">{$appName} · <a href="https://campusmarketplace.site" style="color:#94a3b8;">campusmarketplace.site</a></p>
   </div>
 </body>
 </html>

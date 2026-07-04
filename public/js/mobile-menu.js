@@ -1,6 +1,6 @@
 /**
  * mobile-menu.js
- * Handles the mobile menu toggle and theme toggle on mobile.
+ * Handles the mobile menu toggle.
  */
 function initMobileMenu() {
     if (document.body.dataset.mobileMenuInitialized === 'true') return;
@@ -9,7 +9,6 @@ function initMobileMenu() {
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const navLinks = document.getElementById('nav-links');
     const mobileMenuCloseBtn = document.getElementById('mobile-menu-close');
-    const themeToggleMobile = document.getElementById('theme-toggle-mobile');
     const mobileMq = window.matchMedia('(max-width: 1023px)');
 
     function isMobileNav() {
@@ -93,15 +92,6 @@ function initMobileMenu() {
                 closeMobileNav();
             } else {
                 openMobileNav();
-            }
-        });
-    }
-
-    if (themeToggleMobile) {
-        themeToggleMobile.addEventListener('click', function() {
-            const themeToggle = document.getElementById('theme-toggle');
-            if (themeToggle) {
-                themeToggle.click();
             }
         });
     }

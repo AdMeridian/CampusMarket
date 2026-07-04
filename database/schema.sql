@@ -56,6 +56,7 @@ CREATE TABLE products (
     discount_set_at DATETIME   NULL,
     `condition`   ENUM('new', 'like_new', 'used', 'poor') NOT NULL DEFAULT 'used',
     status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
+    moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,

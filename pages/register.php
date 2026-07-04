@@ -210,7 +210,7 @@ require_once '../includes/header.php';
     <div class="flash flash-error"><?php echo sanitize($errors['form']); ?></div>
   <?php endif; ?>
 
-  <form method="post" novalidate>
+  <form method="post" novalidate class="js-form-loading" data-loading-text="<?= htmlspecialchars(__('auth.register_submitting'), ENT_QUOTES, 'UTF-8') ?>">
     <?php echo csrfTokenField(); ?>
     <div class="form-row mb-5">
       <label for="username" class="form-label"><?= __('auth.register_username_label') ?></label>

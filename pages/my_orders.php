@@ -112,6 +112,7 @@ $stmtBuying = $pdo->prepare("
         o.*,
         p.title AS product_title,
         p.price,
+        p.price_currency,
         p.user_id AS seller_id,
         u.username AS seller_name,
         i.image_path
@@ -130,6 +131,7 @@ $stmtSelling = $pdo->prepare("
         o.*,
         p.title AS product_title,
         p.price,
+        p.price_currency,
         u.username AS buyer_name,
         i.image_path
     FROM orders o
@@ -244,7 +246,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($order['product_title']); ?></h4>
                                     <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
                                 </div>
-                                <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price']); ?></p>
+                                <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></p>
                                 <p class="text-muted small mb-0 flex items-center gap-2">
                                     <span style="background: rgba(0,0,0,0.03); padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid rgba(0,0,0,0.05);">@<?php echo sanitize($order['seller_name']); ?></span>
                                     <span>&bull;</span>
@@ -304,7 +306,7 @@ require_once __DIR__ . '/../includes/header.php';
                                         <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($order['product_title']); ?></h4>
                                         <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
                                     </div>
-                                    <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price']); ?> <span class="text-muted font-normal" style="font-size: 0.85rem;">payment</span></p>
+                                    <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?> <span class="text-muted font-normal" style="font-size: 0.85rem;">payment</span></p>
                                     <div style="background: rgba(255,255,255,0.6); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light); font-size: 0.85rem;">
                                         <div class="mb-1 text-muted">Buyer: <span class="font-medium text-main">@<?php echo sanitize($order['buyer_name']); ?></span></div>
                                         <div class="text-muted">Meet at: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></div>

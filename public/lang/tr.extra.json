@@ -386,6 +386,8 @@
     "auth.register_confirm_label": "Şifreyi onayla",
     "auth.register_confirm_placeholder": "Şifrenizi tekrar girin",
     "auth.register_submit": "Hesap oluştur",
+    "auth.register_submitting": "Hesap oluşturuluyor…",
+    "auth.login_submitting": "Giriş yapılıyor…",
     "auth.register_already_have": "Zaten hesabınız var mı?",
     "auth.register_log_in": "Giriş yap",
     "auth.register_error_username_required": "Kullanıcı adı gereklidir.",

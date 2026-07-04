@@ -769,7 +769,9 @@ body.dark-mode .btn-white-solid:hover {
                 <div class="info-divider"></div>
                 <div class="info-item">
                     <span class="info-label">Phone</span>
-                    <span class="info-value"><?php echo sanitize($user['phone']); ?></span>
+                    <span class="info-value">
+                        <?php echo ($isSelf || isAdmin()) ? sanitize($user['phone']) : '••• ••• ••••'; ?>
+                    </span>
                 </div>
                 <?php endif; ?>
 
@@ -868,8 +870,14 @@ body.dark-mode .btn-white-solid:hover {
                                 </div>
                                 <?php if ($isSelf && $isPendingApproval): ?>
                                     <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
-                                        Pending approval
+                                        <?= __('profile.pending_approval_badge') ?>
                                     </div>
+                                    <?php $pendingNote = trim((string)($prod['moderation_note'] ?? '')); ?>
+                                    <?php if ($pendingNote !== ''): ?>
+                                        <p class="mb-2" style="font-size: 0.78rem; color: #1d4ed8; line-height: 1.45;">
+                                            <?= sanitize($pendingNote) ?>
+                                        </p>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                                 <h3 class="listing-card-title">
                                     <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit;">

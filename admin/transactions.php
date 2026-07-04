@@ -28,6 +28,7 @@ $sql = "
         dc.product_id,
         p.title AS product_title,
         p.price AS product_price,
+        p.price_currency AS product_price_currency,
         buyer.username AS buyer_username,
         seller.username AS seller_username,
         dc.buyer_confirmed_at,
@@ -196,7 +197,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <span style="background: var(--bg-main); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-light); font-size: 0.85rem;">@<?php echo sanitize($deal['buyer_username']); ?></span>
                         </td>
-                        <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #059669;"><?php echo formatPrice($deal['product_price']); ?></td>
+                        <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #059669;"><?php echo formatPrice($deal['product_price'], productCurrencyCode(['price_currency' => $deal['product_price_currency'] ?? DEFAULT_PRODUCT_CURRENCY])); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <span class="badge-completed shadow-sm">Completed</span>
                         </td>

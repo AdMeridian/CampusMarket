@@ -19,7 +19,7 @@ $navCategories = getNavCategories($pdo);
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="<?php echo htmlspecialchars(parse_url(supabaseUrl(), PHP_URL_SCHEME) . '://' . parse_url(supabaseUrl(), PHP_URL_HOST), ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="theme-color" content="<?php echo htmlspecialchars(APP_THEME_COLOR, ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="application-name" content="CampusMarket">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -41,7 +41,12 @@ $navCategories = getNavCategories($pdo);
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/style.css?v=<?php echo $cssVer; ?>">
     <style id="nav-critical-css">
       @media (max-width: 1023px) {
-        .nav-desktop-dropdown { display: none !important; }
+        .nav-desktop-dropdown,
+        .navbar-desktop-actions,
+        #nav-links .theme-toggle,
+        #nav-links .nav-drawer-theme-toggle {
+          display: none !important;
+        }
         .mobile-account-nav { display: block !important; width: 100% !important; }
         #nav-links { gap: 0 !important; }
         #nav-links .mobile-nav-section {
@@ -80,11 +85,11 @@ $navCategories = getNavCategories($pdo);
           background: transparent !important;
         }
         #nav-links .mobile-nav-link.is-active {
-          color: var(--primary, #4f46e5) !important;
+          color: var(--primary, #1a7f64) !important;
           background: var(--primary-light, #eef2ff) !important;
         }
         #nav-links .mobile-nav-link--accent {
-          color: var(--primary, #4f46e5) !important;
+          color: var(--primary, #1a7f64) !important;
           font-weight: 600 !important;
         }
         #nav-links .mobile-nav-link--admin {
@@ -105,7 +110,7 @@ $navCategories = getNavCategories($pdo);
           width: calc(100% - 2rem) !important;
           border-radius: 0.5rem !important;
           border: none !important;
-          background: var(--primary, #4f46e5) !important;
+          background: var(--primary, #1a7f64) !important;
           color: #fff !important;
           font-weight: 600 !important;
         }
@@ -115,6 +120,55 @@ $navCategories = getNavCategories($pdo);
       }
       @media (min-width: 1024px) {
         .mobile-account-nav { display: none !important; }
+        .navbar .container {
+          flex-wrap: nowrap !important;
+          align-items: center !important;
+        }
+        .navbar .search-bar.navbar-search {
+          flex: 0 0 220px !important;
+          width: 220px !important;
+          max-width: 220px !important;
+          min-width: 180px !important;
+          margin: 0 0.75rem !important;
+        }
+        #nav-links {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: nowrap !important;
+          align-items: center !important;
+          gap: 0.75rem !important;
+          position: static !important;
+          width: auto !important;
+          height: auto !important;
+          padding: 0 !important;
+          background: transparent !important;
+          transform: none !important;
+          visibility: visible !important;
+          pointer-events: auto !important;
+          overflow: visible !important;
+          flex-shrink: 0 !important;
+        }
+        .navbar-desktop-actions {
+          display: flex !important;
+          align-items: center !important;
+          gap: 0.5rem !important;
+          flex-shrink: 0 !important;
+        }
+        #nav-links .mobile-nav-link {
+          display: inline-flex !important;
+          width: auto !important;
+          min-height: 0 !important;
+          padding: 0.5rem 0.75rem !important;
+          border: none !important;
+          white-space: nowrap !important;
+        }
+        #nav-links .mobile-nav-link--cta {
+          padding: 0.6rem 1.25rem !important;
+          width: auto !important;
+          margin: 0 !important;
+        }
+        .nav-notifications-label { display: none !important; }
+        .nav-notifications-icon { display: block !important; width: 18px !important; height: 18px !important; }
       }
     </style>
     
@@ -248,7 +302,7 @@ $navCategories = getNavCategories($pdo);
         </div>
 
         <!-- Shared Search Bar (Desktop) -->
-        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar group lg-flex" style="flex: 1; max-width: 450px; margin: 0 2rem;">
+        <form action="<?php echo rtrim(BASE_URL, '/'); ?>/pages/search.php" method="GET" class="search-bar navbar-search lg-flex">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -259,7 +313,6 @@ $navCategories = getNavCategories($pdo);
         </form>
 
         <!-- Navigation -->
-        <div class="navbar-nav-cluster">
         <div class="nav-links" id="nav-links">
             <!-- Mobile menu back/close button (only visible inside the mobile dropdown) -->
             <button id="mobile-menu-close" class="mobile-menu-close-btn" aria-label="Close menu">
@@ -282,8 +335,9 @@ $navCategories = getNavCategories($pdo);
                         <span><?= __('nav.inbox') ?></span>
                         <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link" title="<?= __('nav.notifications') ?>">
-                        <span><?= __('nav.notifications') ?></span>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link nav-notifications-link" title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
+                        <svg class="nav-notifications-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <span class="nav-notifications-label"><?= __('nav.notifications') ?></span>
                         <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/logout.php" class="mobile-nav-link mobile-nav-link--danger"><?= __('nav.logout') ?></a>
@@ -292,8 +346,9 @@ $navCategories = getNavCategories($pdo);
                         <span><?= __('nav.inbox') ?></span>
                         <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link" title="<?= __('nav.notifications') ?>">
-                        <span><?= __('nav.notifications') ?></span>
+                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link nav-notifications-link" title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
+                        <svg class="nav-notifications-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <span class="nav-notifications-label"><?= __('nav.notifications') ?></span>
                         <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
                     </a>
                     <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="mobile-nav-link mobile-nav-link--accent"><?= __('nav.sell_item') ?></a>
@@ -311,42 +366,41 @@ $navCategories = getNavCategories($pdo);
                 <a href="<?php echo BASE_URL; ?>pages/login.php" class="mobile-nav-link"><?= __('nav.login') ?></a>
                 <a href="<?php echo BASE_URL; ?>pages/register.php" class="mobile-nav-link mobile-nav-link--cta btn btn-primary btn-sm"><?= __('nav.signup') ?></a>
             <?php endif; ?>
-        </div>
 
-        <div class="navbar-desktop-actions lg-flex">
+            <div class="navbar-desktop-actions lg-flex">
             <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
                 <svg class="toggle-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41z"/></svg>
             </button>
-                    <?php if (isLoggedIn() && !isAdmin()): ?>
-                    <div class="user-dropdown nav-desktop-dropdown">
-                        <button type="button" class="user-dropdown-btn" aria-expanded="false" aria-haspopup="true">
-                            <span><?php echo $navUsername; ?></span>
-                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                        </button>
+            <?php if (isLoggedIn() && !isAdmin()): ?>
+            <div class="user-dropdown nav-desktop-dropdown">
+                <button type="button" class="user-dropdown-btn" aria-expanded="false" aria-haspopup="true">
+                    <span><?php echo $navUsername; ?></span>
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                </button>
 
-                        <div class="user-dropdown-content">
-                            <div class="user-dropdown-group">
-                                <p class="user-dropdown-group-label"><?= __('nav.menu_shopping') ?></p>
-                                <a href="<?php echo BASE_URL; ?>pages/my_orders.php" class="user-dropdown-item<?php echo $navItemActive('my_orders.php'); ?>"><?= __('nav.my_orders') ?></a>
-                                <a href="<?php echo BASE_URL; ?>pages/my_reports.php" class="user-dropdown-item<?php echo $navItemActive('my_reports.php'); ?>"><?= __('nav.my_reports') ?></a>
-                                <a href="<?php echo BASE_URL; ?>pages/wishlist.php" class="user-dropdown-item<?php echo $navItemActive('wishlist.php'); ?>"><?= __('nav.wishlist') ?></a>
-                                <a href="<?php echo BASE_URL; ?>pages/promotions.php" class="user-dropdown-item<?php echo $navItemActive('promotions.php'); ?>"><?= __('nav.promotions') ?></a>
-                            </div>
-
-                            <div class="user-dropdown-group">
-                                <p class="user-dropdown-group-label"><?= __('nav.menu_account') ?></p>
-                                <a href="<?php echo BASE_URL; ?>pages/profile.php" class="user-dropdown-item<?php echo $navItemActive('profile.php'); ?>"><?= __('nav.my_profile') ?></a>
-                                <a href="<?php echo BASE_URL; ?>pages/edit_profile.php#preferred_language" class="user-dropdown-item<?php echo $navItemActive('edit_profile.php'); ?>"><?= __('nav.language_settings', ['lang' => SUPPORTED_LANGUAGES[i18nGetLocale()] ?? strtoupper(i18nGetLocale())]) ?></a>
-                            </div>
-
-                            <div class="user-dropdown-footer">
-                                <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" class="user-dropdown-item user-dropdown-item--support"><?= __('nav.contact_support') ?></a>
-                                <a href="<?php echo BASE_URL; ?>pages/logout.php" class="user-dropdown-item user-dropdown-item--logout"><?= __('nav.logout') ?></a>
-                            </div>
-                        </div>
+                <div class="user-dropdown-content">
+                    <div class="user-dropdown-group">
+                        <p class="user-dropdown-group-label"><?= __('nav.menu_shopping') ?></p>
+                        <a href="<?php echo BASE_URL; ?>pages/my_orders.php" class="user-dropdown-item<?php echo $navItemActive('my_orders.php'); ?>"><?= __('nav.my_orders') ?></a>
+                        <a href="<?php echo BASE_URL; ?>pages/my_reports.php" class="user-dropdown-item<?php echo $navItemActive('my_reports.php'); ?>"><?= __('nav.my_reports') ?></a>
+                        <a href="<?php echo BASE_URL; ?>pages/wishlist.php" class="user-dropdown-item<?php echo $navItemActive('wishlist.php'); ?>"><?= __('nav.wishlist') ?></a>
+                        <a href="<?php echo BASE_URL; ?>pages/promotions.php" class="user-dropdown-item<?php echo $navItemActive('promotions.php'); ?>"><?= __('nav.promotions') ?></a>
                     </div>
-                    <?php endif; ?>
-        </div>
+
+                    <div class="user-dropdown-group">
+                        <p class="user-dropdown-group-label"><?= __('nav.menu_account') ?></p>
+                        <a href="<?php echo BASE_URL; ?>pages/profile.php" class="user-dropdown-item<?php echo $navItemActive('profile.php'); ?>"><?= __('nav.my_profile') ?></a>
+                        <a href="<?php echo BASE_URL; ?>pages/edit_profile.php#preferred_language" class="user-dropdown-item<?php echo $navItemActive('edit_profile.php'); ?>"><?= __('nav.language_settings', ['lang' => SUPPORTED_LANGUAGES[i18nGetLocale()] ?? strtoupper(i18nGetLocale())]) ?></a>
+                    </div>
+
+                    <div class="user-dropdown-footer">
+                        <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" class="user-dropdown-item user-dropdown-item--support"><?= __('nav.contact_support') ?></a>
+                        <a href="<?php echo BASE_URL; ?>pages/logout.php" class="user-dropdown-item user-dropdown-item--logout"><?= __('nav.logout') ?></a>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            </div>
         </div>
     </div>
 </nav>
@@ -373,6 +427,7 @@ $navCategories = getNavCategories($pdo);
     $i18nJsVer = file_exists($i18nJsPath) ? filemtime($i18nJsPath) : '1';
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/theme.js?v=<?php echo $themeJsVer; ?>"></script>
+<script src="<?php echo BASE_URL; ?>public/js/form-loading.js?v=<?php echo file_exists(__DIR__ . '/../public/js/form-loading.js') ? filemtime(__DIR__ . '/../public/js/form-loading.js') : '1'; ?>"></script>
 <script src="<?php echo BASE_URL; ?>public/js/mobile-menu.js?v=<?php echo $menuJsVer; ?>"></script>
 <script src="<?php echo BASE_URL; ?>public/js/i18n-client.js?v=<?php echo $i18nJsVer; ?>"></script>
 <?php if (isLoggedIn()): ?>

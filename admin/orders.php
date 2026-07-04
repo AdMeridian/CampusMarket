@@ -10,6 +10,7 @@ $stmt = $pdo->query("
     SELECT o.*,
            b.username as buyer_name,
            p.title as product_title,
+           p.price_currency as product_price_currency,
            s.username as seller_name,
            p.id as product_id
     FROM orders o
@@ -59,7 +60,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <span style="background: var(--bg-main); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-light); font-size: 0.85rem;">@<?php echo sanitize($order['seller_name']); ?></span>
                         </td>
-                        <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #d97706;"><?php echo formatPrice($order['amount']); ?></td>
+                        <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #d97706;"><?php echo formatPrice($order['amount'], productCurrencyCode(['price_currency' => $order['product_price_currency'] ?? DEFAULT_PRODUCT_CURRENCY])); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm"><?php echo ucfirst($order['status']); ?></span>
                         </td>

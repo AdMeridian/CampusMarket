@@ -152,7 +152,7 @@ if (($_GET['source'] ?? '') === 'supabase') {
             <button class="btn-close" onclick="window.close()">Close this tab</button>
             <div class="divider">— or —</div>
             <a href="<?php echo BASE_URL; ?>pages/login.php?redirect=/pages/profile.php" class="login-link">Log in here instead</a>
-            <p class="brand">CampusMarket · NEU</p>
+            <p class="brand">CampusMarket</p>
         </div>
     </body>
     </html>

@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $loginEmail = $identity;
         if (!filter_var($loginEmail, FILTER_VALIDATE_EMAIL)) {
-            $lookup = $pdo->prepare('SELECT email FROM users WHERE username = :u LIMIT 1');
+            $lookup = $pdo->prepare('SELECT email FROM users WHERE LOWER(username) = LOWER(:u) LIMIT 1');
             $lookup->execute([':u' => $identity]);
             $foundEmail = $lookup->fetchColumn();
             if (is_string($foundEmail) && $foundEmail !== '') {
@@ -214,7 +214,7 @@ require_once '../includes/header.php';
             </form>
         <?php endif; ?>
 
-        <form method="post" novalidate>
+        <form method="post" novalidate class="js-form-loading" data-loading-text="<?= htmlspecialchars(__('auth.login_submitting'), ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="action" value="login">
             <?php echo csrfTokenField(); ?>
             <div class="form-row mb-6">

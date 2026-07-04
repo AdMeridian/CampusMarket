@@ -386,6 +386,8 @@
     "auth.register_confirm_label": "Confirm password",
     "auth.register_confirm_placeholder": "Re-enter your password",
     "auth.register_submit": "Create account",
+    "auth.register_submitting": "Creating account…",
+    "auth.login_submitting": "Signing in…",
     "auth.register_already_have": "Already have an account?",
     "auth.register_log_in": "Log in",
     "auth.register_error_username_required": "Username is required.",

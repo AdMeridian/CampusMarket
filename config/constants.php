@@ -86,11 +86,12 @@ define('ITEMS_PER_PAGE',   12);
 define('APP_NAME',         'CampusMarket');
 define('APP_TAGLINE',      'Buy & Sell Within Your Campus');
 define('APP_CURRENCY',     '₺');
+define('APP_THEME_COLOR',  '#1a7f64');
 
-/** Supported listing currencies: code => [symbol, i18n label key suffix] */
+/** Supported listing currencies: code => symbol + display position (before|after amount) */
 define('PRODUCT_CURRENCIES', [
-    'TRY' => ['symbol' => '₺'],
-    'USD' => ['symbol' => '$'],
+    'TRY' => ['symbol' => '₺', 'position' => 'after'],
+    'USD' => ['symbol' => '$', 'position' => 'before'],
 ]);
 define('DEFAULT_PRODUCT_CURRENCY', 'TRY');
 

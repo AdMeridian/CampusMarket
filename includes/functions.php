@@ -123,7 +123,16 @@ function formatPrice($amount, ?string $currencyCode = null): string {
     $formatted = abs($value - round($value)) < 0.001
         ? number_format($value, 0)
         : number_format($value, 2);
-    return $formatted . ' ' . currencySymbol($currencyCode);
+    $code = strtoupper(trim((string)($currencyCode ?? DEFAULT_PRODUCT_CURRENCY)));
+    if (!array_key_exists($code, PRODUCT_CURRENCIES)) {
+        $code = DEFAULT_PRODUCT_CURRENCY;
+    }
+    $symbol = PRODUCT_CURRENCIES[$code]['symbol'];
+    $position = PRODUCT_CURRENCIES[$code]['position'] ?? 'after';
+    if ($position === 'before') {
+        return $symbol . $formatted;
+    }
+    return $formatted . ' ' . $symbol;
 }
 
 /**
@@ -450,6 +459,9 @@ function notificationActivityLabel(string $type, string $title): string {
     if ($title === 'Listing pending approval') {
         return 'Listing Approval';
     }
+    if ($title === 'Listing under review') {
+        return 'Listing Update';
+    }
     if ($title === 'Listing Approved') {
         return 'Listing Update';
     }
@@ -516,6 +528,9 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
 
     if ($title === 'Listing pending approval' && notificationUserIsAdmin($pdo, $currentUserId)) {
         return $base . 'admin/listings.php?status=pending_approval';
+    }
+    if ($title === 'Listing under review' && $refId > 0) {
+        return $base . 'pages/product.php?id=' . $refId;
     }
     if ($title === 'Listing Approved' && $refId > 0) {
         return $base . 'pages/product.php?id=' . $refId;

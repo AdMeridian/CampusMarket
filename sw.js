@@ -1,4 +1,4 @@
-const CACHE_VERSION = "campusmarket-v14";
+const CACHE_VERSION = "campusmarket-v18";
 const OFFLINE_URL = "public/offline.html";
 
 const CORE_ASSETS = [

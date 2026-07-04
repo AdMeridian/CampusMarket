@@ -34,6 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($prod) {
                 $stmtUpdate = $pdo->prepare("UPDATE products SET status = 'active' WHERE id = ?");
                 $stmtUpdate->execute([$id]);
+                try {
+                    $pdo->prepare("UPDATE products SET moderation_note = NULL WHERE id = ?")->execute([$id]);
+                } catch (PDOException $e) {
+                    // moderation_note column may not exist until migration is applied
+                }
                 // Notify the seller
                 createNotification($pdo, (int)$prod['user_id'], 'system', 'Listing Approved', "Your listing for '" . $prod['title'] . "' has been approved and is now active.", $id);
                 setFlash('success', __('admin.flash_listing_approved'));
@@ -193,10 +198,15 @@ require_once __DIR__ . '/../includes/header.php';
                                 </div>
                             </div>
                             <div style="font-size: 0.78rem; color: var(--text-muted);">ID #<?php echo $item['id']; ?></div>
+                            <?php if ($item['status'] === 'pending_approval' && !empty($item['moderation_note'])): ?>
+                                <div style="font-size: 0.78rem; color: #1d4ed8; margin-top: 0.35rem; line-height: 1.45; max-width: 28rem;">
+                                    <?php echo sanitize($item['moderation_note']); ?>
+                                </div>
+                            <?php endif; ?>
                         </td>
                         <td class="p-4 font-medium" style="border-bottom: 1px solid var(--border-light); color: var(--primary);">@<?php echo sanitize($item['seller_name']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);"><span class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); border-radius: var(--radius-lg);"><?php echo sanitize($item['category_name']); ?></span></td>
-                        <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem;"><?php echo formatPrice($item['price']); ?></td>
+                        <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem;"><?php echo formatPrice($item['price'], productCurrencyCode($item)); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <?php $badge = conditionBadge($item['condition']); ?>
                             <span class="badge <?php echo $badge['class']; ?> shadow-sm"><?php echo $badge['label']; ?></span>
