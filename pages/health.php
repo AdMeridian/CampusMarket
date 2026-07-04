@@ -4,19 +4,24 @@
  */
 header('Content-Type: text/plain; charset=utf-8');
 
+define('APP_SKIP_DB_CONNECT', true);
+require_once __DIR__ . '/../config/db.php';
+
 $lines = [];
 $lines[] = 'CampusMarket health check';
 $lines[] = 'PHP: ' . PHP_VERSION;
-$lines[] = 'VERCEL_ENV: ' . (getenv('VERCEL_ENV') ?: '(unset)');
-$lines[] = 'HTTP_HOST: ' . ($_SERVER['HTTP_HOST'] ?? '(unset)');
+$lines[] = 'VERCEL_ENV: ' . (appEnv('VERCEL_ENV') ?: '(unset)');
 
 try {
     require_once __DIR__ . '/../config/constants.php';
     $lines[] = 'BASE_URL: ' . BASE_URL;
 
-    require_once ROOT_PATH . 'config/db.php';
-    $lines[] = 'DB: connected';
+    foreach (databaseEnvDiagnostics() as $key => $value) {
+        $lines[] = $key . ': ' . $value;
+    }
 
+    $pdo = connectDatabase();
+    $lines[] = 'DB: connected';
     $lines[] = 'DB ping: ' . (string) $pdo->query('SELECT 1')->fetchColumn();
 
     require_once ROOT_PATH . 'includes/functions.php';
