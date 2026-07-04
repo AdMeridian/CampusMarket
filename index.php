@@ -23,17 +23,15 @@ $displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HO
     </div>
     <div class="hero-overlay"></div>
     
-    <div class="container text-center">
-        <h1 style="font-size: 4rem; font-weight: 700; margin-bottom: 1.5rem; color: white;"><?= __('home.hero_title') ?></h1>
-        <p style="font-size: 1.5rem; max-width: 700px; margin: 0 auto 3rem; font-weight: 400; color: white; text-align: center;">
-            <?= __('home.hero_desc') ?>
-        </p>
-        <div class="flex flex-col sm-flex-row justify-center items-center gap-6">
-            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn" style="background: white; color: var(--primary); padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;"><?= __('home.start_browsing') ?></a>
+    <div class="container text-center hero-content">
+        <h1 class="hero-title"><?= __('home.hero_title') ?></h1>
+        <p class="hero-subtitle"><?= __('home.hero_desc') ?></p>
+        <div class="hero-actions">
+            <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/browse.php" class="btn hero-cta hero-cta--primary"><?= __('home.start_browsing') ?></a>
             <?php if (isLoggedIn()): ?>
-                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;"><?= __('home.sell_an_item') ?></a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/create_listing.php" class="btn hero-cta hero-cta--secondary"><?= __('home.sell_an_item') ?></a>
             <?php else: ?>
-                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/register.php" class="btn btn-secondary" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 1rem 2.5rem; font-size: 1.1rem; font-weight: 600; border-radius: var(--radius-md); width: fit-content;"><?= __('home.join_to_sell') ?></a>
+                <a href="<?php echo rtrim(BASE_URL, '/'); ?>/pages/register.php" class="btn hero-cta hero-cta--secondary"><?= __('home.join_to_sell') ?></a>
             <?php endif; ?>
         </div>
     </div>
@@ -57,10 +55,10 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Category Quick Access -->
-<section class="mt-12">
+<section class="home-section mt-12">
     <div class="container">
-        <div class="flex justify-between items-end mb-8">
-            <h2 class="mb-0"><?= __('home.shop_by_category') ?></h2>
+        <div class="home-section__header">
+            <h2 class="home-section__title mb-0"><?= __('home.shop_by_category') ?></h2>
             <a href="pages/categories.php" class="text-muted" style="font-weight: 500;"><?= __('home.view_all') ?></a>
         </div>
         <div class="scroll-row">
@@ -85,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="color: var(--text-muted); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
                         <?php echo $cat['icon']; ?>
                     </div>
-                    <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;"><?php echo translateCategory($cat['name']); ?></strong>
+                    <strong class="home-category-card__name"><?php echo translateCategory($cat['name']); ?></strong>
                     <span class="text-muted small"><?= __('home.items_available', ['count' => $count]) ?></span>
                 </a>
             <?php endforeach; ?>
@@ -102,11 +100,11 @@ document.addEventListener('DOMContentLoaded', function() {
 $featuredProducts = getFeaturedProducts($pdo, 6);
 if (!empty($featuredProducts)): 
 ?>
-<section class="mt-16 py-12" style="background: rgba(99, 102, 241, 0.03); border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);">
+<section class="home-section home-section--featured mt-12">
     <div class="container">
-        <div class="flex justify-between items-center mb-8">
+        <div class="home-section__header home-section__header--center">
             <div>
-                <h2 class="mb-1" style="display: flex; align-items: center; gap: 0.75rem;">
+                <h2 class="home-section__title home-section__title--with-icon mb-1">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="color: var(--primary)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                     <?= __('home.featured_spotlight') ?>
                 </h2>
@@ -125,10 +123,10 @@ if (!empty($featuredProducts)):
 <?php endif; ?>
 
 <!-- Recent Products -->
-<section class="mt-16 mb-16">
+<section class="home-section mt-12 mb-12">
     <div class="container">
-        <div class="flex justify-between items-end mb-8">
-            <h2 class="mb-0"><?= __('home.recent_listings') ?></h2>
+        <div class="home-section__header">
+            <h2 class="home-section__title mb-0"><?= __('home.recent_listings') ?></h2>
             <a href="pages/browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
 
@@ -156,19 +154,19 @@ if (!empty($featuredProducts)):
 </section>
 
 <!-- Category Highlights -->
-<section class="mt-20">
+<section class="home-section mt-12">
     <div class="container">
         <?php foreach ($displayCats as $cat): ?>
-            <div class="mb-16">
-                <div class="flex justify-between items-end mb-6" style="border-bottom: 2px solid #f1f5f9; padding-bottom: 1rem;">
-                    <h2 class="mb-0"><?php echo htmlspecialchars(translateCategory($cat['name'])); ?></h2>
-                    <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="text-primary font-bold"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
+            <div class="home-category-block mb-12">
+                <div class="home-section__header home-section__header--bordered">
+                    <h2 class="home-section__title mb-0"><?php echo htmlspecialchars(translateCategory($cat['name'])); ?></h2>
                 </div>
                 <div class="scroll-row">
                     <?php foreach ($cat['products'] as $prod): ?>
                         <?php include 'includes/product_card_template.php'; ?>
                     <?php endforeach; ?>
                 </div>
+                <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="home-section__see-all text-primary"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
             </div>
         <?php endforeach; ?>
     </div>

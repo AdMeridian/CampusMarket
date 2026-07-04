@@ -80,7 +80,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
         <!-- Product Summary -->
         <div>
-            <h1 class="mb-8 font-bold text-main" style="font-size: 2.5rem; letter-spacing: -0.5px;">Review Request</h1>
+            <h1 class="page-hero-title mb-8 text-main">Review Request</h1>
             
             <div class="glass-panel p-6 flex flex-col sm:flex-row gap-6 items-start shadow-md relative overflow-hidden" style="border-radius: var(--radius-xl); background: var(--bg-surface);">
                 <div style="position: absolute; top: 0; right: 0; bottom: 0; width: 6px; background: var(--primary);"></div>
@@ -98,7 +98,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                         Sold by <span class="text-main font-bold">@<?php echo sanitize($product['seller_name']); ?></span>
                     </p>
-                    <div class="text-3xl font-bold text-primary font-inter tracking-tight"><?php echo renderProductPrice($product); ?></div>
+                    <div class="product-listing-price"><?php echo renderProductPrice($product); ?></div>
                 </div>
             </div>
             

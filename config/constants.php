@@ -10,6 +10,7 @@ $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
 $protocol = $isSecure ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $envBaseUrl = getenv('BASE_URL');
+$vercelEnv = strtolower((string)(getenv('VERCEL_ENV') ?: ''));
 
 if ($envBaseUrl) {
     $base_url = rtrim($envBaseUrl, '/');
@@ -24,8 +25,14 @@ if ($envBaseUrl) {
     $isLocalHost = in_array($currentHost, ['localhost', '127.0.0.1'], true)
         || str_starts_with($currentHost, 'localhost:')
         || str_starts_with($currentHost, '127.0.0.1:');
-    if (!$isLocalHost && $envHost === $currentHost) {
+    if ($vercelEnv === 'preview') {
+        // Preview deployments always use the active host (CSP + cookies require same-origin assets).
+        $base_url = $protocol . $host . '/';
+    } elseif (!$isLocalHost && $envHost === $currentHost) {
         $base_url = $protocol . $host;
+    } elseif (!$isLocalHost && $envHost !== '' && $envHost !== $currentHost) {
+        // Alternate deployment hosts (e.g. staging subdomain) vs production BASE_URL env.
+        $base_url = $protocol . $host . '/';
     }
 } else {
     $isLocalHost = in_array(strtolower($host), ['localhost', '127.0.0.1'], true)

@@ -25,8 +25,8 @@ $catIcons = [
 
 <div class="container min-h-screen pt-12 pb-20 relative">
     <div class="mb-10 text-center lg:text-left">
-        <h1 class="font-bold text-4xl mb-3 text-main"><?= __('categories.explore_title') ?></h1>
-        <p class="text-muted text-lg max-w-2xl"><?= __('categories.explore_desc') ?></p>
+        <h1 class="page-hero-title mb-3 text-main"><?= __('categories.explore_title') ?></h1>
+        <p class="page-subtitle max-w-2xl"><?= __('categories.explore_desc') ?></p>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
@@ -52,7 +52,7 @@ $catIcons = [
                 <div class="mb-4 opacity-30 flex justify-center">
                     <svg class="w-16 h-16 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                 </div>
-                <h3 class="text-2xl font-bold text-main mb-2"><?= __('categories.no_categories') ?></h3>
+                <h3 class="empty-state-title mb-2"><?= __('categories.no_categories') ?></h3>
                 <p class="text-muted"><?= __('categories.no_categories_desc') ?></p>
             </div>
         <?php endif; ?>

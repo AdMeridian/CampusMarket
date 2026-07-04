@@ -13,8 +13,8 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="inline-flex items-center gap-2 mb-4 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
                 <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> <?= __('donate.badge') ?>
             </div>
-            <h1 class="font-bold mb-6 text-main hero-title" style="font-size: 4rem; letter-spacing: -0.03em; line-height: 1.1;"><?= __('donate.headline') ?></h1>
-            <p class="text-main mx-auto" style="font-size: 1.1rem; line-height: 1.6; font-weight: 500; opacity: 0.8; text-align: center; width: 100%;">
+            <h1 class="page-hero-title mb-6 text-main"><?= __('donate.headline') ?></h1>
+            <p class="page-subtitle mx-auto" style="text-align: center; max-width: 42rem;">
                 <?= __('donate.intro') ?>
             </p>
         </div>
@@ -102,10 +102,6 @@ if (!empty($donors)) {
 ?>
 
 <style>
-@media (max-width: 768px) {
-    .hero-title { font-size: 2.25rem !important; }
-}
-
 .amount-pill {
     background: #f8fafc;
     border: 2px solid #e2e8f0;

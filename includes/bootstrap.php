@@ -4,7 +4,23 @@
 // ============================================================
 
 require_once __DIR__ . '/../config/constants.php';
-if (defined('IS_LOCALHOST') && !IS_LOCALHOST) {
+
+$isVercelPreview = strtolower((string)(getenv('VERCEL_ENV') ?: '')) === 'preview';
+if ($isVercelPreview || (defined('IS_LOCALHOST') && IS_LOCALHOST)) {
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    register_shutdown_function(static function (): void {
+        $err = error_get_last();
+        if (!$err || !in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+            return;
+        }
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: text/plain; charset=utf-8');
+        }
+        echo "\nPreview fatal: {$err['message']} in {$err['file']}:{$err['line']}\n";
+    });
+} elseif (defined('IS_LOCALHOST') && !IS_LOCALHOST) {
     ini_set('display_errors', '0');
     ini_set('display_startup_errors', '0');
 }
@@ -61,8 +77,20 @@ if (file_exists($envFile)) {
     }
 }
 require_once ROOT_PATH . 'config/supabase.php';
-require_once ROOT_PATH . 'config/db.php';
+try {
+    require_once ROOT_PATH . 'config/db.php';
+} catch (Throwable $dbBootstrapError) {
+    if ($isVercelPreview) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "Database connection failed on preview.\n";
+        echo $dbBootstrapError->getMessage();
+        exit;
+    }
+    throw $dbBootstrapError;
+}
 require_once ROOT_PATH . 'includes/functions.php';
+require_once ROOT_PATH . 'includes/managed_listings.php';
 require_once ROOT_PATH . 'includes/seo.php';
 require_once ROOT_PATH . 'includes/mailer.php';
 require_once ROOT_PATH . 'includes/i18n.php';
@@ -158,7 +186,11 @@ if (isLoggedIn()) {
 
         if (!empty($_SESSION['supabase_access_token']) && empty($_SESSION['supabase_meta_synced'])) {
             require_once ROOT_PATH . 'includes/web_push.php';
-            syncSupabaseAppUserMetadata($pdo, $uid, $_SESSION['role'] ?? 'user');
+            try {
+                syncSupabaseAppUserMetadata($pdo, $uid, $_SESSION['role'] ?? 'user');
+            } catch (Throwable $e) {
+                error_log('[bootstrap] supabase meta sync failed: ' . $e->getMessage());
+            }
             $_SESSION['supabase_meta_synced'] = true;
         }
 
