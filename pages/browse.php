@@ -103,8 +103,8 @@ include '../includes/header.php';
         <!-- Browse Header -->
         <div class="mb-10 flex justify-between items-end gap-6">
             <div class="text-left">
-                <h1 class="font-bold text-4xl mb-2" style="color: var(--text-main);"><?= __('browse.title') ?></h1>
-                <p class="text-muted text-lg"><?= __('browse.subtitle') ?></p>
+                <h1 class="page-hero-title mb-2 text-main"><?= __('browse.title') ?></h1>
+                <p class="page-subtitle"><?= __('browse.subtitle') ?></p>
             </div>
             
             <div class="flex items-center gap-2 text-muted font-medium">
@@ -119,7 +119,7 @@ include '../includes/header.php';
             <aside class="lg-col-span-1">
                 <div id="filter-sidebar" class="glass-panel p-5 sticky-desktop" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                     <div class="flex justify-between items-center mb-8 pb-4 border-b">
-                        <h2 class="mb-0" style="font-size: 1.25rem;"><?= __('browse.filters') ?></h2>
+                        <h2 class="page-section-title mb-0"><?= __('browse.filters') ?></h2>
                         <a href="browse.php" class="text-muted small font-bold uppercase tracking-wider hover:text-primary"><?= __('browse.clear') ?></a>
                     </div>
 
@@ -330,8 +330,8 @@ include '../includes/header.php';
                         <div class="mb-4 text-muted flex justify-center">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         </div>
-                        <h3 class="font-bold text-main text-2xl mb-2"><?= __('browse.no_items_found') ?></h3>
-                        <p class="text-muted text-lg max-w-md mx-auto"><?= __('browse.no_items_desc') ?></p>
+                        <h3 class="empty-state-title mb-2"><?= __('browse.no_items_found') ?></h3>
+                        <p class="page-subtitle max-w-md mx-auto"><?= __('browse.no_items_desc') ?></p>
                         <a href="browse.php" class="btn btn-primary mt-6 shadow-sm" style="border-radius: var(--radius-md); font-weight: 600;"><?= __('browse.clear_filters_btn') ?></a>
                     </div>
                 <?php else: ?>

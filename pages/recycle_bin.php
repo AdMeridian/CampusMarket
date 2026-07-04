@@ -60,8 +60,8 @@ require_once '../includes/header.php';
     <div class="container py-12">
         <div class="flex flex-col md-flex-row justify-between items-start md-items-center mb-10 gap-4">
             <div>
-                <h1 class="mb-2" style="font-weight: 800;"><?= __('recycle.title') ?></h1>
-                <p class="text-muted" style="font-weight: 500; font-size: 1.1rem;"><?= __('recycle.subtitle') ?></p>
+                <h1 class="page-hero-title mb-2"><?= __('recycle.title') ?></h1>
+                <p class="page-subtitle"><?= __('recycle.subtitle') ?></p>
             </div>
             <a href="profile.php" class="btn btn-outline flex items-center gap-2" style="border-radius: 12px; font-weight: 700;">
                 <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" /></svg>
@@ -71,7 +71,7 @@ require_once '../includes/header.php';
 
         <?php if (empty($deletedProducts)): ?>
             <div class="glass-panel p-16 text-center" style="border-radius: 24px; border: 2px dashed var(--border-light); background: transparent;">
-                <h2 class="mb-4" style="font-weight: 800;"><?= __('recycle.empty_title') ?></h2>
+                <h2 class="empty-state-title mb-4"><?= __('recycle.empty_title') ?></h2>
                 <p class="text-muted max-w-md mx-auto mb-8" style="font-weight: 500;"><?= __('recycle.empty_desc') ?></p>
                 <a href="browse.php" class="btn btn-primary" style="padding: 0.75rem 2rem; border-radius: 12px; font-weight: 700;"><?= __('recycle.browse') ?></a>
             </div>

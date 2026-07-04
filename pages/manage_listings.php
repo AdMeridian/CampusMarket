@@ -44,8 +44,8 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container mt-24 mb-20">
     <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
         <div>
-            <h1 class="mb-2" style="font-size: 2rem; font-weight: 700;"><?= __('agent.manage_page_title') ?></h1>
-            <p class="text-muted mb-0"><?= __('agent.manage_page_subtitle') ?></p>
+            <h1 class="page-hero-title mb-2"><?= __('agent.manage_page_title') ?></h1>
+            <p class="page-subtitle mb-0"><?= __('agent.manage_page_subtitle') ?></p>
         </div>
         <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn btn-primary"><?= __('agent.create_managed_listing') ?></a>
     </div>

@@ -65,7 +65,7 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container min-h-screen pt-12 pb-20 relative">
     <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         <div class="text-center md:text-left">
-            <h1 class="font-bold text-2xl mb-1 text-main"><?= __('search.results_title') ?></h1>
+            <h1 class="page-section-title mb-1 text-main"><?= __('search.results_title') ?></h1>
             <p class="text-muted font-medium" style="font-size: 0.95rem;">
                 <?php if ($query !== ''): ?>
                     <?= __('search.found_items_for', [
@@ -100,8 +100,8 @@ require_once __DIR__ . '/../includes/header.php';
     <?php if (empty($results)): ?>
         <div class="glass-panel p-20 text-center shadow-sm relative overflow-hidden" style="border-radius: var(--radius-xl); border: 2px dashed rgba(0,0,0,0.05);">
             <div class="text-8xl mb-6 opacity-20" style="transform: rotate(-10deg);">🔦</div>
-            <h3 class="font-bold text-main text-3xl mb-3"><?= __('search.no_items_matched') ?></h3>
-            <p class="text-muted text-lg max-w-lg mx-auto mb-8"><?= __('search.no_items_desc', ['query' => '<strong class="text-primary">' . sanitize($query) . '</strong>']) ?></p>
+            <h3 class="empty-state-title mb-3"><?= __('search.no_items_matched') ?></h3>
+            <p class="page-subtitle max-w-lg mx-auto mb-8"><?= __('search.no_items_desc', ['query' => '<strong class="text-primary">' . sanitize($query) . '</strong>']) ?></p>
             <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
         </div>
     <?php else: ?>

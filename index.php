@@ -160,13 +160,13 @@ if (!empty($featuredProducts)):
             <div class="home-category-block mb-12">
                 <div class="home-section__header home-section__header--bordered">
                     <h2 class="home-section__title mb-0"><?php echo htmlspecialchars(translateCategory($cat['name'])); ?></h2>
-                    <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="text-primary font-bold"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
                 </div>
                 <div class="scroll-row">
                     <?php foreach ($cat['products'] as $prod): ?>
                         <?php include 'includes/product_card_template.php'; ?>
                     <?php endforeach; ?>
                 </div>
+                <a href="pages/browse.php?category=<?php echo $cat['id']; ?>" class="home-section__see-all text-primary"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
             </div>
         <?php endforeach; ?>
     </div>

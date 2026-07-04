@@ -153,7 +153,7 @@ include '../includes/header.php';
 
 .profile-username {
     font-family: 'Outfit', sans-serif;
-    font-size: 2rem;
+    font-size: clamp(1.5rem, 3vw + 0.5rem, 2rem);
     font-weight: 800;
     color: #fff;
     margin: 0 0 0.25rem;
@@ -463,7 +463,6 @@ include '../includes/header.php';
 
 /* Sold items section */
 .sold-section-title {
-    font-size: 1.25rem;
     font-weight: 700;
     margin: 2.5rem 0 1.25rem;
     color: var(--text-main);
@@ -789,7 +788,7 @@ body.dark-mode .btn-white-solid:hover {
         <!-- ── Listings Section ────────────────────────────────── -->
         <section id="listings">
             <div class="listings-header">
-                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
                     <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg> <?php echo $isSelf ? 'Your Listings' : 'Active Listings'; ?> (<?php echo count($userProducts); ?>)
                 </h2>
                 <?php if ($isSelf): ?>

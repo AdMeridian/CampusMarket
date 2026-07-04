@@ -1050,7 +1050,7 @@ body.dark-mode .scc-badge {
                         <button type="submit" class="btn btn-primary btn-sm"><?= __('product.update_title') ?></button>
                     </form>
                 <?php else: ?>
-                    <h1 class="product-title mb-4 text-main font-bold" style="line-height: 1.2; letter-spacing: -0.5px;"><?php echo sanitize($product['title']); ?></h1>
+                    <h1 class="product-title mb-4 text-main font-bold"><?php echo sanitize($product['title']); ?></h1>
                 <?php endif; ?>
                 <?php if (!empty($product['location_town']) && isValidLocationTown($product['location_town']) && $product['location_town'] !== 'other'): ?>
                 <div class="mb-4">
@@ -1155,7 +1155,7 @@ body.dark-mode .scc-badge {
                                     <span class="text-[0.95rem] font-bold text-muted"><?= __('product.total_reach') ?></span>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-4xl font-black text-main m-0 count-up" data-value="<?php echo $uniqueViewCount; ?>">0</h2>
+                                    <h2 class="stat-value text-main count-up" data-value="<?php echo $uniqueViewCount; ?>">0</h2>
                                 </div>
                                 <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.unique_views') ?></p>
                             </div>
@@ -1192,7 +1192,7 @@ body.dark-mode .scc-badge {
                                     <span class="text-[0.95rem] font-bold text-muted"><?= __('product.student_interest') ?></span>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-4xl font-black text-main m-0 count-up" data-value="<?php echo $wishlistCount; ?>">0</h2>
+                                    <h2 class="stat-value text-main count-up" data-value="<?php echo $wishlistCount; ?>">0</h2>
                                     <span class="text-emerald-500 font-black text-[0.8rem] flex items-center gap-1">
                                         <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                                         <?= __('product.live_label') ?>
@@ -1231,7 +1231,7 @@ body.dark-mode .scc-badge {
                                     <span class="text-[0.95rem] font-bold text-muted"><?= __('product.external_shares') ?></span>
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <h2 class="text-4xl font-black text-main m-0 count-up" data-value="<?php echo $shareCount; ?>">0</h2>
+                                    <h2 class="stat-value text-main count-up" data-value="<?php echo $shareCount; ?>">0</h2>
                                 </div>
                                 <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.shared_outside_app') ?></p>
                             </div>

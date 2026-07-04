@@ -274,7 +274,7 @@ $navCategories = getNavCategories($pdo);
     <?php endif; ?>
     
 </head>
-<body>
+<body<?php echo !empty($bodyClass) ? ' class="' . htmlspecialchars((string) $bodyClass, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
  
 <nav class="navbar">
     <div class="container flex justify-between items-center">

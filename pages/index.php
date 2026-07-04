@@ -52,8 +52,8 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="hero-wrap" style="background: var(--primary); padding: 5rem 0; margin-bottom: 4rem; color: white; position: relative; overflow: hidden; border-radius: 0 0 40px 40px;">
     <div class="container relative z-10 text-center">
         <p class="text-indigo-100 font-bold uppercase tracking-widest mb-4" style="font-size: 0.85rem;"><?= __('home.index_tagline') ?></p>
-        <h1 class="font-black mb-6" style="font-size: 3.5rem; line-height: 1.1; letter-spacing: -2px;"><?= __('home.index_headline') ?></h1>
-        <p class="text-xl text-indigo-50 mb-10 max-w-2xl mx-auto" style="opacity: 0.9;"><?= __('home.index_subline') ?></p>
+        <h1 class="hero-title mb-6"><?= __('home.index_headline') ?></h1>
+        <p class="hero-subtitle mb-10 max-w-2xl mx-auto"><?= __('home.index_subline') ?></p>
         <div class="flex justify-center gap-4">
             <a href="browse.php" class="btn btn-white-solid px-8 py-4 text-lg shadow-xl hover-scale" style="border-radius: 16px; font-weight: 800; color: #4f46e5 !important;">
                 <?= __('home.start_browsing') ?>

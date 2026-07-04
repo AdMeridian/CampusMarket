@@ -41,8 +41,8 @@ require_once __DIR__ . '/../includes/header.php';
     <div style="max-width: 760px; margin: 0 auto;">
         <div class="flex justify-between items-center mb-4" style="flex-wrap: wrap; gap: 1rem;">
             <div>
-                <h1 class="mb-1" style="font-weight: 800;"><?= __('report.my_reports_title') ?></h1>
-                <p class="text-muted mb-0"><?= __('report.my_reports_subtitle') ?></p>
+                <h1 class="page-hero-title mb-1"><?= __('report.my_reports_title') ?></h1>
+                <p class="page-subtitle mb-0"><?= __('report.my_reports_subtitle') ?></p>
             </div>
             <a href="<?= BASE_URL ?>pages/report.php" class="btn btn-primary"><?= __('report.title') ?></a>
         </div>

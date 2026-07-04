@@ -257,7 +257,7 @@ include '../includes/header.php';
 <?php endif; ?>
 <div class="container mt-24 mb-20">
     <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2rem; border-radius: var(--radius-xl); text-align: center;">
-        <h1 class="mb-2" style="font-size: 2rem;"><?= __('create_listing.success_msg') ?></h1>
+        <h1 class="page-hero-title mb-2"><?= __('create_listing.success_msg') ?></h1>
         <?php if ($createdProductStatus === 'active'): ?>
         <p class="text-muted mb-6">Your listing is live. Would you like to promote it now?</p>
         <div class="flex justify-center gap-4 flex-wrap">
@@ -297,7 +297,7 @@ include '../includes/header.php';
     <div class="w-full max-w-3xl" style="min-width: 0;">
         <div class="text-center mb-8">
             <h1 class="mb-2 page-hero-title"><?= __('create_listing.title') ?></h1>
-            <p class="text-muted text-lg"><?= __('create_listing.subtitle') ?></p>
+            <p class="page-subtitle"><?= __('create_listing.subtitle') ?></p>
         </div>
 
         <?php if ($error): ?>

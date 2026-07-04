@@ -126,8 +126,8 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="inline-flex items-center gap-2 mb-3 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
                 <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> <?= __('promo.badge') ?>
             </div>
-            <h1 class="font-bold page-hero-title mb-4 text-main" style="letter-spacing: -0.03em; line-height: 1.1;"><?= __('promo.headline') ?></h1>
-            <p class="text-main" style="font-size: 1.1rem; line-height: 1.6; font-weight: 500; opacity: 0.8; text-align: center; width: 100%;">
+            <h1 class="font-bold page-hero-title mb-4 text-main"><?= __('promo.headline') ?></h1>
+            <p class="page-subtitle mx-auto" style="text-align: center; max-width: 42rem;">
                 <?= __('promo.intro') ?>
             </p>
         </div>

@@ -215,7 +215,7 @@ require_once __DIR__ . '/../includes/header.php';
 
     <div class="text-center mb-12">
         <h1 class="mb-2 page-hero-title"><?= __('orders.hub_title') ?></h1>
-        <p class="text-muted text-lg"><?= __('orders.hub_subtitle') ?></p>
+        <p class="page-subtitle"><?= __('orders.hub_subtitle') ?></p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 relative z-10">
@@ -224,7 +224,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="p-3 shadow-md" style="background: var(--primary); border-radius: 12px; color: white;">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                 </div>
-                <h2 class="mb-0" style="font-size: 1.5rem;"><?= __('orders.my_purchases') ?></h2>
+                <h2 class="page-section-title mb-0"><?= __('orders.my_purchases') ?></h2>
                 <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($buyingOrders); ?> Orders</div>
             </div>
 
@@ -283,7 +283,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="p-3 shadow-md" style="background: #f59e0b; border-radius: 12px; color: white;">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
-                <h2 class="mb-0" style="font-size: 1.5rem;">My Sales</h2>
+                <h2 class="page-section-title mb-0">My Sales</h2>
                 <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($sellingOrders); ?> Requests</div>
             </div>
 
