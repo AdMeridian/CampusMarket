@@ -86,6 +86,8 @@ function computePresence(?string $lastSeenAt): array {
     }
 }
 $otherPresence = computePresence($otherUser['last_seen_at'] ?? null);
+$isOtherAdmin = (($otherUser['role'] ?? '') === 'admin');
+$appLogoUrl = rtrim(BASE_URL, '/') . '/public/images/logo.png';
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -101,6 +103,11 @@ require_once __DIR__ . '/../includes/header.php';
                 </svg>
             </button>
             <div class="flex items-center gap-3" style="display: flex; align-items: center; gap: 0.75rem;">
+                <?php if ($isOtherAdmin): ?>
+                <div style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; overflow: hidden; border: 1px solid var(--border-light); background: #fff; display: flex; align-items: center; justify-content: center;">
+                    <img src="<?= htmlspecialchars($appLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="CampusMarket" style="width: 100%; height: 100%; object-fit: contain; padding: 5px; box-sizing: border-box;">
+                </div>
+                <?php endif; ?>
                 <div>
                     <?php if (isset($otherUser['role']) && $otherUser['role'] === 'admin'): ?>
                         <h3 class="mb-0 font-bold text-main" style="line-height: 1.2; margin: 0;">@<?= htmlspecialchars($otherUser['username']) ?></h3>
@@ -151,15 +158,15 @@ require_once __DIR__ . '/../includes/header.php';
                     <span class="font-bold text-main" style="font-size: 0.9rem;"><?= htmlspecialchars($product['title']) ?></span>
                     <p class="text-secondary font-bold mb-0" style="font-size: 0.9rem;"><?= $product['title'] === 'CampusMarket Support' ? __('chat.official_help') : __('chat.private_dm') ?></p>
                 </div>
-                <div style="width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light); background: var(--secondary-light); display: flex; align-items: center; justify-content: center; color: var(--secondary);">
+                <div style="width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-light); background: #fff; display: flex; align-items: center; justify-content: center;">
                     <?php if ($product['title'] === 'CampusMarket Support'): ?>
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
+                        <img src="<?= htmlspecialchars($appLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="CampusMarket" style="width: 100%; height: 100%; object-fit: contain; padding: 6px; box-sizing: border-box;">
                     <?php else: ?>
+                        <div style="width: 100%; height: 100%; background: var(--secondary-light); display: flex; align-items: center; justify-content: center; color: var(--secondary);">
                         <svg xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
+                        </div>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>

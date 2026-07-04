@@ -44,6 +44,8 @@ $unreadCount = array_reduce($conversations, function($carry, $item) use ($curren
     return $carry + ($item['receiver_id'] == $currentUserId && empty($item['is_read']) ? 1 : 0);
 }, 0);
 
+$appLogoUrl = rtrim(BASE_URL, '/') . '/public/images/logo.png';
+
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -134,6 +136,13 @@ body.dark-mode .convo-avatar {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.convo-avatar img.logo-avatar {
+    object-fit: contain;
+    padding: 6px;
+    background: #fff;
+    box-sizing: border-box;
 }
 
 .convo-avatar svg.default-avatar-icon {
@@ -349,8 +358,8 @@ body.dark-mode .convo-card.unread {
     <?php if ($adminId && $adminId != $currentUserId): ?>
     <div class="mb-6">
         <a href="messages.php?other_user_id=<?= $adminId ?>&product_id=0" class="flex items-center gap-4 p-4 rounded-xl shadow-sm transition-all hover-scale" style="background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%); border: 1px solid rgba(99,102,241,0.2); text-decoration: none;">
-            <div class="flex items-center justify-center text-primary bg-white shadow-sm flex-shrink-0" style="width: 42px; height: 42px; border-radius: 50%;">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <div class="flex items-center justify-center bg-white shadow-sm flex-shrink-0" style="width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border-light);">
+                <img src="<?= htmlspecialchars($appLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="CampusMarket" style="width: 100%; height: 100%; object-fit: contain; padding: 5px; box-sizing: border-box;">
             </div>
             <div>
                 <h4 class="m-0 font-bold" style="color: var(--primary); font-size: 1.05rem;"><?= __('inbox.need_help') ?></h4>
@@ -379,15 +388,17 @@ body.dark-mode .convo-card.unread {
             <?php foreach ($conversations as $conv): ?>
                 <?php
                     $isUnread = ($conv['receiver_id'] == $currentUserId && empty($conv['is_read']));
-                    $initials = strtoupper(substr($conv['other_username'], 0, 2));
-                    $hasAvatar = !empty($conv['other_avatar']);
+                    $isAdminConvo = (($conv['other_role'] ?? '') === 'admin');
+                    $hasAvatar = !$isAdminConvo && !empty($conv['other_avatar']);
                 ?>
                 <a href="<?= BASE_URL ?>/pages/messages.php?product_id=0&other_user_id=<?= $conv['other_user_id'] ?>"
                    class="convo-card <?= $isUnread ? 'unread' : '' ?>">
 
                     <!-- Avatar -->
                     <div class="convo-avatar">
-                        <?php if ($hasAvatar): ?>
+                        <?php if ($isAdminConvo): ?>
+                            <img src="<?= htmlspecialchars($appLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="CampusMarket Support" class="logo-avatar">
+                        <?php elseif ($hasAvatar): ?>
                             <img src="<?= avatarUrl($conv['other_avatar']) ?>" alt="<?= htmlspecialchars($conv['other_username']) ?>" onerror="this.style.display='none'">
                         <?php endif; ?>
                     </div>
