@@ -1536,11 +1536,67 @@ body.dark-mode .badge-not-taken { background: rgba(156, 163, 175, 0.1); color: #
     color: white !important;
     text-align: center;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    min-height: clamp(600px, 85vh, 1000px);
+    min-height: clamp(320px, 58vh, 520px);
     display: flex;
     align-items: center;
-    padding-top: 85px; /* Account for fixed navbar */
-    background: #0f172a; /* Fallback */
+    padding-top: 72px;
+    background: #0f172a;
+}
+
+.hero-content {
+    width: 100%;
+}
+
+.hero-title {
+    font-size: clamp(1.75rem, 2.8vw + 0.65rem, 2.65rem);
+    line-height: 1.12;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.85rem;
+    color: white !important;
+}
+
+.hero-subtitle {
+    font-size: clamp(0.95rem, 1.1vw + 0.55rem, 1.125rem);
+    line-height: 1.55;
+    font-weight: 400;
+    max-width: 38rem;
+    margin: 0 auto 1.75rem;
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.hero-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .hero-actions {
+        flex-direction: row;
+        gap: 1rem;
+    }
+}
+
+.hero-cta {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    width: fit-content;
+}
+
+.hero-cta--primary {
+    background: white;
+    color: var(--primary);
+}
+
+.hero-cta--secondary {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
 }
 
 .hero-carousel {
@@ -1581,12 +1637,66 @@ body.dark-mode .badge-not-taken { background: rgba(156, 163, 175, 0.1); color: #
 .hero .container {
     position: relative;
     z-index: 10;
-    padding-top: calc(75px + clamp(1rem, 3vh, 2rem));
-    padding-bottom: clamp(1rem, 3vh, 2rem);
+    padding-top: clamp(1.5rem, 4vh, 2.5rem);
+    padding-bottom: clamp(1.25rem, 3vh, 2rem);
 }
 
 .hero h1, .hero p {
     color: white !important;
+}
+
+/* Homepage section rhythm and headings */
+.home-section__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.home-section__header--center {
+    align-items: center;
+}
+
+.home-section__header--bordered {
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.home-section__title {
+    font-size: clamp(1.15rem, 1.5vw + 0.65rem, 1.65rem);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.home-section__title--with-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.home-section__title--with-icon svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+}
+
+.home-category-card__name {
+    font-size: 0.98rem;
+    margin-bottom: 0.25rem;
+}
+
+.home-category-block:last-child {
+    margin-bottom: 0 !important;
+}
+
+.home-section--featured {
+    margin-top: 3rem;
+    padding: 2.25rem 0;
+    background: rgba(99, 102, 241, 0.03);
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
 }
 
 /* Premium UI Utility Extensions */
@@ -2232,7 +2342,7 @@ body.dark-mode .flash-toast-container .flash.flash-push {
 .product-card-price__now {
   font-weight: 800;
   color: var(--primary);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   line-height: 1.15;
   white-space: nowrap;
 }
@@ -2262,6 +2372,18 @@ body.dark-mode .flash-toast-container .flash.flash-push {
     height: 100%;
     object-fit: cover; /* Fill the container elegantly */
     transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 0.75rem;
+    flex-grow: 1;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
 }
 
 /* Profile specific image fixes */
@@ -2298,14 +2420,14 @@ body.dark-mode .flash-toast-container .flash.flash-push {
 }
 
 .hero-title {
-  font-size: clamp(2.25rem, 8vw, 4.5rem);
-  line-height: 1.1;
-  font-weight: 800;
+  font-size: clamp(1.75rem, 2.8vw + 0.65rem, 2.65rem);
+  line-height: 1.12;
+  font-weight: 700;
 }
 
 .hero-subtitle {
-  font-size: clamp(1rem, 2.5vw, 1.5rem);
-  opacity: 0.9;
+  font-size: clamp(0.95rem, 1.1vw + 0.55rem, 1.125rem);
+  opacity: 0.92;
 }
 
 .product-title {

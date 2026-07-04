@@ -73,7 +73,7 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
                 $cardMeta[] = translateCategory($prod['category_name'] ?? ($prod['category'] ?? 'General'));
             ?>
             <p class="mb-2" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-bottom: 0.25rem;"><?php echo sanitize(implode(' · ', $cardMeta)); ?></p>
-            <h4 class="mb-3 text-main" style="font-size: 1.15rem; font-weight: 600; line-height: 1.3; margin-bottom: 1rem; flex-grow: 1;"><?php echo sanitize($prod['title']); ?></h4>
+            <h4 class="mb-3 text-main product-card-title"><?php echo sanitize($prod['title']); ?></h4>
             
             <div class="mt-auto product-card-price-block">
                 <div class="product-card-price-row">
