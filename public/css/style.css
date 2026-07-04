@@ -1681,8 +1681,9 @@ body.dark-mode .badge-not-taken { background: rgba(156, 163, 175, 0.1); color: #
 }
 
 .home-section__see-all {
-    display: inline-block;
+    display: block;
     margin-top: 0.85rem;
+    text-align: center;
     font-size: 0.9rem;
     font-weight: 600;
     line-height: 1.35;
