@@ -18,14 +18,14 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
         <?php if ($isOwner): ?>
             <div class="product-card-seller-slot">
                 <div class="product-card-seller-pill product-card-seller-pill--owner">
-                    <svg fill="currentColor" viewBox="0 0 20 20" style="width: 10px; height: 10px; flex-shrink: 0;" aria-hidden="true"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
+                    <svg class="product-card-seller-pill__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     <span class="product-card-seller-pill__text"><?= __('product.your_listing') ?></span>
                 </div>
             </div>
         <?php elseif (!empty($prod['seller_name'])): ?>
             <div class="product-card-seller-slot">
                 <div class="product-card-seller-pill">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 12px; height: 12px; flex-shrink: 0; opacity: 0.7;" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    <svg class="product-card-seller-pill__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     <span class="product-card-seller-pill__text">@<?php echo sanitize($prod['seller_name']); ?></span>
                 </div>
             </div>
