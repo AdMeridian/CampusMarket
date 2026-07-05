@@ -7,7 +7,7 @@ function requireAgent(): void {
     requireLogin();
     if (!isAgent()) {
         setFlash('error', __('agent.access_denied'));
-        redirect(BASE_URL . 'index.php');
+        redirect(BASE_URL);
     }
 }
 

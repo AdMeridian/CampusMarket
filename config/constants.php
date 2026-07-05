@@ -42,7 +42,7 @@ if ($envBaseUrl) {
     if ($isLocalHost) {
         // Resolve app base path from the current script path.
         // Examples:
-        // /CampusMarket/index.php         -> /CampusMarket/
+        // /CampusMarket/pages/home.php    -> /CampusMarket/
         // /CampusMarket/pages/browse.php  -> /CampusMarket/
         // /CampusMarket/admin/index.php   -> /CampusMarket/
         $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/');
