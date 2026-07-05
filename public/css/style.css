@@ -2533,17 +2533,29 @@ body.dark-mode .product-card-seller-pill {
 /* Additional Mobile Density Improvements */
 @media (max-width: 640px) {
   .hero {
-    min-height: 550px;
+    min-height: clamp(420px, 72vh, 580px);
     padding-top: 72px;
+  }
+
+  .hero .container {
+    padding-top: 1rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .hero-subtitle {
+    margin-bottom: 1.25rem;
   }
 
   .hero-actions {
     width: 100%;
+    padding: 0 0.25rem;
   }
 
   .hero-actions .hero-cta {
     width: 100%;
-    max-width: 20rem;
+    max-width: 18rem;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.95rem;
     justify-content: center;
   }
 
@@ -2555,6 +2567,16 @@ body.dark-mode .product-card-seller-pill {
     flex-direction: column;
     align-items: flex-start !important;
     gap: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) and (orientation: landscape) and (max-height: 500px) {
+  .hero {
+    min-height: 300px;
+  }
+
+  .hero-subtitle {
+    margin-bottom: 0.85rem;
   }
 }
 
@@ -3340,6 +3362,8 @@ body.page-chat .chat-send-btn {
   border-left: 4px solid var(--primary);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
   animation: slideDownFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -3396,6 +3420,40 @@ body.dark-mode .pwa-update-banner {
   .pwa-update-banner__btn {
     width: 100%;
     min-height: 44px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .pwa-update-banner {
+    top: auto;
+    bottom: max(5.75rem, calc(var(--safe-bottom) + 5.75rem));
+    width: calc(100% - 2rem);
+    z-index: 10001;
+    animation: slideUpFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .pwa-update-banner--stacked {
+    top: auto;
+    bottom: max(8.5rem, calc(var(--safe-bottom) + 8.5rem));
+  }
+
+  body.page-chat .pwa-update-banner {
+    bottom: max(1.25rem, calc(var(--safe-bottom) + 1.25rem));
+  }
+
+  body.page-chat .pwa-update-banner--stacked {
+    bottom: max(4rem, calc(var(--safe-bottom) + 4rem));
+  }
+}
+
+@keyframes slideUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }
 

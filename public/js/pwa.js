@@ -11,20 +11,21 @@
   var registrationRef = null;
   var updateBannerEl = null;
   var reloadPending = false;
+  var updatePending = false;
 
-  function shouldOfferRefresh() {
+  function shouldDeferReload() {
     var active = document.activeElement;
     if (!active) {
-      return true;
+      return false;
     }
     var tag = (active.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea" || tag === "select") {
-      return false;
+      return true;
     }
     if (active.isContentEditable) {
-      return false;
+      return true;
     }
-    return true;
+    return false;
   }
 
   function reloadForUpdate() {
@@ -46,7 +47,9 @@
   }
 
   function showUpdateBanner() {
-    if (updateBannerEl || !shouldOfferRefresh()) {
+    updatePending = true;
+    if (updateBannerEl) {
+      syncBannerStack();
       return;
     }
 
@@ -67,6 +70,12 @@
 
   function handleWaitingWorker() {
     showUpdateBanner();
+  }
+
+  function maybeShowPendingUpdate() {
+    if (updatePending) {
+      showUpdateBanner();
+    }
   }
 
   function watchForUpdates(registration) {
@@ -112,12 +121,17 @@
     if (!reloadPending) {
       return;
     }
+    if (shouldDeferReload()) {
+      return;
+    }
     window.location.reload();
   });
 
+  document.addEventListener("focusout", maybeShowPendingUpdate);
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible") {
       checkForUpdates();
+      maybeShowPendingUpdate();
     }
   });
 
