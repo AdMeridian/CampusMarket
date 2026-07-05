@@ -100,7 +100,7 @@ function requireAdmin(): void {
     requireLogin();
     if (!isAdmin()) {
         setFlash('error', 'You do not have permission to access that page.');
-        redirect(BASE_URL . 'index.php');
+        redirect(BASE_URL);
     }
 }
 

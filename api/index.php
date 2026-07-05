@@ -68,9 +68,9 @@ if ($isAllowedStaticPath) {
     }
 }
 
-// Default to index.php for root
-if ($path === '' || $path === '/') {
-    $targetFile = $projectRoot . '/index.php';
+// Homepage at / and legacy /index alias
+if ($path === '' || $path === '/' || $path === '/index') {
+    $targetFile = $projectRoot . '/pages/home.php';
 } elseif ($normalizedPath === '/sitemap.xml') {
     $targetFile = $projectRoot . '/pages/sitemap.php';
 } elseif ($normalizedPath === '/robots.txt') {
