@@ -29,6 +29,7 @@
     "auth.check_email_step2": "Doğrulama bağlantısına tıklayın",
     "auth.check_email_step3": "Buraya dönün ve giriş yapın",
     "auth.check_email_spam": "Bulamıyor musunuz? Spam veya gereksiz klasörünü kontrol edin.",
+    "auth.check_email_expiry": "{days} gün içinde doğrulayın. Doğrulanmayan hesaplar otomatik olarak silinir; böylece yeniden kayıt olabilirsiniz.",
     "auth.back_to_login": "Girişe dön",
     "orders.hub_title": "İşlem Merkezi",
     "orders.hub_subtitle": "Satın almalarınızı, satışlarınızı, buluşmaları ve değerlendirmeleri tek yerden takip edin.",

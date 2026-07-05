@@ -4,6 +4,7 @@
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
 require_once '../includes/functions_member2.php';
+require_once '../includes/account_cleanup.php';
 
 if (isLoggedIn()) {
     redirect(BASE_URL . 'pages/profile.php');
@@ -61,6 +62,9 @@ require_once '../includes/header.php';
       </ol>
       <p class="verify-email-spam-tip">
         <?= __('auth.check_email_spam') ?>
+      </p>
+      <p class="verify-email-spam-tip" style="border-top: none; padding-top: 0.5rem;">
+        <?= __('auth.check_email_expiry', ['days' => unverifiedAccountTtlDays()]) ?>
       </p>
       <p class="verify-email-spam-tip" style="border-top: none; padding-top: 0.5rem;">
         After you log in, you can enable <strong>phone notifications</strong> for new messages and marketplace activity.

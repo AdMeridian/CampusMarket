@@ -29,6 +29,7 @@
     "auth.check_email_step2": "Click the verification link",
     "auth.check_email_step3": "Return here and log in",
     "auth.check_email_spam": "Can't find it? Check your spam or junk folder.",
+    "auth.check_email_expiry": "Verify within {days} days. Unverified accounts are automatically removed so you can sign up again.",
     "auth.back_to_login": "Back to login",
     "orders.hub_title": "Transaction Hub",
     "orders.hub_subtitle": "Track purchases, sales, meetups, and reviews in one place.",
