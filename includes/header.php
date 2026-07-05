@@ -279,7 +279,7 @@ $navCategories = getNavCategories($pdo);
 <nav class="navbar">
     <div class="container flex justify-between items-center">
         <!-- Logo -->
-        <a href="<?php echo rtrim(BASE_URL, '/'); ?>/index.php" class="logo" style="display: flex; align-items: center; gap: 0.6rem;">
+        <a href="<?php echo BASE_URL; ?>" class="logo" style="display: flex; align-items: center; gap: 0.6rem;">
             <img src="<?php echo rtrim(BASE_URL, '/'); ?>/public/images/logo.png" alt="CampusMarket Logo" style="height: 42px; width: auto; object-fit: contain;">
             <span>CampusMarket</span>
         </a>

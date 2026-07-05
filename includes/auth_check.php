@@ -18,6 +18,6 @@ if (!isLoggedIn()) {
 if (strpos($_SERVER['REQUEST_URI'], '/admin/') !== false) {
     if (!isAdmin()) {
         setFlash('error', 'Access denied. Administrator privileges required.');
-        redirect(BASE_URL . '/index.php');
+        redirect(BASE_URL);
     }
 }

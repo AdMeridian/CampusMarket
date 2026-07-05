@@ -1,7 +1,7 @@
 <?php
 /**
  * Product Card Template
- * Used in browse.php, index.php, and other listing pages.
+ * Used in browse.php, home.php, and other listing pages.
  * 
  * Variables required:
  * @var array $prod The product data row
