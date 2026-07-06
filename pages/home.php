@@ -130,22 +130,35 @@ if (!empty($featuredProducts)):
             <a href="browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
 
-        <div class="scroll-row">
-            <?php if (empty($recentProducts)): ?>
-                <div class="col-span-full text-center py-12 bg-white rounded-lg border">
-                    <p class="text-muted"><?= __('home.no_products_desc') ?></p>
-                    <?php if (isLoggedIn()): ?>
-                        <a href="create_listing.php" class="btn btn-primary"><?= __('home.create_listing') ?></a>
-                    <?php else: ?>
-                        <a href="register.php" class="btn btn-primary"><?= __('home.join_sell') ?></a>
-                    <?php endif; ?>
-                </div>
-            <?php else: ?>
-                <?php foreach ($recentProducts as $prod): ?>
-                    <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+        <?php if (empty($recentProducts)): ?>
+            <div class="col-span-full text-center py-12 bg-white rounded-lg border">
+                <p class="text-muted"><?= __('home.no_products_desc') ?></p>
+                <?php if (isLoggedIn()): ?>
+                    <a href="create_listing.php" class="btn btn-primary"><?= __('home.create_listing') ?></a>
+                <?php else: ?>
+                    <a href="register.php" class="btn btn-primary"><?= __('home.join_sell') ?></a>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+                <div
+                    class="listing-carousel"
+                    data-listing-carousel
+                    data-label-prev="<?= htmlspecialchars(__('home.carousel_prev'), ENT_QUOTES, 'UTF-8') ?>"
+                    data-label-next="<?= htmlspecialchars(__('home.carousel_next'), ENT_QUOTES, 'UTF-8') ?>"
+                >
+                    <button type="button" class="listing-carousel__nav listing-carousel__nav--prev" aria-label="<?= htmlspecialchars(__('home.carousel_prev'), ENT_QUOTES, 'UTF-8') ?>" hidden>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <div class="scroll-row listing-carousel__track">
+                        <?php foreach ($recentProducts as $prod): ?>
+                            <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
+                        <?php endforeach; ?>
+                    </div>
+                    <button type="button" class="listing-carousel__nav listing-carousel__nav--next" aria-label="<?= htmlspecialchars(__('home.carousel_next'), ENT_QUOTES, 'UTF-8') ?>" hidden>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+            </div>
+        <?php endif; ?>
 
         <div class="mt-12 text-center">
             <a href="browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-md); font-weight: 600;"><?= __('home.explore_all') ?></a>
@@ -180,5 +193,11 @@ if (!empty($donors)) {
     include __DIR__ . '/../includes/partials/hall_of_fame_section.php';
 }
 ?>
+
+<?php
+$listingCarouselJsPath = __DIR__ . '/../public/js/listing-carousel.js';
+$listingCarouselJsVer = file_exists($listingCarouselJsPath) ? filemtime($listingCarouselJsPath) : '1';
+?>
+<script src="<?php echo BASE_URL; ?>public/js/listing-carousel.js?v=<?php echo $listingCarouselJsVer; ?>"></script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

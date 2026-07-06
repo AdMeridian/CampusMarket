@@ -204,6 +204,8 @@
     "home.featured_desc": "Promoted items from students in your area.",
     "home.promote_listing": "Promote Your Listing",
     "home.recent_listings": "Recent Listings",
+    "home.carousel_prev": "Previous listings",
+    "home.carousel_next": "Next listings",
     "home.see_everything": "See Everything",
     "home.no_products_desc": "No products found in the marketplace right now.",
     "home.create_listing": "Create a Listing",
