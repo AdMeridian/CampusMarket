@@ -101,7 +101,7 @@ function aiModeratorBuildPrompt(string $title, string $description, bool $vision
         . "Checks:\n"
         . "1. Image quality (if images provided): only set is_blurry=true if photos are unreadable or extremely blurry.\n"
         . "2. Prohibited content: weapons, drugs, alcohol/tobacco/vape, adult content, exam/test banks, scams.\n"
-        . "3. For normal textbooks, electronics, furniture, clothing, etc., set passed=true with confidence 0.8+ when clearly legitimate.\n"
+        . "3. For normal books, electronics, furniture, clothing, etc., set passed=true with confidence 0.8+ when clearly legitimate.\n"
         . "4. Reject duplicate listings: if the seller likely already posted the same item (identical or near-identical title for the same product), set passed=false.\n"
         . "5. {$visionNote}\n\n"
         . "The reason field must be a short, friendly sentence written directly to the seller explaining why the listing was flagged or what to fix "

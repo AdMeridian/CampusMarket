@@ -65,12 +65,12 @@ INSERT INTO products (id, user_id, category_id, title, description, price, `cond
 (69, 4, 1, 'BOGO Tablet (Student Edition)', 'Portable tablet for notes', 7200.0, 'new', 'active'),
 
 -- 2. Books
-(11, 1, 2, 'General Biology', 'Science textbook', 625.0, 'used', 'active'),
+(11, 1, 2, 'General Biology', 'Science book', 625.0, 'used', 'active'),
 (12, 2, 2, 'Calculus II Guide', 'Math essentials', 450.0, 'new', 'active'),
 (13, 3, 2, 'Organic Chemistry', 'Study aid', 800.0, 'new', 'active'),
 (14, 4, 2, 'Intro to Comp Sci', 'Fundamentals', 700.0, 'like_new', 'active'),
 (15, 5, 2, 'English Literature', 'Classics anthology', 375.0, 'used', 'active'),
-(16, 1, 2, 'Intro to Physics', 'Science textbook', 600.0, 'new', 'active'),
+(16, 1, 2, 'Intro to Physics', 'Science book', 600.0, 'new', 'active'),
 (17, 2, 2, 'Linear Algebra', 'Foundations', 475.0, 'new', 'active'),
 (18, 3, 2, 'Microeconomics', 'Economic principles', 525.0, 'like_new', 'active'),
 (19, 4, 2, 'Psychology 101', 'Explore the mind', 450.0, 'used', 'active'),
