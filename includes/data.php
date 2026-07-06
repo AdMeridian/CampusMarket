@@ -22,7 +22,7 @@ $id_counter = 1;
 
 // Books
 $book_data = [
-    ['title'=>'Calculus Textbook', 'price'=>320, 'img'=>'../public/images/calculus-2.jpeg', 'desc'=>'Stewart Calculus: Early Transcendentals, 9th Edition. Perfect condition.'],
+    ['title'=>'Calculus Book', 'price'=>320, 'img'=>'../public/images/calculus-2.jpeg', 'desc'=>'Stewart Calculus: Early Transcendentals, 9th Edition. Perfect condition.'],
     ['title'=>'Physics 101 Notes', 'price'=>280, 'img'=>'../public/images/intro-to-physics.jpeg', 'desc'=>'Fundamentals of Physics by Halliday & Resnick. Great for exam prep.'],
     ['title'=>'Intro to Psychology', 'price'=>240, 'img'=>'../public/images/psychology.jpeg', 'desc'=>'Psychology: Core Concepts. A great introductory book.'],
     ['title'=>'Organic Chemistry', 'price'=>450, 'img'=>'../public/images/chemistry.jpeg', 'desc'=>'Organic Chemistry by Klein. Includes the solution manual.'],

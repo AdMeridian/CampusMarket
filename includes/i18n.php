@@ -158,13 +158,21 @@ function i18nDetectFromBrowser(): string {
 }
 
 /**
- * Translate a category name dynamically based on predefined mappings.
+ * Normalize a category name to a slug for lookups.
  */
-function translateCategory(string $name): string {
+function categorySlug(string $name): string {
     $clean = strtolower($name);
     $clean = str_replace('&', 'and', $clean);
     $clean = preg_replace('/[^a-z0-9\s]/', '', $clean);
-    $clean = preg_replace('/\s+/', '_', trim($clean));
+
+    return preg_replace('/\s+/', '_', trim($clean));
+}
+
+/**
+ * Translate a category name dynamically based on predefined mappings.
+ */
+function translateCategory(string $name): string {
+    $clean = categorySlug($name);
     
     $map = [
         'electronics_and_accessories' => 'category.electronics_accessories',
@@ -187,6 +195,8 @@ function translateCategory(string $name): string {
         'transportation' => 'category.transportation',
         'transportation_bikes_and_scooters' => 'category.transportation',
         'transportation_bikes_scooters' => 'category.transportation',
+        'arts_crafts_and_diy' => 'category.arts_crafts_diy',
+        'arts_crafts_diy' => 'category.arts_crafts_diy',
     ];
     
     $key = $map[$clean] ?? 'category.' . $clean;

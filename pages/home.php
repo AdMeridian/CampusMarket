@@ -2,6 +2,8 @@
 // pages/home.php
 require_once __DIR__ . '/../includes/bootstrap.php';
 
+$pagesBase = rtrim(BASE_URL, '/') . '/pages/';
+
 $pageTitle = __('home.page_title');
 $pageDescription = __('seo.home_description');
 $seoJsonLd = seoWebsiteJsonLd();
@@ -59,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="container">
         <div class="home-section__header">
             <h2 class="home-section__title mb-0"><?= __('home.shop_by_category') ?></h2>
-            <a href="categories.php" class="text-muted" style="font-weight: 500;"><?= __('home.view_all') ?></a>
+            <a href="<?php echo $pagesBase; ?>categories.php" class="text-muted" style="font-weight: 500;"><?= __('home.view_all') ?></a>
         </div>
         <div class="scroll-row">
             <?php 
@@ -79,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 $stmt->execute([$cat['id']]);
                 $count = $stmt->fetchColumn();
             ?>
-                <a href="browse.php?category=<?php echo $cat['id']; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
+                <a href="<?php echo $pagesBase; ?>browse.php?category=<?php echo $cat['id']; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
                     <div style="color: var(--text-muted); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
                         <?php echo $cat['icon']; ?>
                     </div>
@@ -90,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         
         <div class="mt-12 text-center">
-            <a href="categories.php" class="btn btn-outline" style="padding: 0.8rem 2.5rem; border-radius: var(--radius-lg); font-weight: 600; font-size: 1rem;"><?= __('home.view_all_categories') ?></a>
+            <a href="<?php echo $pagesBase; ?>categories.php" class="btn btn-outline" style="padding: 0.8rem 2.5rem; border-radius: var(--radius-lg); font-weight: 600; font-size: 1rem;"><?= __('home.view_all_categories') ?></a>
         </div>
     </div>
 </section>
@@ -110,7 +112,7 @@ if (!empty($featuredProducts)):
                 </h2>
                 <p class="text-muted mb-0"><?= __('home.featured_desc') ?></p>
             </div>
-            <a href="promotions.php" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 0.4rem 1rem;"><?= __('home.promote_listing') ?></a>
+            <a href="<?php echo $pagesBase; ?>promotions.php" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 0.4rem 1rem;"><?= __('home.promote_listing') ?></a>
         </div>
 
         <div class="scroll-row">
@@ -127,16 +129,16 @@ if (!empty($featuredProducts)):
     <div class="container">
         <div class="home-section__header">
             <h2 class="home-section__title mb-0"><?= __('home.recent_listings') ?></h2>
-            <a href="browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
+            <a href="<?php echo $pagesBase; ?>browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
 
         <?php if (empty($recentProducts)): ?>
             <div class="col-span-full text-center py-12 bg-white rounded-lg border">
                 <p class="text-muted"><?= __('home.no_products_desc') ?></p>
                 <?php if (isLoggedIn()): ?>
-                    <a href="create_listing.php" class="btn btn-primary"><?= __('home.create_listing') ?></a>
+                    <a href="<?php echo $pagesBase; ?>create_listing.php" class="btn btn-primary"><?= __('home.create_listing') ?></a>
                 <?php else: ?>
-                    <a href="register.php" class="btn btn-primary"><?= __('home.join_sell') ?></a>
+                    <a href="<?php echo $pagesBase; ?>register.php" class="btn btn-primary"><?= __('home.join_sell') ?></a>
                 <?php endif; ?>
             </div>
         <?php else: ?>
@@ -159,7 +161,7 @@ if (!empty($featuredProducts)):
         <?php endif; ?>
 
         <div class="mt-12 text-center">
-            <a href="browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-md); font-weight: 600;"><?= __('home.explore_all') ?></a>
+            <a href="<?php echo $pagesBase; ?>categories.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-md); font-weight: 600;"><?= __('home.explore_all') ?></a>
         </div>
     </div>
 </section>
@@ -177,7 +179,7 @@ if (!empty($featuredProducts)):
                         <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
                     <?php endforeach; ?>
                 </div>
-                <a href="browse.php?category=<?php echo $cat['id']; ?>" class="home-section__see-all text-primary"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
+                <a href="<?php echo $pagesBase; ?>browse.php?category=<?php echo $cat['id']; ?>" class="home-section__see-all text-primary"><?= __('home.see_all_category', ['category' => translateCategory($cat['name'])]) ?></a>
             </div>
         <?php endforeach; ?>
     </div>
