@@ -146,9 +146,9 @@ if (!empty($featuredProducts)):
                 aria-label="<?= htmlspecialchars(__('home.recent_listings'), ENT_QUOTES, 'UTF-8') ?>"
                 style="--listing-duration: <?php echo (int)$listingMarqueeDuration; ?>s;"
             >
-                <div class="listing-marquee__track">
+                <div class="listing-marquee__track flex flex-row">
                     <?php for ($marqueeCopy = 0; $marqueeCopy < 2; $marqueeCopy++): ?>
-                    <div class="listing-marquee__group"<?php echo $marqueeCopy === 1 ? ' aria-hidden="true"' : ''; ?>>
+                    <div class="listing-marquee__group flex flex-row"<?php echo $marqueeCopy === 1 ? ' aria-hidden="true"' : ''; ?>>
                         <?php foreach ($recentProducts as $prod): ?>
                             <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
                         <?php endforeach; ?>

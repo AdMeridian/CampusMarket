@@ -14,7 +14,7 @@ static $hallCarouselCssLoaded = false;
 if (!$hallCarouselCssLoaded) {
     $hallCarouselCssLoaded = true;
     $hallCssPath = ROOT_PATH . 'public/css/hall-carousel.css';
-    $hallCssVer = file_exists($hallCssPath) ? filemtime($hallCssPath) : '1';
+    $hallCssVer = assetVersion($hallCssPath);
     echo '<link rel="stylesheet" href="' . BASE_URL . 'public/css/hall-carousel.css?v=' . $hallCssVer . '">' . "\n";
 }
 ?>

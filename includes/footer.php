@@ -76,12 +76,12 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 </script>
 <?php
     $pwaJsPath = __DIR__ . '/../public/js/pwa.js';
-    $pwaJsVer = file_exists($pwaJsPath) ? filemtime($pwaJsPath) : '1';
+    $pwaJsVer = assetVersion($pwaJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/pwa.js?v=<?php echo $pwaJsVer; ?>"></script>
 <?php
     $searchJsPath = __DIR__ . '/../public/js/search-suggestions.js';
-    $searchJsVer = file_exists($searchJsPath) ? filemtime($searchJsPath) : '1';
+    $searchJsVer = assetVersion($searchJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/search-suggestions.js?v=<?php echo $searchJsVer; ?>"></script>
 
@@ -129,7 +129,7 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 
 <?php
     $chatbotJsPath = __DIR__ . '/../public/js/chatbot.js';
-    $chatbotJsVer = file_exists($chatbotJsPath) ? filemtime($chatbotJsPath) : '1';
+    $chatbotJsVer = assetVersion($chatbotJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/chatbot.js?v=<?php echo $chatbotJsVer; ?>"></script>
 <?php endif; ?>
