@@ -140,7 +140,7 @@ if (!empty($featuredProducts)):
                 <?php endif; ?>
             </div>
         <?php else: ?>
-            <?php $listingMarqueeDuration = max(32, min(72, count($recentProducts) * 5)); ?>
+            <?php $listingMarqueeDuration = max(26, min(58, count($recentProducts) * 4)); ?>
             <div
                 class="listing-marquee"
                 aria-label="<?= htmlspecialchars(__('home.recent_listings'), ENT_QUOTES, 'UTF-8') ?>"
