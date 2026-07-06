@@ -81,6 +81,20 @@ define('ROOT_PATH',   __DIR__ . '/../');
 define('UPLOAD_PATH', ROOT_PATH . 'public/uploads/');
 define('UPLOAD_URL',  BASE_URL  . 'public/uploads/');
 
+if (!function_exists('assetVersion')) {
+    /**
+     * Cache-bust static assets. Vercel freezes filemtime at build time, so use the
+     * deployment ref in production; fall back to filemtime locally.
+     */
+    function assetVersion(string $absolutePath): string {
+        $deployRef = trim((string)(getenv('VERCEL_GIT_COMMIT_SHA') ?: getenv('VERCEL_DEPLOYMENT_ID') ?: ''));
+        if ($deployRef !== '') {
+            return substr(preg_replace('/\W/', '', $deployRef), 0, 12);
+        }
+        return file_exists($absolutePath) ? (string)filemtime($absolutePath) : '1';
+    }
+}
+
 // Upload Limits
 define('MAX_FILE_SIZE',    5 * 1024 * 1024); // 5 MB
 define('ALLOWED_TYPES',    ['image/jpeg', 'image/png', 'image/webp', 'image/gif']);

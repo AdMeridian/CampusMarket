@@ -3291,6 +3291,8 @@ body.page-chat .chat-send-btn {
 
 .listing-marquee__track {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   width: max-content;
   animation: listing-marquee-scroll var(--listing-duration, 40s) linear infinite;
   will-change: transform;
@@ -3303,6 +3305,8 @@ body.page-chat .chat-send-btn {
 
 .listing-marquee__group {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: 1.5rem;
   padding-right: 1.5rem;

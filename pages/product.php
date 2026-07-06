@@ -1663,7 +1663,7 @@ if (mgmtImgInput) {
 
 <?php
     $shareJsPath = __DIR__ . '/../public/js/product-share.js';
-    $shareJsVer = file_exists($shareJsPath) ? filemtime($shareJsPath) : '1';
+    $shareJsVer = assetVersion($shareJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/product-share.js?v=<?php echo $shareJsVer; ?>"></script>
 

@@ -36,7 +36,7 @@ $navCategories = getNavCategories($pdo);
     <!-- Member 5: Design System -->
     <?php 
         $cssPath = __DIR__ . '/../public/css/style.css';
-        $cssVer = file_exists($cssPath) ? filemtime($cssPath) : '1';
+        $cssVer = assetVersion($cssPath);
     ?>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/style.css?v=<?php echo $cssVer; ?>">
     <style id="nav-critical-css">
@@ -168,14 +168,14 @@ $navCategories = getNavCategories($pdo);
     <!-- Chatbot Stylesheet -->
     <?php
         $chatbotCssPath = __DIR__ . '/../public/css/chatbot.css';
-        $chatbotCssVer = file_exists($chatbotCssPath) ? filemtime($chatbotCssPath) : '1';
+        $chatbotCssVer = assetVersion($chatbotCssPath);
     ?>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/chatbot.css?v=<?php echo $chatbotCssVer; ?>">
 
     <?php if (isAdmin()): ?>
     <?php
         $adminCssPath = __DIR__ . '/../public/css/admin.css';
-        $adminCssVer = file_exists($adminCssPath) ? filemtime($adminCssPath) : '1';
+        $adminCssVer = assetVersion($adminCssPath);
     ?>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/css/admin.css?v=<?php echo $adminCssVer; ?>">
     <?php endif; ?>
@@ -416,22 +416,22 @@ $navCategories = getNavCategories($pdo);
 
 <?php
     $themeJsPath = __DIR__ . '/../public/js/theme.js';
-    $themeJsVer = file_exists($themeJsPath) ? filemtime($themeJsPath) : '1';
+    $themeJsVer = assetVersion($themeJsPath);
     $menuJsPath = __DIR__ . '/../public/js/mobile-menu.js';
-    $menuJsVer = file_exists($menuJsPath) ? filemtime($menuJsPath) : '1';
+    $menuJsVer = assetVersion($menuJsPath);
     $i18nJsPath = __DIR__ . '/../public/js/i18n-client.js';
-    $i18nJsVer = file_exists($i18nJsPath) ? filemtime($i18nJsPath) : '1';
+    $i18nJsVer = assetVersion($i18nJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/theme.js?v=<?php echo $themeJsVer; ?>"></script>
-<script src="<?php echo BASE_URL; ?>public/js/form-loading.js?v=<?php echo file_exists(__DIR__ . '/../public/js/form-loading.js') ? filemtime(__DIR__ . '/../public/js/form-loading.js') : '1'; ?>"></script>
+<script src="<?php echo BASE_URL; ?>public/js/form-loading.js?v=<?php echo assetVersion(__DIR__ . '/../public/js/form-loading.js'); ?>"></script>
 <script src="<?php echo BASE_URL; ?>public/js/mobile-menu.js?v=<?php echo $menuJsVer; ?>"></script>
 <script src="<?php echo BASE_URL; ?>public/js/i18n-client.js?v=<?php echo $i18nJsVer; ?>"></script>
 <?php if (isLoggedIn()): ?>
 <?php
     $notifJsPath = __DIR__ . '/../public/js/notifications-realtime.js';
-    $notifJsVer = file_exists($notifJsPath) ? filemtime($notifJsPath) : '1';
+    $notifJsVer = assetVersion($notifJsPath);
     $pushJsPath = __DIR__ . '/../public/js/push-notifications.js';
-    $pushJsVer = file_exists($pushJsPath) ? filemtime($pushJsPath) : '1';
+    $pushJsVer = assetVersion($pushJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/notifications-realtime.js?v=<?php echo $notifJsVer; ?>"></script>
     <?php if (WEB_PUSH_PUBLIC_KEY !== ''): ?>
