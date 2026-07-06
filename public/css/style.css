@@ -3280,6 +3280,62 @@ body.page-chat .chat-send-btn {
   width: 220px;
 }
 
+/* Homepage recent listings — continuous marquee */
+.listing-marquee {
+  overflow: hidden;
+  width: 100%;
+  padding: 0.5rem 0 1.5rem;
+  mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+}
+
+.listing-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: listing-marquee-scroll var(--listing-duration, 40s) linear infinite;
+  will-change: transform;
+}
+
+.listing-marquee:hover .listing-marquee__track,
+.listing-marquee:focus-within .listing-marquee__track {
+  animation-play-state: paused;
+}
+
+.listing-marquee__group {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.listing-marquee__group > .card {
+  flex: 0 0 280px;
+  width: 280px;
+}
+
+@keyframes listing-marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listing-marquee {
+    overflow-x: auto;
+    mask-image: none;
+    -webkit-mask-image: none;
+    scrollbar-width: thin;
+    scroll-snap-type: x mandatory;
+  }
+
+  .listing-marquee__track {
+    animation: none;
+  }
+
+  .listing-marquee__group > .card {
+    scroll-snap-align: start;
+  }
+}
+
 /* Pagination */
 .pagination {
   display: flex;
@@ -3341,119 +3397,5 @@ body.page-chat .chat-send-btn {
 
 @keyframes cm-spin {
   to { transform: rotate(360deg); }
-}
-
-.pwa-update-banner {
-  position: fixed;
-  top: max(95px, calc(var(--safe-top) + 95px));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 90%;
-  max-width: 480px;
-  padding: 1rem 1.25rem;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--primary) 12%, var(--bg-surface));
-  color: var(--text-main);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-left: 4px solid var(--primary);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  pointer-events: auto;
-  animation: slideDownFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.pwa-update-banner--stacked {
-  top: max(9.75rem, calc(var(--safe-top) + 9.75rem));
-}
-
-body.dark-mode .pwa-update-banner {
-  background: color-mix(in srgb, var(--primary) 18%, var(--bg-surface));
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-.pwa-update-banner__content {
-  flex: 1;
-  min-width: 0;
-}
-
-.pwa-update-banner__title {
-  margin: 0 0 0.15rem;
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.pwa-update-banner__body {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--text-muted);
-}
-
-.pwa-update-banner__btn {
-  flex-shrink: 0;
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: #fff;
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 0.55rem 0.9rem;
-  cursor: pointer;
-}
-
-.pwa-update-banner__btn:hover {
-  background: var(--primary-hover);
-}
-
-@media (max-width: 480px) {
-  .pwa-update-banner {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .pwa-update-banner__btn {
-    width: 100%;
-    min-height: 44px;
-  }
-}
-
-@media (max-width: 1023px) {
-  .pwa-update-banner {
-    top: auto;
-    bottom: max(5.75rem, calc(var(--safe-bottom) + 5.75rem));
-    width: calc(100% - 2rem);
-    z-index: 10001;
-    animation: slideUpFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
-  .pwa-update-banner--stacked {
-    top: auto;
-    bottom: max(8.5rem, calc(var(--safe-bottom) + 8.5rem));
-  }
-
-  body.page-chat .pwa-update-banner {
-    bottom: max(1.25rem, calc(var(--safe-bottom) + 1.25rem));
-  }
-
-  body.page-chat .pwa-update-banner--stacked {
-    bottom: max(4rem, calc(var(--safe-bottom) + 4rem));
-  }
-}
-
-@keyframes slideUpFadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 20px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
 }
 

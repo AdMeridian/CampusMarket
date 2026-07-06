@@ -130,22 +130,33 @@ if (!empty($featuredProducts)):
             <a href="browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
 
-        <div class="scroll-row">
-            <?php if (empty($recentProducts)): ?>
-                <div class="col-span-full text-center py-12 bg-white rounded-lg border">
-                    <p class="text-muted"><?= __('home.no_products_desc') ?></p>
-                    <?php if (isLoggedIn()): ?>
-                        <a href="create_listing.php" class="btn btn-primary"><?= __('home.create_listing') ?></a>
-                    <?php else: ?>
-                        <a href="register.php" class="btn btn-primary"><?= __('home.join_sell') ?></a>
-                    <?php endif; ?>
+        <?php if (empty($recentProducts)): ?>
+            <div class="col-span-full text-center py-12 bg-white rounded-lg border">
+                <p class="text-muted"><?= __('home.no_products_desc') ?></p>
+                <?php if (isLoggedIn()): ?>
+                    <a href="create_listing.php" class="btn btn-primary"><?= __('home.create_listing') ?></a>
+                <?php else: ?>
+                    <a href="register.php" class="btn btn-primary"><?= __('home.join_sell') ?></a>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <?php $listingMarqueeDuration = count($recentProducts) * 3; ?>
+            <div
+                class="listing-marquee"
+                aria-label="<?= htmlspecialchars(__('home.recent_listings'), ENT_QUOTES, 'UTF-8') ?>"
+                style="--listing-duration: <?php echo (int)$listingMarqueeDuration; ?>s;"
+            >
+                <div class="listing-marquee__track">
+                    <?php for ($marqueeCopy = 0; $marqueeCopy < 2; $marqueeCopy++): ?>
+                    <div class="listing-marquee__group"<?php echo $marqueeCopy === 1 ? ' aria-hidden="true"' : ''; ?>>
+                        <?php foreach ($recentProducts as $prod): ?>
+                            <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endfor; ?>
                 </div>
-            <?php else: ?>
-                <?php foreach ($recentProducts as $prod): ?>
-                    <?php include __DIR__ . '/../includes/product_card_template.php'; ?>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
 
         <div class="mt-12 text-center">
             <a href="browse.php" class="btn btn-primary" style="padding: 0.9rem 3rem; border-radius: var(--radius-md); font-weight: 600;"><?= __('home.explore_all') ?></a>

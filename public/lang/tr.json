@@ -204,6 +204,8 @@
     "home.featured_desc": "Bölgenizdeki öğrencilerin öne çıkardığı ürünler.",
     "home.promote_listing": "İlanınızı Öne Çıkarın",
     "home.recent_listings": "En Yeni İlanlar",
+    "home.carousel_prev": "Önceki ilanlar",
+    "home.carousel_next": "Sonraki ilanlar",
     "home.see_everything": "Her Şeyi Gör",
     "home.no_products_desc": "Şu anda pazaryerinde ürün bulunamadı.",
     "home.create_listing": "İlan Oluştur",
