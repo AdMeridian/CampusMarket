@@ -80,7 +80,6 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
                     <div class="product-card-price-stack">
                         <?php echo renderProductCardPrice($prod); ?>
                     </div>
-                    <span class="text-muted product-card-listed-time">• <?= __('product.listed_time', ['time' => timeAgo($prod['created_at'])]) ?></span>
                 </div>
             </div>
         </div>

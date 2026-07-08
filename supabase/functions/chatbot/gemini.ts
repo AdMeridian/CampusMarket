@@ -9,7 +9,7 @@ export async function callGemini(
 ): Promise<string> {
   const b = siteBaseUrl.endsWith("/") ? siteBaseUrl : `${siteBaseUrl}/`;
   const systemInstruction =
-    `You are a friendly campus marketplace chatbot for CampusMarket. Respond in ${lang === "tr" ? "Turkish" : "English"}.\n` +
+    `You are the CampusMarket Support assistant — a friendly campus marketplace helper. Respond in ${lang === "tr" ? "Turkish" : "English"}.\n` +
     `Site base URL: ${b}\n` +
     "Answer CampusMarket questions briefly (2-3 sentences). Use markdown links [text](url) when linking site pages.\n" +
     "For off-topic questions or things you cannot answer, respond with exactly: UNKNOWN";

@@ -11,8 +11,8 @@ function faqs(base: string): Faq[] {
     {
       keywords: ["hi", "hello", "hey", "greetings", "merhaba", "selam", "selamlar"],
       answers: {
-        en: "Hello! 👋 I'm here and ready to help. How can I assist you with CampusMarket today?",
-        tr: "Merhaba! 👋 Buradayım ve yardıma hazırım. Bugün CampusMarket ile ilgili size nasıl yardımcı olabilirim?",
+        en: "Hello! I'm here to help with CampusMarket. What can I assist you with today?",
+        tr: "Merhaba! CampusMarket ile ilgili yardımcı olmak için buradayım. Bugün size nasıl yardımcı olabilirim?",
       },
     },
     {
@@ -25,8 +25,8 @@ function faqs(base: string): Faq[] {
     {
       keywords: ["who are you", "what is your name", "kimsin", "adın ne", "adin ne", "sen kimsin"],
       answers: {
-        en: "I am the CampusMarket AI Assistant, your friendly guide for buying, selling, and staying safe on campus! 🚀",
-        tr: "Ben CampusMarket Yapay Zeka Asistanıyım; kampüste güvenli alışveriş, ilan verme ve kurallar konusunda dost canlısı rehberinizim! 🚀",
+        en: "I am the CampusMarket Support assistant — your guide for buying, selling, and staying safe on campus.",
+        tr: "Ben CampusMarket Destek asistanıyım; kampüste güvenli alışveriş, ilan verme ve kurallar konusunda rehberinizim.",
       },
     },
     {

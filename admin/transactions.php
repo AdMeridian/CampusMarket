@@ -33,10 +33,11 @@ $sql = "
         seller.username AS seller_username,
         dc.buyer_confirmed_at,
         dc.seller_confirmed_at,
+        dc.sale_source,
         dc.created_at
     FROM deal_confirmations dc
     JOIN products p ON dc.product_id = p.id
-    JOIN users buyer ON dc.buyer_id = buyer.id
+    LEFT JOIN users buyer ON dc.buyer_id = buyer.id
     JOIN users seller ON dc.seller_id = seller.id
     $whereClause
     ORDER BY dc.seller_confirmed_at DESC
@@ -195,7 +196,11 @@ require_once __DIR__ . '/../includes/header.php';
                             <span style="background: var(--bg-main); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-light); font-size: 0.85rem;">@<?php echo sanitize($deal['seller_username']); ?></span>
                         </td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
+                            <?php if (!empty($deal['buyer_username'])): ?>
                             <span style="background: var(--bg-main); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border-light); font-size: 0.85rem;">@<?php echo sanitize($deal['buyer_username']); ?></span>
+                            <?php else: ?>
+                            <span class="text-muted small">Off-platform</span>
+                            <?php endif; ?>
                         </td>
                         <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #059669;"><?php echo formatPrice($deal['product_price'], productCurrencyCode(['price_currency' => $deal['product_price_currency'] ?? DEFAULT_PRODUCT_CURRENCY])); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">

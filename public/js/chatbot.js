@@ -21,16 +21,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let conversationHistory = loadHistory();
     let isSubmitting = false;
 
-    const strings = {
+    const strings = window.__chatbotStrings || {
         welcome: isTurkish
-            ? "Merhaba! 👋 Ben CampusMarket yapay zeka asistanıyım. Kampüs pazar yeri kuralları, ödemeler, güvenli alışveriş ve ilan yükleme hakkında sorularınızı yanıtlayabilirim. Nasıl yardımcı olabilirim?"
-            : "Hello! 👋 I'm the CampusMarket AI assistant. I can answer questions regarding campus marketplace guidelines, secure payments, safety rules, and listing creation. How can I help you today?",
+            ? "Merhaba! CampusMarket destek asistanıyım. Kurallar, güvenli alışveriş, ödemeler ve ilan verme hakkında yardımcı olabilirim. Nasıl yardımcı olabilirim?"
+            : "Hello! I'm the CampusMarket Support assistant. I can help with marketplace rules, safe trading, payments, and listing your items. How can I help?",
         placeholder: isTurkish ? "Sorunuzu buraya yazın..." : "Type your question here...",
         adminAlertTitle: isTurkish ? "Yöneticiye Ulaşın" : "Contact Administrator",
         adminAlertDesc: isTurkish
-            ? "Maalesef bu sorunun cevabını bilmiyorum. Destek almak için lütfen doğrudan yöneticiyle sohbet başlatın."
-            : "I'm sorry, I don't know the answer to that question. To get help, please start a direct conversation with the administrator.",
-        adminBtnText: isTurkish ? "Yönetici Sohbetini Aç" : "Open Admin Chatbox",
+            ? "Bu sorunun cevabını bilmiyorum. Destek için lütfen doğrudan yöneticiyle sohbet başlatın."
+            : "I don't know the answer to that. Please start a direct chat with an administrator for help.",
+        adminBtnText: isTurkish ? "Yönetici Sohbetini Aç" : "Open Admin Chat",
         connectionError: isTurkish
             ? "Bağlantı hatası. İnternet bağlantınızı kontrol edip tekrar deneyin."
             : "Connection error. Please check your internet connection and try again.",
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         card.innerHTML = `
             <div class="cm-fallback-title">
-                <span>⚠️</span> ${strings.adminAlertTitle}
+                ${strings.adminAlertTitle}
             </div>
             <div class="cm-fallback-desc">
                 ${strings.adminAlertDesc}

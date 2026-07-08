@@ -180,7 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             } catch (Exception $e) {
                 $pdo->rollBack();
-                $error = __('create_listing.error_msg', ['error' => $e->getMessage()]);
+                error_log('[create_listing] ' . $e->getMessage());
+                $error = __('create_listing.error_generic');
             }
         }
     }
@@ -307,7 +308,7 @@ include '../includes/header.php';
         <?php endif; ?>
 
         <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
-            <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 js-form-loading" data-loading-text="<?= htmlspecialchars(__('create_listing.publishing'), ENT_QUOTES, 'UTF-8') ?>">
+            <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 js-form-loading" data-loading-text="<?= htmlspecialchars(__('create_listing.submitting_review'), ENT_QUOTES, 'UTF-8') ?>">
                 <?php echo csrfTokenField(); ?>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
@@ -413,12 +414,13 @@ include '../includes/header.php';
  
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.photos_label') ?></label>
-                    <div class="border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors" style="border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.03); padding: 3rem 2rem; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="document.getElementById('imgInput').click()" onmouseover="this.style.background='rgba(99,102,241,0.06)'" onmouseout="this.style.background='rgba(99,102,241,0.03)'">
+                    <div id="uploadDropzone" class="listing-upload-dropzone border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors" style="border-color: color-mix(in srgb, var(--primary) 30%, transparent); background: color-mix(in srgb, var(--primary) 3%, var(--bg-surface)); padding: 3rem 2rem; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <div class="mb-3 flex justify-center text-primary opacity-80">
                             <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </div>
                         <p class="font-bold mb-1" style="color: var(--primary); font-size: 1.05rem;"><?= __('create_listing.upload_click') ?></p>
                         <p id="uploadHelp" class="text-muted small"><?= __('create_listing.upload_desc') ?></p>
+                        <p class="text-muted small mt-1 hidden md:block"><?= __('create_listing.drag_drop') ?></p>
                         <input type="file" id="imgInput" name="images[]" multiple accept="image/*" class="hidden">
                     </div>
                     <div id="preview" class="flex flex-wrap gap-4 mt-5"></div>
@@ -480,7 +482,7 @@ include '../includes/header.php';
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: white;
+        background: var(--bg-surface);
         transition: all 0.2s;
         flex-shrink: 0;
     }
@@ -505,14 +507,24 @@ include '../includes/header.php';
     }
 
     .condition-label:has(.hidden-radio:checked) {
-        background: rgba(99, 102, 241, 0.05);
+        background: color-mix(in srgb, var(--primary) 8%, var(--bg-surface));
         box-shadow: var(--shadow-md);
         transform: translateY(-2px);
     }
 
     .condition-label:hover {
-        background: rgba(99, 102, 241, 0.02);
+        background: color-mix(in srgb, var(--primary) 4%, var(--bg-surface));
         transform: translateY(-1px);
+    }
+
+    .listing-upload-dropzone.is-dragover {
+        border-color: var(--primary) !important;
+        background: color-mix(in srgb, var(--primary) 10%, var(--bg-surface)) !important;
+    }
+
+    select.premium-input option {
+        background: var(--bg-surface);
+        color: var(--text-main);
     }
 
     textarea { resize: vertical; }
@@ -687,35 +699,28 @@ function compressImageAsync(file, maxWidth = 1200, maxHeight = 1200, quality = 0
 }
 
 document.getElementById('imgInput').addEventListener('change', async function(e) {
-    const newFiles = [...e.target.files];
+    await handleIncomingFiles([...e.target.files]);
+    e.target.value = '';
+});
+
+async function handleIncomingFiles(newFiles) {
     const submitBtn = document.getElementById('submitBtn');
     const uploadHelp = document.getElementById('uploadHelp');
-    
+
     if (newFiles.length === 0) {
         updateFileInput();
         return;
     }
-    
-    // Check if new selection was just the internal update
-    if (newFiles.length === uploadedFiles.length) {
-        let same = true;
-        for (let i = 0; i < newFiles.length; i++) {
-            if (newFiles[i] !== uploadedFiles[i]) {
-                same = false; break;
-            }
-        }
-        if (same) return;
-    }
-    
+
     submitBtn.disabled = true;
     submitBtn.innerText = createListingI18n.processing;
     uploadHelp.innerText = createListingI18n.compressing;
     uploadHelp.style.color = "var(--primary)";
-    
+
     for (let i = 0; i < newFiles.length; i++) {
-        // Skip if already in array
+        if (!newFiles[i].type || newFiles[i].type.indexOf('image/') !== 0) continue;
         if (uploadedFiles.some(f => f.name === newFiles[i].name && f.size === newFiles[i].size)) continue;
-        
+
         if (uploadedFiles.length < maxFiles) {
             try {
                 const compressed = await compressImageAsync(newFiles[i]);
@@ -729,15 +734,46 @@ document.getElementById('imgInput').addEventListener('change', async function(e)
             break;
         }
     }
-    
+
     updateFileInput();
     renderPreviews();
-    
+
     submitBtn.disabled = false;
     submitBtn.innerText = createListingI18n.publishLabel;
     uploadHelp.innerText = createListingI18n.uploadHelp;
     uploadHelp.style.color = "";
-});
+}
+
+(function initUploadDropzone() {
+    const dropzone = document.getElementById('uploadDropzone');
+    const imgInput = document.getElementById('imgInput');
+    if (!dropzone || !imgInput) return;
+
+    dropzone.addEventListener('click', function () {
+        imgInput.click();
+    });
+
+    ['dragenter', 'dragover'].forEach(function (evt) {
+        dropzone.addEventListener(evt, function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('is-dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(function (evt) {
+        dropzone.addEventListener(evt, function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('is-dragover');
+        });
+    });
+
+    dropzone.addEventListener('drop', async function (e) {
+        const files = [...(e.dataTransfer?.files || [])];
+        await handleIncomingFiles(files);
+    });
+})();
 
 // ── Suggest Tags ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {

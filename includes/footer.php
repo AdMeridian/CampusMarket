@@ -94,23 +94,25 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
         $adminStmt = $pdo->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
         $chatbotAdminId = (int)($adminStmt->fetchColumn() ?: 1);
 ?>
-<button id="cm-chatbot-fab" class="cm-chatbot-fab" aria-label="Open support chat">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 28px; height: 28px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"></path></svg>
+<button id="cm-chatbot-fab" class="cm-chatbot-fab" aria-label="<?= htmlspecialchars(__('chatbot.open'), ENT_QUOTES, 'UTF-8') ?>">
+    <img src="<?php echo BASE_URL; ?>public/images/chatbot-logo.png" alt="" width="56" height="56">
 </button>
 
 <div id="cm-chatbot-window" class="cm-chatbot-window" data-admin-id="<?php echo $chatbotAdminId; ?>">
     <div class="cm-chatbot-header">
         <div class="cm-chatbot-profile">
-            <div class="cm-chatbot-avatar">🤖</div>
+            <div class="cm-chatbot-avatar">
+                <img src="<?php echo BASE_URL; ?>public/images/chatbot-logo.png" alt="" width="40" height="40">
+            </div>
             <div class="cm-chatbot-info">
-                <h3>CampusMarket AI</h3>
+                <h3><?= __('chatbot.title') ?></h3>
                 <div class="cm-chatbot-status">
                     <span class="cm-chatbot-status-dot"></span>
-                    <span>Online</span>
+                    <span><?= __('chatbot.status_online') ?></span>
                 </div>
             </div>
         </div>
-        <button id="cm-chatbot-close" class="cm-chatbot-close" aria-label="Close chat">
+        <button id="cm-chatbot-close" class="cm-chatbot-close" aria-label="<?= htmlspecialchars(__('chatbot.close'), ENT_QUOTES, 'UTF-8') ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 20px; height: 20px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
     </div>
@@ -120,8 +122,8 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
     </div>
     
     <form id="cm-chatbot-form" class="cm-chatbot-input-bar">
-        <input type="text" id="cm-chatbot-input" class="cm-chatbot-input" placeholder="Type a message..." required autocomplete="off">
-        <button type="submit" class="cm-chatbot-submit" aria-label="Send message">
+        <input type="text" id="cm-chatbot-input" class="cm-chatbot-input" placeholder="<?= htmlspecialchars(__('chatbot.placeholder'), ENT_QUOTES, 'UTF-8') ?>" required autocomplete="off">
+        <button type="submit" class="cm-chatbot-submit" aria-label="<?= htmlspecialchars(__('chatbot.send'), ENT_QUOTES, 'UTF-8') ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 20px; height: 20px; transform: rotate(45deg);"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
     </form>
@@ -130,7 +132,17 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 <?php
     $chatbotJsPath = __DIR__ . '/../public/js/chatbot.js';
     $chatbotJsVer = assetVersion($chatbotJsPath);
+    $chatbotStrings = [
+        'welcome' => __('chatbot.welcome'),
+        'placeholder' => __('chatbot.placeholder'),
+        'adminAlertTitle' => __('chatbot.admin_alert_title'),
+        'adminAlertDesc' => __('chatbot.admin_alert_desc'),
+        'adminBtnText' => __('chatbot.admin_btn'),
+        'connectionError' => __('chatbot.connection_error'),
+        'genericError' => __('chatbot.generic_error'),
+    ];
 ?>
+<script>window.__chatbotStrings = <?php echo json_encode($chatbotStrings, JSON_UNESCAPED_UNICODE); ?>;</script>
 <script src="<?php echo BASE_URL; ?>public/js/chatbot.js?v=<?php echo $chatbotJsVer; ?>"></script>
 <?php endif; ?>
 

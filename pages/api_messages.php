@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/order_expiry.php';
 ob_start(); // Buffer output to prevent warnings from breaking JSON
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -233,7 +234,10 @@ if ($action === 'send') {
                 $stmtCheck->execute([$productId, $buyerId]);
                 if (!$stmtCheck->fetch()) {
                     // Create pending order
-                    $stmtOrder = $pdo->prepare("INSERT INTO orders (product_id, buyer_id, amount, status, notes) VALUES (?, ?, ?, 'pending', ?)");
+                    $stmtOrder = $pdo->prepare("
+                        INSERT INTO orders (product_id, buyer_id, amount, status, notes, expires_at)
+                        VALUES (?, ?, ?, 'pending', ?, " . pendingOrderExpiresAtExpression() . ")
+                    ");
                     $stmtOrder->execute([$productId, $buyerId, $prod['price'], 'Auto-created from direct message inquiry.']);
                 }
             }
@@ -536,44 +540,11 @@ if ($action === 'confirm_deal') {
         $pdo->beginTransaction();
 
         if ($isSeller) {
-            // Check if deal confirmation exists, if not create it
-            $stmtCheck = $pdo->prepare("SELECT id FROM deal_confirmations WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid");
-            $stmtCheck->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
-            $exists = $stmtCheck->fetchColumn();
-            
-            if (!$exists) {
-                $stmtIns = $pdo->prepare("INSERT INTO deal_confirmations (product_id, buyer_id, seller_id, status) VALUES (:pid, :bid, :sid, 'pending')");
-                $stmtIns->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            $saleResult = completeProductSale($pdo, $productId, $sellerId, $buyerId, 'chat');
+            if (!$saleResult['success']) {
+                throw new RuntimeException('Sale completion failed');
             }
 
-            // Seller confirms → mark completed and delist product
-            $stmtUp = $pdo->prepare("
-                UPDATE deal_confirmations 
-                SET seller_confirmed_at = NOW(), status = 'completed', updated_at = NOW()
-                WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
-            ");
-            $stmtUp->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
-
-            // Mark product as sold
-            $stmtProd = $pdo->prepare("UPDATE products SET status = 'sold' WHERE id = :pid");
-            $stmtProd->execute([':pid' => $productId]);
-
-            // Update order status to completed and insert transaction
-            $stmtOrderCheck = $pdo->prepare("SELECT id, amount FROM orders WHERE product_id = :pid AND buyer_id = :bid AND status = 'pending'");
-            $stmtOrderCheck->execute([':pid' => $productId, ':bid' => $buyerId]);
-            $order = $stmtOrderCheck->fetch();
-            
-            if ($order) {
-                // Mark order completed
-                $stmtUpdateOrder = $pdo->prepare("UPDATE orders SET status = 'completed' WHERE id = :id");
-                $stmtUpdateOrder->execute([':id' => $order['id']]);
-                
-                // Insert transaction
-                $stmtTrans = $pdo->prepare("INSERT INTO transactions (order_id, amount, status) VALUES (:oid, :amount, 'success')");
-                $stmtTrans->execute([':oid' => $order['id'], ':amount' => $order['amount']]);
-            }
-
-            // Notify buyer
             createNotification($pdo, $buyerId, 'order', 'Deal Confirmed!',
                 "$myUsername confirmed the deal for '$productTitle'. It has been marked as sold.", $productId);
 

@@ -8,17 +8,18 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f8fafc;
+      --bg: #f5f3f0;
       --card: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --primary: #4f46e5;
+      --text: #1c1917;
+      --muted: #78716c;
+      --primary: #1a7f64;
+      --primary-hover: #15664f;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Segoe UI", Tahoma, sans-serif;
-      background: linear-gradient(180deg, #eef2ff, var(--bg));
+      background: linear-gradient(180deg, #e6f5f0, var(--bg));
       color: var(--text);
       min-height: 100vh;
       display: grid;
@@ -29,9 +30,10 @@
       width: min(560px, 100%);
       background: var(--card);
       border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
       padding: 28px;
       text-align: center;
+      border: 1px solid #e7e5e4;
     }
     h1 { margin: 0 0 8px; font-size: 1.8rem; }
     p { margin: 0; color: var(--muted); line-height: 1.6; }
@@ -45,6 +47,7 @@
       text-decoration: none;
       font-weight: 600;
     }
+    a:hover { background: var(--primary-hover); }
   </style>
 </head>
 <body>
