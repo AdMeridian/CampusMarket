@@ -1351,10 +1351,11 @@ body.dark-mode .scc-badge {
                                             <?php echo csrfTokenField(); ?>
                                             <input type="hidden" name="action" value="delete_image">
                                             <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
-                                            <button type="submit"
-                                                    class="bg-red-600/90 hover:bg-red-600 text-white p-1 rounded shadow transition-colors"
-                                                    title="<?= addslashes(__('product.delete_image_btn')) ?>"
-                                                    style="border:none; cursor:pointer;">
+                                            <button
+                                                type="submit"
+                                                title="<?= addslashes(__('product.delete_image_btn')) ?>"
+                                                style="border: 1px solid rgba(255,255,255,0.6); cursor: pointer; background: rgba(220,38,38,0.92); color: #fff; width: 28px; height: 28px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.18);"
+                                            >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                 </svg>
