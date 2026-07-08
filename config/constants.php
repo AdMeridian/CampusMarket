@@ -119,6 +119,7 @@ define('APP_THEME_COLOR',  '#1a7f64');
 define('PRODUCT_CURRENCIES', [
     'TRY' => ['symbol' => '₺', 'position' => 'after'],
     'USD' => ['symbol' => '$', 'position' => 'before'],
+    'GBP' => ['symbol' => '£', 'position' => 'before'],
 ]);
 define('DEFAULT_PRODUCT_CURRENCY', 'TRY');
 

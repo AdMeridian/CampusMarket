@@ -85,9 +85,17 @@ $isOwner = isLoggedIn() && ((int)currentUserId() === (int)$product['seller_id'] 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_price') {
     verifyCsrfToken();
     $newPrice = (float)($_POST['new_price'] ?? 0);
+    $newCurrency = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
+    if (!array_key_exists($newCurrency, PRODUCT_CURRENCIES)) {
+        $newCurrency = (string)($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY);
+        $newCurrency = strtoupper(trim($newCurrency));
+        if (!array_key_exists($newCurrency, PRODUCT_CURRENCIES)) {
+            $newCurrency = DEFAULT_PRODUCT_CURRENCY;
+        }
+    }
     if ($newPrice > 0) {
-        $stmtUp = $pdo->prepare("UPDATE products SET price = :price, updated_at = NOW() WHERE id = :id");
-        $stmtUp->execute([':price' => $newPrice, ':id' => $productId]);
+        $stmtUp = $pdo->prepare("UPDATE products SET price = :price, price_currency = :currency, updated_at = NOW() WHERE id = :id");
+        $stmtUp->execute([':price' => $newPrice, ':currency' => $newCurrency, ':id' => $productId]);
         setFlash('success', __('product.price_updated'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     } else {
@@ -1263,8 +1271,25 @@ body.dark-mode .scc-badge {
                             <?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="update_price">
                             <div class="scc-mgmt-field">
-                                <span class="scc-mgmt-field-prefix">&#8377;</span>
+                                <span class="scc-mgmt-field-prefix">
+                                    <?php echo currencySymbol($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY); ?>
+                                </span>
                                 <input type="number" name="new_price" step="0.01" value="<?php echo (float)$product['price']; ?>" required>
+                            </div>
+                            <div class="scc-mgmt-field">
+                                <select name="price_currency" required>
+                                    <?php
+                                        $selectedCurrency = strtoupper(trim((string)($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
+                                        if (!array_key_exists($selectedCurrency, PRODUCT_CURRENCIES)) {
+                                            $selectedCurrency = DEFAULT_PRODUCT_CURRENCY;
+                                        }
+                                    ?>
+                                    <?php foreach (PRODUCT_CURRENCIES as $code => $meta): ?>
+                                        <option value="<?php echo $code; ?>" <?php echo $selectedCurrency === $code ? 'selected' : ''; ?>>
+                                            <?= __('create_listing.currency_' . strtolower($code)) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <button type="submit" class="scc-mgmt-btn">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -1342,6 +1367,25 @@ body.dark-mode .scc-badge {
                             <?php foreach ($images as $img): ?>
                                 <div class="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50" style="width: 100%;">
                                     <img src="<?php echo getProductImage($img['image_path']); ?>" alt="Gallery Image" class="w-full h-full object-contain" style="object-fit: contain; background: #f8fafc;">
+
+                                    <!-- Delete button (always visible when there are 2+ images) -->
+                                    <?php if (count($images) > 1): ?>
+                                        <form method="post"
+                                              onsubmit="return confirm('<?= addslashes(__('product.confirm_delete_image')) ?>')"
+                                              style="position: absolute; top: 6px; right: 6px; z-index: 5; display: inline;">
+                                            <?php echo csrfTokenField(); ?>
+                                            <input type="hidden" name="action" value="delete_image">
+                                            <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
+                                            <button type="submit"
+                                                    class="bg-red-600/90 hover:bg-red-600 text-white p-1 rounded shadow transition-colors"
+                                                    title="<?= addslashes(__('product.delete_image_btn')) ?>"
+                                                    style="border:none; cursor:pointer;">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                     
                                     <!-- Badges & Controls Overlay -->
                                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5">
@@ -1355,18 +1399,6 @@ body.dark-mode .scc-badge {
                                                     <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
                                                     <button type="submit" class="bg-white/90 hover:bg-white text-indigo-600 p-1 rounded shadow transition-colors" title="<?= addslashes(__('product.set_primary')) ?>" style="border:none; cursor:pointer;">
                                                         <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                            
-                                            <!-- Delete Button -->
-                                            <?php if (count($images) > 1): ?>
-                                                <form method="post" onsubmit="return confirm('<?= addslashes(__('product.confirm_delete_image')) ?>')" style="display:inline;">
-                                                    <?php echo csrfTokenField(); ?>
-                                                    <input type="hidden" name="action" value="delete_image">
-                                                    <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
-                                                    <button type="submit" class="bg-red-600/90 hover:bg-red-600 text-white p-1 rounded shadow transition-colors ml-auto" title="<?= addslashes(__('product.delete_image_btn')) ?>" style="border:none; cursor:pointer;">
-                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                     </button>
                                                 </form>
                                             <?php endif; ?>
