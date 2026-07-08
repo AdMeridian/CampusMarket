@@ -77,6 +77,20 @@ function isAgent(): bool {
 }
 
 /**
+ * Whether a user account is a listing agent (business-managed listings).
+ */
+function userIsListingAgent(PDO $pdo, int $userId): bool {
+    static $cache = [];
+    if (array_key_exists($userId, $cache)) {
+        return $cache[$userId];
+    }
+    $stmt = $pdo->prepare('SELECT role FROM users WHERE id = ? LIMIT 1');
+    $stmt->execute([$userId]);
+    $cache[$userId] = ((string) $stmt->fetchColumn() === 'agent');
+    return $cache[$userId];
+}
+
+/**
  * Get the current logged-in user's ID
  */
 function currentUserId(): ?int {
@@ -1146,6 +1160,18 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
     $rating = getSellerRating($pdo, $sellerId);
     $avgRating = (float)($rating['avg'] ?? 0);
     $reviewCount = (int)($rating['count'] ?? 0);
+
+    if (userIsListingAgent($pdo, $sellerId)) {
+        return [
+            'score' => 92,
+            'tier' => 'Highly Trusted',
+            'review_count' => $reviewCount,
+            'avg_rating' => $avgRating,
+            'total_orders' => 0,
+            'completed_orders' => 0,
+            'sold_products' => 0,
+        ];
+    }
 
     $isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
     $timeDiffSql = $isPostgres 
