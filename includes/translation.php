@@ -218,9 +218,9 @@ class TranslationService {
             $text
         );
 
-        // Prices (₺, $, €)
+        // Prices (₺, $, €, £)
         $text = preg_replace_callback(
-            '/(\d+[\.,]?\d*\s*[₺$€]|[₺$€]\s*\d+[\.,]?\d*|\d+[\.,]?\d*\s*TL)/u',
+            '/(\d+[\.,]?\d*\s*[₺$€£]|[₺$€£]\s*\d+[\.,]?\d*|\d+[\.,]?\d*\s*TL)/u',
             function ($m) use (&$index) {
                 $ph = "⟦PH{$index}⟧";
                 $this->placeholders[$ph] = $m[0];

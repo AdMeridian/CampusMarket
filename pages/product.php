@@ -85,9 +85,17 @@ $isOwner = isLoggedIn() && ((int)currentUserId() === (int)$product['seller_id'] 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_price') {
     verifyCsrfToken();
     $newPrice = (float)($_POST['new_price'] ?? 0);
+    $newCurrency = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
+    if (!array_key_exists($newCurrency, PRODUCT_CURRENCIES)) {
+        $newCurrency = (string)($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY);
+        $newCurrency = strtoupper(trim($newCurrency));
+        if (!array_key_exists($newCurrency, PRODUCT_CURRENCIES)) {
+            $newCurrency = DEFAULT_PRODUCT_CURRENCY;
+        }
+    }
     if ($newPrice > 0) {
-        $stmtUp = $pdo->prepare("UPDATE products SET price = :price, updated_at = NOW() WHERE id = :id");
-        $stmtUp->execute([':price' => $newPrice, ':id' => $productId]);
+        $stmtUp = $pdo->prepare("UPDATE products SET price = :price, price_currency = :currency, updated_at = NOW() WHERE id = :id");
+        $stmtUp->execute([':price' => $newPrice, ':currency' => $newCurrency, ':id' => $productId]);
         setFlash('success', __('product.price_updated'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     } else {
@@ -1263,8 +1271,25 @@ body.dark-mode .scc-badge {
                             <?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="update_price">
                             <div class="scc-mgmt-field">
-                                <span class="scc-mgmt-field-prefix">&#8377;</span>
+                                <span class="scc-mgmt-field-prefix">
+                                    <?php echo currencySymbol($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY); ?>
+                                </span>
                                 <input type="number" name="new_price" step="0.01" value="<?php echo (float)$product['price']; ?>" required>
+                            </div>
+                            <div class="scc-mgmt-field">
+                                <select name="price_currency" required>
+                                    <?php
+                                        $selectedCurrency = strtoupper(trim((string)($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
+                                        if (!array_key_exists($selectedCurrency, PRODUCT_CURRENCIES)) {
+                                            $selectedCurrency = DEFAULT_PRODUCT_CURRENCY;
+                                        }
+                                    ?>
+                                    <?php foreach (PRODUCT_CURRENCIES as $code => $meta): ?>
+                                        <option value="<?php echo $code; ?>" <?php echo $selectedCurrency === $code ? 'selected' : ''; ?>>
+                                            <?= __('create_listing.currency_' . strtolower($code)) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <button type="submit" class="scc-mgmt-btn">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
