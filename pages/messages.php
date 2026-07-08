@@ -18,7 +18,7 @@ if (!$otherUserId) {
 
 if ($productId > 0) {
     // Fetch context info
-    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
+    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
 
