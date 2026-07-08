@@ -502,6 +502,9 @@ function notificationActivityLabel(string $type, string $title): string {
     if ($title === 'Order Cancelled') {
         return 'Order Update';
     }
+    if (in_array($title, ['Order expiring soon', 'Order request expired', 'Pending order expired'], true)) {
+        return 'Order Update';
+    }
 
     return match ($type) {
         'message' => 'Message',
@@ -541,6 +544,9 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
     if ($type === 'order') {
         if (in_array($title, ['Deal Confirmed!', 'Deal Confirmation Request'], true) && $refId > 0) {
             return notificationMessagesUrl($pdo, $currentUserId, $refId);
+        }
+        if ($title === 'Order expiring soon' && $refId > 0) {
+            return $base . 'pages/my_orders.php?order_id=' . $refId;
         }
         if ($refId > 0) {
             return $base . 'pages/my_orders.php?order_id=' . $refId;
@@ -1003,6 +1009,137 @@ function getSellerRating(PDO $pdo, int $sellerId): array {
 }
 
 /**
+ * Complete a product sale: mark sold, record deal confirmation, complete pending order if any.
+ *
+ * @param string $source One of chat, order, or manual (off-platform).
+ * @return array{success:bool,error?:string,already_sold?:bool}
+ */
+function completeProductSale(PDO $pdo, int $productId, int $sellerId, ?int $buyerId = null, string $source = 'manual'): array {
+    $allowedSources = ['chat', 'order', 'manual'];
+    if (!in_array($source, $allowedSources, true)) {
+        $source = 'manual';
+    }
+
+    $ownsTx = !$pdo->inTransaction();
+    if ($ownsTx) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT id, user_id, title, status FROM products WHERE id = :pid FOR UPDATE");
+        $stmt->execute([':pid' => $productId]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$product) {
+            throw new RuntimeException('Product not found');
+        }
+        if ((int)$product['user_id'] !== $sellerId) {
+            throw new RuntimeException('Not authorized');
+        }
+
+        if ($product['status'] === 'sold') {
+            if ($ownsTx) {
+                $pdo->commit();
+            }
+            return ['success' => true, 'already_sold' => true];
+        }
+
+        if (!in_array($product['status'], ['active', 'pending_approval'], true)) {
+            throw new RuntimeException('Listing cannot be marked as sold');
+        }
+
+        $pdo->prepare("
+            UPDATE products
+            SET status = 'sold', deleted_at = NULL, updated_at = NOW()
+            WHERE id = :pid
+        ")->execute([':pid' => $productId]);
+
+        if ($buyerId !== null) {
+            $stmtOrder = $pdo->prepare("
+                SELECT id, amount
+                FROM orders
+                WHERE product_id = :pid AND buyer_id = :bid AND status = 'pending'
+                ORDER BY created_at DESC
+                LIMIT 1
+            ");
+            $stmtOrder->execute([':pid' => $productId, ':bid' => $buyerId]);
+            $order = $stmtOrder->fetch(PDO::FETCH_ASSOC);
+
+            if ($order) {
+                $pdo->prepare("UPDATE orders SET status = 'completed', updated_at = NOW() WHERE id = :id")
+                    ->execute([':id' => $order['id']]);
+
+                $stmtTrans = $pdo->prepare("SELECT id FROM transactions WHERE order_id = :oid LIMIT 1");
+                $stmtTrans->execute([':oid' => $order['id']]);
+                if (!$stmtTrans->fetchColumn()) {
+                    $pdo->prepare("INSERT INTO transactions (order_id, amount, status) VALUES (:oid, :amount, 'success')")
+                        ->execute([':oid' => $order['id'], ':amount' => $order['amount']]);
+                }
+            }
+        }
+
+        $pdo->prepare("
+            UPDATE orders
+            SET status = 'cancelled', updated_at = NOW()
+            WHERE product_id = :pid AND status = 'pending'
+        ")->execute([':pid' => $productId]);
+
+        if ($buyerId !== null) {
+            $stmtDeal = $pdo->prepare("
+                SELECT id FROM deal_confirmations
+                WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
+                LIMIT 1
+            ");
+            $stmtDeal->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            $dealId = $stmtDeal->fetchColumn();
+
+            if ($dealId) {
+                $pdo->prepare("
+                    UPDATE deal_confirmations
+                    SET seller_confirmed_at = NOW(), status = 'completed', sale_source = :src, updated_at = NOW()
+                    WHERE id = :id
+                ")->execute([':id' => $dealId, ':src' => $source]);
+            } else {
+                $pdo->prepare("
+                    INSERT INTO deal_confirmations (product_id, buyer_id, seller_id, seller_confirmed_at, status, sale_source)
+                    VALUES (:pid, :bid, :sid, NOW(), 'completed', :src)
+                ")->execute([
+                    ':pid' => $productId,
+                    ':bid' => $buyerId,
+                    ':sid' => $sellerId,
+                    ':src' => $source,
+                ]);
+            }
+        } else {
+            $stmtManual = $pdo->prepare("
+                SELECT id FROM deal_confirmations
+                WHERE product_id = :pid AND seller_id = :sid AND status = 'completed' AND sale_source = 'manual'
+                LIMIT 1
+            ");
+            $stmtManual->execute([':pid' => $productId, ':sid' => $sellerId]);
+            if (!$stmtManual->fetchColumn()) {
+                $pdo->prepare("
+                    INSERT INTO deal_confirmations (product_id, buyer_id, seller_id, seller_confirmed_at, status, sale_source)
+                    VALUES (:pid, NULL, :sid, NOW(), 'completed', 'manual')
+                ")->execute([':pid' => $productId, ':sid' => $sellerId]);
+            }
+        }
+
+        if ($ownsTx) {
+            $pdo->commit();
+        }
+
+        return ['success' => true];
+    } catch (Throwable $e) {
+        if ($ownsTx && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[completeProductSale] ' . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
  * Compute seller trust score (0-100) based on reviews, completion reliability, and sell speed.
  */
 function getSellerTrustScore(PDO $pdo, int $sellerId): array {
@@ -1032,6 +1169,29 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
     $completedOrders = (int)($orderMetrics['completed_orders'] ?? 0);
     $avgHoursToSell = isset($orderMetrics['avg_hours_to_sell']) ? (float)$orderMetrics['avg_hours_to_sell'] : null;
 
+    $soldTimeDiffSql = $isPostgres
+        ? "EXTRACT(EPOCH FROM (p.updated_at - p.created_at)) / 3600"
+        : "TIMESTAMPDIFF(HOUR, p.created_at, p.updated_at)";
+
+    $soldStmt = $pdo->prepare("
+        SELECT
+            COUNT(*) AS sold_count,
+            AVG({$soldTimeDiffSql}) AS avg_hours_to_sell
+        FROM products p
+        WHERE p.user_id = :sid AND p.status = 'sold'
+    ");
+    $soldStmt->execute([':sid' => $sellerId]);
+    $soldMetrics = $soldStmt->fetch() ?: [];
+    $soldProducts = (int)($soldMetrics['sold_count'] ?? 0);
+    $soldAvgHours = isset($soldMetrics['avg_hours_to_sell']) ? (float)$soldMetrics['avg_hours_to_sell'] : null;
+
+    $completedSales = max($completedOrders, $soldProducts);
+    if ($avgHoursToSell === null) {
+        $avgHoursToSell = $soldAvgHours;
+    } elseif ($soldAvgHours !== null) {
+        $avgHoursToSell = ($avgHoursToSell + $soldAvgHours) / 2;
+    }
+
     $ratingQuality = max(0.0, min(1.0, $avgRating / 5.0));
     $reviewConfidence = min(1.0, $reviewCount / 10.0);
     $ratingScore = 50.0 * ((0.7 * $ratingQuality) + (0.3 * $reviewConfidence));
@@ -1051,7 +1211,7 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
     $score = max(0, min(100, $score));
 
     $tier = 'New Seller';
-    if ($completedOrders >= 3 || $reviewCount >= 3) {
+    if ($completedSales >= 3 || $reviewCount >= 3) {
         if ($score >= 88) $tier = 'Highly Trusted';
         elseif ($score >= 75) $tier = 'Trusted';
         else $tier = 'Growing Reputation';
@@ -1064,6 +1224,7 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
         'avg_rating' => $avgRating,
         'total_orders' => $totalOrders,
         'completed_orders' => $completedOrders,
+        'sold_products' => $soldProducts,
     ];
 }
 

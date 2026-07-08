@@ -1,6 +1,7 @@
 <?php
 // pages/place_order.php
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/order_expiry.php';
 requireLogin();
 
 // Admins are moderators only — they cannot place orders
@@ -57,7 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
         try {
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare("INSERT INTO orders (buyer_id, product_id, amount, status, meeting_point, notes) VALUES (:buyer_id, :product_id, :amount, 'pending', :meeting_point, :notes)");
+            $stmt = $pdo->prepare("
+                INSERT INTO orders (buyer_id, product_id, amount, status, meeting_point, notes, expires_at)
+                VALUES (:buyer_id, :product_id, :amount, 'pending', :meeting_point, :notes, " . pendingOrderExpiresAtExpression() . ")
+            ");
             $stmt->execute([':buyer_id' => $currentUserId, ':product_id' => $productId, ':amount' => $effectivePrice, ':meeting_point' => $meetingPoint, ':notes' => $notes]);
             $orderId = $pdo->lastInsertId();
             createNotification($pdo, $product['user_id'], 'order', "New Order Placed!", "Someone wants to buy '{$product['title']}'. Check your sales!", $orderId);

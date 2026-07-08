@@ -241,19 +241,19 @@ otp_expiry = 3600
 # Auth emails (verification, password reset) — footer is CampusMarket only, no campus-specific branding.
 [auth.email.template.confirmation]
 subject = "Verify your CampusMarket account"
-content_path = "./templates/confirmation.html"
+content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
 subject = "Reset your CampusMarket password"
-content_path = "./templates/recovery.html"
+content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.magic_link]
 subject = "Your CampusMarket login link"
-content_path = "./templates/magic_link.html"
+content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.email_change]
 subject = "Confirm your new CampusMarket email"
-content_path = "./templates/email_change.html"
+content_path = "./supabase/templates/email_change.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

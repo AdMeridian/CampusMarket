@@ -159,13 +159,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     }
 }
 
-// Handle Mark as Sold (Now moves to bin too)
+// Handle Mark as Sold (off-platform sale — records deal + trust score)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'mark_sold') {
     verifyCsrfToken();
-    $stmt = $pdo->prepare("UPDATE products SET status = 'deleted', deleted_at = NOW(), updated_at = NOW() WHERE id = ?");
-    if ($stmt->execute([$productId])) {
+    $result = completeProductSale($pdo, $productId, (int)$product['user_id'], null, 'manual');
+    if ($result['success']) {
         setFlash('success', __('product.marked_sold_success'));
-        redirect(BASE_URL . 'pages/recycle_bin.php');
+        redirect(BASE_URL . 'pages/profile.php?id=' . (int)$product['user_id']);
+    } else {
+        setFlash('error', __('product.mark_sold_failed'));
+        redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     }
 }
 
@@ -1092,7 +1095,9 @@ body.dark-mode .scc-badge {
                         <span><?= __('product.share') ?></span>
                     </button>
 
+                    <?php if ($isOwner): ?>
                     <span class="text-muted small px-3 py-1 rounded-lg font-medium" style="background: var(--bg-main); border: 1px solid var(--border-light);"><?= __('product.listed_time', ['time' => timeAgo($product['created_at'])]) ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
 

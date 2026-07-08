@@ -75,9 +75,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                     setFlash('success', __('orders.flash_review_thanks'));
                 } elseif ($action === 'confirm' && $isSeller && $order['status'] === 'pending') {
-                    $pdo->prepare("UPDATE orders SET status = 'completed' WHERE id = ?")->execute([$orderId]);
-                    $pdo->prepare("UPDATE products SET status = 'sold' WHERE id = ?")->execute([$order['product_id']]);
-                    $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE product_id = ? AND id != ? AND status = 'pending'")->execute([$order['product_id'], $orderId]);
+                    $saleResult = completeProductSale(
+                        $pdo,
+                        (int)$order['product_id'],
+                        (int)$order['seller_id'],
+                        (int)$order['buyer_id'],
+                        'order'
+                    );
+                    if (!$saleResult['success']) {
+                        throw new RuntimeException(__('orders.flash_update_failed'));
+                    }
                     createNotification($pdo, $order['buyer_id'], 'order', 'Order Confirmed!', "Your order for '{$order['product_title']}' was confirmed.", $orderId);
                     setFlash('success', __('orders.flash_confirmed'));
                 } elseif ($action === 'cancel' && ($isSeller || $isBuyer) && $order['status'] === 'pending') {
@@ -143,6 +150,26 @@ $stmtSelling = $pdo->prepare("
 ");
 $stmtSelling->execute([':uid' => $currentUserId]);
 $sellingOrders = $stmtSelling->fetchAll();
+
+$stmtManualSales = $pdo->prepare("
+    SELECT
+        dc.id AS deal_id,
+        dc.seller_confirmed_at,
+        p.id AS product_id,
+        p.title AS product_title,
+        p.price,
+        p.price_currency,
+        i.image_path
+    FROM deal_confirmations dc
+    JOIN products p ON p.id = dc.product_id
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+    WHERE dc.seller_id = :uid
+      AND dc.status = 'completed'
+      AND dc.sale_source = 'manual'
+    ORDER BY dc.seller_confirmed_at DESC
+");
+$stmtManualSales->execute([':uid' => $currentUserId]);
+$manualSales = $stmtManualSales->fetchAll();
 
 $pendingReviewStmt = $pdo->prepare("
     SELECT
@@ -252,6 +279,9 @@ require_once __DIR__ . '/../includes/header.php';
                                     <span>&bull;</span>
                                     <span><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
                                 </p>
+                                <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
+                                    <p class="text-muted small mb-0 mt-1"><?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></p>
+                                <?php endif; ?>
                             </div>
                             <?php if ($order['status'] === 'pending'): ?>
                                 <form method="post" class="ml-2 m-0 order-hub-actions">
@@ -284,11 +314,11 @@ require_once __DIR__ . '/../includes/header.php';
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
                 <h2 class="page-section-title mb-0">My Sales</h2>
-                <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($sellingOrders); ?> Requests</div>
+                <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($sellingOrders) + count($manualSales); ?> Sales</div>
             </div>
 
             <div class="flex flex-col gap-5">
-                <?php if (empty($sellingOrders)): ?>
+                <?php if (empty($sellingOrders) && empty($manualSales)): ?>
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
                         <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
                         <p class="text-muted font-medium mb-4">No incoming sales orders yet.</p>
@@ -311,6 +341,9 @@ require_once __DIR__ . '/../includes/header.php';
                                         <div class="mb-1 text-muted">Buyer: <span class="font-medium text-main">@<?php echo sanitize($order['buyer_name']); ?></span></div>
                                         <div class="text-muted">Meet at: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></div>
                                     </div>
+                                    <?php if (!empty($order['expires_at'])): ?>
+                                        <p class="text-muted small mb-0 mt-2"><?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></p>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -329,6 +362,23 @@ require_once __DIR__ . '/../includes/header.php';
                                     </form>
                                 </div>
                             <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <?php foreach ($manualSales as $sale): ?>
+                        <div class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #10b981;">
+                            <div class="flex gap-5 items-start">
+                                <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
+                                    <img src="<?php echo getProductImage($sale['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="<?php echo sanitize($sale['product_title']); ?>">
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($sale['product_title']); ?></h4>
+                                        <span class="badge badge-completed shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;">Completed</span>
+                                    </div>
+                                    <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($sale['price'], productCurrencyCode($sale)); ?></p>
+                                    <p class="text-muted small mb-0">Sold off-platform · <?php echo date('M d, Y', strtotime($sale['seller_confirmed_at'])); ?></p>
+                                </div>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
