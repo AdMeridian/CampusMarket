@@ -506,6 +506,7 @@
     "promo.alert_select_listing": "Please select a listing to boost first.",
     "promo.alert_valid_amount": "Please select or enter a valid boost amount.",
     "promo.flash_submitted": "Payment request submitted. Admin will review it shortly.",
+    "promo.flash_manual_unavailable": "Manual promotion payments are not available right now. Please use Stripe.",
     "promo.flash_invalid_type": "Invalid payment type.",
     "promo.flash_invalid_method": "Invalid payment method.",
     "promo.flash_invalid_amount": "Amount must be greater than zero.",
