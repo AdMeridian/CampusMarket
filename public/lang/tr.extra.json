@@ -506,6 +506,7 @@
     "promo.alert_select_listing": "Lütfen önce öne çıkarılacak bir ilan seçin.",
     "promo.alert_valid_amount": "Lütfen geçerli bir öne çıkarma tutarı seçin veya girin.",
     "promo.flash_submitted": "Ödeme talebi gönderildi. Yönetici kısa süre içinde inceleyecek.",
+    "promo.flash_manual_unavailable": "Manuel promosyon ödemeleri şu anda kullanılamıyor. Lütfen Stripe kullanın.",
     "promo.flash_invalid_type": "Geçersiz ödeme türü.",
     "promo.flash_invalid_method": "Geçersiz ödeme yöntemi.",
     "promo.flash_invalid_amount": "Tutar sıfırdan büyük olmalıdır.",

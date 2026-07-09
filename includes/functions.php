@@ -1244,6 +1244,10 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
         $speedNorm = max(0.0, min(1.0, $speedNorm));
         $speedScore = 30.0 * $speedNorm;
     }
+    // Keep real sales meaningful even when the listing took a while to move.
+    if ($completedSales > 0) {
+        $speedScore = max($speedScore, 10.0);
+    }
 
     $score = (int)round($ratingScore + $reliabilityScore + $speedScore);
     $score = max(0, min(100, $score));
