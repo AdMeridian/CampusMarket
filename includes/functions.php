@@ -1182,7 +1182,7 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
         SELECT
             COUNT(*) AS total_orders,
             SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) AS completed_orders,
-            SUM(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_orders,
+            SUM(CASE WHEN o.status = 'cancelled' AND p.status <> 'sold' THEN 1 ELSE 0 END) AS penalized_cancellations,
             AVG(CASE WHEN o.status = 'completed' THEN {$timeDiffSql} END) AS avg_hours_to_sell
         FROM orders o
         JOIN products p ON p.id = o.product_id
@@ -1193,6 +1193,7 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
 
     $totalOrders = (int)($orderMetrics['total_orders'] ?? 0);
     $completedOrders = (int)($orderMetrics['completed_orders'] ?? 0);
+    $penalizedCancellations = (int)($orderMetrics['penalized_cancellations'] ?? 0);
     $avgHoursToSell = isset($orderMetrics['avg_hours_to_sell']) ? (float)$orderMetrics['avg_hours_to_sell'] : null;
 
     $soldTimeDiffSql = $isPostgres
@@ -1211,7 +1212,14 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
     $soldProducts = (int)($soldMetrics['sold_count'] ?? 0);
     $soldAvgHours = isset($soldMetrics['avg_hours_to_sell']) ? (float)$soldMetrics['avg_hours_to_sell'] : null;
 
-    $completedSales = max($completedOrders, $soldProducts);
+    $dealStmt = $pdo->prepare("
+        SELECT COUNT(*) FROM deal_confirmations
+        WHERE seller_id = :sid AND status = 'completed'
+    ");
+    $dealStmt->execute([':sid' => $sellerId]);
+    $completedDeals = (int)$dealStmt->fetchColumn();
+
+    $completedSales = max($completedOrders, $soldProducts, $completedDeals);
     if ($avgHoursToSell === null) {
         $avgHoursToSell = $soldAvgHours;
     } elseif ($soldAvgHours !== null) {
@@ -1222,8 +1230,12 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
     $reviewConfidence = min(1.0, $reviewCount / 10.0);
     $ratingScore = 50.0 * ((0.7 * $ratingQuality) + (0.3 * $reviewConfidence));
 
-    $completionRate = $totalOrders > 0 ? ($completedOrders / $totalOrders) : 0.0;
-    $reliabilityScore = 20.0 * $completionRate;
+    $decidedOrders = $completedOrders + $penalizedCancellations;
+    $orderCompletionRate = $decidedOrders > 0 ? ($completedOrders / $decidedOrders) : 0.0;
+    $reliabilityFromOrders = 20.0 * $orderCompletionRate;
+    // Off-platform / manual sales should lift reliability even without completed orders.
+    $reliabilityFromSales = min(20.0, $completedSales * 4.0);
+    $reliabilityScore = max($reliabilityFromOrders, $reliabilityFromSales);
 
     // 30 points if sold in <=24h, 0 points if >=14 days. Linear in-between.
     $speedScore = 0.0;
@@ -1241,6 +1253,10 @@ function getSellerTrustScore(PDO $pdo, int $sellerId): array {
         if ($score >= 88) $tier = 'Highly Trusted';
         elseif ($score >= 75) $tier = 'Trusted';
         else $tier = 'Growing Reputation';
+    } elseif ($completedSales >= 1 || $reviewCount >= 1) {
+        if ($score >= 75) $tier = 'Trusted';
+        elseif ($score >= 40) $tier = 'Growing Reputation';
+        else $tier = 'Active Seller';
     }
 
     return [
