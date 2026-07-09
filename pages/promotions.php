@@ -28,65 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = sanitize($_POST['action'] ?? '');
 
     if ($action === 'submit_payment') {
-        $paymentType = sanitize($_POST['payment_type'] ?? '');
-        $method = sanitize($_POST['payment_method'] ?? '');
-        $txRef = sanitize($_POST['transaction_ref'] ?? '');
-        $notes = sanitize($_POST['notes'] ?? '');
-        $productIdRaw = (int)($_POST['product_id'] ?? 0);
-        $amount = (float)($_POST['amount'] ?? 0);
-
-        if (!in_array($paymentType, ['promotion', 'donation'], true)) {
-            setFlash('error', __('promo.flash_invalid_type'));
-            redirect(BASE_URL . 'pages/promotions.php');
-        }
-
-        if (!in_array($method, ['venmo', 'zelle', 'cash', 'other'], true)) {
-            setFlash('error', __('promo.flash_invalid_method'));
-            redirect(BASE_URL . 'pages/promotions.php');
-        }
-
-        if ($amount <= 0) {
-            setFlash('error', __('promo.flash_invalid_amount'));
-            redirect(BASE_URL . 'pages/promotions.php');
-        }
-
-        $productId = null;
-        if ($paymentType === 'promotion') {
-            if ($productIdRaw <= 0) {
-                setFlash('error', __('promo.flash_choose_listing'));
-                redirect(BASE_URL . 'pages/promotions.php');
-            }
-
-            $ownCheck = $pdo->prepare("SELECT id FROM products WHERE id = :pid AND user_id = :uid AND status = 'active'");
-            $ownCheck->execute([':pid' => $productIdRaw, ':uid' => $currentUserId]);
-            if (!$ownCheck->fetchColumn()) {
-                setFlash('error', __('promo.flash_own_listing'));
-                redirect(BASE_URL . 'pages/promotions.php');
-            }
-            $productId = $productIdRaw;
-        }
-
-        $insert = $pdo->prepare("
-            INSERT INTO promotion_payments
-                (user_id, product_id, payment_type, payment_method, amount, transaction_ref, notes, status)
-            VALUES
-                (:uid, :pid, :ptype, :pmethod, :amount, :tx, :notes, 'pending')
-        ");
-
-        $insert->execute([
-            ':uid' => $currentUserId,
-            ':pid' => $productId,
-            ':ptype' => $paymentType,
-            ':pmethod' => $method,
-            ':amount' => $amount,
-            ':tx' => $txRef !== '' ? $txRef : null,
-            ':notes' => $notes !== '' ? $notes : null,
-        ]);
-
-        setFlash('success', __('promo.flash_submitted'));
-        if ($paymentType === 'promotion' && $productId) {
-            redirect(BASE_URL . 'pages/product.php?id=' . (int)$productId);
-        }
+        setFlash('error', __('promo.flash_manual_unavailable'));
         redirect(BASE_URL . 'pages/promotions.php');
     }
 }
@@ -181,9 +123,6 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 </form>
 
-                <button id="show-manual" class="mt-4 text-center text-muted" style="font-size: 0.85rem; background: none; border: none; cursor: pointer; text-decoration: underline;">
-                    <?= __('promo.manual_link') ?>
-                </button>
             </div>
 
             <!-- Right: Status & History -->
@@ -221,36 +160,6 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Manual Payment Modal (Hidden by default) -->
-<div id="manual-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 1.5rem;">
-    <div class="glass-panel" style="max-width: 500px; width: 100%; background: white; padding: 2rem; border-radius: 32px; position: relative;">
-        <button id="close-manual" style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
-        
-        <h3 class="mb-2"><?= __('promo.manual_title') ?></h3>
-        <p class="text-muted mb-6" style="font-size: 0.9rem;"><?= __('promo.manual_body') ?></p>
-        
-        <form method="post">
-            <?php echo csrfTokenField(); ?>
-            <input type="hidden" name="action" value="submit_payment">
-            <input type="hidden" name="payment_type" value="promotion">
-            <input type="hidden" name="product_id" id="manual_product_id">
-            <input type="hidden" name="amount" id="manual_amount">
-
-            <label class="form-label"><?= __('promo.payment_method') ?></label>
-            <select name="payment_method" class="form-control mb-4" required>
-                <option value="venmo">Venmo (@CampusMarket)</option>
-                <option value="zelle">Zelle (support@campusmarketplace.site)</option>
-                <option value="cash">Cash (In-person)</option>
-            </select>
-
-            <label class="form-label"><?= __('promo.tx_ref') ?></label>
-            <input type="text" name="transaction_ref" class="form-control mb-4" placeholder="<?= addslashes(__('promo.tx_placeholder')) ?>">
-
-            <button type="submit" class="btn btn-primary w-full" style="padding: 0.8rem;"><?= __('promo.submit_review') ?></button>
-        </form>
     </div>
 </div>
 
@@ -310,10 +219,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const pills = document.querySelectorAll('.amount-pill');
     const customInput = document.getElementById('custom-amount');
     const stripeAmount = document.getElementById('stripe_amount');
-    const manualAmount = document.getElementById('manual_amount');
     const productPicker = document.getElementById('product_id');
     const stripeProduct = document.getElementById('stripe_product_id');
-    const manualProduct = document.getElementById('manual_product_id');
 
     const previewEl = document.getElementById('duration-preview');
     const promoI18n = {
@@ -347,7 +254,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const amt = this.dataset.amount;
             customInput.value = amt;
             stripeAmount.value = amt;
-            manualAmount.value = amt;
             pills.forEach(p => p.classList.remove('active'));
             this.classList.add('active');
             updatePreview(amt);
@@ -357,7 +263,6 @@ document.addEventListener('DOMContentLoaded', function() {
     customInput.addEventListener('input', function() {
         const val = this.value;
         stripeAmount.value = val;
-        manualAmount.value = val;
         updatePreview(val);
         pills.forEach(p => {
             if (p.dataset.amount === val) p.classList.add('active');
@@ -368,13 +273,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle Product Selection
     productPicker.addEventListener('change', function() {
         stripeProduct.value = this.value;
-        manualProduct.value = this.value;
     });
 
     // Initialize if pre-selected
     if (productPicker.value) {
         stripeProduct.value = productPicker.value;
-        manualProduct.value = productPicker.value;
     }
 
     // Prefill from create listing flow if query param is present.
@@ -382,7 +285,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (prefillProductId > 0) {
         productPicker.value = String(prefillProductId);
         stripeProduct.value = String(prefillProductId);
-        manualProduct.value = String(prefillProductId);
     }
 
     // Stripe Validation
@@ -399,18 +301,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('stripe-form').submit();
     });
 
-    // Manual Modal Logic
-    const manualModal = document.getElementById('manual-modal');
-    document.getElementById('show-manual').addEventListener('click', () => {
-        if (!productPicker.value) {
-            alert(promoI18n.alertListing);
-            return;
-        }
-        manualModal.style.display = 'flex';
-    });
-    document.getElementById('close-manual').addEventListener('click', () => {
-        manualModal.style.display = 'none';
-    });
 });
 </script>
 
