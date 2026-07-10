@@ -22,10 +22,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'];
 
         if ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT user_id, title FROM products WHERE id = ?");
             $stmt->execute([$id]);
-            setFlash('success', __('admin.flash_listing_deleted'));
-            logAdminAction($pdo, 'delete_listing', 'product', $id);
+            $prod = $stmt->fetch();
+
+            if ($prod) {
+                $stmtDel = $pdo->prepare("DELETE FROM products WHERE id = ?");
+                $stmtDel->execute([$id]);
+
+                $reason = isset($_POST['reason']) ? trim($_POST['reason']) : '';
+                $titleText = "Listing Rejected & Deleted";
+                if ($reason !== '') {
+                    $bodyText = "Your listing for '" . $prod['title'] . "' was not approved and has been deleted. Reason: " . $reason;
+                } else {
+                    $bodyText = "Your listing for '" . $prod['title'] . "' was not approved and has been deleted.";
+                }
+
+                createNotification($pdo, (int)$prod['user_id'], 'system', $titleText, $bodyText, null);
+                
+                setFlash('success', __('admin.flash_listing_deleted'));
+                logAdminAction($pdo, 'delete_listing', 'product', $id, ['title' => $prod['title'], 'reason' => $reason]);
+            } else {
+                setFlash('error', 'Listing not found.');
+            }
         } elseif ($action === 'approve') {
             // Fetch listing details to notify the owner
             $stmt = $pdo->prepare("SELECT user_id, title FROM products WHERE id = ?");
@@ -240,10 +259,11 @@ require_once __DIR__ . '/../includes/header.php';
                                     <span class="btn btn-secondary btn-sm opacity-50" style="border-radius: var(--radius-lg);">No credits</span>
                                 <?php endif; ?>
                                 <a href="../pages/product.php?id=<?php echo $item['id']; ?>" target="_blank" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View</a>
-                                <form method="POST" style="margin: 0; display: inline-block;" onsubmit="return confirm('Delete this listing permanently?')">
+                                <form method="POST" style="margin: 0; display: inline-block;" onsubmit="return handleListingDelete(this);">
                                     <?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                    <input type="hidden" name="reason" value="">
                                     <button type="submit" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Delete permanently">Delete</button>
                                 </form>
                             </div>
@@ -278,5 +298,19 @@ require_once __DIR__ . '/../includes/header.php';
     flex-wrap: wrap;
 }
 </style>
+ 
+<script>
+function handleListingDelete(form) {
+    if (!confirm('Are you sure you want to delete this listing permanently?')) {
+        return false;
+    }
+    const reason = prompt('Please enter the reason for rejection/deletion (this will be sent to the seller):');
+    if (reason === null) {
+        return false;
+    }
+    form.querySelector('input[name="reason"]').value = reason.trim();
+    return true;
+}
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -37,7 +37,7 @@ require_once __DIR__ . '/../includes/header.php';
 }
 </style>
 
-<div class="container py-4">
+<div class="container py-4 page-content-offset">
     <div style="max-width: 760px; margin: 0 auto;">
         <div class="flex justify-between items-center mb-4" style="flex-wrap: wrap; gap: 1rem;">
             <div>

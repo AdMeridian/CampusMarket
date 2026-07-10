@@ -256,7 +256,7 @@ require_once __DIR__ . '/../includes/header.php';
 }
 </style>
 
-<div class="container py-4">
+<div class="container py-4 page-content-offset">
     <div class="card p-5" style="max-width: 600px; margin: 0 auto; background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-light);">
         <h1 class="page-hero-title page-hero-title--center mb-4 text-main"><?= __('report.title') ?></h1>
         <p style="text-align: center; color: var(--text-muted); margin-bottom: 2rem;"><?= __('report.subtitle') ?></p>

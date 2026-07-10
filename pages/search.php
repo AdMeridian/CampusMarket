@@ -62,7 +62,7 @@ if ($query !== '' || $categoryId !== '' || $town !== '') {
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container min-h-screen pt-12 pb-20 relative">
+<div class="container min-h-screen pt-24 pb-20 relative">
     <div class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 glass-panel p-6" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         <div class="text-center md:text-left">
             <h1 class="page-section-title mb-1 text-main"><?= __('search.results_title') ?></h1>
