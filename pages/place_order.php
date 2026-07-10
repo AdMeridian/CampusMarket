@@ -76,7 +76,7 @@ $pageTitle = __('place_order.title');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container min-h-screen pt-12 pb-20 relative">
+<div class="container min-h-screen pt-24 pb-20 relative">
     
     <!-- Background Accents -->
 
