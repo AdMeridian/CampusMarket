@@ -700,7 +700,6 @@ function compressImageAsync(file, maxWidth = 1200, maxHeight = 1200, quality = 0
 
 document.getElementById('imgInput').addEventListener('change', async function(e) {
     await handleIncomingFiles([...e.target.files]);
-    e.target.value = '';
 });
 
 async function handleIncomingFiles(newFiles) {

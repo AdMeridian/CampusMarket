@@ -1422,7 +1422,7 @@ body.dark-mode .scc-badge {
                             
                             <!-- Empty Slots if < 5 -->
                             <?php for ($i = count($images); $i < 5; $i++): ?>
-                                <div class="border border-dashed border-slate-200 rounded-lg flex items-center justify-center aspect-square text-slate-300">
+                                <div class="mgmt-empty-slot border border-dashed border-slate-200 rounded-lg flex items-center justify-center aspect-square text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                                 </div>
                             <?php endfor; ?>
@@ -1551,6 +1551,12 @@ const mgmtImgInput = document.getElementById('mgmtImgInput');
 if (mgmtImgInput) {
     let mgmtUploadedFiles = [];
     const mgmtMaxFiles = <?php echo isset($images) ? (5 - count($images)) : 5; ?>;
+
+    document.querySelectorAll('.mgmt-empty-slot').forEach(slot => {
+        slot.addEventListener('click', () => {
+            mgmtImgInput.click();
+        });
+    });
 
     function compressImageAsync(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
         return new Promise((resolve, reject) => {
