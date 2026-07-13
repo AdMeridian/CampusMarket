@@ -13,8 +13,12 @@ $success = '';
 
 $isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
 $intervalSql = $isPostgres ? "NOW() - INTERVAL '30 days'" : "NOW() - INTERVAL 30 DAY";
-$cleanup = $pdo->prepare("DELETE FROM products WHERE status = 'deleted' AND deleted_at < $intervalSql");
-$cleanup->execute();
+$cleanupStmt = $pdo->prepare("SELECT id FROM products WHERE status = 'deleted' AND deleted_at < $intervalSql");
+$cleanupStmt->execute();
+$cleanupIds = $cleanupStmt->fetchAll(PDO::FETCH_COLUMN);
+foreach ($cleanupIds as $cId) {
+    permanentlyDeleteProduct($pdo, (int)$cId);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
@@ -33,8 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 redirect(BASE_URL . 'pages/recycle_bin.php');
             }
         } elseif ($action === 'delete_permanent') {
-            $del = $pdo->prepare("DELETE FROM products WHERE id = ?");
-            if ($del->execute([$productId])) {
+            if (permanentlyDeleteProduct($pdo, $productId)) {
                 setFlash('success', __('recycle.flash_deleted'));
                 redirect(BASE_URL . 'pages/recycle_bin.php');
             }
