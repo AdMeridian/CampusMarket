@@ -30,7 +30,9 @@ WHERE p.status = 'sold'
 
 DROP VIEW IF EXISTS public.v_completed_deals;
 
-CREATE VIEW public.v_completed_deals AS
+CREATE VIEW public.v_completed_deals
+WITH (security_invoker = true)
+AS
 SELECT
     dc.id,
     dc.product_id,
