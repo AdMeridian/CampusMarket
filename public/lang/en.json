@@ -264,6 +264,7 @@
     "create_listing.currency_label": "Currency",
     "create_listing.currency_try": "Turkish Lira (₺)",
     "create_listing.currency_usd": "US Dollar ($)",
+    "create_listing.currency_gbp": "British Pound (£)",
     "create_listing.currency_hint": "Choose the currency buyers should pay in for this listing.",
     "create_listing.condition_label": "Condition",
     "create_listing.cond_new": "New",
