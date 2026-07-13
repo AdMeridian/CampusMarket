@@ -397,6 +397,27 @@ function deleteStoredImageFile(string $path): bool {
     return false;
 }
 
+/**
+ * Permanently deletes a product and all of its associated image files from storage and the database.
+ */
+function permanentlyDeleteProduct(PDO $pdo, int $productId): bool {
+    // 1. Fetch all associated images for the product
+    $stmt = $pdo->prepare("SELECT image_path FROM product_images WHERE product_id = ?");
+    $stmt->execute([$productId]);
+    $images = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    // 2. Delete each image file from storage (Supabase or local uploads folder)
+    foreach ($images as $img) {
+        if (!empty($img)) {
+            deleteStoredImageFile($img);
+        }
+    }
+    
+    // 3. Delete the product record from the DB (CASCADE deletes tags/images records)
+    $del = $pdo->prepare("DELETE FROM products WHERE id = ?");
+    return $del->execute([$productId]);
+}
+
 // ─── Pagination ──────────────────────────────────────────
 
 /**

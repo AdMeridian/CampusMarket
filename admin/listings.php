@@ -27,8 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $prod = $stmt->fetch();
 
             if ($prod) {
-                $stmtDel = $pdo->prepare("DELETE FROM products WHERE id = ?");
-                $stmtDel->execute([$id]);
+                permanentlyDeleteProduct($pdo, $id);
 
                 $reason = isset($_POST['reason']) ? trim($_POST['reason']) : '';
                 $titleText = "Listing Rejected & Deleted";
