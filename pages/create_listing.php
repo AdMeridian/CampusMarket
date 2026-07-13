@@ -362,7 +362,7 @@ include '../includes/header.php';
 
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.condition_label') ?></label>
-                    <div class="flex flex-wrap gap-6">
+                    <div class="flex flex-wrap gap-3" style="gap: 0.5rem;">
                         <?php 
                         $opts = [
                             'new' => __('create_listing.cond_new'),
@@ -372,7 +372,7 @@ include '../includes/header.php';
                         $default = 'used';
                         foreach($opts as $val => $label):
                         ?>
-                        <label class="condition-label group flex items-center gap-3 cursor-pointer glass-panel transition-all duration-200" style="border-radius: var(--radius-full); border: 2px solid transparent; padding: 0.55rem 1.25rem; min-width: 100px; justify-content: center;">
+                        <label class="condition-label group flex items-center gap-2 cursor-pointer glass-panel transition-all duration-200" style="border-radius: var(--radius-full); border: 2px solid transparent; padding: 0.55rem 0.9rem; flex: 1; min-width: 0; justify-content: center;">
                             <input type="radio" name="condition" value="<?php echo $val; ?>" <?php echo (isset($_POST['condition']) ? $_POST['condition'] == $val : $val == $default) ? 'checked' : ''; ?> class="hidden-radio">
                             <span class="custom-radio"></span>
                             <span class="font-semibold text-main"><?php echo $label; ?></span>
