@@ -191,7 +191,7 @@ $presenceText = match($otherPresence['status']) {
 
         <div class="chat-input-bar">
             <form id="chat-form" class="chat-input-form m-0">
-                <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" required autocomplete="off">
+                <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" required autocomplete="off" maxlength="1000">
                 <button type="submit" class="chat-send-btn btn btn-primary" title="<?= htmlspecialchars(__('chat.send')) ?>" aria-label="<?= htmlspecialchars(__('chat.send')) ?>">
                     <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>

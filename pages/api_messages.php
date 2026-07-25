@@ -203,6 +203,11 @@ if ($action === 'send') {
         echo json_encode(['success' => false, 'error' => 'Missing or empty parameters']);
         exit;
     }
+    
+    if (mb_strlen($body) > 1000) {
+        echo json_encode(['success' => false, 'error' => 'Message exceeds maximum length of 1000 characters']);
+        exit;
+    }
 
     if (!isValidConversation($pdo, $productId, $currentUserId, $receiverId)) {
         echo json_encode(['success' => false, 'error' => 'Invalid conversation context']);
