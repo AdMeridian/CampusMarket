@@ -12,6 +12,13 @@ require_once __DIR__ . '/../includes/header.php';
 
 // Data for homepage
 $recentProducts = getRecentProducts($pdo, HOME_RECENT_LISTING_LIMIT, HOME_RECENT_LISTING_DAYS);
+$recentProductsFallback = [];
+if (empty($recentProducts)) {
+    $recentProductsFallback = getLatestActiveProducts($pdo, HOME_RECENT_LISTING_LIMIT);
+    if (!empty($recentProductsFallback)) {
+        $recentProducts = $recentProductsFallback;
+    }
+}
 $displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HOME_PRODUCTS_PER_CATEGORY);
 ?>
 
@@ -128,7 +135,12 @@ if (!empty($featuredProducts)):
 <section class="home-section mt-12 mb-12">
     <div class="container">
         <div class="home-section__header">
-            <h2 class="home-section__title mb-0"><?= __('home.recent_listings') ?></h2>
+            <div>
+                <h2 class="home-section__title mb-0"><?= __('home.recent_listings') ?></h2>
+                <?php if (!empty($recentProductsFallback)): ?>
+                    <p class="text-muted small mb-2"><?= __('home.recent_listings_fallback_desc') ?></p>
+                <?php endif; ?>
+            </div>
             <a href="<?php echo $pagesBase; ?>browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
 

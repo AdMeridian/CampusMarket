@@ -1,7 +1,9 @@
 {
+    "nav.home": "Home",
     "nav.browse": "Browse",
     "nav.inbox": "Inbox",
     "nav.sell_item": "Sell Item",
+    "nav.profile": "Profile",
     "nav.login": "Login",
     "nav.signup": "Sign Up",
     "nav.logout": "Logout",
@@ -204,6 +206,7 @@
     "home.featured_desc": "Promoted items from students in your area.",
     "home.promote_listing": "Promote Your Listing",
     "home.recent_listings": "Recent Listings",
+    "home.recent_listings_fallback_desc": "Showing the latest active listings since there are no new items right now.",
     "home.carousel_prev": "Previous listings",
     "home.carousel_next": "Next listings",
     "home.see_everything": "See Everything",

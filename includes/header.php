@@ -275,7 +275,15 @@ $navCategories = getNavCategories($pdo);
     
 </head>
 <body<?php echo !empty($bodyClass) ? ' class="' . htmlspecialchars((string) $bodyClass, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
- 
+<?php
+    $navRequestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+    $mobileBottomNavActive = function(string $needle, bool $exact = false) use ($navRequestPath): string {
+        if ($exact) {
+            return ($navRequestPath === $needle || ($needle === '/' && in_array(basename($navRequestPath), ['', 'index.php'], true))) ? ' is-active' : '';
+        }
+        return str_contains($navRequestPath, $needle) ? ' is-active' : '';
+    };
+?>
 <nav class="navbar">
     <div class="container flex justify-between items-center">
         <!-- Logo -->
@@ -412,6 +420,28 @@ $navCategories = getNavCategories($pdo);
         <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
         <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
     </form>
+</div>
+
+<div class="mobile-bottom-nav lg-hidden" role="navigation" aria-label="Mobile app navigation">
+    <a href="<?php echo BASE_URL; ?>" class="mobile-bottom-nav-link<?php echo $mobileBottomNavActive('/', true); ?>">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11L12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9z"></path></svg>
+        <span><?php echo __('nav.home'); ?></span>
+    </a>
+    <a href="<?php echo BASE_URL; ?>pages/browse.php" class="mobile-bottom-nav-link<?php echo $mobileBottomNavActive('browse.php'); ?>">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span><?php echo __('nav.browse'); ?></span>
+    </a>
+    <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="mobile-bottom-nav-link mobile-bottom-nav-link--cta<?php echo $mobileBottomNavActive('create_listing.php'); ?>" aria-label="Create listing">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </a>
+    <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="mobile-bottom-nav-link<?php echo $mobileBottomNavActive('inbox.php'); ?>">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"></path><path d="M4 8l8 5 8-5"></path></svg>
+        <span><?php echo __('nav.inbox'); ?></span>
+    </a>
+    <a href="<?php echo BASE_URL; ?>pages/profile.php" class="mobile-bottom-nav-link<?php echo $mobileBottomNavActive('profile.php'); ?>">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5z"></path><path d="M4 20a8 8 0 0 1 16 0"></path></svg>
+        <span><?php echo __('nav.profile'); ?></span>
+    </a>
 </div>
 
 <?php

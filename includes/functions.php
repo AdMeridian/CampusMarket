@@ -807,6 +807,16 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
 }
 
 /**
+ * Fetch the latest active products without a recent-time window.
+ */
+function getLatestActiveProducts(PDO $pdo, int $limit = 8): array {
+    $stmt = $pdo->prepare("\n        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name\n        FROM products p\n        JOIN categories c ON p.category_id = c.id\n        JOIN users u ON p.user_id = u.id\n        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE\n        WHERE p.status = 'active'\n        ORDER BY p.created_at DESC\n        LIMIT :limit\n    ");
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+/**
  * Top categories with a preview of their newest active listings for the homepage.
  */
 function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $productsPerCategory = 5): array {
@@ -1041,6 +1051,25 @@ function getSellerRating(PDO $pdo, int $sellerId): array {
         'avg'   => $result['avg_rating'] ?? 0,
         'count' => $result['review_count']
     ];
+}
+
+/**
+ * Fetch recent seller reviews including buyer comments.
+ */
+function getSellerReviews(PDO $pdo, int $sellerId, int $limit = 10): array {
+    $stmt = $pdo->prepare("
+        SELECT r.*, u.username as reviewer_name, p.title as product_title
+        FROM ratings r
+        JOIN users u ON u.id = r.reviewer_id
+        LEFT JOIN products p ON p.id = r.product_id
+        WHERE r.seller_id = :sid
+        ORDER BY r.created_at DESC
+        LIMIT :limit
+    ");
+    $stmt->bindValue(':sid', $sellerId, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
 }
 
 /**
