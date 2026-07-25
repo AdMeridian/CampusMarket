@@ -407,8 +407,8 @@ body.dark-mode .cm-chatbot-window {
     }
 
     .cm-chatbot-fab {
-        bottom: 1.5rem;
-        right: 1.5rem;
+        bottom: calc(5.5rem + env(safe-area-inset-bottom));
+        right: 1.25rem;
         width: 52px;
         height: 52px;
     }
