@@ -204,8 +204,8 @@ if ($action === 'send') {
         exit;
     }
     
-    if (mb_strlen($body) > 1000) {
-        echo json_encode(['success' => false, 'error' => 'Message exceeds maximum length of 1000 characters']);
+    if (mb_strlen($body) > 250) {
+        echo json_encode(['success' => false, 'error' => 'Message exceeds maximum length of 250 characters']);
         exit;
     }
 
