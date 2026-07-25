@@ -72,6 +72,20 @@
     pointer-events: auto;
 }
 
+@media (max-width: 1023px) {
+    .cm-chatbot-fab {
+        bottom: calc(5.25rem + env(safe-area-inset-bottom));
+        right: 1rem;
+    }
+
+    .cm-chatbot-window {
+        bottom: calc(5.75rem + env(safe-area-inset-bottom));
+        right: 1rem;
+        width: min(95vw, 360px);
+        max-height: calc(100vh - 7rem);
+    }
+}
+
 body.dark-mode .cm-chatbot-window {
     background: var(--glass-bg);
     border-color: var(--glass-border);

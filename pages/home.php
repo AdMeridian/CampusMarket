@@ -13,7 +13,7 @@ require_once __DIR__ . '/../includes/header.php';
 // Data for homepage
 $recentProducts = getRecentProducts($pdo, HOME_RECENT_LISTING_LIMIT, HOME_RECENT_LISTING_DAYS);
 $recentProductsFallback = [];
-if (empty($recentProducts)) {
+if (count($recentProducts) < 2) {
     $recentProductsFallback = getLatestActiveProducts($pdo, HOME_RECENT_LISTING_LIMIT);
     if (!empty($recentProductsFallback)) {
         $recentProducts = $recentProductsFallback;
