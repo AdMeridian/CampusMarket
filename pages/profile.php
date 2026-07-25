@@ -77,6 +77,8 @@ $soldItems = $pdo->prepare("
 $soldItems->execute([':uid' => $viewId]);
 $soldProducts = $soldItems->fetchAll();
 
+$reviews = getSellerReviews($pdo, $viewId, 10);
+
 include '../includes/header.php';
 ?>
 
@@ -622,7 +624,7 @@ body.dark-mode .btn-white-solid:hover {
                 <div class="profile-stars">
                     <?php if ($rating['count'] > 0): ?>
                         <span class="stars"><?php echo renderStars($rating['avg']); ?></span>
-                        <span><strong><?php echo $rating['avg']; ?></strong> &nbsp;(<?php echo $rating['count']; ?> review<?php echo $rating['count'] !== 1 ? 's' : ''; ?>)</span>
+                        <span><strong><?php echo $rating['avg']; ?></strong> &nbsp;(<a href="#about" style="color: inherit; text-decoration: underline;"><?php echo $rating['count']; ?> review<?php echo $rating['count'] !== 1 ? 's' : ''; ?></a>)</span>
                     <?php else: ?>
                         <span>No reviews yet</span>
                     <?php endif; ?>
@@ -755,6 +757,27 @@ body.dark-mode .btn-white-solid:hover {
 
             </div>
         </div>
+
+        <?php if (!empty($reviews)): ?>
+            <div class="card mt-6" style="padding: 1.5rem; border-radius: var(--radius-xl);">
+                <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-main);">Recent Buyer Reviews</h3>
+                <?php foreach ($reviews as $review): ?>
+                    <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                            <div style="font-weight: 700; color: var(--text-main);"><?php echo sanitize($review['reviewer_name']); ?></div>
+                            <div style="font-size: 0.95rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
+                        </div>
+                        <?php if (!empty($review['product_title'])): ?>
+                            <div style="margin-top: 0.35rem; color: var(--text-muted); font-size: 0.85rem;"><?php echo sanitize($review['product_title']); ?></div>
+                        <?php endif; ?>
+                        <?php if (trim((string)$review['comment']) !== ''): ?>
+                            <p style="margin: 0.75rem 0 0; color: var(--text-main); line-height: 1.6; white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
+                        <?php endif; ?>
+                        <div style="margin-top: 0.75rem; font-size: 0.78rem; color: var(--text-muted);"><?php echo date('M d, Y', strtotime($review['created_at'])); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <?php 
         // Mini Analytics: Only show for self

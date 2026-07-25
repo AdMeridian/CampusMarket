@@ -1,7 +1,9 @@
 {
+    "nav.home": "Ana Sayfa",
     "nav.browse": "Keşfet",
     "nav.inbox": "Gelen Kutusu",
     "nav.sell_item": "Ürün Sat",
+    "nav.profile": "Profil",
     "nav.login": "Giriş Yap",
     "nav.signup": "Kayıt Ol",
     "nav.logout": "Çıkış Yap",
@@ -204,6 +206,7 @@
     "home.featured_desc": "Bölgenizdeki öğrencilerin öne çıkardığı ürünler.",
     "home.promote_listing": "İlanınızı Öne Çıkarın",
     "home.recent_listings": "En Yeni İlanlar",
+    "home.recent_listings_fallback_desc": "Beğenebileceğiniz diğer ilanları keşfedin.",
     "home.carousel_prev": "Önceki ilanlar",
     "home.carousel_next": "Sonraki ilanlar",
     "home.see_everything": "Her Şeyi Gör",
