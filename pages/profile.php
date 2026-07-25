@@ -624,7 +624,7 @@ body.dark-mode .btn-white-solid:hover {
                 <div class="profile-stars">
                     <?php if ($rating['count'] > 0): ?>
                         <span class="stars"><?php echo renderStars($rating['avg']); ?></span>
-                        <span><strong><?php echo $rating['avg']; ?></strong> &nbsp;(<a href="#about" style="color: inherit; text-decoration: underline;"><?php echo $rating['count']; ?> review<?php echo $rating['count'] !== 1 ? 's' : ''; ?></a>)</span>
+                        <span><strong><?php echo $rating['avg']; ?></strong> &nbsp;(<a href="#reviews" style="color: inherit; text-decoration: underline;"><?php echo $rating['count']; ?> review<?php echo $rating['count'] !== 1 ? 's' : ''; ?></a>)</span>
                     <?php else: ?>
                         <span>No reviews yet</span>
                     <?php endif; ?>
@@ -759,7 +759,7 @@ body.dark-mode .btn-white-solid:hover {
         </div>
 
         <?php if (!empty($reviews)): ?>
-            <div class="card mt-6" style="padding: 1.5rem; border-radius: var(--radius-xl);">
+            <div id="reviews" class="card mt-6" style="padding: 1.5rem; border-radius: var(--radius-xl);">
                 <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-main);">Recent Buyer Reviews</h3>
                 <?php foreach ($reviews as $review): ?>
                     <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem;">
