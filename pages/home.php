@@ -137,9 +137,6 @@ if (!empty($featuredProducts)):
         <div class="home-section__header">
             <div>
                 <h2 class="home-section__title mb-0"><?= __('home.recent_listings') ?></h2>
-                <?php if (!empty($recentProductsFallback)): ?>
-                    <p class="text-muted small mb-2"><?= __('home.recent_listings_fallback_desc') ?></p>
-                <?php endif; ?>
             </div>
             <a href="<?php echo $pagesBase; ?>browse.php" class="btn btn-secondary btn-sm"><?= __('home.see_everything') ?></a>
         </div>
