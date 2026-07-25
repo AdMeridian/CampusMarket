@@ -324,7 +324,6 @@ $navCategories = getNavCategories($pdo);
                 <span><?= __('nav.mobile_menu_back') ?></span>
             </button>
 
-            <a href="<?php echo BASE_URL; ?>pages/browse.php" class="mobile-nav-link"><?= __('nav.browse') ?></a>
             <?php if (isLoggedIn()): ?>
                 <?php 
                     $unreadMessages = countUnreadMessages($pdo, currentUserId()); 
