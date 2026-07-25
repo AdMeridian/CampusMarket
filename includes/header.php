@@ -331,28 +331,8 @@ $navCategories = getNavCategories($pdo);
                 ?>
                 <?php if (isAdmin()): ?>
                     <a href="<?php echo BASE_URL; ?>admin/index.php" class="mobile-nav-link mobile-nav-link--admin"><?= __('nav.admin_panel') ?></a>
-                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="mobile-nav-link" title="<?= __('nav.inbox') ?>">
-                        <span><?= __('nav.inbox') ?></span>
-                        <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
-                    </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link nav-notifications-link" title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
-                        <span class="nav-notifications-label lg-hidden"><?= __('nav.notifications') ?></span>
-                        <svg class="nav-notifications-icon lg-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
-                    </a>
                     <a href="<?php echo BASE_URL; ?>pages/logout.php" class="mobile-nav-link mobile-nav-link--danger"><?= __('nav.logout') ?></a>
                 <?php else: ?>
-                    <a href="<?php echo BASE_URL; ?>pages/inbox.php" data-nav-badge="inbox" class="mobile-nav-link" title="<?= __('nav.inbox') ?>">
-                        <span><?= __('nav.inbox') ?></span>
-                        <?php if ($unreadMessages > 0): ?><span class="badge badge-primary"><?php echo $unreadMessages; ?></span><?php endif; ?>
-                    </a>
-                    <a href="<?php echo BASE_URL; ?>pages/notifications.php" data-nav-badge="notifications" class="mobile-nav-link nav-notifications-link" title="<?= __('nav.notifications') ?>" aria-label="<?= __('nav.notifications') ?>">
-                        <span class="nav-notifications-label lg-hidden"><?= __('nav.notifications') ?></span>
-                        <svg class="nav-notifications-icon lg-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                        <?php if ($unreadNotifs > 0): ?><span class="badge badge-accent"><?php echo $unreadNotifs; ?></span><?php endif; ?>
-                    </a>
-                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="mobile-nav-link mobile-nav-link--accent"><?= __('nav.sell_item') ?></a>
-                    
                     <?php
                         $navUsername = sanitize($_SESSION['username'] ?? __('nav.account'));
                         $navRequestPath = $_SERVER['REQUEST_URI'] ?? '';

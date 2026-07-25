@@ -2,7 +2,7 @@
 
 .cm-chatbot-fab {
     position: fixed;
-    bottom: 2rem;
+    bottom: calc(8.5rem + env(safe-area-inset-bottom));
     right: 2rem;
     width: 56px;
     height: 56px;
@@ -75,7 +75,7 @@
 @media (max-width: 1023px) {
     .cm-chatbot-fab {
         bottom: calc(7.25rem + env(safe-area-inset-bottom));
-        right: 1rem;
+        right: 5.25rem;
     }
 
     .cm-chatbot-window {
