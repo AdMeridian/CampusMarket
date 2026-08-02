@@ -172,6 +172,46 @@ if (!function_exists('buildPdoDsn')) {
     }
 }
 
+if (!function_exists('ensureProductCategoriesTable')) {
+    function ensureProductCategoriesTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.product_categories (" .
+                "id BIGSERIAL PRIMARY KEY, " .
+                "product_id BIGINT NOT NULL REFERENCES public.products(id) ON DELETE CASCADE, " .
+                "category_id BIGINT NOT NULL REFERENCES public.categories(id) ON DELETE RESTRICT, " .
+                "is_primary BOOLEAN NOT NULL DEFAULT FALSE, " .
+                "UNIQUE (product_id, category_id))"
+            );
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_product_categories_category_id ON public.product_categories(category_id)");
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_product_categories_product_id ON public.product_categories(product_id)");
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.tables " .
+            "WHERE table_schema = DATABASE() AND table_name = 'product_categories'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() > 0) {
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE product_categories (" .
+            "id INT AUTO_INCREMENT PRIMARY KEY, " .
+            "product_id INT NOT NULL, " .
+            "category_id INT NOT NULL, " .
+            "is_primary TINYINT(1) NOT NULL DEFAULT 0, " .
+            "UNIQUE KEY uq_product_category (product_id, category_id), " .
+            "CONSTRAINT fk_product_categories_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE, " .
+            "CONSTRAINT fk_product_categories_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT) ENGINE=InnoDB"
+        );
+    }
+}
+
 if (!function_exists('databaseEnvDiagnostics')) {
     /**
      * Safe summary for health checks (no secrets).
@@ -233,7 +273,13 @@ if (!function_exists('connectDatabase')) {
         foreach ($attemptConfigs as $attemptConfig) {
             $attemptDsn = buildPdoDsn($attemptConfig);
             try {
-                return new PDO($attemptDsn, $attemptConfig['user'], $attemptConfig['pass'], $options);
+                $pdo = new PDO($attemptDsn, $attemptConfig['user'], $attemptConfig['pass'], $options);
+                try {
+                    ensureProductCategoriesTable($pdo);
+                } catch (Throwable $ensureError) {
+                    error_log('Product categories bootstrap failed: ' . $ensureError->getMessage());
+                }
+                return $pdo;
             } catch (PDOException $e) {
                 $lastError = $e;
                 error_log('DB Connection Error: ' . $e->getMessage() . ' DSN: ' . $attemptDsn);

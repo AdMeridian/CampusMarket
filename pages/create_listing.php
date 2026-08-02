@@ -34,6 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
+    $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
+    $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
+    if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
+        $primaryCategoryId = (int)$selectedCategoryIds[0];
+    }
+    if ($primaryCategoryId > 0) {
+        $selectedCategoryIds[] = $primaryCategoryId;
+    }
+    $selectedCategoryIds = array_values(array_unique(array_filter($selectedCategoryIds)));
+    $categoryId = $primaryCategoryId > 0 ? $primaryCategoryId : ($selectedCategoryIds[0] ?? 0);
 
     // Validate Title and Image Presence
     if (empty($title) || mb_strlen($title) < 3) {
@@ -42,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.title_too_long');
     } elseif (empty($_FILES['images']['name'][0]) || $_FILES['images']['error'][0] === UPLOAD_ERR_NO_FILE) {
         $error = __('create_listing.image_required');
-    } elseif ($categoryId <= 0) {
+    } elseif ($categoryId <= 0 || empty($selectedCategoryIds)) {
         $error = __('create_listing.select_category');
     } elseif (!isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
@@ -98,6 +108,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)");
                 $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown]);
                 $productId = $pdo->lastInsertId();
+
+                if (!empty($selectedCategoryIds)) {
+                    $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                    $categoryInsertSql = ($driverName === 'pgsql')
+                        ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT DO NOTHING'
+                        : 'INSERT IGNORE INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?)';
+                    $categoryInsert = $pdo->prepare($categoryInsertSql);
+                    foreach ($selectedCategoryIds as $catId) {
+                        try {
+                            $categoryInsert->execute([$productId, (int)$catId, ((int)$catId === $categoryId) ? 1 : 0]);
+                        } catch (PDOException $e) {
+                            if (stripos($e->getMessage(), 'product_categories') !== false || stripos($e->getMessage(), 'does not exist') !== false || stripos($e->getMessage(), 'relation') !== false) {
+                                ensureProductCategoriesTable($pdo);
+                                $categoryInsert = $pdo->prepare($categoryInsertSql);
+                                $categoryInsert->execute([$productId, (int)$catId, ((int)$catId === $categoryId) ? 1 : 0]);
+                            } else {
+                                throw $e;
+                            }
+                        }
+                    }
+                }
 
                 if (isAgent() && $ownerContact) {
                     if (!saveManagedListingContact($pdo, (int)$productId, $ownerContact)) {
@@ -193,6 +224,10 @@ $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->
 $defaultTown = isLoggedIn() ? (getUserHomeTown((int)currentUserId()) ?? '') : '';
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
 $prevTags   = array_map('intval', $_POST['tags'] ?? []);
+$prevCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
+if (empty($prevCategoryIds) && !empty($_POST['category_id'])) {
+    $prevCategoryIds[] = (int)$_POST['category_id'];
+}
 
 // Post/Redirect/Get success screen — load from DB so it works even if session is flaky on mobile.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
@@ -316,14 +351,26 @@ include '../includes/header.php';
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="form-group">
+                    <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.category_label') ?></label>
-                        <select name="category_id" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
-                            <option value=""><?= __('create_listing.select_category') ?></option>
+                        <p class="text-muted small mb-3">Choose every category that fits. One will be used as the primary category.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_POST['category_id']) && $_POST['category_id'] == $cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
+                                <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
+                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) ? 'checked' : ''; ?>>
+                                    <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
+                                </label>
                             <?php endforeach; ?>
-                        </select>
+                        </div>
+                        <div class="mt-3">
+                            <label class="font-bold mb-2 block" style="color: var(--text-main);">Primary category</label>
+                            <select name="category_id" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                                <option value=""><?= __('create_listing.select_category') ?></option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_POST['category_id']) && (int)$_POST['category_id'] === (int)$cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.town_label') ?></label>

@@ -10,10 +10,20 @@ $pageDescription = __('seo.categories_description');
 require_once __DIR__ . '/../includes/header.php';
 
 $stmt = $pdo->query("
-    SELECT c.*, COUNT(p.id) AS product_count
+    SELECT c.*, (
+        SELECT COUNT(DISTINCT p.id)
+        FROM products p
+        WHERE p.status = 'active'
+          AND (
+              p.category_id = c.id
+              OR EXISTS (
+                  SELECT 1
+                  FROM product_categories pc
+                  WHERE pc.product_id = p.id AND pc.category_id = c.id
+              )
+          )
+    ) AS product_count
     FROM categories c
-    LEFT JOIN products p ON p.category_id = c.id AND p.status = 'active'
-    GROUP BY c.id
     ORDER BY c.name ASC
 ");
 $categories = $stmt->fetchAll();

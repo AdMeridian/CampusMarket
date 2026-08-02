@@ -140,7 +140,17 @@ require_once __DIR__ . '/../includes/header.php';
     gap: 1.5rem;
 }
 
-@media (max-width: 800px) { .admin-bottom { grid-template-columns: 1fr; } }
+@media (max-width: 800px) {
+    .admin-bottom {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+
+    .admin-bottom > div {
+        width: 100%;
+        max-width: 680px;
+    }
+}
 
 /* ── Module Grid ──────────────────────────────────────── */
 
@@ -148,6 +158,17 @@ require_once __DIR__ . '/../includes/header.php';
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+}
+
+@media (max-width: 600px) {
+    .module-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .module-card {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 .module-card {
@@ -236,6 +257,14 @@ require_once __DIR__ . '/../includes/header.php';
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 800px) {
+    .system-card {
+        align-items: stretch;
+    }
 }
 
 .system-card h3 {

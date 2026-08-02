@@ -29,6 +29,11 @@ $stmt->execute([
     ':viewer_is_admin' => $viewerIsAdmin,
 ]);
 $product = $stmt->fetch();
+$productCategories = [];
+
+if ($product) {
+    $productCategories = getProductCategoryRows($pdo, (int)($product['id'] ?? 0));
+}
 
 if (!$product) {
     $pageTitle = __('product.not_found_title');
@@ -240,6 +245,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     } else {
         setFlash('error', __('product.no_images_selected'));
     }
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+}
+
+// Handle Categories Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_categories') {
+    verifyCsrfToken();
+    $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
+    $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
+    if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
+        $primaryCategoryId = $selectedCategoryIds[0];
+    }
+
+    if (empty($selectedCategoryIds) || $primaryCategoryId <= 0) {
+        setFlash('error', __('create_listing.select_category'));
+        redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        // Update primary category on products table
+        $stmtUp = $pdo->prepare("UPDATE products SET category_id = :cid, updated_at = NOW() WHERE id = :id");
+        $stmtUp->execute([':cid' => $primaryCategoryId, ':id' => $productId]);
+
+        // Ensure pivot table exists when running against environments missing migration
+        try {
+            ensureProductCategoriesTable($pdo);
+        } catch (Exception $e) {
+            // continue — ensureProductCategoriesTable will throw only on fatal errors
+        }
+
+        $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $insertSql = ($driverName === 'pgsql')
+            ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = EXCLUDED.is_primary'
+            : 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_primary = VALUES(is_primary)';
+        $ins = $pdo->prepare($insertSql);
+
+        // Upsert selected categories and mark primary
+        foreach ($selectedCategoryIds as $cid) {
+            $isPrimary = ((int)$cid === (int)$primaryCategoryId) ? 1 : 0;
+            $ins->execute([$productId, (int)$cid, $isPrimary]);
+        }
+
+        // Remove any pivot rows not in selection
+        $placeholders = implode(',', array_fill(0, count($selectedCategoryIds), '?'));
+        if ($placeholders === '') {
+            // nothing selected — delete all for safety (shouldn't happen due to earlier check)
+            $pdo->prepare('DELETE FROM product_categories WHERE product_id = ?')->execute([$productId]);
+        } else {
+            $delSql = "DELETE FROM product_categories WHERE product_id = ? AND category_id NOT IN ($placeholders)";
+            $delStmt = $pdo->prepare($delSql);
+            $delParams = array_merge([$productId], array_map('intval', $selectedCategoryIds));
+            $delStmt->execute($delParams);
+        }
+
+        $pdo->commit();
+        setFlash('success', __('product.categories_updated'));
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log('[product:update_categories] ' . $e->getMessage());
+        setFlash('error', __('product.update_categories_failed'));
+    }
+
     redirect(BASE_URL . 'pages/product.php?id=' . $productId);
 }
 
@@ -1063,6 +1131,15 @@ body.dark-mode .scc-badge {
                 <?php else: ?>
                     <h1 class="product-title mb-4 text-main font-bold"><?php echo sanitize($product['title']); ?></h1>
                 <?php endif; ?>
+                <?php if (!empty($productCategories)): ?>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <?php foreach ($productCategories as $category): ?>
+                        <a href="<?php echo BASE_URL; ?>pages/browse.php?category=<?php echo (int)$category['id']; ?>" class="inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold transition-colors hover:text-primary" style="border-color: var(--border-light); background: var(--bg-surface); color: var(--text-main); text-decoration: none;">
+                            <?php echo sanitize(translateCategory($category['name'])); ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
                 <?php if (!empty($product['location_town']) && isValidLocationTown($product['location_town']) && $product['location_town'] !== 'other'): ?>
                 <div class="mb-4">
                     <a href="<?php echo BASE_URL; ?>pages/browse.php?town=<?php echo urlencode($product['location_town']); ?>" class="inline-flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors hover-scale" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-main); text-decoration: none;">
@@ -1340,6 +1417,44 @@ body.dark-mode .scc-badge {
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                 <?= __('product.update_town') ?>
                             </button>
+                        </form>
+                    </div>
+
+                    <!-- CATEGORIES -->
+                    <div class="scc-mgmt-section">
+                        <h4><?= __('product.manage_categories') ?></h4>
+                        <form method="post" class="scc-mgmt-form" style="flex-direction: column; gap: 0.75rem;">
+                            <?php echo csrfTokenField(); ?>
+                            <input type="hidden" name="action" value="update_categories">
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <p class="text-muted small mb-2"><?= __('product.manage_categories_hint') ?></p>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" style="margin-bottom: 0.5rem;">
+                                    <?php
+                                        $curCatIds = array_map(function($r){ return (int)$r['id']; }, $productCategories);
+                                        foreach ($categories as $cat):
+                                            $cid = (int)$cat['id'];
+                                    ?>
+                                        <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
+                                            <input type="checkbox" name="category_ids[]" value="<?php echo $cid; ?>" <?php echo in_array($cid, $curCatIds, true) ? 'checked' : ''; ?>>
+                                            <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div>
+                                    <label class="font-bold mb-2 block" style="color: var(--text-main);">Primary category</label>
+                                    <select name="category_id" class="w-full premium-input" style="padding: 0.6rem 0.8rem;">
+                                        <option value=""><?= __('create_listing.select_category') ?></option>
+                                        <?php foreach ($categories as $cat): ?>
+                                            <option value="<?php echo $cat['id']; ?>" <?php echo ((int)($product['category_id'] ?? 0) === (int)$cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                                <button type="submit" class="scc-mgmt-btn">
+                                    <?= __('product.update_categories_btn') ?>
+                                </button>
+                            </div>
                         </form>
                     </div>
 

@@ -173,7 +173,7 @@ if ($action === 'fetch') {
             'cached_source_lang' => $cachedSourceLang,
             'is_mine' => $msg['sender_id'] == $currentUserId,
             'sender_name' => $msg['sender_name'],
-            'created_at' => date('Y-m-d H:i:s', strtotime($msg['created_at']))
+            'created_at' => date('c', strtotime((string)($msg['created_at'] ?? '')))
         ];
     }
 
