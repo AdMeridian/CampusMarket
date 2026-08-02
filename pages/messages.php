@@ -383,8 +383,25 @@ function fetchMessages() {
         });
 }
 
+function parseMessageTimestamp(iso) {
+    if (!iso) {
+        return new Date(NaN);
+    }
+
+    const trimmed = String(iso).trim();
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+        return new Date(trimmed.replace(' ', 'T') + 'Z');
+    }
+
+    return new Date(trimmed);
+}
+
 function formatMessageTime(iso) {
-    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = parseMessageTimestamp(iso);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function buildMessageBubbleHtml(msg, options = {}) {
@@ -446,7 +463,7 @@ function renderMessages(messages) {
     let lastDate = null;
 
     messages.forEach(msg => {
-        const msgDate = new Date(msg.created_at).toLocaleDateString();
+        const msgDate = parseMessageTimestamp(msg.created_at).toLocaleDateString();
         if (msgDate !== lastDate) {
             const dateDiv = document.createElement('div');
             dateDiv.className = 'chat-date-divider';

@@ -85,7 +85,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if (!$saleResult['success']) {
                         throw new RuntimeException(__('orders.flash_update_failed'));
                     }
-                    createNotification($pdo, $order['buyer_id'], 'order', 'Order Confirmed!', "Your order for '{$order['product_title']}' was confirmed.", $orderId);
+                    createNotification(
+                        $pdo,
+                        (int)$order['buyer_id'],
+                        'order',
+                        'Purchase Confirmed — Rate Your Seller',
+                        "Congratulations on your purchase of '{$order['product_title']}'. Please rate the seller to help others.",
+                        (int)$orderId
+                    );
                     setFlash('success', __('orders.flash_confirmed'));
                 } elseif ($action === 'cancel' && ($isSeller || $isBuyer) && $order['status'] === 'pending') {
                     $newStatus = $isBuyer ? 'not taken' : 'cancelled';
@@ -193,6 +200,18 @@ foreach ($pendingReviews as $row) {
     $pendingReviewByOrder[(int)$row['order_id']] = $row;
 }
 $promptReview = $pendingReviews[0] ?? null;
+$reviewRequestedOrderId = (int)($_GET['review_order_id'] ?? 0);
+if ($reviewRequestedOrderId <= 0 && isset($_GET['review']) && $_GET['review'] === '1') {
+    $reviewRequestedOrderId = (int)($_GET['order_id'] ?? 0);
+}
+if ($reviewRequestedOrderId > 0) {
+    foreach ($pendingReviews as $row) {
+        if ((int)$row['order_id'] === $reviewRequestedOrderId) {
+            $promptReview = $row;
+            break;
+        }
+    }
+}
 
 $pageTitle = __('orders.hub_title');
 require_once __DIR__ . '/../includes/header.php';
@@ -416,8 +435,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const firstOrderId = <?php echo (int)$promptReview['order_id']; ?>;
+    const params = new URLSearchParams(window.location.search);
     const snoozeUntil = Number(localStorage.getItem(snoozePrefix + firstOrderId) || 0);
     if (Date.now() > snoozeUntil) {
+        openModal(
+            firstOrderId,
+            <?php echo json_encode($promptReview['product_title']); ?>,
+            <?php echo json_encode($promptReview['seller_name']); ?>
+        );
+    }
+    if (params.get('review') === '1') {
         openModal(
             firstOrderId,
             <?php echo json_encode($promptReview['product_title']); ?>,

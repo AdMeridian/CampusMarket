@@ -580,6 +580,9 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
         if (in_array($title, ['Deal Confirmed!', 'Deal Confirmation Request'], true) && $refId > 0) {
             return notificationMessagesUrl($pdo, $currentUserId, $refId);
         }
+        if ($title === 'Purchase Confirmed — Rate Your Seller' && $refId > 0) {
+            return $base . 'pages/my_orders.php?order_id=' . $refId . '&review=1';
+        }
         if ($title === 'Order expiring soon' && $refId > 0) {
             return $base . 'pages/my_orders.php?order_id=' . $refId;
         }
@@ -899,12 +902,57 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
  */
 function getTopCategories(PDO $pdo): array {
     return $pdo->query("
-        SELECT c.*, COUNT(p.id) as product_count
+        SELECT c.*, COUNT(DISTINCT p.id) as product_count
         FROM categories c
-        LEFT JOIN products p ON c.id = p.category_id AND p.status = 'active'
+        LEFT JOIN products p ON p.status = 'active' AND (
+            p.category_id = c.id
+            OR EXISTS (
+                SELECT 1
+                FROM product_categories pc
+                WHERE pc.product_id = p.id AND pc.category_id = c.id
+            )
+        )
         GROUP BY c.id
         ORDER BY product_count DESC
     ")->fetchAll();
+}
+
+/**
+ * Return all category IDs for a product, falling back to the primary category when needed.
+ */
+function getProductCategoryIds(PDO $pdo, int $productId): array {
+    $stmt = $pdo->prepare("
+        SELECT pc.category_id
+        FROM product_categories pc
+        WHERE pc.product_id = :product_id
+        ORDER BY pc.is_primary DESC, pc.category_id ASC
+    ");
+    $stmt->execute([':product_id' => $productId]);
+    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+    if ($ids !== []) {
+        return array_values(array_unique($ids));
+    }
+
+    $stmt = $pdo->prepare("SELECT category_id FROM products WHERE id = :product_id LIMIT 1");
+    $stmt->execute([':product_id' => $productId]);
+    $primary = (int) $stmt->fetchColumn();
+    return $primary > 0 ? [$primary] : [];
+}
+
+/**
+ * Return category rows for a product, using the primary category as a fallback.
+ */
+function getProductCategoryRows(PDO $pdo, int $productId): array {
+    $categoryIds = getProductCategoryIds($pdo, $productId);
+    if ($categoryIds === []) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($categoryIds), '?'));
+    $stmt = $pdo->prepare("SELECT id, name FROM categories WHERE id IN ($placeholders) ORDER BY name ASC");
+    $stmt->execute($categoryIds);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**

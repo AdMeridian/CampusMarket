@@ -91,6 +91,144 @@ function aiModeratorFailure(string $reason, string $mode = 'error'): array {
     ];
 }
 
+function aiModeratorLooksLikeAvailabilityConcern(string $text): bool {
+    $text = strtolower(trim($text));
+    if ($text === '') {
+        return false;
+    }
+
+    $patterns = [
+        'does not exist',
+        "doesn't exist",
+        'not out yet',
+        'not yet released',
+        'not released yet',
+        'not available yet',
+        'unreleased',
+        'future release',
+        'coming soon',
+        'not available',
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (strpos($text, $pattern) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function aiModeratorApplyAvailabilityOverride(array $result): array {
+    $reason = trim((string)($result['reason'] ?? ''));
+    if (!aiModeratorLooksLikeAvailabilityConcern($reason)) {
+        return $result;
+    }
+
+    $result['passed'] = true;
+    $result['confidence'] = max((float)($result['confidence'] ?? 0), 0.72);
+    $result['reason'] = 'Listing reviewed for marketplace policy; availability timing was not treated as a moderation issue.';
+
+    return $result;
+}
+
+function aiModeratorHasVerificationProvider(): bool {
+    return aiModeratorEnv('SERPER_API_KEY') !== null
+        || aiModeratorEnv('SERPAPI_KEY') !== null
+        || aiModeratorEnv('BRAVE_API_KEY') !== null;
+}
+
+function aiModeratorVerifyProductAvailability(string $title, string $description): ?array {
+    $query = trim($title . ' ' . $description);
+    $query = preg_replace('/\s+/u', ' ', $query) ?? $query;
+    if ($query === '') {
+        return null;
+    }
+
+    $serperKey = aiModeratorEnv('SERPER_API_KEY') ?: aiModeratorEnv('SERPAPI_KEY');
+    if ($serperKey !== null) {
+        $ch = curl_init('https://google.serper.dev/search');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-API-KEY: ' . $serperKey,
+            ],
+            CURLOPT_POSTFIELDS => json_encode(['q' => $query, 'num' => 5]),
+            CURLOPT_TIMEOUT => 15,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200) {
+            $data = json_decode((string)$response, true);
+            $organic = $data['organic'] ?? [];
+            if (is_array($organic) && !empty($organic)) {
+                return ['found' => true, 'source' => 'serper'];
+            }
+            return ['found' => false, 'source' => 'serper'];
+        }
+    }
+
+    $braveKey = aiModeratorEnv('BRAVE_API_KEY');
+    if ($braveKey !== null) {
+        $url = 'https://api.search.brave.com/res/v1/web/search?q=' . urlencode($query) . '&count=5';
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => ['Accept: application/json', 'X-Subscription-Token: ' . $braveKey],
+            CURLOPT_TIMEOUT => 15,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200) {
+            $data = json_decode((string)$response, true);
+            $results = $data['web']['results'] ?? [];
+            if (is_array($results) && !empty($results)) {
+                return ['found' => true, 'source' => 'brave'];
+            }
+            return ['found' => false, 'source' => 'brave'];
+        }
+    }
+
+    return null;
+}
+
+function aiModeratorApplyExternalVerification(array $result, string $title, string $description): array {
+    $reason = trim((string)($result['reason'] ?? ''));
+    if (!aiModeratorLooksLikeAvailabilityConcern($reason)) {
+        return $result;
+    }
+
+    if (!aiModeratorHasVerificationProvider()) {
+        return $result;
+    }
+
+    $verification = aiModeratorVerifyProductAvailability($title, $description);
+    if ($verification === null) {
+        return $result;
+    }
+
+    if (!empty($verification['found'])) {
+        $result['passed'] = true;
+        $result['confidence'] = max((float)($result['confidence'] ?? 0), 0.8);
+        $result['reason'] = 'Public web results were found for this product, so the availability concern was not treated as a moderation issue.';
+        return $result;
+    }
+
+    $result['passed'] = false;
+    $result['confidence'] = max((float)($result['confidence'] ?? 0), 0.75);
+    $result['reason'] = 'No public web results were found for this product; please confirm the listing details before approval.';
+
+    return $result;
+}
+
 function aiModeratorBuildPrompt(string $title, string $description, bool $vision): string {
     $visionNote = $vision
         ? "Image match: photos should reasonably match the title/description. Minor angle/lighting issues are OK for used campus items."
@@ -103,7 +241,8 @@ function aiModeratorBuildPrompt(string $title, string $description, bool $vision
         . "2. Prohibited content: weapons, drugs, alcohol/tobacco/vape, adult content, exam/test banks, scams.\n"
         . "3. For normal books, electronics, furniture, clothing, etc., set passed=true with confidence 0.8+ when clearly legitimate.\n"
         . "4. Reject duplicate listings: if the seller likely already posted the same item (identical or near-identical title for the same product), set passed=false.\n"
-        . "5. {$visionNote}\n\n"
+        . "5. Do not reject listings because a product model is newer, not widely available, or appears to be a recent release. Treat availability timing as irrelevant unless the listing is clearly a scam or counterfeit.\n"
+        . "6. {$visionNote}\n\n"
         . "The reason field must be a short, friendly sentence written directly to the seller explaining why the listing was flagged or what to fix "
         . "(e.g. duplicate listing, blurry photo, prohibited item, unclear description). Avoid internal jargon.\n\n"
         . "Return ONLY JSON with keys: passed (boolean), is_blurry (boolean), confidence (0-1 number), tags (3-5 single words), reason (short string).\n\n"
@@ -194,6 +333,7 @@ function aiModeratorCallGemini(string $apiKey, string $prompt, array $imagesData
             $parsed = aiModeratorParseJson($text);
             if ($parsed !== null) {
                 $result = aiModeratorNormalizeResult($parsed);
+                $result = aiModeratorApplyAvailabilityOverride($result);
                 $result['mode'] = empty($imagesData) ? 'text' : 'vision';
                 return ['ok' => true, 'result' => $result];
             }
@@ -261,6 +401,7 @@ function aiModeratorCallOpenRouter(string $openRouterKey, string $prompt, array 
             }
 
             $result = aiModeratorNormalizeResult($parsed);
+            $result = aiModeratorApplyAvailabilityOverride($result);
             $result['mode'] = empty($imagesData) ? 'text' : 'vision';
             return ['ok' => true, 'result' => $result];
         }
@@ -315,6 +456,7 @@ function aiModerateListing(string $title, string $description, array $imagesData
     }
 
     $result = aiModeratorEvaluate($title, $description, $preparedImages);
+    $result = aiModeratorApplyExternalVerification($result, $title, $description);
 
     if (empty($result['passed']) && ($result['mode'] ?? '') === 'error' && !empty($preparedImages)) {
         error_log('[ai_moderator] vision failed; retrying text-only');

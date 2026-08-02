@@ -29,6 +29,11 @@ $stmt->execute([
     ':viewer_is_admin' => $viewerIsAdmin,
 ]);
 $product = $stmt->fetch();
+$productCategories = [];
+
+if ($product) {
+    $productCategories = getProductCategoryRows($pdo, (int)($product['id'] ?? 0));
+}
 
 if (!$product) {
     $pageTitle = __('product.not_found_title');
@@ -1062,6 +1067,15 @@ body.dark-mode .scc-badge {
                     </form>
                 <?php else: ?>
                     <h1 class="product-title mb-4 text-main font-bold"><?php echo sanitize($product['title']); ?></h1>
+                <?php endif; ?>
+                <?php if (!empty($productCategories)): ?>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <?php foreach ($productCategories as $category): ?>
+                        <a href="<?php echo BASE_URL; ?>pages/browse.php?category=<?php echo (int)$category['id']; ?>" class="inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold transition-colors hover:text-primary" style="border-color: var(--border-light); background: var(--bg-surface); color: var(--text-main); text-decoration: none;">
+                            <?php echo sanitize(translateCategory($category['name'])); ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
                 <?php endif; ?>
                 <?php if (!empty($product['location_town']) && isValidLocationTown($product['location_town']) && $product['location_town'] !== 'other'): ?>
                 <div class="mb-4">
