@@ -373,6 +373,8 @@
     "product.manage_categories": "Manage Categories",
     "product.manage_categories_hint": "Select all categories that apply to this listing.",
     "product.update_categories_btn": "Update Categories",
+    "product.categories_updated": "Categories updated successfully.",
+    "product.update_categories_failed": "Failed to update categories. Please try again.",
     "product.manage_gallery": "Manage Gallery",
     "product.primary": "Primary",
     "product.set_primary": "Set as primary",
