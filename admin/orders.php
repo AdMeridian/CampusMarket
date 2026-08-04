@@ -5,6 +5,13 @@ requireAdmin();
 
 $pageTitle = "Order Oversight";
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'clear_stale_orders') {
+    require_once __DIR__ . '/../includes/order_expiry.php';
+    $result = processPendingOrderExpiry($pdo);
+    setFlash('success', "Cleared {$result['orders_cancelled']} stale orders and sent {$result['reminders_sent']} reminders.");
+    redirect('orders.php');
+}
+
 // Fetch All Orders
 $stmt = $pdo->query("
     SELECT o.*,
@@ -30,7 +37,16 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Orders</div>
             <h1 class="mb-0">Marketplace Transactions</h1>
         </div>
-        <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($orders); ?> Total Orders</div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <form method="post" style="margin: 0;" onsubmit="return confirm('This will cancel all pending orders older than 7 days and send expiry reminders to sellers. Continue?');">
+                <?php echo csrfTokenField(); ?>
+                <button type="submit" name="action" value="clear_stale_orders" class="btn btn-sm" style="background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border);">
+                    <svg style="width: 14px; height: 14px; display: inline-block; margin-right: 4px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    Clear Stale Orders
+                </button>
+            </form>
+            <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($orders); ?> Total Orders</div>
+        </div>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
