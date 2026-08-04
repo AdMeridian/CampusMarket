@@ -35,6 +35,8 @@ if ($product) {
     $productCategories = getProductCategoryRows($pdo, (int)($product['id'] ?? 0));
 }
 
+$categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 if (!$product) {
     $pageTitle = __('product.not_found_title');
     require_once __DIR__ . '/../includes/header.php';
@@ -252,14 +254,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_categories') {
     verifyCsrfToken();
     $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
-    $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
-    if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
-        $primaryCategoryId = $selectedCategoryIds[0];
-    }
-
-    if (empty($selectedCategoryIds) || $primaryCategoryId <= 0) {
+    
+    if (empty($selectedCategoryIds)) {
         setFlash('error', __('create_listing.select_category'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+    }
+    
+    $primaryCategoryId = $selectedCategoryIds[0];
+
+    // Ensure pivot table exists when running against environments missing migration
+    try {
+        ensureProductCategoriesTable($pdo);
+    } catch (Exception $e) {
+        // continue — ensureProductCategoriesTable will throw only on fatal errors
     }
 
     try {
@@ -268,13 +275,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
         // Update primary category on products table
         $stmtUp = $pdo->prepare("UPDATE products SET category_id = :cid, updated_at = NOW() WHERE id = :id");
         $stmtUp->execute([':cid' => $primaryCategoryId, ':id' => $productId]);
-
-        // Ensure pivot table exists when running against environments missing migration
-        try {
-            ensureProductCategoriesTable($pdo);
-        } catch (Exception $e) {
-            // continue — ensureProductCategoriesTable will throw only on fatal errors
-        }
 
         $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
         $insertSql = ($driverName === 'pgsql')
@@ -290,15 +290,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
 
         // Remove any pivot rows not in selection
         $placeholders = implode(',', array_fill(0, count($selectedCategoryIds), '?'));
-        if ($placeholders === '') {
-            // nothing selected — delete all for safety (shouldn't happen due to earlier check)
-            $pdo->prepare('DELETE FROM product_categories WHERE product_id = ?')->execute([$productId]);
-        } else {
-            $delSql = "DELETE FROM product_categories WHERE product_id = ? AND category_id NOT IN ($placeholders)";
-            $delStmt = $pdo->prepare($delSql);
-            $delParams = array_merge([$productId], array_map('intval', $selectedCategoryIds));
-            $delStmt->execute($delParams);
-        }
+        $delSql = "DELETE FROM product_categories WHERE product_id = ? AND category_id NOT IN ($placeholders)";
+        $delStmt = $pdo->prepare($delSql);
+        $delParams = array_merge([$productId], array_map('intval', $selectedCategoryIds));
+        $delStmt->execute($delParams);
 
         $pdo->commit();
         setFlash('success', __('product.categories_updated'));
@@ -1439,15 +1434,6 @@ body.dark-mode .scc-badge {
                                             <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
                                         </label>
                                     <?php endforeach; ?>
-                                </div>
-                                <div>
-                                    <label class="font-bold mb-2 block" style="color: var(--text-main);">Primary category</label>
-                                    <select name="category_id" class="w-full premium-input" style="padding: 0.6rem 0.8rem;">
-                                        <option value=""><?= __('create_listing.select_category') ?></option>
-                                        <?php foreach ($categories as $cat): ?>
-                                            <option value="<?php echo $cat['id']; ?>" <?php echo ((int)($product['category_id'] ?? 0) === (int)$cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
                                 </div>
                             </div>
                             <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">

@@ -146,9 +146,11 @@ require_once __DIR__ . '/../includes/header.php';
         justify-items: center;
     }
 
-    .admin-bottom > div {
+    .admin-bottom > div,
+    .admin-bottom > .system-card {
         width: 100%;
         max-width: 680px;
+        box-sizing: border-box;
     }
 }
 
@@ -261,11 +263,7 @@ require_once __DIR__ . '/../includes/header.php';
     box-sizing: border-box;
 }
 
-@media (max-width: 800px) {
-    .system-card {
-        align-items: stretch;
-    }
-}
+
 
 .system-card h3 {
     color: #fff;

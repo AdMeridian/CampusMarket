@@ -353,7 +353,7 @@ $navCategories = getNavCategories($pdo);
                 <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none; position: relative;">
                     <?= __('nav.inbox') ?>
                     <?php if (isset($unreadMessages) && $unreadMessages > 0): ?>
-                        <span style="background: var(--primary); color: white; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 10px; font-weight: bold; margin-left: 0.3rem; vertical-align: middle;"><?= $unreadMessages ?></span>
+                        <span class="badge badge-primary"><?= $unreadMessages ?></span>
                     <?php endif; ?>
                 </a>
             <?php endif; ?>
