@@ -83,9 +83,21 @@ document.addEventListener('DOMContentLoaded', function() {
             ];
 
             foreach ($hardcodedCategories as $cat): 
-                // Fetch real count for each hardcoded category
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE category_id = ? AND status = 'active'");
-                $stmt->execute([$cat['id']]);
+                // Fetch real count for each hardcoded category (including multi-category mappings)
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(DISTINCT p.id) 
+                    FROM products p 
+                    WHERE p.status = 'active' 
+                      AND (
+                          p.category_id = ? 
+                          OR EXISTS (
+                              SELECT 1 
+                              FROM product_categories pc 
+                              WHERE pc.product_id = p.id AND pc.category_id = ?
+                          )
+                      )
+                ");
+                $stmt->execute([$cat['id'], $cat['id']]);
                 $count = $stmt->fetchColumn();
             ?>
                 <a href="<?php echo $pagesBase; ?>browse.php?category=<?php echo $cat['id']; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
