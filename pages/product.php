@@ -35,6 +35,8 @@ if ($product) {
     $productCategories = getProductCategoryRows($pdo, (int)($product['id'] ?? 0));
 }
 
+$categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 if (!$product) {
     $pageTitle = __('product.not_found_title');
     require_once __DIR__ . '/../includes/header.php';

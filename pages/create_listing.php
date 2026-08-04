@@ -362,15 +362,6 @@ include '../includes/header.php';
                                 </label>
                             <?php endforeach; ?>
                         </div>
-                        <div class="mt-3">
-                            <label class="font-bold mb-2 block" style="color: var(--text-main);">Primary category</label>
-                            <select name="category_id" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
-                                <option value=""><?= __('create_listing.select_category') ?></option>
-                                <?php foreach ($categories as $cat): ?>
-                                    <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_POST['category_id']) && (int)$_POST['category_id'] === (int)$cat['id']) ? 'selected' : ''; ?>><?php echo sanitize(translateCategory($cat['name'])); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
                     </div>
                     <div class="form-group">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.town_label') ?></label>
