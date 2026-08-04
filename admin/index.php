@@ -143,13 +143,13 @@ require_once __DIR__ . '/../includes/header.php';
 @media (max-width: 800px) {
     .admin-bottom {
         grid-template-columns: 1fr;
-        justify-items: center;
     }
 
     .admin-bottom > div,
     .admin-bottom > .system-card {
         width: 100%;
         max-width: 680px;
+        margin: 0 auto;
         box-sizing: border-box;
     }
 }
