@@ -108,6 +108,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id]);
             setFlash('success', 'Listing unfeatured.');
             logAdminAction($pdo, 'unfeature_listing', 'product', $id);
+        } elseif ($action === 'admin_boost') {
+            // Admin-initiated feature boost — no payment required
+            $rawDays = (int)($_POST['boost_days'] ?? 7);
+            $noExpiry = ($rawDays === 0);
+            $durationDays = $noExpiry ? 0 : max(1, min(90, $rawDays));
+            $reason = trim(strip_tags($_POST['boost_reason'] ?? ''));
+            $stmt = $pdo->prepare("SELECT id, title, user_id FROM products WHERE id = ? AND status = 'active'");
+            $stmt->execute([$id]);
+            $prod = $stmt->fetch();
+            if ($prod) {
+                if ($noExpiry) {
+                    $pdo->prepare("
+                        UPDATE products
+                        SET is_featured = TRUE, featured_until = NULL, updated_at = NOW()
+                        WHERE id = :id
+                    ")->execute([':id' => $id]);
+                } else {
+                    $pdo->prepare("
+                        UPDATE products
+                        SET is_featured = TRUE,
+                            featured_until = DATE_ADD(NOW(), INTERVAL :days DAY),
+                            updated_at = NOW()
+                        WHERE id = :id
+                    ")->execute([':days' => $durationDays, ':id' => $id]);
+                }
+                createNotification(
+                    $pdo,
+                    (int)$prod['user_id'],
+                    'system',
+                    'Your listing is now Featured! 🎉',
+                    "Your listing '" . $prod['title'] . "' has been selected to appear in the Featured Spotlight for {$durationDays} day(s).",
+                    $id
+                );
+                setFlash('success', "Listing boosted and featured for {$durationDays} day(s).");
+                logAdminAction($pdo, 'admin_boost_listing', 'product', $id, [
+                    'duration_days' => $durationDays,
+                    'reason'        => $reason ?: 'No reason provided',
+                ]);
+            } else {
+                setFlash('error', 'Listing not found or is not active.');
+            }
         }
     }
 
@@ -255,7 +296,13 @@ require_once __DIR__ . '/../includes/header.php';
                                         <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Feature">FEAT</button>
                                     </form>
                                 <?php else: ?>
-                                    <span class="btn btn-secondary btn-sm opacity-50" style="border-radius: var(--radius-lg);">No credits</span>
+                                    <button type="button"
+                                        class="btn btn-sm hover-scale shadow-sm"
+                                        style="border-radius: var(--radius-lg); background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd;"
+                                        onclick="openBoostModal(<?php echo $item['id']; ?>, '<?php echo addslashes(sanitize($item['title'])); ?>')"
+                                        title="Feature this listing for free (Admin Boost)">
+                                        🚀 Boost
+                                    </button>
                                 <?php endif; ?>
                                 <a href="../pages/product.php?id=<?php echo $item['id']; ?>" target="_blank" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View</a>
                                 <form method="POST" style="margin: 0; display: inline-block;" onsubmit="return handleListingDelete(this);">
@@ -296,8 +343,86 @@ require_once __DIR__ . '/../includes/header.php';
     gap: 0.4rem;
     flex-wrap: wrap;
 }
+.admin-boost-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center;
+}
+.admin-boost-overlay.open { display: flex; }
+.admin-boost-modal {
+    background: var(--bg-surface);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    width: 100%; max-width: 440px;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border-light);
+    animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+.boost-duration-btn {
+    cursor: pointer; padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border-light);
+    background: var(--bg-main);
+    color: var(--text-muted);
+    font-size: 0.85rem; font-weight: 600;
+    transition: all 0.15s ease;
+}
+.boost-duration-btn.active,
+.boost-duration-btn:hover {
+    border-color: #6d28d9;
+    background: #ede9fe;
+    color: #6d28d9;
+}
 </style>
- 
+
+<!-- Admin Boost Modal -->
+<div class="admin-boost-overlay" id="adminBoostOverlay" onclick="closeBoostModal(event)">
+    <div class="admin-boost-modal" role="dialog" aria-modal="true" aria-labelledby="boostModalTitle">
+        <div class="flex items-center gap-3 mb-4">
+            <span style="font-size: 1.6rem;">🚀</span>
+            <div>
+                <h3 id="boostModalTitle" class="m-0 font-bold text-main" style="font-size: 1.1rem;">Admin Boost</h3>
+                <p class="m-0 text-muted small" id="boostModalSubtitle">Feature this listing for free</p>
+            </div>
+        </div>
+
+        <form method="POST" id="adminBoostForm">
+            <?php echo csrfTokenField(); ?>
+            <input type="hidden" name="action" value="admin_boost">
+            <input type="hidden" name="id" id="boostProductId" value="">
+
+            <div class="mb-4">
+                <label class="font-bold mb-2 block" style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Feature Duration</label>
+                <div class="flex gap-2 flex-wrap">
+                    <?php foreach ([7 => '7 days', 14 => '14 days', 30 => '30 days', 0 => 'No expiry'] as $days => $label): ?>
+                        <button type="button"
+                            class="boost-duration-btn <?php echo $days === 7 ? 'active' : ''; ?>"
+                            data-days="<?php echo $days; ?>"
+                            onclick="selectBoostDuration(this)">
+                            <?php echo $label; ?>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+                <input type="hidden" name="boost_days" id="boostDaysInput" value="7">
+            </div>
+
+            <div class="mb-4">
+                <label for="boostReasonInput" class="font-bold mb-2 block" style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Reason / Campaign Note <span style="font-weight:400; text-transform: none;">(optional)</span></label>
+                <input type="text" id="boostReasonInput" name="boost_reason" class="w-full premium-input" placeholder="e.g. Campus Week campaign, Partner deal with BookShop Co." style="padding: 0.7rem 1rem;">
+            </div>
+
+            <div class="flex gap-3 justify-end mt-5">
+                <button type="button" onclick="closeBoostModal()" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-lg);">Cancel</button>
+                <button type="submit" class="btn btn-sm" style="border-radius: var(--radius-lg); background: #6d28d9; color: #fff;">🚀 Boost Listing</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function handleListingDelete(form) {
     if (!confirm('Are you sure you want to delete this listing permanently?')) {
@@ -310,6 +435,28 @@ function handleListingDelete(form) {
     form.querySelector('input[name="reason"]').value = reason.trim();
     return true;
 }
+
+function openBoostModal(productId, title) {
+    document.getElementById('boostProductId').value = productId;
+    document.getElementById('boostModalSubtitle').textContent = '"' + title + '"';
+    document.getElementById('boostReasonInput').value = '';
+    document.getElementById('adminBoostOverlay').classList.add('open');
+}
+
+function closeBoostModal(e) {
+    if (e && e.target !== document.getElementById('adminBoostOverlay')) return;
+    document.getElementById('adminBoostOverlay').classList.remove('open');
+}
+
+function selectBoostDuration(btn) {
+    document.querySelectorAll('.boost-duration-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('boostDaysInput').value = btn.dataset.days;
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('adminBoostOverlay').classList.remove('open');
+});
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
