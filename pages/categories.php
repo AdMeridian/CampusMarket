@@ -43,7 +43,9 @@ $categories = $stmt->fetchAll();
                         <?php echo categoryIconMarkup($cat['name']); ?>
                     </div>
                     <h2 class="category-card__name"><?php echo sanitize(translateCategory($cat['name'])); ?></h2>
-                    <p class="category-card__count"><?= __('home.items_available', ['count' => (int)$cat['product_count']]) ?></p>
+                    <?php if ((int)$cat['product_count'] >= 45): ?>
+                        <p class="category-card__count"><?= __('home.items_available', ['count' => (int)$cat['product_count'] > 100 ? '100+' : (int)$cat['product_count']]) ?></p>
+                    <?php endif; ?>
                     <span class="category-card__cta"><?= __('categories.browse_items') ?> →</span>
                 </a>
             <?php endforeach; ?>

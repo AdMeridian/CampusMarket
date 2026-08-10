@@ -105,7 +105,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php echo $cat['icon']; ?>
                     </div>
                     <strong class="home-category-card__name"><?php echo translateCategory($cat['name']); ?></strong>
-                    <span class="text-muted small"><?= __('home.items_available', ['count' => $count]) ?></span>
+                    <?php if ($count >= 45): ?>
+                        <span class="text-muted small"><?= __('home.items_available', ['count' => $count > 100 ? '100+' : $count]) ?></span>
+                    <?php endif; ?>
                 </a>
             <?php endforeach; ?>
         </div>
