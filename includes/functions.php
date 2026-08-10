@@ -799,7 +799,7 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'{$dateFilter}
+        WHERE p.status = 'active' AND p.listing_type = 'product'{$dateFilter}
         ORDER BY p.created_at DESC
         LIMIT :limit
     ");
@@ -813,7 +813,16 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
  * Fetch the latest active products without a recent-time window.
  */
 function getLatestActiveProducts(PDO $pdo, int $limit = 8): array {
-    $stmt = $pdo->prepare("\n        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name\n        FROM products p\n        JOIN categories c ON p.category_id = c.id\n        JOIN users u ON p.user_id = u.id\n        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE\n        WHERE p.status = 'active'\n        ORDER BY p.created_at DESC\n        LIMIT :limit\n    ");
+    $stmt = $pdo->prepare("
+        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active' AND p.listing_type = 'product'
+        ORDER BY p.created_at DESC
+        LIMIT :limit
+    ");
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll();
@@ -838,7 +847,7 @@ function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $prod
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-            WHERE p.category_id = :category_id AND p.status = 'active'
+            WHERE p.category_id = :category_id AND p.status = 'active' AND p.listing_type = 'product'
             ORDER BY p.created_at DESC
             LIMIT :limit
         ");
@@ -888,7 +897,7 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active' AND p.is_featured = TRUE{$featuredWindowFilter}
+        WHERE p.status = 'active' AND p.is_featured = TRUE AND p.listing_type = 'product'{$featuredWindowFilter}
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
@@ -904,7 +913,7 @@ function getTopCategories(PDO $pdo): array {
     return $pdo->query("
         SELECT c.*, COUNT(DISTINCT p.id) as product_count
         FROM categories c
-        LEFT JOIN products p ON p.status = 'active' AND (
+        LEFT JOIN products p ON p.status = 'active' AND p.listing_type = 'product' AND (
             p.category_id = c.id
             OR EXISTS (
                 SELECT 1

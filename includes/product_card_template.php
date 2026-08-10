@@ -40,18 +40,27 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
 
             <!-- Status Badges Container (Top Left) -->
             <div style="position: absolute; top: 0.75rem; left: 0.75rem; z-index: 10; display: flex; gap: 0.4rem; flex-wrap: wrap; max-width: calc(100% - 1.5rem); pointer-events: none;">
-                <?php 
+                <?php
+                $isService = ($prod['listing_type'] ?? 'product') === 'service';
+                if ($isService):
+                ?>
+                <span class="badge shadow-sm" style="background: #ef4444; color: white; font-size: 0.7rem; padding: 0.35rem 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(4px);">
+                    <?php echo (($prod['pricing_model'] ?? 'flat') === 'hourly') ? 'Hourly Service' : 'Service'; ?>
+                </span>
+                <?php else: ?>
+                <?php
                 $cond = $prod['condition'] ?? 'used';
-                $badge = conditionBadge($cond); 
+                $badge = conditionBadge($cond);
                 ?>
                 <span class="badge <?php echo $badge['class']; ?> shadow-sm" style="font-size: 0.7rem; padding: 0.35rem 0.75rem; backdrop-filter: blur(4px);">
                     <?php echo $badge['label']; ?>
                 </span>
-                
+
                 <?php if (!empty($prod['discount_percent']) && (int)$prod['discount_percent'] > 0): ?>
                 <span class="badge shadow-sm" style="background: #ef4444; color: white; font-size: 0.7rem; padding: 0.35rem 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
                     <?= __('product.discounted') ?>
                 </span>
+                <?php endif; ?>
                 <?php endif; ?>
 
                 <?php if (!empty($prod['is_featured']) && (int)$prod['is_featured'] === 1): ?>
@@ -79,6 +88,9 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
                 <div class="product-card-price-row">
                     <div class="product-card-price-stack">
                         <?php echo renderProductCardPrice($prod); ?>
+                        <?php if (($prod['listing_type'] ?? 'product') === 'service' && ($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                        <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-left: 0.15rem;">/hr</span>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

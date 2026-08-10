@@ -41,27 +41,44 @@ $isSelf  = isLoggedIn() && (int)currentUserId() === (int)$user['id'];
 $rating  = getSellerRating($pdo, (int)$user['id']);
 $trust   = getSellerTrustScore($pdo, (int)$user['id']);
 $pageTitle = sanitize($user['username']) . "'s Profile";
-$activeTab = ($_GET['tab'] ?? 'listings') === 'about' ? 'about' : 'listings';
+$activeTab = in_array($_GET['tab'] ?? 'listings', ['listings', 'services', 'about']) ? ($_GET['tab'] ?? 'listings') : 'listings';
 
 // Fetch listings count for the stat pill. Owners see their pending review items too.
 $visibleListingStatusSql = $isSelf || isAdmin()
     ? "status IN ('active', 'pending_approval')"
     : "status = 'active'";
-$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND {$visibleListingStatusSql}");
+$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND listing_type = 'product' AND {$visibleListingStatusSql}");
 $listingCountStmt->execute([':uid' => $viewId]);
 $listingCount = (int)$listingCountStmt->fetchColumn();
 
-// Fetch listings visible on this profile view.
+// Fetch services count
+$serviceCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND listing_type = 'service' AND {$visibleListingStatusSql}");
+$serviceCountStmt->execute([':uid' => $viewId]);
+$serviceCount = (int)$serviceCountStmt->fetchColumn();
+
+// Fetch physical listings visible on this profile view.
 $stmt = $pdo->prepare("
     SELECT p.*, c.name as category_name, i.image_path
     FROM products p
     JOIN categories c ON p.category_id = c.id
     LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-    WHERE p.user_id = :uid AND {$visibleListingStatusSql}
+    WHERE p.user_id = :uid AND p.listing_type = 'product' AND {$visibleListingStatusSql}
     ORDER BY p.created_at DESC
 ");
 $stmt->execute([':uid' => $viewId]);
 $userProducts = $stmt->fetchAll();
+
+// Fetch services visible on this profile view.
+$stmtServices = $pdo->prepare("
+    SELECT p.*, c.name as category_name, i.image_path
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+    WHERE p.user_id = :uid AND p.listing_type = 'service' AND {$visibleListingStatusSql}
+    ORDER BY p.created_at DESC
+");
+$stmtServices->execute([':uid' => $viewId]);
+$userServices = $stmtServices->fetchAll();
 
 // Fetch sold items (publicly visible on profile to show seller history)
 $soldItems = $pdo->prepare("
@@ -658,6 +675,14 @@ body.dark-mode .btn-white-solid:hover {
                 Listings
                 <span class="tab-count"><?php echo $listingCount; ?></span>
             </a>
+            <?php if ($serviceCount > 0 || $isSelf): ?>
+            <a href="#services" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" data-tab="services" style="color: #ef4444;">
+                Services
+                <?php if ($serviceCount > 0): ?>
+                <span class="tab-count" style="background: #ef4444; color: white;"><?php echo $serviceCount; ?></span>
+                <?php endif; ?>
+            </a>
+            <?php endif; ?>
         </nav>
     </div>
 </div>
@@ -871,6 +896,71 @@ body.dark-mode .btn-white-solid:hover {
                 </div>
             <?php endif; ?>
         </section>
+
+        <!-- ── Services Section ─────────────────────────────────── -->
+        <?php if ($serviceCount > 0 || $isSelf): ?>
+        <section id="services" style="margin-top: 2rem;">
+            <div class="listings-header">
+                <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                    <?php echo $isSelf ? 'Your Services' : 'Services Offered'; ?> (<?php echo $serviceCount; ?>)
+                </h2>
+                <?php if ($isSelf): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; background: #ef4444; color: white; border: none;">
+                        + Offer a Service
+                    </a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($userServices)): ?>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;"><?php echo $isSelf ? 'No services offered yet.' : 'No services offered.'; ?></p>
+            <?php else: ?>
+                <div class="listing-grid">
+                    <?php foreach ($userServices as $prod): ?>
+                        <?php $isPendingApproval = ($prod['status'] === 'pending_approval'); ?>
+                        <div class="listing-card" style="border-top: 3px solid #ef4444;">
+                            <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
+                                <img
+                                    class="listing-card-img"
+                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>"
+                                    alt="<?php echo sanitize($prod['title']); ?>"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <div class="listing-card-body">
+                                <div class="listing-card-meta">
+                                    <span class="listing-card-cat" style="color: #ef4444;"><?php echo sanitize($prod['category_name']); ?></span>
+                                    <span class="listing-card-price">
+                                        <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
+                                        <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                                            <small style="font-weight: 500; color: var(--text-muted);">/hr</small>
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                <?php if ($isSelf && $isPendingApproval): ?>
+                                    <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
+                                        Pending Review
+                                    </div>
+                                <?php endif; ?>
+                                <h3 class="listing-card-title">
+                                    <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit;">
+                                        <?php echo sanitize($prod['title']); ?>
+                                    </a>
+                                </h3>
+                                <?php if ($isSelf): ?>
+                                    <div class="mt-4" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm w-full" style="padding: 0.45rem 0.75rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); background: #ef4444; color: white; border: none;">
+                                            Manage Service
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+        <?php endif; ?>
 
         <!-- ── Sold Items Section ──────────────────────────────── -->
         <section id="sold-items">

@@ -37,6 +37,7 @@ $displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HO
         <p class="hero-subtitle"><?= __('home.hero_desc') ?></p>
         <div class="hero-actions">
             <a href="<?php echo BASE_URL; ?>pages/browse.php" class="btn hero-cta hero-cta--primary"><?= __('home.start_browsing') ?></a>
+            <a href="<?php echo BASE_URL; ?>pages/services.php" class="btn hero-cta" style="background-color: var(--danger, #ef4444); color: white; border: none;">Explore Services</a>
             <?php if (isLoggedIn()): ?>
                 <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn hero-cta hero-cta--secondary"><?= __('home.sell_an_item') ?></a>
             <?php else: ?>

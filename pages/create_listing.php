@@ -27,7 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!array_key_exists($priceCurrency, PRODUCT_CURRENCIES)) {
         $priceCurrency = DEFAULT_PRODUCT_CURRENCY;
     }
-    $condition      = sanitize($_POST['condition']);
+    $condition      = sanitize($_POST['condition'] ?? '');
+    $listingType    = in_array($_POST['listing_type'] ?? 'product', ['product', 'service']) ? ($_POST['listing_type'] ?? 'product') : 'product';
+    $pricingModel   = in_array($_POST['pricing_model'] ?? 'flat', ['flat', 'hourly']) ? ($_POST['pricing_model'] ?? 'flat') : 'flat';
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $userId         = currentUserId();
@@ -54,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.image_required');
     } elseif ($categoryId <= 0 || empty($selectedCategoryIds)) {
         $error = __('create_listing.select_category');
-    } elseif (!isValidLocationTown($locationTown)) {
+    } elseif ($listingType === 'product' && !isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
     }
 
@@ -105,8 +107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 1. Insert Product
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown]);
+                $conditionValue = ($listingType === 'service') ? null : $condition;
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $listingType, $pricingModel, $locationTown]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
@@ -218,8 +221,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch Categories & Tags
-$categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
+// Determine if this is a service listing (from URL or previous POST)
+$isServiceMode = ($_GET['type'] ?? '') === 'service' || ($_POST['listing_type'] ?? '') === 'service';
+
+// Fetch product categories only (services have their own category tree)
+$categories = $pdo->query("SELECT * FROM categories WHERE type = 'product' ORDER BY name ASC")->fetchAll();
+$serviceCategories = $pdo->query("SELECT * FROM categories WHERE type = 'service' ORDER BY name ASC")->fetchAll();
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
 $defaultTown = isLoggedIn() ? (getUserHomeTown((int)currentUserId()) ?? '') : '';
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
@@ -345,6 +352,25 @@ include '../includes/header.php';
         <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
             <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 js-form-loading" data-loading-text="<?= htmlspecialchars(__('create_listing.submitting_review'), ENT_QUOTES, 'UTF-8') ?>">
                 <?php echo csrfTokenField(); ?>
+
+                <!-- Listing Type Selector (Product vs Service) -->
+                <div class="form-group">
+                    <label class="font-bold mb-3 block" style="color: var(--text-main);">What are you listing?</label>
+                    <div class="flex gap-3" id="listing-type-selector">
+                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo !$isServiceMode ? 'var(--primary)' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo !$isServiceMode ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
+                            <input type="radio" name="listing_type" value="product" <?php echo !$isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-product">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📦</div>
+                            <div class="font-bold text-main" style="font-size: 0.95rem;">Physical Item</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">Something you can hand over</div>
+                        </label>
+                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo $isServiceMode ? '#ef4444' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo $isServiceMode ? 'rgba(239,68,68,0.08)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
+                            <input type="radio" name="listing_type" value="service" <?php echo $isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-service">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">🛠️</div>
+                            <div class="font-bold text-main" style="font-size: 0.95rem;">Service</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">Tutoring, cleaning, photography...</div>
+                        </label>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
                     <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
@@ -398,10 +424,11 @@ include '../includes/header.php';
                     </div>
                 </div>
 
-                <div class="form-group">
+                <!-- Condition (product only) -->
+                <div class="form-group js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>>
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.condition_label') ?></label>
                     <div class="flex flex-wrap gap-3" style="gap: 0.5rem;">
-                        <?php 
+                        <?php
                         $opts = [
                             'new' => __('create_listing.cond_new'),
                             'like_new' => __('create_listing.cond_like_new'),
@@ -416,6 +443,23 @@ include '../includes/header.php';
                             <span class="font-semibold text-main"><?php echo $label; ?></span>
                         </label>
                         <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Pricing Model (service only) -->
+                <div class="form-group js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
+                    <label class="font-bold mb-2 block" style="color: var(--text-main);">Pricing Model</label>
+                    <div class="flex gap-3">
+                        <label class="flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
+                            <input type="radio" name="pricing_model" value="flat" <?php echo (($_POST['pricing_model'] ?? 'flat') === 'flat') ? 'checked' : ''; ?> class="hidden-radio">
+                            <div class="font-bold text-main">💵 Flat Rate</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">One price for the job</div>
+                        </label>
+                        <label class="flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
+                            <input type="radio" name="pricing_model" value="hourly" <?php echo (($_POST['pricing_model'] ?? '') === 'hourly') ? 'checked' : ''; ?> class="hidden-radio">
+                            <div class="font-bold text-main">⏱️ Hourly Rate</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">Price per hour</div>
+                        </label>
                     </div>
                 </div>
                 <div class="form-group">
@@ -915,3 +959,36 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
+<script>
+// Dynamic listing type toggle
+(function() {
+    const typeRadios = document.querySelectorAll('input[name="listing_type"]');
+    const productOnlyEls = document.querySelectorAll('.js-product-only');
+    const serviceOnlyEls = document.querySelectorAll('.js-service-only');
+    const typeBtns = document.querySelectorAll('.listing-type-btn');
+
+    function applyType(type) {
+        productOnlyEls.forEach(el => el.style.display = type === 'product' ? '' : 'none');
+        serviceOnlyEls.forEach(el => el.style.display = type === 'service' ? '' : 'none');
+        typeBtns.forEach(btn => {
+            const radio = btn.querySelector('input[name="listing_type"]');
+            const isSelected = radio && radio.value === type;
+            const color = radio && radio.value === 'service' ? '#ef4444' : 'var(--primary)';
+            btn.style.border = isSelected ? `2px solid ${color}` : '2px solid var(--border-light)';
+            if (isSelected && radio.value === 'service') {
+                btn.style.background = 'rgba(239,68,68,0.08)';
+            } else if (isSelected) {
+                btn.style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)';
+            } else {
+                btn.style.background = 'var(--bg-surface)';
+            }
+        });
+    }
+
+    typeRadios.forEach(radio => {
+        radio.addEventListener('change', () => applyType(radio.value));
+    });
+})();
+</script>
+
