@@ -380,10 +380,22 @@ include '../includes/header.php';
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.category_label') ?></label>
                         <p class="text-muted small mb-3">Choose every category that fits. One will be used as the primary category.</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        
+                        <!-- Product Categories -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>>
                             <?php foreach ($categories as $cat): ?>
                                 <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
-                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) ? 'checked' : ''; ?>>
+                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) && !$isServiceMode ? 'checked' : ''; ?>>
+                                    <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <!-- Service Categories -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
+                            <?php foreach ($serviceCategories as $cat): ?>
+                                <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
+                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) && $isServiceMode ? 'checked' : ''; ?>>
                                     <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
                                 </label>
                             <?php endforeach; ?>
