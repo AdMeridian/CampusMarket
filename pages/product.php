@@ -1458,12 +1458,12 @@ body.dark-mode .scc-badge {
                     <?php endif; ?>
 
                     <div class="scc-mgmt-actions">
-                        <form method="post" onsubmit="return confirm('<?= addslashes(__('product.confirm_mark_sold')) ?>')">
+                        <form method="post" onsubmit="return confirm('<?= (($product['listing_type'] ?? 'product') === 'service') ? addslashes(__('product.confirm_mark_completed')) : addslashes(__('product.confirm_mark_sold')) ?>')">
                             <?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="mark_sold">
                             <button type="submit" class="scc-mgmt-btn">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <?= __('product.mark_sold_btn') ?>
+                                <?= (($product['listing_type'] ?? 'product') === 'service') ? __('product.mark_completed_btn') : __('product.mark_sold_btn') ?>
                             </button>
                         </form>
                         
