@@ -405,6 +405,8 @@
     "browse.town": "Şehir",
     "browse.all_towns": "Tüm Şehirler",
     "browse.my_town": "{town} ilanlarını göster",
+    "browse.my_town_active": "{town} (Benim Şehrim) ilanları gösteriliyor",
+    "browse.switch_to_my_town": "Benim şehrime geç ({town})",
     "browse.filtering_by_town": "{town} ilanları gösteriliyor",
     "browse.clear_town": "Şehir filtresini temizle",
     "browse.price_range": "Fiyat Aralığı",

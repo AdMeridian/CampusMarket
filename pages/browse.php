@@ -165,10 +165,22 @@ include '../includes/header.php';
                                 </select>
                             </div>
                             <?php if ($userHomeTown): ?>
-                                <a href="<?php echo BASE_URL; ?>pages/browse.php?my_town=1" class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary hover:underline">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    <?= __('browse.my_town', ['town' => formatLocationTown($userHomeTown)]) ?>
-                                </a>
+                                <?php if ($town === $userHomeTown): ?>
+                                    <div class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <?= __('browse.my_town_active', ['town' => formatLocationTown($userHomeTown)]) ?>
+                                    </div>
+                                <?php elseif (!empty($town)): ?>
+                                    <a href="<?php echo BASE_URL; ?>pages/browse.php?my_town=1" class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary hover:underline">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        <?= __('browse.switch_to_my_town', ['town' => formatLocationTown($userHomeTown)]) ?>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="<?php echo BASE_URL; ?>pages/browse.php?my_town=1" class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary hover:underline">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        <?= __('browse.my_town', ['town' => formatLocationTown($userHomeTown)]) ?>
+                                    </a>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
 
