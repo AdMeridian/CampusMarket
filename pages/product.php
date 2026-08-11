@@ -387,7 +387,25 @@ $images = $stmt->fetchAll();
 // Fetch Seller Stats (for SCC)
 $rating = getSellerRating($pdo, (int)$product['seller_id']);
 $trust  = getSellerTrustScore($pdo, (int)$product['seller_id']);
-$sellerReviews = getSellerReviews($pdo, (int)$product['seller_id'], 6);
+
+// Fetch Service-Specific Reviews and Stats
+$stmtServiceStats = $pdo->prepare("SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as review_count FROM ratings WHERE product_id = ?");
+$stmtServiceStats->execute([$productId]);
+$serviceRatingStats = $stmtServiceStats->fetch();
+$serviceAvg = (float)$serviceRatingStats['avg_rating'];
+$serviceCount = (int)$serviceRatingStats['review_count'];
+
+$stmtServiceReviews = $pdo->prepare("
+    SELECT r.*, u.username as reviewer_name, p.title as product_title
+    FROM ratings r
+    JOIN users u ON u.id = r.reviewer_id
+    JOIN products p ON p.id = r.product_id
+    WHERE r.product_id = ?
+    ORDER BY r.created_at DESC
+    LIMIT 6
+");
+$stmtServiceReviews->execute([$productId]);
+$serviceReviews = $stmtServiceReviews->fetchAll();
 
 // Fetch REAL unique view count from product_views table (fallback when table is missing locally)
 if ($hasProductViewsTable) {
@@ -1634,31 +1652,31 @@ body.dark-mode .scc-badge {
                 <h2 class="page-section-title mb-1 text-main font-bold" style="font-size: 1.6rem; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
                     ⭐ Client Reviews
                 </h2>
-                <p class="text-muted small mb-0">What other students say about @<?php echo sanitize($product['seller_name']); ?>'s services.</p>
+                <p class="text-muted small mb-0">What other students say about this specific service.</p>
             </div>
-            <?php if ($rating['count'] > 0): ?>
+            <?php if ($serviceCount > 0): ?>
             <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2" style="background: var(--bg-card);">
                 <div class="text-center">
-                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);"><?php echo number_format($rating['avg'], 1); ?></span>
+                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);"><?php echo number_format($serviceAvg, 1); ?></span>
                     <span style="font-size: 0.85rem; color: var(--text-light); font-weight: 600;">/ 5</span>
                 </div>
                 <div style="border-left: 1px solid var(--border-light); padding-left: 1rem;">
-                    <div style="color: #f59e0b; line-height: 1;"><?php echo renderStars($rating['avg']); ?></div>
-                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;"><?php echo $rating['count']; ?> <?= $rating['count'] === 1 ? __('product.review') : __('product.reviews') ?></span>
+                    <div style="color: #f59e0b; line-height: 1;"><?php echo renderStars($serviceAvg); ?></div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;"><?php echo $serviceCount; ?> <?= $serviceCount === 1 ? __('product.review') : __('product.reviews') ?></span>
                 </div>
             </div>
             <?php endif; ?>
         </div>
 
-        <?php if (empty($sellerReviews)): ?>
+        <?php if (empty($serviceReviews)): ?>
             <div class="glass-panel p-12 text-center" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 2px dashed var(--border-light);">
                 <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.6;">💬</span>
-                <h4 class="mb-1 text-main" style="font-weight: 700;">No reviews yet</h4>
-                <p class="text-muted mb-0">Be the first to hire this student and leave a review after completion!</p>
+                <h4 class="mb-1 text-main" style="font-weight: 700;">No reviews for this service yet</h4>
+                <p class="text-muted mb-0">Be the first to hire @<?php echo sanitize($product['seller_name']); ?> for this service and leave a review!</p>
             </div>
         <?php else: ?>
             <div class="grid grid-cols-1 md-grid-cols-2 gap-6">
-                <?php foreach ($sellerReviews as $review): ?>
+                <?php foreach ($serviceReviews as $review): ?>
                     <div class="card p-5 hover-scale" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); transition: var(--transition);">
                         <div class="flex justify-between items-start gap-4 mb-3">
                             <div class="flex items-center gap-3">
@@ -1672,11 +1690,6 @@ body.dark-mode .scc-badge {
                             </div>
                             <div style="font-size: 0.85rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
                         </div>
-                        <?php if (!empty($review['product_title'])): ?>
-                            <span class="small font-semibold px-2 py-0.5 rounded" style="background: var(--bg-main); color: var(--text-muted); font-size: 0.72rem; display: inline-block; margin-bottom: 0.75rem;">
-                                🛠️ <?php echo sanitize($review['product_title']); ?>
-                            </span>
-                        <?php endif; ?>
                         <?php if (trim((string)$review['comment']) !== ''): ?>
                             <p class="mb-0 text-main" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
                         <?php endif; ?>
