@@ -3620,3 +3620,14 @@ body.page-chat .chat-send-btn {
   to { transform: rotate(360deg); }
 }
 
+/* Gallery Navigation Buttons */
+@media (max-width: 1024px) {
+  .gallery-nav-btn {
+    opacity: 1 !important;
+  }
+}
+.gallery-nav-btn:hover {
+  background: var(--bg-surface) !important;
+  transform: translateY(-50%) scale(1.05) !important;
+}
+

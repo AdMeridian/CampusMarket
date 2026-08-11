@@ -1106,6 +1106,17 @@ body.dark-mode .scc-badge {
                     </div>
                 <?php endif; ?>
                 
+                <?php if (count($images) > 1): ?>
+                    <!-- Left arrow -->
+                    <button type="button" class="gallery-nav-btn prev-btn flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200" aria-label="Previous image" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.75); backdrop-filter: blur(4px); border: 1px solid var(--border-light); color: var(--text-main); font-weight: bold; cursor: pointer; z-index: 10; box-shadow: var(--shadow-sm);" onclick="navigateGallery(-1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <!-- Right arrow -->
+                    <button type="button" class="gallery-nav-btn next-btn flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200" aria-label="Next image" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.75); backdrop-filter: blur(4px); border: 1px solid var(--border-light); color: var(--text-main); font-weight: bold; cursor: pointer; z-index: 10; box-shadow: var(--shadow-sm);" onclick="navigateGallery(1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                <?php endif; ?>
+
                 <div style="position: absolute; top: 1.5rem; right: 1.5rem;">
                     <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
                         <?php $isHourly = ($product['pricing_model'] ?? 'flat') === 'hourly'; ?>
@@ -1124,6 +1135,7 @@ body.dark-mode .scc-badge {
                     <?php foreach ($images as $index => $img): ?>
                         <div class="card p-1 cursor-pointer hover-scale flex-shrink-0 thumbnail-btn <?php echo $index === 0 ? 'ring-2 ring-primary' : ''; ?>" 
                              onclick="updateMainImage('<?php echo getProductImage($img['image_path']); ?>', this)"
+                             data-index="<?php echo $index; ?>"
                              style="width: 80px; height: 80px; overflow: hidden; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); transition: all 0.2s;">
                             <img src="<?php echo getProductImage($img['image_path']); ?>" alt="Thumb" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
                         </div>
@@ -1650,7 +1662,7 @@ body.dark-mode .scc-badge {
         <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
             <div>
                 <h2 class="page-section-title mb-1 text-main font-bold" style="font-size: 1.6rem; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
-                    ⭐ Client Reviews
+                    Client Reviews
                 </h2>
                 <p class="text-muted small mb-0">What other students say about this specific service.</p>
             </div>
@@ -1703,15 +1715,69 @@ body.dark-mode .scc-badge {
 </div>
 
 <script>
+const galleryImages = <?php echo json_encode(array_map(function($img) { return getProductImage($img['image_path']); }, $images)); ?>;
+let currentImgIndex = 0;
+let touchStartX = 0;
+let touchEndX = 0;
+
+function navigateGallery(direction) {
+    if (galleryImages.length <= 1) return;
+    currentImgIndex = (currentImgIndex + direction + galleryImages.length) % galleryImages.length;
+    const thumbnails = document.querySelectorAll('.thumbnail-btn');
+    if (thumbnails[currentImgIndex]) {
+        updateMainImage(galleryImages[currentImgIndex], thumbnails[currentImgIndex]);
+    }
+}
+
 function updateMainImage(src, element) {
     document.getElementById('main-image').src = src;
     
+    // Update index if triggered from click directly
+    const idx = parseInt(element.getAttribute('data-index'));
+    if (!isNaN(idx)) {
+        currentImgIndex = idx;
+    }
+
     // Update thumbnail rings
     document.querySelectorAll('.thumbnail-btn').forEach(btn => {
         btn.classList.remove('ring-2', 'ring-primary');
     });
     element.classList.add('ring-2', 'ring-primary');
 }
+
+// Add touch swipe and keyboard support
+document.addEventListener('DOMContentLoaded', () => {
+    const galleryEl = document.querySelector('.product-gallery-main');
+    if (galleryEl && galleryImages.length > 1) {
+        galleryEl.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        galleryEl.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleGesture();
+        }, { passive: true });
+    }
+
+    function handleGesture() {
+        const threshold = 50;
+        if (touchStartX - touchEndX > threshold) {
+            navigateGallery(1); // Swipe left -> next
+        }
+        if (touchEndX - touchStartX > threshold) {
+            navigateGallery(-1); // Swipe right -> prev
+        }
+    }
+
+    // Keyboard arrow controls
+    document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowLeft') {
+            navigateGallery(-1);
+        } else if (e.key === 'ArrowRight') {
+            navigateGallery(1);
+        }
+    });
+});
 
 // Count-up animation
 document.addEventListener('DOMContentLoaded', () => {
