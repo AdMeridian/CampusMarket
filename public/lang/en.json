@@ -410,6 +410,8 @@
     "browse.town": "Town",
     "browse.all_towns": "All Towns",
     "browse.my_town": "Show listings in {town}",
+    "browse.my_town_active": "Showing listings in {town} (My Town)",
+    "browse.switch_to_my_town": "Filter by my town ({town})",
     "browse.filtering_by_town": "Showing listings in {town}",
     "browse.clear_town": "Clear town filter",
     "browse.price_range": "Price Range",

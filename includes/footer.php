@@ -80,6 +80,11 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/pwa.js?v=<?php echo $pwaJsVer; ?>"></script>
 <?php
+    $offlineRestoreJsPath = __DIR__ . '/../public/js/offline-restore.js';
+    $offlineRestoreJsVer = assetVersion($offlineRestoreJsPath);
+?>
+<script src="<?php echo BASE_URL; ?>public/js/offline-restore.js?v=<?php echo $offlineRestoreJsVer; ?>"></script>
+<?php
     $searchJsPath = __DIR__ . '/../public/js/search-suggestions.js';
     $searchJsVer = assetVersion($searchJsPath);
 ?>
