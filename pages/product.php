@@ -1064,9 +1064,13 @@ body.dark-mode .scc-badge {
     <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
         <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors"><?= __('product.home') ?></a>
         <span class="opacity-50">/</span>
-        <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
-        <span class="opacity-50">/</span>
-        <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+        <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <a href="<?php echo BASE_URL; ?>pages/services.php" class="hover:text-primary transition-colors"><?= __('nav.services') ?></a>
+        <?php else: ?>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
+            <span class="opacity-50">/</span>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+        <?php endif; ?>
     </div>
 
     <div class="grid grid-cols-1 lg-grid-cols-2 gap-12 lg-gap-16">
@@ -1133,7 +1137,7 @@ body.dark-mode .scc-badge {
                 <?php else: ?>
                     <h1 class="product-title mb-4 text-main font-bold"><?php echo sanitize($product['title']); ?></h1>
                 <?php endif; ?>
-                <?php if (!empty($productCategories)): ?>
+                <?php if (($product['listing_type'] ?? 'product') !== 'service' && !empty($productCategories)): ?>
                 <div class="flex flex-wrap gap-2 mb-4">
                     <?php foreach ($productCategories as $category): ?>
                         <a href="<?php echo BASE_URL; ?>pages/browse.php?category=<?php echo (int)$category['id']; ?>" class="inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold transition-colors hover:text-primary" style="border-color: var(--border-light); background: var(--bg-surface); color: var(--text-main); text-decoration: none;">
@@ -1423,6 +1427,7 @@ body.dark-mode .scc-badge {
                     </div>
 
                     <!-- CATEGORIES -->
+                    <?php if (($product['listing_type'] ?? 'product') !== 'service'): ?>
                     <div class="scc-mgmt-section">
                         <h4><?= __('product.manage_categories') ?></h4>
                         <form method="post" class="scc-mgmt-form" style="flex-direction: column; gap: 0.75rem;">
@@ -1450,6 +1455,7 @@ body.dark-mode .scc-badge {
                             </div>
                         </form>
                     </div>
+                    <?php endif; ?>
 
                     <div class="scc-mgmt-actions">
                         <form method="post" onsubmit="return confirm('<?= addslashes(__('product.confirm_mark_sold')) ?>')">

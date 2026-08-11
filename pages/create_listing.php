@@ -36,16 +36,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
-    $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
-    $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
-    if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
-        $primaryCategoryId = (int)$selectedCategoryIds[0];
+    if ($listingType === 'service') {
+        $firstServiceCat = $pdo->query("SELECT id FROM categories WHERE type = 'service' ORDER BY id ASC LIMIT 1")->fetchColumn();
+        $categoryId = $firstServiceCat ? (int)$firstServiceCat : 11;
+        $selectedCategoryIds = [$categoryId];
+    } else {
+        $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
+        $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
+        if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
+            $primaryCategoryId = (int)$selectedCategoryIds[0];
+        }
+        if ($primaryCategoryId > 0) {
+            $selectedCategoryIds[] = $primaryCategoryId;
+        }
+        $selectedCategoryIds = array_values(array_unique(array_filter($selectedCategoryIds)));
+        $categoryId = $primaryCategoryId > 0 ? $primaryCategoryId : ($selectedCategoryIds[0] ?? 0);
     }
-    if ($primaryCategoryId > 0) {
-        $selectedCategoryIds[] = $primaryCategoryId;
-    }
-    $selectedCategoryIds = array_values(array_unique(array_filter($selectedCategoryIds)));
-    $categoryId = $primaryCategoryId > 0 ? $primaryCategoryId : ($selectedCategoryIds[0] ?? 0);
 
     // Validate Title and Image Presence
     if (empty($title) || mb_strlen($title) < 3) {
@@ -54,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.title_too_long');
     } elseif (empty($_FILES['images']['name'][0]) || $_FILES['images']['error'][0] === UPLOAD_ERR_NO_FILE) {
         $error = __('create_listing.image_required');
-    } elseif ($categoryId <= 0 || empty($selectedCategoryIds)) {
+    } elseif ($listingType === 'product' && ($categoryId <= 0 || empty($selectedCategoryIds))) {
         $error = __('create_listing.select_category');
     } elseif ($listingType === 'product' && !isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
@@ -356,7 +362,7 @@ include '../includes/header.php';
                 <!-- Listing Type Selector (Product vs Service) -->
                 <div class="form-group">
                     <label class="font-bold mb-3 block" style="color: var(--text-main);">What are you listing?</label>
-                    <div class="flex gap-3" id="listing-type-selector">
+                    <div class="flex gap-6" id="listing-type-selector">
                         <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo !$isServiceMode ? 'var(--primary)' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo !$isServiceMode ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
                             <input type="radio" name="listing_type" value="product" <?php echo !$isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-product">
                             <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📦</div>
@@ -377,25 +383,15 @@ include '../includes/header.php';
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="form-group" style="grid-column: 1 / -1;">
+                    <!-- Category Selector (product only) -->
+                    <div class="form-group js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?> style="grid-column: 1 / -1;">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.category_label') ?></label>
                         <p class="text-muted small mb-3">Choose every category that fits. One will be used as the primary category.</p>
                         
-                        <!-- Product Categories -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <?php foreach ($categories as $cat): ?>
                                 <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
                                     <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) && !$isServiceMode ? 'checked' : ''; ?>>
-                                    <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-
-                        <!-- Service Categories -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
-                            <?php foreach ($serviceCategories as $cat): ?>
-                                <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
-                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) && $isServiceMode ? 'checked' : ''; ?>>
                                     <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
                                 </label>
                             <?php endforeach; ?>
@@ -462,12 +458,12 @@ include '../includes/header.php';
                 <div class="form-group js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
                     <label class="font-bold mb-2 block" style="color: var(--text-main);">Pricing Model</label>
                     <div class="flex gap-3">
-                        <label class="flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
+                        <label class="pricing-model-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
                             <input type="radio" name="pricing_model" value="flat" <?php echo (($_POST['pricing_model'] ?? 'flat') === 'flat') ? 'checked' : ''; ?> class="hidden-radio">
                             <div class="font-bold text-main">💵 Flat Rate</div>
                             <div class="text-muted" style="font-size: 0.78rem;">One price for the job</div>
                         </label>
-                        <label class="flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
+                        <label class="pricing-model-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
                             <input type="radio" name="pricing_model" value="hourly" <?php echo (($_POST['pricing_model'] ?? '') === 'hourly') ? 'checked' : ''; ?> class="hidden-radio">
                             <div class="font-bold text-main">⏱️ Hourly Rate</div>
                             <div class="text-muted" style="font-size: 0.78rem;">Price per hour</div>
@@ -1001,6 +997,36 @@ document.addEventListener('DOMContentLoaded', function () {
     typeRadios.forEach(radio => {
         radio.addEventListener('change', () => applyType(radio.value));
     });
+})();
+
+// Dynamic pricing model toggle
+(function() {
+    const modelRadios = document.querySelectorAll('input[name="pricing_model"]');
+    const modelBtns = document.querySelectorAll('.pricing-model-btn');
+
+    function applyModel(model) {
+        modelBtns.forEach(btn => {
+            const radio = btn.querySelector('input[name="pricing_model"]');
+            const isSelected = radio && radio.value === model;
+            if (isSelected) {
+                btn.style.border = '2px solid #ef4444';
+                btn.style.background = 'rgba(239,68,68,0.08)';
+            } else {
+                btn.style.border = '2px solid var(--border-light)';
+                btn.style.background = 'var(--bg-surface)';
+            }
+        });
+    }
+
+    modelRadios.forEach(radio => {
+        radio.addEventListener('change', () => applyModel(radio.value));
+    });
+
+    // Run once on load to initialize styling
+    const activeModel = document.querySelector('input[name="pricing_model"]:checked');
+    if (activeModel) {
+        applyModel(activeModel.value);
+    }
 })();
 </script>
 

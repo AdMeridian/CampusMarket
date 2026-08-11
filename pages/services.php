@@ -80,7 +80,7 @@ include '../includes/header.php';
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem;">
                 <div>
                     <h1 style="color: white; font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; margin-bottom: 0.5rem;">
-                        🛠️ Student Services
+                        Student Services
                     </h1>
                     <p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; margin: 0;">
                         Hire talented students — tutoring, photography, moving, cleaning & more.
