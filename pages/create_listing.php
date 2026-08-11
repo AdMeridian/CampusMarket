@@ -21,7 +21,7 @@ $createdListingMeta = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
     $title          = sanitize($_POST['title']);
-    $categoryId     = (int)$_POST['category_id'];
+    $categoryId     = (int)($_POST['category_id'] ?? 0);
     $price          = (float)$_POST['price'];
     $priceCurrency  = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
     if (!array_key_exists($priceCurrency, PRODUCT_CURRENCIES)) {
@@ -378,8 +378,8 @@ include '../includes/header.php';
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
-                    <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <label id="title-label" class="font-bold mb-2 block" style="color: var(--text-main);"><?= $isServiceMode ? __('create_listing.sell_label_service') : __('create_listing.sell_label') ?></label>
+                    <input type="text" id="title-input" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.title_placeholder_service')) : addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -472,7 +472,7 @@ include '../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
-                    <textarea name="description" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                    <textarea id="description-textarea" name="description" rows="5" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.desc_placeholder_service')) : addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
 
                 <?php if (isAgent()): ?>
@@ -697,7 +697,13 @@ const createListingI18n = {
     compressing: <?= json_encode(__('create_listing.compressing_images')) ?>,
     maxFilesAlert: <?= json_encode(__('create_listing.max_files_alert', ['max' => MAX_IMAGES])) ?>,
     publishLabel: <?= json_encode(__('create_listing.publish')) ?>,
-    uploadHelp: <?= json_encode(__('create_listing.upload_desc')) ?>
+    uploadHelp: <?= json_encode(__('create_listing.upload_desc')) ?>,
+    sellLabel: <?= json_encode(__('create_listing.sell_label')) ?>,
+    offerLabel: <?= json_encode(__('create_listing.sell_label_service')) ?>,
+    titlePlaceholder: <?= json_encode(__('create_listing.title_placeholder')) ?>,
+    titlePlaceholderService: <?= json_encode(__('create_listing.title_placeholder_service')) ?>,
+    descPlaceholder: <?= json_encode(__('create_listing.desc_placeholder')) ?>,
+    descPlaceholderService: <?= json_encode(__('create_listing.desc_placeholder_service')) ?>
 };
 
 function updateFileInput() {
@@ -979,6 +985,24 @@ document.addEventListener('DOMContentLoaded', function () {
     function applyType(type) {
         productOnlyEls.forEach(el => el.style.display = type === 'product' ? '' : 'none');
         serviceOnlyEls.forEach(el => el.style.display = type === 'service' ? '' : 'none');
+
+        // Dynamically update labels & placeholders
+        const titleLabel = document.getElementById('title-label');
+        const titleInput = document.getElementById('title-input');
+        const descTextarea = document.getElementById('description-textarea');
+        
+        if (titleLabel && titleInput && descTextarea) {
+            if (type === 'service') {
+                titleLabel.textContent = createListingI18n.offerLabel;
+                titleInput.placeholder = createListingI18n.titlePlaceholderService;
+                descTextarea.placeholder = createListingI18n.descPlaceholderService;
+            } else {
+                titleLabel.textContent = createListingI18n.sellLabel;
+                titleInput.placeholder = createListingI18n.titlePlaceholder;
+                descTextarea.placeholder = createListingI18n.descPlaceholder;
+            }
+        }
+
         typeBtns.forEach(btn => {
             const radio = btn.querySelector('input[name="listing_type"]');
             const isSelected = radio && radio.value === type;
@@ -997,6 +1021,12 @@ document.addEventListener('DOMContentLoaded', function () {
     typeRadios.forEach(radio => {
         radio.addEventListener('change', () => applyType(radio.value));
     });
+
+    // Run once on load to initialize state
+    const activeType = document.querySelector('input[name="listing_type"]:checked');
+    if (activeType) {
+        applyType(activeType.value);
+    }
 })();
 
 // Dynamic pricing model toggle
