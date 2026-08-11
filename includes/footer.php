@@ -41,7 +41,21 @@
                     <?php endif; ?>
                 </ul>
             </div>
-            
+
+            <div class="footer-col">
+                <h4>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:0.35rem;"><path d="M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg><?= __('footer.services') ?>
+                </h4>
+                <ul>
+                    <li><a href="<?php echo BASE_URL; ?>/pages/services.php"><?= __('footer.explore_services') ?></a></li>
+                    <?php if (isLoggedIn()): ?>
+                    <li><a href="<?php echo BASE_URL; ?>/pages/create_listing.php?type=service"><?= __('footer.offer_service') ?></a></li>
+                    <?php endif; ?>
+                    <li><a href="<?php echo BASE_URL; ?>/pages/services.php?pricing=hourly"><?= __('footer.hourly_services') ?></a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/pages/services.php?pricing=flat"><?= __('footer.flat_rate_services') ?></a></li>
+                </ul>
+            </div>
+
             <div class="footer-col">
                 <h4><?= __('footer.support') ?></h4>
                 <ul>

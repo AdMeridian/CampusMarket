@@ -49,7 +49,7 @@ if ($maxPrice) {
 $fromSql = " FROM products p 
         JOIN categories c ON p.category_id = c.id 
         JOIN users u ON p.user_id = u.id 
-        WHERE p.status = 'active'" . $filterSql;
+        WHERE p.status = 'active' AND p.listing_type = 'product'" . $filterSql;
 
 $countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
 $countStmt->execute($params);
@@ -61,7 +61,7 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_
         JOIN categories c ON p.category_id = c.id 
         JOIN users u ON p.user_id = u.id 
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'" . $filterSql;
+        WHERE p.status = 'active' AND p.listing_type = 'product'" . $filterSql;
 
 $sql .= " ORDER BY CASE WHEN p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW()) THEN 1 ELSE 0 END DESC, ";
 switch ($sort) {
@@ -113,6 +113,18 @@ include '../includes/header.php';
                 <?= __('browse.marketplace') ?>
             </div>
         </div>
+
+        <!-- Services Discovery Banner -->
+        <a href="<?php echo BASE_URL; ?>pages/services.php" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 1.25rem; border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.04) 100%); border: 1px solid rgba(239,68,68,0.25); text-decoration: none; margin-bottom: 2rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='rgba(239,68,68,0.25)'">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-size: 1.3rem;">🛠️</span>
+                <div>
+                    <span style="font-weight: 700; color: #ef4444; font-size: 0.9rem;"><?= __('nav.services') ?></span>
+                    <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">Tutoring, photography, cleaning &amp; more from students</span>
+                </div>
+            </div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
 
         <div class="grid grid-cols-1 lg-grid-cols-5 gap-8 items-start">
             

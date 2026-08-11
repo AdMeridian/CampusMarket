@@ -185,11 +185,12 @@ function renderProductPrice(array $product): string {
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
+    $unitSuffix = (($product['pricing_model'] ?? 'flat') === 'hourly') ? ' <small style="font-size:0.75em;color:var(--text-muted);font-weight:500;">/hr</small>' : '';
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span>' . formatPrice($base, $currency) . '</span>';
+        return '<span>' . formatPrice($base, $currency) . $unitSuffix . '</span>';
     }
     return
-        '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final, $currency) . '</span> ' .
+        '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final, $currency) . $unitSuffix . '</span> ' .
         '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . formatPrice($base, $currency) . '</span> ' .
         '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">Discounted</span> ' .
         '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>';
@@ -203,9 +204,10 @@ function renderProductCardPrice(array $product): string {
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
+    $unitSuffix = (($product['pricing_model'] ?? 'flat') === 'hourly') ? ' <small style="font-size:0.75em;color:var(--text-muted);font-weight:500;">/hr</small>' : '';
 
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span class="product-card-price__now product-card-price__now--regular">' . formatPrice($base, $currency) . '</span>';
+        return '<span class="product-card-price__now product-card-price__now--regular">' . formatPrice($base, $currency) . $unitSuffix . '</span>';
     }
 
     return
@@ -213,7 +215,7 @@ function renderProductCardPrice(array $product): string {
             '<span class="product-card-price__original">' . formatPrice($base, $currency) . '</span>' .
             '<span class="product-card-price__pct">-' . $discountPercent . '%</span>' .
         '</span>' .
-        '<span class="product-card-price__now">' . formatPrice($final, $currency) . '</span>';
+        '<span class="product-card-price__now">' . formatPrice($final, $currency) . $unitSuffix . '</span>';
 }
 
 /**

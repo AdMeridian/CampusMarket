@@ -1496,7 +1496,7 @@ body.dark-mode .badge-not-taken { background: rgba(156, 163, 175, 0.1); color: #
 
 @media (min-width: 768px) {
   .footer-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: 1.5fr repeat(4, 1fr);
   }
 }
 
