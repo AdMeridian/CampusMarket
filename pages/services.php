@@ -219,7 +219,6 @@ include '../includes/header.php';
 
                                 <!-- Info -->
                                 <div class="flex flex-col flex-grow px-1">
-                                    <p class="mb-2" style="font-size: 0.85rem; color: #ef4444; font-weight: 600;"><?php echo sanitize($prod['category_name']); ?></p>
                                     <h4 class="mb-3 text-main product-card-title"><?php echo sanitize($prod['title']); ?></h4>
 
                                     <div class="mt-auto product-card-price-block">

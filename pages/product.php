@@ -1658,7 +1658,7 @@ body.dark-mode .scc-badge {
 
     <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
     <!-- Service Provider Reviews Section -->
-    <div class="mt-16 border-t border-slate-100 pt-12">
+    <div class="mt-16 border-t border-slate-100 pt-12" style="max-width: 1200px; margin-left: auto; margin-right: auto;">
         <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
             <div>
                 <h2 class="page-section-title mb-1 text-main font-bold" style="font-size: 1.6rem; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">

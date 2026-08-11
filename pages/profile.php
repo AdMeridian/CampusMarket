@@ -929,7 +929,6 @@ body.dark-mode .btn-white-solid:hover {
                             </a>
                             <div class="listing-card-body">
                                 <div class="listing-card-meta">
-                                    <span class="listing-card-cat" style="color: #ef4444;"><?php echo sanitize($prod['category_name']); ?></span>
                                     <span class="listing-card-price">
                                         <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
                                         <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
