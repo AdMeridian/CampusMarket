@@ -114,8 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
                 $conditionValue = ($listingType === 'service') ? null : $condition;
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $listingType, $pricingModel, $locationTown]);
+                $statusValue = ($listingType === 'service') ? 'pending_approval' : 'active';
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
