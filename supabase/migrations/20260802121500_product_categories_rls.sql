@@ -8,11 +8,13 @@ ALTER TABLE public.product_categories ENABLE ROW LEVEL SECURITY;
 
 -- Allow anonymous (Data API) selects if you expose this table publicly. If you
 -- prefer only authenticated users to read, remove the anon policy below.
+DROP POLICY IF EXISTS allow_select_for_anon ON public.product_categories;
 CREATE POLICY allow_select_for_anon ON public.product_categories
   FOR SELECT
   TO anon
   USING (true);
 
+DROP POLICY IF EXISTS allow_select_for_authenticated ON public.product_categories;
 CREATE POLICY allow_select_for_authenticated ON public.product_categories
   FOR SELECT
   TO authenticated

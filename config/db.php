@@ -274,6 +274,19 @@ if (!function_exists('connectDatabase')) {
             $attemptDsn = buildPdoDsn($attemptConfig);
             try {
                 $pdo = new PDO($attemptDsn, $attemptConfig['user'], $attemptConfig['pass'], $options);
+                // Set the Postgres session variable so RLS policies using
+                // current_app_user_id() work for PHP-authenticated users (no JWT present).
+                // $_SESSION is always available here; helper functions may not be loaded yet.
+                if (($attemptConfig['type'] ?? 'pgsql') === 'pgsql') {
+                    $phpUserId = (int)($_SESSION['user_id'] ?? 0);
+                    if ($phpUserId > 0) {
+                        try {
+                            $pdo->exec("SELECT set_config('app.current_user_id', '{$phpUserId}', false)");
+                        } catch (Throwable $rlsErr) {
+                            error_log('[db] Failed to set app.current_user_id: ' . $rlsErr->getMessage());
+                        }
+                    }
+                }
                 try {
                     ensureProductCategoriesTable($pdo);
                 } catch (Throwable $ensureError) {
