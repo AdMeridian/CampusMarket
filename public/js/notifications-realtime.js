@@ -55,10 +55,11 @@
     function updateBadges(messages, notifs) {
         lastMessages = messages;
         lastNotifs = notifs;
+        const totalInbox = (messages || 0) + (notifs || 0);
 
         setBadgeCount(
             document.querySelectorAll('[data-nav-badge="inbox"], a[href*="inbox.php"]'),
-            messages,
+            totalInbox,
             'badge-primary'
         );
         setBadgeCount(

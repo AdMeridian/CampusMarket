@@ -328,6 +328,7 @@ $navCategories = getNavCategories($pdo);
                 <?php 
                     $unreadMessages = countUnreadMessages($pdo, currentUserId()); 
                     $unreadNotifs = countUnreadNotifications($pdo, currentUserId());
+                    $totalInboxUnread = $unreadMessages + $unreadNotifs;
                 ?>
                 <?php if (isAdmin()): ?>
                     <a href="<?php echo BASE_URL; ?>admin/index.php" class="mobile-nav-link mobile-nav-link--admin"><?= __('nav.admin_panel') ?></a>
@@ -352,8 +353,8 @@ $navCategories = getNavCategories($pdo);
             <?php if (isLoggedIn()): ?>
                 <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none; position: relative;">
                     <?= __('nav.inbox') ?>
-                    <?php if (isset($unreadMessages) && $unreadMessages > 0): ?>
-                        <span class="badge badge-primary"><?= $unreadMessages ?></span>
+                    <?php if (isset($totalInboxUnread) && $totalInboxUnread > 0): ?>
+                        <span class="badge badge-primary"><?= $totalInboxUnread ?></span>
                     <?php endif; ?>
                 </a>
             <?php endif; ?>
@@ -422,9 +423,12 @@ $navCategories = getNavCategories($pdo);
     <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="mobile-bottom-nav-link mobile-bottom-nav-link--cta<?php echo $mobileBottomNavActive('create_listing.php'); ?>" aria-label="Create listing">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
     </a>
-    <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="mobile-bottom-nav-link<?php echo $mobileBottomNavActive('inbox.php'); ?>">
+    <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="mobile-bottom-nav-link<?php echo $mobileBottomNavActive('inbox.php'); ?>" style="position: relative;">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"></path><path d="M4 8l8 5 8-5"></path></svg>
         <span><?php echo __('nav.inbox'); ?></span>
+        <?php if (isLoggedIn() && isset($totalInboxUnread) && $totalInboxUnread > 0): ?>
+            <span class="badge badge-primary" style="position: absolute; top: 2px; right: 8px; font-size: 0.68rem; padding: 0.15rem 0.4rem; min-width: 16px; height: 16px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;"><?= $totalInboxUnread ?></span>
+        <?php endif; ?>
     </a>
     <a href="<?php echo BASE_URL; ?>pages/profile.php" class="mobile-bottom-nav-link<?php echo $mobileBottomNavActive('profile.php'); ?>">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5z"></path><path d="M4 20a8 8 0 0 1 16 0"></path></svg>
