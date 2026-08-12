@@ -567,6 +567,14 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
+                    <a href="system_logs.php" class="module-card" style="--module-color: #dc2626; --module-bg: #fef2f2;">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                        <div class="module-info">
+                            <div class="module-name">System Error Logs</div>
+                            <div class="module-desc">Monitor platform & database errors</div>
+                        </div>
+                        <span class="module-arrow">›</span>
+                    </a>
                 </div>
 
                 <div class="section-label">Taxonomy</div>
