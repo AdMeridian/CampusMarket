@@ -324,29 +324,30 @@ $navCategories = getNavCategories($pdo);
                 <span><?= __('nav.mobile_menu_back') ?></span>
             </button>
 
-            <?php if (isLoggedIn()): ?>
-                <?php 
-                    $unreadMessages = countUnreadMessages($pdo, currentUserId()); 
-                    $unreadNotifs = countUnreadNotifications($pdo, currentUserId());
-                    $totalInboxUnread = $unreadMessages + $unreadNotifs;
-                ?>
-                <?php if (isAdmin()): ?>
-                    <a href="<?php echo BASE_URL; ?>admin/index.php" class="mobile-nav-link mobile-nav-link--admin lg-hidden"><?= __('nav.admin_panel') ?></a>
-                    <a href="<?php echo BASE_URL; ?>pages/logout.php" class="mobile-nav-link mobile-nav-link--danger lg-hidden"><?= __('nav.logout') ?></a>
+            <div class="mobile-account-nav lg-hidden">
+                <?php if (isLoggedIn()): ?>
+                    <?php if (isAdmin()): ?>
+                        <a href="<?php echo BASE_URL; ?>admin/index.php" class="mobile-nav-link mobile-nav-link--admin"><?= __('nav.admin_panel') ?></a>
+                        <a href="<?php echo BASE_URL; ?>pages/logout.php" class="mobile-nav-link mobile-nav-link--danger"><?= __('nav.logout') ?></a>
+                    <?php else: ?>
+                        <?php
+                            $navUsername = sanitize($_SESSION['username'] ?? __('nav.account'));
+                            $navRequestPath = $_SERVER['REQUEST_URI'] ?? '';
+                            $navItemActive = function (string $needle) use ($navRequestPath): string {
+                                return str_contains($navRequestPath, $needle) ? ' is-active' : '';
+                            };
+                            require __DIR__ . '/partials/nav_account_mobile.php';
+                        ?>
+                    <?php endif; ?>
                 <?php else: ?>
-                    <?php
-                        $navUsername = sanitize($_SESSION['username'] ?? __('nav.account'));
-                        $navRequestPath = $_SERVER['REQUEST_URI'] ?? '';
-                        $navItemActive = function (string $needle) use ($navRequestPath): string {
-                            return str_contains($navRequestPath, $needle) ? ' is-active' : '';
-                        };
-                        require __DIR__ . '/partials/nav_account_mobile.php';
-                    ?>
+                    <a href="<?php echo BASE_URL; ?>pages/login.php" class="mobile-nav-link"><?= __('nav.login') ?></a>
+                    <a href="<?php echo BASE_URL; ?>pages/register.php" class="mobile-nav-link mobile-nav-link--cta btn btn-primary btn-sm"><?= __('nav.signup') ?></a>
                 <?php endif; ?>
-            <?php else: ?>
-                <a href="<?php echo BASE_URL; ?>pages/login.php" class="mobile-nav-link lg-hidden"><?= __('nav.login') ?></a>
-                <a href="<?php echo BASE_URL; ?>pages/register.php" class="mobile-nav-link mobile-nav-link--cta btn btn-primary btn-sm lg-hidden"><?= __('nav.signup') ?></a>
-            <?php endif; ?>
+            <?php 
+                $unreadMessages = isLoggedIn() ? countUnreadMessages($pdo, currentUserId()) : 0; 
+                $unreadNotifs = isLoggedIn() ? countUnreadNotifications($pdo, currentUserId()) : 0;
+                $totalInboxUnread = $unreadMessages + $unreadNotifs;
+            ?>
 
             <div class="navbar-desktop-actions lg-flex">
                 <a href="<?php echo BASE_URL; ?>pages/browse.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none;"><?= __('nav.browse') ?></a>
