@@ -211,8 +211,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             } catch (Exception $e) {
                 $pdo->rollBack();
-                error_log('[create_listing] ' . $e->getMessage());
-                $error = __('create_listing.error_generic');
+                $msg = $e->getMessage();
+                error_log('[create_listing] ' . $msg);
+
+                // Map known technical errors to specific, user-friendly messages
+                if (stripos($msg, 'File too large') !== false) {
+                    $error = __('create_listing.error_file_too_large');
+                } elseif (stripos($msg, 'Invalid file type') !== false || stripos($msg, 'Invalid file extension') !== false) {
+                    $error = __('create_listing.error_invalid_file_type');
+                } elseif (stripos($msg, 'not a valid image') !== false) {
+                    $error = __('create_listing.error_invalid_image');
+                } elseif (stripos($msg, 'Image upload failed') !== false || stripos($msg, 'Upload failed') !== false || stripos($msg, 'Upload error code') !== false) {
+                    $error = __('create_listing.error_upload_failed');
+                } else {
+                    $error = __('create_listing.error_generic');
+                }
             }
         }
     }
