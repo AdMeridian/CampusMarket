@@ -224,6 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $msg = $e->getMessage();
             error_log('[create_listing] ' . $msg);
+            logSystemError($pdo, 'create_listing', $msg, $e, $userId);
 
             // Map known technical errors to specific, user-friendly messages
             if (stripos($msg, 'File too large') !== false) {

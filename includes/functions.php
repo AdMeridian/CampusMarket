@@ -1898,4 +1898,51 @@ function renderHumanErrorHtml($error): string {
     return $html;
 }
 
+/**
+ * Automatically log a platform system or database error into the system_logs table
+ * so admins can view technical error logs in the Admin Panel.
+ *
+ * @param PDO $pdo
+ * @param string $category e.g. 'create_listing', 'payment', 'database', 'auth'
+ * @param string $message Clean error summary
+ * @param Throwable|string|null $rawTrace Technical SQL/stack trace
+ * @param int|null $userId User ID who encountered the error
+ */
+function logSystemError(PDO $pdo, string $category, string $message, $rawTrace = null, ?int $userId = null): void {
+    try {
+        $uid = $userId ?? (function_exists('isLoggedIn') && isLoggedIn() ? (int)currentUserId() : null);
+        $userEmail = null;
+
+        if ($uid !== null && $uid > 0) {
+            try {
+                $uStmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+                $uStmt->execute([$uid]);
+                $userEmail = $uStmt->fetchColumn() ?: null;
+            } catch (Throwable $e) {
+                // ignore
+            }
+        }
+
+        $raw = null;
+        if ($rawTrace !== null) {
+            $raw = is_object($rawTrace) && $rawTrace instanceof Throwable
+                ? $rawTrace->getMessage() . "\n" . $rawTrace->getTraceAsString()
+                : (string)$rawTrace;
+        }
+
+        $url = $_SERVER['REQUEST_URI'] ?? null;
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+        $stmt = $pdo->prepare("
+            INSERT INTO system_logs (user_id, user_email, category, message, raw_trace, url, request_method, user_agent, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$uid, $userEmail, $category, $message, $raw, $url, $method, $ua]);
+    } catch (Throwable $e) {
+        error_log('[logSystemError failed] ' . $e->getMessage());
+    }
+}
+
+
 
