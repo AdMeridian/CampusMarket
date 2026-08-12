@@ -1740,3 +1740,162 @@ function categoryIconMarkup(string $name): string {
     return $icons[$type] ?? $icons['default'];
 }
 
+/**
+ * Parse raw technical errors (PostgreSQL SQLSTATEs, exceptions, upload failures)
+ * into a human-comprehensible summary and detailed technical description.
+ *
+ * @param Throwable|string|array $error
+ * @return array{title: string, message: string, raw: string}
+ */
+function parseHumanError($error): array {
+    if (is_array($error) && isset($error['title'], $error['message'])) {
+        return [
+            'title'   => (string)$error['title'],
+            'message' => (string)$error['message'],
+            'raw'     => (string)($error['raw'] ?? ''),
+        ];
+    }
+
+    $raw = is_object($error) && $error instanceof Throwable ? $error->getMessage() : (string)$error;
+    $raw = trim($raw);
+
+    if ($raw === '') {
+        return [
+            'title'   => 'Notice',
+            'message' => 'An unexpected error occurred. Please try again.',
+            'raw'     => '',
+        ];
+    }
+
+    // 1. Image & File Upload Errors
+    if (stripos($raw, 'File too large') !== false) {
+        return [
+            'title'   => 'Image File Too Large',
+            'message' => 'One of your uploaded photos exceeds the 5 MB size limit. Please resize or compress the image before uploading.',
+            'raw'     => $raw,
+        ];
+    }
+    if (stripos($raw, 'Invalid file type') !== false || stripos($raw, 'Invalid file extension') !== false) {
+        return [
+            'title'   => 'Unsupported Image Format',
+            'message' => 'One of your files is in an unsupported format. Please upload JPG, PNG, WEBP, or GIF images.',
+            'raw'     => $raw,
+        ];
+    }
+    if (stripos($raw, 'not a valid image') !== false) {
+        return [
+            'title'   => 'Corrupt Image File',
+            'message' => 'The system could not read one of your photos. Please try a different image file.',
+            'raw'     => $raw,
+        ];
+    }
+    if (stripos($raw, 'upload failed') !== false || stripos($raw, 'storage') !== false) {
+        return [
+            'title'   => 'Image Upload Error',
+            'message' => 'Could not save photo to cloud storage. Please check your network connection and try again.',
+            'raw'     => $raw,
+        ];
+    }
+
+    // 2. Database Constraint Violations (PostgreSQL SQLSTATEs & MySQL errors)
+    if (stripos($raw, '23514') !== false || stripos($raw, 'check constraint') !== false || stripos($raw, 'Check violation') !== false) {
+        $detailMsg = 'One of the submitted values (such as price currency, condition, or price) is not permitted by the database rules.';
+        if (stripos($raw, 'price_currency_check') !== false) {
+            $detailMsg = 'The currency you selected is not supported by the system schema.';
+        }
+        return [
+            'title'   => 'Database Field Check Violation',
+            'message' => $detailMsg,
+            'raw'     => $raw,
+        ];
+    }
+
+    if (stripos($raw, '23503') !== false || stripos($raw, 'foreign key constraint') !== false) {
+        return [
+            'title'   => 'Invalid Category or Reference',
+            'message' => 'The selected category, tag, or user reference does not exist in the database.',
+            'raw'     => $raw,
+        ];
+    }
+
+    if (stripos($raw, '23505') !== false || stripos($raw, 'unique constraint') !== false || stripos($raw, 'duplicate key') !== false) {
+        return [
+            'title'   => 'Duplicate Listing Entry',
+            'message' => 'An active listing with this title already exists in your account.',
+            'raw'     => $raw,
+        ];
+    }
+
+    if (stripos($raw, '23502') !== false || stripos($raw, 'not-null constraint') !== false) {
+        return [
+            'title'   => 'Missing Required Database Field',
+            'message' => 'A mandatory field was omitted. Please make sure all required fields are filled out.',
+            'raw'     => $raw,
+        ];
+    }
+
+    if (stripos($raw, '22001') !== false || stripos($raw, 'value too long') !== false || stripos($raw, 'data truncation') !== false) {
+        return [
+            'title'   => 'Text Length Limit Exceeded',
+            'message' => 'One of the text fields (title, description, or location) exceeds the maximum length permitted.',
+            'raw'     => $raw,
+        ];
+    }
+
+    // 3. Connection & Network Errors
+    if (stripos($raw, 'connection') !== false || stripos($raw, 'SQLSTATE[08') !== false) {
+        return [
+            'title'   => 'Database Connection Problem',
+            'message' => 'Database connection timed out or lost. Please refresh the page and try again.',
+            'raw'     => $raw,
+        ];
+    }
+
+    // 4. Default Fallback with Cleaned Readable Reason
+    $cleanReason = preg_replace('/DETAIL: Failing row contains \([\s\S]*?\)/i', '', $raw);
+    $cleanReason = preg_replace('/SQLSTATE\[\w+\]:\s*/i', '', (string)$cleanReason);
+    $cleanReason = trim((string)$cleanReason);
+    if (mb_strlen($cleanReason) > 180) {
+        $cleanReason = mb_substr($cleanReason, 0, 177) . '...';
+    }
+
+    return [
+        'title'   => 'System Error',
+        'message' => $cleanReason !== '' ? $cleanReason : 'The request could not be completed. Please try again.',
+        'raw'     => $raw,
+    ];
+}
+
+/**
+ * Render a human-comprehensible error panel in HTML with expandable technical details.
+ *
+ * @param Throwable|string|array $error
+ * @return string
+ */
+function renderHumanErrorHtml($error): string {
+    if (empty($error)) return '';
+    $parsed = parseHumanError($error);
+
+    $html = '<div class="error-panel" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-left: 4px solid #ef4444; color: #b91c1c; padding: 1rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 2rem; box-sizing: border-box;">';
+    $html .= '<div style="font-weight: 700; font-size: 0.98rem; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem; color: #991b1b;">';
+    $html .= '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    $html .= htmlspecialchars($parsed['title'], ENT_QUOTES, 'UTF-8');
+    $html .= '</div>';
+    $html .= '<div style="font-size: 0.9rem; line-height: 1.45; color: var(--text-main); font-weight: 500;">';
+    $html .= htmlspecialchars($parsed['message'], ENT_QUOTES, 'UTF-8');
+    $html .= '</div>';
+    
+    if (!empty($parsed['raw']) && (strlen($parsed['raw']) > 30 || str_contains($parsed['raw'], 'SQLSTATE') || str_contains($parsed['raw'], 'ERROR'))) {
+        $html .= '<details style="margin-top: 0.75rem; font-size: 0.8rem; opacity: 0.85;">';
+        $html .= '<summary style="cursor: pointer; font-weight: 600; color: #991b1b; text-decoration: underline; margin-bottom: 0.35rem; user-select: none;">';
+        $html .= htmlspecialchars(__('create_listing.technical_details') ?? 'Technical details (click to view)', ENT_QUOTES, 'UTF-8');
+        $html .= '</summary>';
+        $html .= '<pre style="white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,0.06); color: var(--text-main); padding: 0.65rem; border-radius: 6px; margin-top: 0.35rem; font-family: monospace; font-size: 0.75rem; max-height: 160px; overflow-y: auto; border: 1px solid var(--border-light);">' . htmlspecialchars($parsed['raw'], ENT_QUOTES, 'UTF-8') . '</pre>';
+        $html .= '</details>';
+    }
+    $html .= '</div>';
+
+    return $html;
+}
+
+

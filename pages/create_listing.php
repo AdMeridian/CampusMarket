@@ -361,9 +361,7 @@ include '../includes/header.php';
         </div>
 
         <?php if ($error): ?>
-            <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; color: #b91c1c; padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 2rem; font-weight: 500;">
-                <?php echo sanitize($error); ?>
-            </div>
+            <?= renderHumanErrorHtml($error) ?>
         <?php endif; ?>
 
         <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
