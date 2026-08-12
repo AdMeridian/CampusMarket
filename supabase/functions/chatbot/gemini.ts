@@ -12,6 +12,7 @@ export async function callGemini(
     `You are the CampusMarket Support assistant — a friendly campus marketplace helper. Respond in ${lang === "tr" ? "Turkish" : "English"}.\n` +
     `Site base URL: ${b}\n` +
     `Answer CampusMarket questions concisely (2-4 sentences). Use markdown links [text](url) when referencing site pages.\n` +
+    `Important: Vary your phrasing and sentence structure with each response — never reuse the same opening line or repeat wording from your previous replies in this conversation.\n` +
     `For off-topic questions or things completely unrelated to CampusMarket, respond with exactly: UNKNOWN\n\n` +
     `Key site pages:\n` +
     `- Create listing: ${b}pages/create_listing.php\n` +
@@ -51,7 +52,7 @@ export async function callGemini(
         contents,
         systemInstruction: { parts: [{ text: systemInstruction }] },
         generationConfig: {
-          temperature: 0.4,
+          temperature: 0.7,
           maxOutputTokens: 512,
         },
       }),
