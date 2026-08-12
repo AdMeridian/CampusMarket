@@ -343,10 +343,17 @@ $navCategories = getNavCategories($pdo);
                     <a href="<?php echo BASE_URL; ?>pages/login.php" class="mobile-nav-link"><?= __('nav.login') ?></a>
                     <a href="<?php echo BASE_URL; ?>pages/register.php" class="mobile-nav-link mobile-nav-link--cta btn btn-primary btn-sm"><?= __('nav.signup') ?></a>
                 <?php endif; ?>
+            </div>
+
             <?php 
                 $unreadMessages = isLoggedIn() ? countUnreadMessages($pdo, currentUserId()) : 0; 
                 $unreadNotifs = isLoggedIn() ? countUnreadNotifications($pdo, currentUserId()) : 0;
                 $totalInboxUnread = $unreadMessages + $unreadNotifs;
+                $navUsername = sanitize($_SESSION['username'] ?? __('nav.account'));
+                $navRequestPath = $_SERVER['REQUEST_URI'] ?? '';
+                $navItemActive = function (string $needle) use ($navRequestPath): string {
+                    return str_contains($navRequestPath, $needle) ? ' is-active' : '';
+                };
             ?>
 
             <div class="navbar-desktop-actions lg-flex">
