@@ -73,6 +73,8 @@
     "chatbot.admin_btn": "Open Admin Chat",
     "chatbot.connection_error": "Connection error. Please check your internet and try again.",
     "chatbot.generic_error": "Something went wrong. Please try again later.",
+    "chatbot.clear_chat": "Clear chat",
+    "chatbot.cleared": "Conversation cleared. Starting fresh! How can I help you?",
     "place_order.title": "Complete Your Order",
     "place_order.review_request": "Review Request",
     "place_order.safe_tips": "Safe Trading Tips",
