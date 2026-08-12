@@ -93,13 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Call AI Moderation Before Database Changes
-        $aiResult = aiModerateListing($title, $description, $imagesData);
+        try {
+            // Call AI Moderation Before Database Changes
+            $aiResult = aiModerateListing($title, $description, $imagesData);
 
-        if ($aiResult['is_blurry']) {
-            $error = listingModerationBlurryMessage($aiResult);
-        } else {
-            try {
+            if ($aiResult['is_blurry']) {
+                $error = listingModerationBlurryMessage($aiResult);
+            } else {
                 $pdo->beginTransaction();
 
                 // 1. Insert Product
@@ -200,32 +200,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
                 }
                 if (!empty($tagsToSave)) {
-                    $tagInsert = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING");
+                    $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                    $tagSql = ($driverName === 'pgsql')
+                        ? "INSERT INTO product_tags (product_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
+                        : "INSERT IGNORE INTO product_tags (product_id, tag_id) VALUES (?, ?)";
+                    $tagInsert = $pdo->prepare($tagSql);
                     foreach ($tagsToSave as $tid) {
-                        $tagInsert->execute([$productId, (int)$tid]);
+                        try {
+                            $tagInsert->execute([$productId, (int)$tid]);
+                        } catch (Throwable $eTag) {
+                            error_log('[create_listing] tag insert warning: ' . $eTag->getMessage());
+                        }
                     }
                 }
                 
                 $pdo->commit();
                 redirect(BASE_URL . 'pages/create_listing.php?created=' . (int)$productId);
+            }
 
-            } catch (Exception $e) {
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
                 $pdo->rollBack();
-                $msg = $e->getMessage();
-                error_log('[create_listing] ' . $msg);
+            }
+            $msg = $e->getMessage();
+            error_log('[create_listing] ' . $msg);
 
-                // Map known technical errors to specific, user-friendly messages
-                if (stripos($msg, 'File too large') !== false) {
-                    $error = __('create_listing.error_file_too_large');
-                } elseif (stripos($msg, 'Invalid file type') !== false || stripos($msg, 'Invalid file extension') !== false) {
-                    $error = __('create_listing.error_invalid_file_type');
-                } elseif (stripos($msg, 'not a valid image') !== false) {
-                    $error = __('create_listing.error_invalid_image');
-                } elseif (stripos($msg, 'Image upload failed') !== false || stripos($msg, 'Upload failed') !== false || stripos($msg, 'Upload error code') !== false) {
-                    $error = __('create_listing.error_upload_failed');
-                } else {
-                    $error = __('create_listing.error_generic');
-                }
+            // Map known technical errors to specific, user-friendly messages
+            if (stripos($msg, 'File too large') !== false) {
+                $error = __('create_listing.error_file_too_large');
+            } elseif (stripos($msg, 'Invalid file type') !== false || stripos($msg, 'Invalid file extension') !== false) {
+                $error = __('create_listing.error_invalid_file_type');
+            } elseif (stripos($msg, 'not a valid image') !== false) {
+                $error = __('create_listing.error_invalid_image');
+            } elseif (stripos($msg, 'Image upload failed') !== false || stripos($msg, 'Upload failed') !== false || stripos($msg, 'Upload error code') !== false) {
+                $error = __('create_listing.error_upload_failed');
+            } else {
+                // Return exact detailed error message so users & admins know what went wrong
+                $error = __('create_listing.error_msg', ['error' => $msg]);
             }
         }
     }
