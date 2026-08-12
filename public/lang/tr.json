@@ -267,6 +267,7 @@
     "create_listing.currency_label": "Para birimi",
     "create_listing.currency_try": "Turk Lirasi (₺)",
     "create_listing.currency_usd": "ABD Dolari ($)",
+    "create_listing.currency_eur": "Euro (€)",
     "create_listing.currency_gbp": "Ing. Poundu (£)",
     "create_listing.currency_hint": "Bu ilan icin alicilarin hangi para biriminde odeyecegini secin.",
     "create_listing.condition_label": "Durum",
