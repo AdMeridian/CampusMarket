@@ -47,13 +47,26 @@ $navCategories = getNavCategories($pdo);
         #nav-links .nav-drawer-theme-toggle {
           display: none !important;
         }
-        .mobile-account-nav { display: block !important; width: 100% !important; }
-        #nav-links { gap: 0 !important; }
+        .mobile-account-nav {
+          display: block !important;
+          width: 100% !important;
+          padding-bottom: calc(6rem + env(safe-area-inset-bottom, 24px)) !important;
+        }
+        #nav-links {
+          gap: 0 !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 24px)) !important;
+        }
         #nav-links .mobile-nav-section {
           width: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
           border-top: 1px solid var(--border-light, #e5e7eb) !important;
+        }
+        #nav-links .mobile-nav-section--footer {
+          padding-bottom: 2rem !important;
+          margin-bottom: 2rem !important;
         }
         #nav-links .mobile-nav-section-label {
           display: block !important;
