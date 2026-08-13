@@ -73,30 +73,22 @@ include '../includes/header.php';
 
 <div class="min-h-screen pt-24 pb-16 relative">
 
-    <!-- Services Hero Banner -->
-    <div style="background: linear-gradient(135deg, #c0392b 0%, #e74c3c 60%, #ff6b6b 100%); padding: 2.5rem 0; margin-bottom: 2.5rem; position: relative; overflow: hidden;">
-        <div style="position: absolute; inset: 0; opacity: 0.08; background: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"60\" height=\"60\"><circle cx=\"30\" cy=\"30\" r=\"20\" fill=\"none\" stroke=\"white\" stroke-width=\"1\"/></svg>');"></div>
-        <div class="container" style="position: relative; z-index: 1;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem;">
-                <div>
-                    <h1 style="color: white; font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; margin-bottom: 0.5rem;">
-                        Student Services
-                    </h1>
-                    <p style="color: rgba(255,255,255,0.85); font-size: 1.05rem; margin: 0;">
-                        Hire talented students — tutoring, photography, moving, cleaning & more.
-                    </p>
-                </div>
-                <?php if (isLoggedIn()): ?>
-                <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn" style="background: white; color: #e74c3c; font-weight: 700; padding: 0.75rem 1.5rem; border-radius: var(--radius-lg); border: none; display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Offer a Service
-                </a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-
     <div class="container">
+        <!-- Services Header -->
+        <div class="mb-10 flex justify-between items-end gap-6 flex-wrap">
+            <div class="text-left">
+                <h1 class="page-hero-title mb-2 text-main">Student Services</h1>
+                <p class="page-subtitle">Hire talented students — tutoring, photography, moving, cleaning &amp; more.</p>
+            </div>
+            
+            <?php if (isLoggedIn()): ?>
+            <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn" style="background: #ef4444; color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); border: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Offer a Service
+            </a>
+            <?php endif; ?>
+        </div>
+
         <div class="grid grid-cols-1 lg-grid-cols-5 gap-8 items-start">
 
             <!-- Sidebar Filters -->
@@ -189,7 +181,7 @@ include '../includes/header.php';
 
                 <?php if (empty($services)): ?>
                     <div class="glass-panel p-16 text-center shadow-sm" style="border-radius: var(--radius-lg); border: 2px dashed var(--border-light); background: var(--bg-card);">
-                        <div class="mb-4 flex justify-center" style="color: #ef4444; opacity: 0.5;">
+                        <div class="mb-4 flex justify-center" style="color: var(--text-muted); opacity: 0.5;">
                             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
                         </div>
                         <h3 class="empty-state-title mb-2">No services found</h3>
@@ -203,7 +195,7 @@ include '../includes/header.php';
                 <?php else: ?>
                     <div class="grid grid-cols-1 md-grid-cols-2 xl-grid-cols-3 gap-6">
                         <?php foreach ($services as $prod): ?>
-                        <div class="card card-hover flex flex-col" style="position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border-light); border-top: 3px solid #ef4444; background: var(--bg-surface); overflow: hidden; padding: 1.5rem; transition: var(--transition);">
+                        <div class="card card-hover flex flex-col" style="position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); overflow: hidden; padding: 1.5rem; transition: var(--transition);">
                             <!-- Service Badge -->
                             <div style="position: absolute; top: 1rem; left: 1rem; z-index: 10;">
                                 <span style="background: #ef4444; color: white; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
