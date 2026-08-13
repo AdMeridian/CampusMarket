@@ -147,12 +147,12 @@ include '../includes/header.php';
             <main class="lg-col-span-4">
                 <div class="mb-8 browse-results-header">
                     <!-- Item Count -->
-                    <div style="background: var(--bg-card); color: var(--text-main); padding: 0.4rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border-light); flex-shrink: 0;">
+                    <div class="item-count-badge" style="background: var(--bg-card); color: var(--text-main); padding: 0.45rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border-light); flex-shrink: 0; white-space: nowrap;">
                         <?php echo $totalItems; ?> service<?php echo $totalItems !== 1 ? 's' : ''; ?> found
                     </div>
 
                     <!-- Search Bar -->
-                    <form method="GET" action="" class="search-bar mb-0" style="height: 46px; position: relative; z-index: 50; flex: 1; max-width: 500px;">
+                    <form method="GET" action="" class="search-bar search-form-el mb-0" style="height: 46px; position: relative; z-index: 50; flex: 1; max-width: 500px;">
                         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                             <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
@@ -164,8 +164,8 @@ include '../includes/header.php';
                     </form>
 
                     <!-- Sort -->
-                    <div class="flex items-center gap-3 flex-shrink-0">
-                        <span class="text-muted small font-bold uppercase tracking-wider" style="font-size: 0.8rem;">Sort by</span>
+                    <div class="flex items-center gap-3 flex-shrink-0 sort-dropdown-el">
+                        <span class="text-muted small font-bold uppercase tracking-wider" style="font-size: 0.8rem; white-space: nowrap;">Sort by</span>
                         <form method="GET" action="services.php" id="sort-form" class="mb-0">
                             <?php if ($search): ?><input type="hidden" name="q" value="<?php echo sanitize($search); ?>"><?php endif; ?>
                             <?php if ($category): ?><input type="hidden" name="category" value="<?php echo sanitize($category); ?>"><?php endif; ?>
