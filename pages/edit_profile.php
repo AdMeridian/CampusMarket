@@ -18,7 +18,7 @@ $uid = (int) currentUserId();
 
 // Load current user (support older local schemas that may not yet have preferred_language).
 try {
-    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language, home_town FROM users WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language, home_town, custom_home_town FROM users WHERE id = :id');
     $stmt->execute([':id' => $uid]);
     $user = $stmt->fetch();
 } catch (PDOException $e) {
@@ -48,8 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone    = trim($_POST['phone'] ?? '');
     $preferredLanguage = trim($_POST['preferred_language'] ?? '');
     $homeTown = strtolower(trim((string)($_POST['home_town'] ?? '')));
+    $customHomeTown = trim(sanitize($_POST['custom_home_town'] ?? ''));
     if ($homeTown !== '' && !isValidLocationTown($homeTown)) {
         $homeTown = '';
+    }
+    if ($homeTown === 'other' && empty($customHomeTown)) {
+        $errors['home_town'] = __('create_listing.custom_location_required');
     }
 
     // Username
@@ -111,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, avatar = :a, preferred_language = :lang, home_town = :town
+                    SET username = :u, phone = :p, avatar = :a, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -120,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':a'  => $newAvatar,
                     ':lang' => $preferredLanguage,
                     ':town' => $homeTown !== '' ? $homeTown : null,
+                    ':custom_town' => ($homeTown === 'other' && $customHomeTown !== '') ? $customHomeTown : null,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
@@ -139,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, preferred_language = :lang, home_town = :town
+                    SET username = :u, phone = :p, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -147,6 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':p'  => $phone !== '' ? $phone : null,
                     ':lang' => $preferredLanguage,
                     ':town' => $homeTown !== '' ? $homeTown : null,
+                    ':custom_town' => ($homeTown === 'other' && $customHomeTown !== '') ? $customHomeTown : null,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
@@ -177,6 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user['phone']    = $phone;
     $user['preferred_language'] = $preferredLanguage;
     $user['home_town'] = $homeTown !== '' ? $homeTown : null;
+    $user['custom_home_town'] = $customHomeTown !== '' ? $customHomeTown : null;
 }
 
 $pageTitle = __('profile.edit_title');
@@ -273,6 +280,13 @@ require_once '../includes/header.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <div id="custom_home_town_container" class="mt-3" style="<?= ($user['home_town'] ?? '') === 'other' ? '' : 'display: none;' ?>">
+                        <label for="custom_home_town" class="form-label font-bold text-sm"><?= __('profile.custom_home_town_label') ?></label>
+                        <input type="text" id="custom_home_town" name="custom_home_town" value="<?= htmlspecialchars($user['custom_home_town'] ?? '') ?>" placeholder="<?= htmlspecialchars(__('profile.custom_home_town_placeholder')) ?>" maxlength="100" class="form-control premium-input" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); padding: 0.75rem; border-radius: var(--radius-md);">
+                    </div>
+                    <?php if (isset($errors['home_town'])): ?>
+                        <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['home_town']); ?></div>
+                    <?php endif; ?>
                     <div class="text-muted small mt-2"><?= __('profile.home_town_note') ?></div>
                 </div>
 
@@ -358,6 +372,20 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.readAsDataURL(this.files[0]);
         }
     });
+
+    const homeTownSelect = document.getElementById('home_town');
+    const customHomeTownContainer = document.getElementById('custom_home_town_container');
+    if (homeTownSelect && customHomeTownContainer) {
+        function updateCustomHomeTownVisibility() {
+            if (homeTownSelect.value === 'other') {
+                customHomeTownContainer.style.display = 'block';
+            } else {
+                customHomeTownContainer.style.display = 'none';
+            }
+        }
+        homeTownSelect.addEventListener('change', updateCustomHomeTownVisibility);
+        updateCustomHomeTownVisibility();
+    }
 });
 </script>
 

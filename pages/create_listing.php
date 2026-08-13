@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pricingModel   = in_array($_POST['pricing_model'] ?? 'flat', ['flat', 'hourly']) ? ($_POST['pricing_model'] ?? 'flat') : 'flat';
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
+    $customLocation   = trim(sanitize($_POST['custom_location'] ?? ''));
     $userId         = currentUserId();
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
     // Collect manually-selected tag IDs from the pill UI
@@ -64,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.select_category');
     } elseif ($listingType === 'product' && !isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
+    } elseif ($locationTown === 'other' && empty($customLocation)) {
+        $error = __('create_listing.custom_location_required');
+    } elseif ($locationTown === 'other' && mb_strlen($customLocation) > 100) {
+        $error = 'Custom location cannot exceed 100 characters.';
     }
 
     if (!$error && isAgent()) {
@@ -101,13 +106,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Call AI Moderation Before Database Changes
-        $aiResult = aiModerateListing($title, $description, $imagesData);
+        try {
+            // Call AI Moderation Before Database Changes
+            $aiResult = aiModerateListing($title, $description, $imagesData);
 
-        if ($aiResult['is_blurry']) {
-            $error = listingModerationBlurryMessage($aiResult);
-        } else {
-            try {
+            if ($aiResult['is_blurry']) {
+                $error = listingModerationBlurryMessage($aiResult);
+            } else {
                 $pdo->beginTransaction();
 
                 // 1. Insert Product
@@ -115,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
                 $conditionValue = ($listingType === 'service') ? null : $condition;
                 $statusValue = ($listingType === 'service') ? 'pending_approval' : 'active';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown]);
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null)]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
@@ -210,19 +215,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
                 }
                 if (!empty($tagsToSave)) {
-                    $tagInsert = $pdo->prepare("INSERT INTO product_tags (product_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING");
+                    $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                    $tagSql = ($driverName === 'pgsql')
+                        ? "INSERT INTO product_tags (product_id, tag_id) VALUES (?, ?) ON CONFLICT DO NOTHING"
+                        : "INSERT IGNORE INTO product_tags (product_id, tag_id) VALUES (?, ?)";
+                    $tagInsert = $pdo->prepare($tagSql);
                     foreach ($tagsToSave as $tid) {
-                        $tagInsert->execute([$productId, (int)$tid]);
+                        try {
+                            $tagInsert->execute([$productId, (int)$tid]);
+                        } catch (Throwable $eTag) {
+                            error_log('[create_listing] tag insert warning: ' . $eTag->getMessage());
+                        }
                     }
                 }
                 
                 $pdo->commit();
                 redirect(BASE_URL . 'pages/create_listing.php?created=' . (int)$productId);
+            }
 
-            } catch (Exception $e) {
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
                 $pdo->rollBack();
-                error_log('[create_listing] ' . $e->getMessage());
-                $error = __('create_listing.error_generic');
+            }
+            $msg = $e->getMessage();
+            error_log('[create_listing] ' . $msg);
+            logSystemError($pdo, 'create_listing', $msg, $e, $userId);
+
+            // Map known technical errors to specific, user-friendly messages
+            if (stripos($msg, 'File too large') !== false) {
+                $error = __('create_listing.error_file_too_large');
+            } elseif (stripos($msg, 'Invalid file type') !== false || stripos($msg, 'Invalid file extension') !== false) {
+                $error = __('create_listing.error_invalid_file_type');
+            } elseif (stripos($msg, 'not a valid image') !== false) {
+                $error = __('create_listing.error_invalid_image');
+            } elseif (stripos($msg, 'Image upload failed') !== false || stripos($msg, 'Upload failed') !== false || stripos($msg, 'Upload error code') !== false) {
+                $error = __('create_listing.error_upload_failed');
+            } else {
+                // Return exact detailed error message so users & admins know what went wrong
+                $error = __('create_listing.error_msg', ['error' => $msg]);
             }
         }
     }
@@ -235,8 +265,11 @@ $isServiceMode = ($_GET['type'] ?? '') === 'service' || ($_POST['listing_type'] 
 $categories = $pdo->query("SELECT * FROM categories WHERE type = 'product' ORDER BY name ASC")->fetchAll();
 $serviceCategories = $pdo->query("SELECT * FROM categories WHERE type = 'service' ORDER BY name ASC")->fetchAll();
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
-$defaultTown = isLoggedIn() ? (getUserHomeTown((int)currentUserId()) ?? '') : '';
+$userHomeTownDetails = isLoggedIn() ? getUserHomeTownDetails((int)currentUserId()) : null;
+$defaultTown = $userHomeTownDetails['town'] ?? '';
+$defaultCustomLocation = $userHomeTownDetails['custom'] ?? '';
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
+$selectedCustomLocation = $_POST['custom_location'] ?? $defaultCustomLocation;
 $prevTags   = array_map('intval', $_POST['tags'] ?? []);
 $prevCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
 if (empty($prevCategoryIds) && !empty($_POST['category_id'])) {
@@ -351,9 +384,7 @@ include '../includes/header.php';
         </div>
 
         <?php if ($error): ?>
-            <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; color: #b91c1c; padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 2rem; font-weight: 500;">
-                <?php echo sanitize($error); ?>
-            </div>
+            <?= renderHumanErrorHtml($error) ?>
         <?php endif; ?>
 
         <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
@@ -406,6 +437,10 @@ include '../includes/header.php';
                                 <option value="<?php echo $townSlug; ?>" <?php echo $selectedTown === $townSlug ? 'selected' : ''; ?>><?php echo formatLocationTown($townSlug); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <div id="custom_location_container" class="mt-3 form-group" style="<?php echo ($selectedTown === 'other') ? '' : 'display: none;'; ?>">
+                            <label class="font-bold mb-1 block text-sm" style="color: var(--text-main);"><?= __('create_listing.custom_location_label') ?></label>
+                            <input type="text" name="custom_location" id="custom_location_input" value="<?= htmlspecialchars($selectedCustomLocation) ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="w-full premium-input" style="padding: 0.8rem 1rem;">
+                        </div>
                         <p class="text-muted small mt-2 mb-0"><?= __('create_listing.town_hint') ?></p>
                     </div>
                 </div>
@@ -970,6 +1005,23 @@ document.addEventListener('DOMContentLoaded', function () {
             suggestBtn.innerHTML = '<svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Suggest Tags';
         }
     });
+
+    const townSelect = document.querySelector('select[name="location_town"]');
+    const customLocContainer = document.getElementById('custom_location_container');
+    const customLocInput = document.getElementById('custom_location_input');
+    if (townSelect && customLocContainer) {
+        function updateCustomLocVisibility() {
+            if (townSelect.value === 'other') {
+                customLocContainer.style.display = 'block';
+                if (customLocInput) customLocInput.required = true;
+            } else {
+                customLocContainer.style.display = 'none';
+                if (customLocInput) customLocInput.required = false;
+            }
+        }
+        townSelect.addEventListener('change', updateCustomLocVisibility);
+        updateCustomLocVisibility();
+    }
 });
 </script>
 

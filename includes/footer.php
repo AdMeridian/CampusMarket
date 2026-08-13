@@ -92,6 +92,11 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/pwa.js?v=<?php echo $pwaJsVer; ?>"></script>
 <?php
+    $offlineRestoreJsPath = __DIR__ . '/../public/js/offline-restore.js';
+    $offlineRestoreJsVer = assetVersion($offlineRestoreJsPath);
+?>
+<script src="<?php echo BASE_URL; ?>public/js/offline-restore.js?v=<?php echo $offlineRestoreJsVer; ?>"></script>
+<?php
     $searchJsPath = __DIR__ . '/../public/js/search-suggestions.js';
     $searchJsVer = assetVersion($searchJsPath);
 ?>
@@ -124,9 +129,14 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
                 </div>
             </div>
         </div>
-        <button id="cm-chatbot-close" class="cm-chatbot-close" aria-label="<?= htmlspecialchars(__('chatbot.close'), ENT_QUOTES, 'UTF-8') ?>">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 20px; height: 20px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
+        <div class="cm-chatbot-header-actions">
+            <button id="cm-chatbot-clear" class="cm-chatbot-icon-btn" aria-label="<?= htmlspecialchars(__('chatbot.clear_chat'), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__('chatbot.clear_chat'), ENT_QUOTES, 'UTF-8') ?>">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4h6v2"></path></svg>
+            </button>
+            <button id="cm-chatbot-close" class="cm-chatbot-icon-btn" aria-label="<?= htmlspecialchars(__('chatbot.close'), ENT_QUOTES, 'UTF-8') ?>">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 20px; height: 20px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
     </div>
     
     <div id="cm-chatbot-messages" class="cm-chatbot-messages">
@@ -151,7 +161,9 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
         'adminAlertDesc' => __('chatbot.admin_alert_desc'),
         'adminBtnText' => __('chatbot.admin_btn'),
         'connectionError' => __('chatbot.connection_error'),
-        'genericError' => __('chatbot.generic_error'),
+        'genericError'    => __('chatbot.generic_error'),
+        'clearChat'       => __('chatbot.clear_chat'),
+        'cleared'         => __('chatbot.cleared'),
     ];
 ?>
 <script>window.__chatbotStrings = <?php echo json_encode($chatbotStrings, JSON_UNESCAPED_UNICODE); ?>;</script>

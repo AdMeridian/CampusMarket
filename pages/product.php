@@ -129,11 +129,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_location_town') {
     verifyCsrfToken();
     $newTown = strtolower(trim((string)($_POST['location_town'] ?? '')));
+    $newCustomLoc = trim(sanitize($_POST['custom_location'] ?? ''));
     if (!isValidLocationTown($newTown)) {
         setFlash('error', __('create_listing.town_required'));
+    } elseif ($newTown === 'other' && empty($newCustomLoc)) {
+        setFlash('error', __('create_listing.custom_location_required'));
     } else {
-        $stmtUp = $pdo->prepare("UPDATE products SET location_town = :town, updated_at = NOW() WHERE id = :id");
-        $stmtUp->execute([':town' => $newTown, ':id' => $productId]);
+        $stmtUp = $pdo->prepare("UPDATE products SET location_town = :town, custom_location = :custom_loc, updated_at = NOW() WHERE id = :id");
+        $stmtUp->execute([
+            ':town' => $newTown,
+            ':custom_loc' => ($newTown === 'other' ? $newCustomLoc : null),
+            ':id' => $productId
+        ]);
         setFlash('success', __('product.town_updated'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     }
@@ -1177,11 +1184,16 @@ body.dark-mode .scc-badge {
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
-                <?php if (!empty($product['location_town']) && isValidLocationTown($product['location_town']) && $product['location_town'] !== 'other'): ?>
+                <?php
+                $formattedLoc = (!empty($product['location_town']) && isValidLocationTown($product['location_town']))
+                    ? formatLocationTown($product['location_town'], $product['custom_location'] ?? null)
+                    : '';
+                ?>
+                <?php if ($formattedLoc !== ''): ?>
                 <div class="mb-4">
                     <a href="<?php echo BASE_URL; ?>pages/browse.php?town=<?php echo urlencode($product['location_town']); ?>" class="inline-flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-lg transition-colors hover-scale" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-main); text-decoration: none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        <?php echo formatLocationTown($product['location_town']); ?>
+                        <?php echo sanitize($formattedLoc); ?>
                     </a>
                 </div>
                 <?php endif; ?>
@@ -1438,11 +1450,11 @@ body.dark-mode .scc-badge {
                     <!-- LOCATION -->
                     <div class="scc-mgmt-section">
                         <h4><?= __('product.listing_location') ?></h4>
-                        <form method="post" class="scc-mgmt-form">
+                        <form method="post" class="scc-mgmt-form" style="flex-direction: column; align-items: stretch; gap: 0.5rem;">
                             <?php echo csrfTokenField(); ?>
                             <input type="hidden" name="action" value="update_location_town">
                             <div class="scc-mgmt-field">
-                                <select name="location_town" aria-label="<?= htmlspecialchars(__('product.listing_location')) ?>">
+                                <select name="location_town" id="product_mgmt_location_town" aria-label="<?= htmlspecialchars(__('product.listing_location')) ?>">
                                     <?php foreach (locationTownSlugs() as $townSlug): ?>
                                         <option value="<?php echo $townSlug; ?>" <?php echo (($product['location_town'] ?? 'other') === $townSlug) ? 'selected' : ''; ?>>
                                             <?php echo formatLocationTown($townSlug); ?>
@@ -1450,11 +1462,25 @@ body.dark-mode .scc-badge {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <button type="submit" class="scc-mgmt-btn">
+                            <div id="product_mgmt_custom_loc_container" style="<?= (($product['location_town'] ?? '') === 'other') ? '' : 'display: none;' ?>">
+                                <input type="text" name="custom_location" id="product_mgmt_custom_loc" value="<?= htmlspecialchars($product['custom_location'] ?? '') ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="premium-input w-full" style="padding: 0.6rem 0.8rem; font-size: 0.9rem;">
+                            </div>
+                            <button type="submit" class="scc-mgmt-btn" style="margin-top: 0.25rem;">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                 <?= __('product.update_town') ?>
                             </button>
                         </form>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const mgmtSelect = document.getElementById('product_mgmt_location_town');
+                            const mgmtContainer = document.getElementById('product_mgmt_custom_loc_container');
+                            if (mgmtSelect && mgmtContainer) {
+                                mgmtSelect.addEventListener('change', function() {
+                                    mgmtContainer.style.display = (this.value === 'other') ? 'block' : 'none';
+                                });
+                            }
+                        });
+                        </script>
                     </div>
 
                     <!-- CATEGORIES -->

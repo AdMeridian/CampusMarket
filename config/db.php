@@ -247,6 +247,30 @@ if (!function_exists('databaseEnvDiagnostics')) {
     }
 }
 
+if (!function_exists('ensureCustomLocationColumns')) {
+    function ensureCustomLocationColumns(PDO $pdo): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $pdo->exec("ALTER TABLE public.products ADD COLUMN IF NOT EXISTS custom_location VARCHAR(100) NULL");
+                $pdo->exec("ALTER TABLE public.users ADD COLUMN IF NOT EXISTS custom_home_town VARCHAR(100) NULL");
+            } else {
+                try {
+                    $pdo->exec("ALTER TABLE products ADD COLUMN custom_location VARCHAR(100) NULL");
+                } catch (Throwable $e) {}
+                try {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN custom_home_town VARCHAR(100) NULL");
+                } catch (Throwable $e) {}
+            }
+        } catch (Throwable $e) {
+            error_log('Custom location columns bootstrap warning: ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('connectDatabase')) {
     function connectDatabase(): PDO {
         $config = resolveDatabaseConfig();
@@ -274,8 +298,22 @@ if (!function_exists('connectDatabase')) {
             $attemptDsn = buildPdoDsn($attemptConfig);
             try {
                 $pdo = new PDO($attemptDsn, $attemptConfig['user'], $attemptConfig['pass'], $options);
+                // Set the Postgres session variable so RLS policies using
+                // current_app_user_id() work for PHP-authenticated users (no JWT present).
+                // $_SESSION is always available here; helper functions may not be loaded yet.
+                if (($attemptConfig['type'] ?? 'pgsql') === 'pgsql') {
+                    $phpUserId = (int)($_SESSION['user_id'] ?? 0);
+                    if ($phpUserId > 0) {
+                        try {
+                            $pdo->exec("SELECT set_config('app.current_user_id', '{$phpUserId}', false)");
+                        } catch (Throwable $rlsErr) {
+                            error_log('[db] Failed to set app.current_user_id: ' . $rlsErr->getMessage());
+                        }
+                    }
+                }
                 try {
                     ensureProductCategoriesTable($pdo);
+                    ensureCustomLocationColumns($pdo);
                 } catch (Throwable $ensureError) {
                     error_log('Product categories bootstrap failed: ' . $ensureError->getMessage());
                 }

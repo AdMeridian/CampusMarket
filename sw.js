@@ -1,8 +1,9 @@
-const CACHE_VERSION = "campusmarket-v23";
+const CACHE_VERSION = "campusmarket-v24";
+const DYNAMIC_CACHE = CACHE_VERSION + "-dynamic";
 
 const OFFLINE_URL = "public/offline.html";
 
-// Offline essentials only — CSS/JS/images are never cached by the SW.
+// Offline essentials
 const CORE_ASSETS = [
   "manifest.webmanifest",
   "public/images/logo.png",
@@ -23,10 +24,17 @@ self.addEventListener("message", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  const allowedCaches = [CACHE_VERSION, DYNAMIC_CACHE];
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => !allowedCaches.includes(key))
+            .map((key) => caches.delete(key))
+        )
+      )
       .then(() => caches.open(CACHE_VERSION))
       .then((cache) => cache.addAll(CORE_ASSETS))
       .then(() => self.clients.claim())
@@ -47,8 +55,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Network-First strategy for pages: try live network first, update dynamic cache; fallback to cache or offline.html on network failure.
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(OFFLINE_URL))
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === "basic") {
+          const responseToCache = response.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return caches.match(OFFLINE_URL);
+        });
+      })
   );
 });
 

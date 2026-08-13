@@ -63,6 +63,7 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
         WHERE p.status = 'active' AND p.listing_type = 'product'" . $filterSql;
 
+$queryParams = $params;
 $sql .= " ORDER BY CASE WHEN p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW()) THEN 1 ELSE 0 END DESC, ";
 switch ($sort) {
     case 'price_asc': $sql .= "effective_price ASC"; break;
@@ -75,13 +76,19 @@ switch ($sort) {
                     WHEN 'poor' THEN 4 
                     ELSE 5 END ASC"; 
         break;
-    default: $sql .= "p.created_at DESC"; break;
+    default:
+        if ($search !== '') {
+            $sql .= str_replace('ORDER BY ', '', productSearchOrderBySql($search, $queryParams, 'p'));
+        } else {
+            $sql .= "p.created_at DESC";
+        }
+        break;
 }
 
 $sql .= " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$stmt->execute($queryParams);
 $products = $stmt->fetchAll();
 
 $paginationQuery = $_GET;
@@ -177,10 +184,22 @@ include '../includes/header.php';
                                 </select>
                             </div>
                             <?php if ($userHomeTown): ?>
-                                <a href="<?php echo BASE_URL; ?>pages/browse.php?my_town=1" class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary hover:underline">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    <?= __('browse.my_town', ['town' => formatLocationTown($userHomeTown)]) ?>
-                                </a>
+                                <?php if ($town === $userHomeTown): ?>
+                                    <div class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <?= __('browse.my_town_active', ['town' => formatLocationTown($userHomeTown)]) ?>
+                                    </div>
+                                <?php elseif (!empty($town)): ?>
+                                    <a href="<?php echo BASE_URL; ?>pages/browse.php?my_town=1" class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary hover:underline">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        <?= __('browse.switch_to_my_town', ['town' => formatLocationTown($userHomeTown)]) ?>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="<?php echo BASE_URL; ?>pages/browse.php?my_town=1" class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-primary hover:underline">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        <?= __('browse.my_town', ['town' => formatLocationTown($userHomeTown)]) ?>
+                                    </a>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
 

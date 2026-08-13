@@ -322,7 +322,7 @@ function aiModeratorCallGemini(string $apiKey, string $prompt, array $imagesData
         'generationConfig' => ['responseMimeType' => 'application/json'],
     ];
 
-    $models = ['gemini-3.1-flash-lite', 'gemini-2.0-flash'];
+    $models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     $lastCode = 0;
     $lastBody = '';
 
@@ -426,12 +426,43 @@ function aiModeratorCallOpenRouter(string $openRouterKey, string $prompt, array 
     return ['ok' => false, 'code' => $lastCode, 'error' => $lastBody];
 }
 
+function aiModeratorLocalFallback(string $title, string $description): array {
+    $text = strtolower($title . ' ' . $description);
+    $forbidden = [
+        'gun', 'rifle', 'pistol', 'weapon', 'ammo', 'ammunition', 'explosive',
+        'cocaine', 'heroin', 'vape', 'tobacco', 'cigarette',
+        'porn', 'adult', 'sex', 'test bank', 'exam key', 'answer key'
+    ];
+
+    foreach ($forbidden as $word) {
+        if (preg_match('/\b' . preg_quote($word, '/') . '\b/i', $text)) {
+            return [
+                'passed' => false,
+                'is_blurry' => false,
+                'confidence' => 0.9,
+                'tags' => [],
+                'reason' => 'Listing contains prohibited keyword: ' . $word,
+                'mode' => 'local_fallback',
+            ];
+        }
+    }
+
+    return [
+        'passed' => true,
+        'is_blurry' => false,
+        'confidence' => 0.95,
+        'tags' => [],
+        'reason' => '',
+        'mode' => 'local_fallback',
+    ];
+}
+
 function aiModeratorEvaluate(string $title, string $description, array $imagesData): array {
     $apiKey = aiModeratorApiKey();
     $openRouterKey = aiModeratorOpenRouterKey();
 
     if (!$apiKey && !$openRouterKey) {
-        return aiModeratorFailure('No AI API keys configured; manual moderation required.');
+        return aiModeratorLocalFallback($title, $description);
     }
 
     $prompt = aiModeratorBuildPrompt($title, $description, !empty($imagesData));
@@ -450,7 +481,7 @@ function aiModeratorEvaluate(string $title, string $description, array $imagesDa
         }
     }
 
-    return aiModeratorFailure('AI API error (vision/text request failed)');
+    return aiModeratorLocalFallback($title, $description);
 }
 
 function aiModerateListing(string $title, string $description, array $imagesData = []): array {

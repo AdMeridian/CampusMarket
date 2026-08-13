@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatbotFab = document.getElementById('cm-chatbot-fab');
     const chatbotWindow = document.getElementById('cm-chatbot-window');
     const chatbotClose = document.getElementById('cm-chatbot-close');
+    const chatbotClear = document.getElementById('cm-chatbot-clear');
     const chatbotForm = document.getElementById('cm-chatbot-form');
     const chatbotInput = document.getElementById('cm-chatbot-input');
     const chatbotMessages = document.getElementById('cm-chatbot-messages');
@@ -57,6 +58,20 @@ document.addEventListener('DOMContentLoaded', () => {
     chatbotClose.addEventListener('click', () => {
         chatbotWindow.classList.remove('open');
     });
+
+    if (chatbotClear) {
+        chatbotClear.addEventListener('click', () => {
+            // Wipe history from memory and storage
+            conversationHistory = [];
+            saveHistory();
+            // Clear all message bubbles
+            chatbotMessages.innerHTML = '';
+            // Show a fresh welcome so the user knows it worked
+            appendBotMessage(strings.cleared || strings.welcome);
+            chatbotInput.focus();
+            if (typeof posthog !== 'undefined') posthog.capture('chatbot_cleared');
+        });
+    }
 
     chatbotForm.addEventListener('submit', async (e) => {
         e.preventDefault();
