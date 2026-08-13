@@ -1581,44 +1581,94 @@ function expandSearchQuery(string $query): array {
 }
 
 /**
- * Build SQL filter for product search (FTS + LIKE fallback for tags/categories).
+ * Build SQL filter for product search enforcing AND matching across all query tokens.
  */
 function productSearchFilterSql(string $search, array &$params, string $productAlias = 'p', string $categoryAlias = 'c'): string {
-    if (trim($search) === '') {
+    $trimmed = trim($search);
+    if ($trimmed === '') {
         return '';
     }
 
-    $searchTerms = expandSearchQuery($search);
-    if (empty($searchTerms)) {
+    // Split search query into tokens (words)
+    $rawTokens = array_unique(array_filter(preg_split('/\s+/u', mb_strtolower($trimmed))));
+    if (empty($rawTokens)) {
         return '';
     }
 
-    $termConditions = [];
-    foreach ($searchTerms as $term) {
-        $ftsTerm = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $term));
-        if ($ftsTerm === '') {
-            $ftsTerm = $term;
+    $allTokenGroupConditions = [];
+    foreach ($rawTokens as $token) {
+        $tokenVariants = expandSearchQuery($token);
+        if (!in_array($token, $tokenVariants, true)) {
+            array_unshift($tokenVariants, $token);
+        }
+        $tokenVariants = array_unique($tokenVariants);
+
+        $variantSubConditions = [];
+        foreach ($tokenVariants as $variant) {
+            $ftsTerm = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $variant));
+            if ($ftsTerm === '') {
+                $ftsTerm = $variant;
+            }
+
+            $variantSubConditions[] = "(
+                ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
+                OR LOWER({$productAlias}.title) LIKE ?
+                OR LOWER({$productAlias}.description) LIKE ?
+                OR LOWER({$categoryAlias}.name) LIKE ?
+                OR EXISTS (
+                    SELECT 1 FROM product_tags pt
+                    JOIN tags t ON pt.tag_id = t.id
+                    WHERE pt.product_id = {$productAlias}.id AND LOWER(t.name) LIKE ?
+                )
+            )";
+            $params[] = $ftsTerm;
+            $params[] = "%$variant%";
+            $params[] = "%$variant%";
+            $params[] = "%$variant%";
+            $params[] = "%$variant%";
         }
 
-        $termConditions[] = "(
-            ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
-            OR LOWER({$productAlias}.title) LIKE ?
-            OR LOWER({$productAlias}.description) LIKE ?
-            OR LOWER({$categoryAlias}.name) LIKE ?
-            OR EXISTS (
-                SELECT 1 FROM product_tags pt
-                JOIN tags t ON pt.tag_id = t.id
-                WHERE pt.product_id = {$productAlias}.id AND LOWER(t.name) LIKE ?
-            )
-        )";
-        $params[] = $ftsTerm;
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
+        // Each token MUST be matched by at least one of its variants
+        $allTokenGroupConditions[] = '(' . implode(' OR ', $variantSubConditions) . ')';
     }
 
-    return ' AND (' . implode(' OR ', $termConditions) . ')';
+    // All tokens MUST match (AND logic across tokens)
+    return ' AND ' . implode(' AND ', $allTokenGroupConditions);
+}
+
+/**
+ * Build ORDER BY clause for relevance scoring (title-first weighting).
+ */
+function productSearchOrderBySql(string $search, array &$params, string $productAlias = 'p'): string {
+    $trimmed = mb_strtolower(trim($search));
+    if ($trimmed === '') {
+        return "ORDER BY {$productAlias}.created_at DESC";
+    }
+
+    $rawTokens = array_unique(array_filter(preg_split('/\s+/u', $trimmed)));
+
+    // Score calculations:
+    // +100 for exact title match
+    // +50 for title starting with full query
+    // +30 for title containing full query
+    // +20 per token appearing in title
+    $scoreParts = [];
+    $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) = ? THEN 100 ELSE 0 END)";
+    $params[] = $trimmed;
+
+    $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 50 ELSE 0 END)";
+    $params[] = $trimmed . '%';
+
+    $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 30 ELSE 0 END)";
+    $params[] = '%' . $trimmed . '%';
+
+    foreach ($rawTokens as $t) {
+        $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 20 ELSE 0 END)";
+        $params[] = '%' . $t . '%';
+    }
+
+    $scoreExpr = implode(' + ', $scoreParts);
+    return "ORDER BY (" . $scoreExpr . ") DESC, {$productAlias}.created_at DESC";
 }
 
 /**
@@ -1662,9 +1712,12 @@ function isValidLocationTown(?string $town): bool {
     return in_array(strtolower($town), locationTownSlugs(), true);
 }
 
-function formatLocationTown(?string $town): string {
+function formatLocationTown(?string $town, ?string $customLocation = null): string {
     if (!isValidLocationTown($town)) {
         return '';
+    }
+    if (strtolower($town) === 'other' && !empty(trim((string)$customLocation))) {
+        return trim((string)$customLocation);
     }
     return __('location.town.' . strtolower($town));
 }
@@ -1690,6 +1743,28 @@ function getUserHomeTown(?int $userId = null): ?string {
         $stmt->execute([$userId]);
         $town = $stmt->fetchColumn();
         return isValidLocationTown($town) ? strtolower((string)$town) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function getUserHomeTownDetails(?int $userId = null): ?array {
+    global $pdo;
+    if (!$userId) {
+        return null;
+    }
+    try {
+        $stmt = $pdo->prepare('SELECT home_town, custom_home_town FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch();
+        if ($row && isValidLocationTown($row['home_town'] ?? null)) {
+            return [
+                'town' => strtolower((string)$row['home_town']),
+                'custom' => $row['custom_home_town'] ?? null,
+                'formatted' => formatLocationTown($row['home_town'], $row['custom_home_town'] ?? null)
+            ];
+        }
+        return null;
     } catch (Throwable $e) {
         return null;
     }

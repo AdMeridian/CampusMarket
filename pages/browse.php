@@ -63,6 +63,7 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
         WHERE p.status = 'active'" . $filterSql;
 
+$queryParams = $params;
 $sql .= " ORDER BY CASE WHEN p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW()) THEN 1 ELSE 0 END DESC, ";
 switch ($sort) {
     case 'price_asc': $sql .= "effective_price ASC"; break;
@@ -75,13 +76,19 @@ switch ($sort) {
                     WHEN 'poor' THEN 4 
                     ELSE 5 END ASC"; 
         break;
-    default: $sql .= "p.created_at DESC"; break;
+    default:
+        if ($search !== '') {
+            $sql .= str_replace('ORDER BY ', '', productSearchOrderBySql($search, $queryParams, 'p'));
+        } else {
+            $sql .= "p.created_at DESC";
+        }
+        break;
 }
 
 $sql .= " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$stmt->execute($queryParams);
 $products = $stmt->fetchAll();
 
 $paginationQuery = $_GET;

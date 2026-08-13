@@ -67,8 +67,11 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
         <div class="flex flex-col flex-grow px-1">
             <?php
                 $cardMeta = [];
-                if (!empty($prod['location_town']) && $prod['location_town'] !== 'other') {
-                    $cardMeta[] = formatLocationTown($prod['location_town']);
+                if (!empty($prod['location_town'])) {
+                    $locText = formatLocationTown($prod['location_town'], $prod['custom_location'] ?? null);
+                    if ($locText !== '' && $locText !== __('location.town.other')) {
+                        $cardMeta[] = $locText;
+                    }
                 }
                 $cardMeta[] = translateCategory($prod['category_name'] ?? ($prod['category'] ?? 'General'));
             ?>

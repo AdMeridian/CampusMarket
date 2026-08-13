@@ -79,9 +79,11 @@ if (!function_exists('seoProductShareDescription')) {
         if (!empty($product['location_town'])
             && function_exists('isValidLocationTown')
             && isValidLocationTown($product['location_town'])
-            && $product['location_town'] !== 'other'
         ) {
-            $details[] = formatLocationTown($product['location_town']);
+            $formattedLocStr = formatLocationTown($product['location_town'], $product['custom_location'] ?? null);
+            if ($formattedLocStr !== '' && $formattedLocStr !== __('location.town.other')) {
+                $details[] = $formattedLocStr;
+            }
         }
         if (!empty($product['category_name'])) {
             $details[] = function_exists('translateCategory')

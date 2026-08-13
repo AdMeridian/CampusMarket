@@ -471,5 +471,10 @@
     "location.town.guzelyurt": "Güzelyurt",
     "location.town.lefke": "Lefke",
     "location.town.iskele": "İskele",
-    "location.town.other": "Other"
+    "location.town.other": "Other",
+    "create_listing.custom_location_label": "Specify Location",
+    "create_listing.custom_location_placeholder": "e.g., Campus Library, Dorm 3, Kyrenia Harbor",
+    "create_listing.custom_location_required": "Please enter your location when choosing 'Other'.",
+    "profile.custom_home_town_label": "Specific Location",
+    "profile.custom_home_town_placeholder": "e.g., Campus, Nicosia Center"
 }

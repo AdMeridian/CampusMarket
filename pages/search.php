@@ -17,19 +17,19 @@ $paginationBase = 'search.php';
 
 if ($query !== '' || $categoryId !== '' || $town !== '') {
     $filterSql = '';
-    $params = [];
+    $filterParams = [];
 
     if ($query !== '') {
-        $filterSql .= productSearchFilterSql($query, $params);
+        $filterSql .= productSearchFilterSql($query, $filterParams);
     }
 
     if ($categoryId !== '') {
         $filterSql .= " AND (p.category_id = ? OR EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id = p.id AND pc.category_id = ?))";
-        $params[] = $categoryId;
-        $params[] = $categoryId;
+        $filterParams[] = $categoryId;
+        $filterParams[] = $categoryId;
     }
 
-    $filterSql .= locationTownFilterSql('p', $town, $params);
+    $filterSql .= locationTownFilterSql('p', $town, $filterParams);
 
     $fromSql = " FROM products p
             JOIN categories c ON p.category_id = c.id
@@ -37,20 +37,21 @@ if ($query !== '' || $categoryId !== '' || $town !== '') {
             WHERE p.status = 'active'" . $filterSql;
 
     $countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
-    $countStmt->execute($params);
+    $countStmt->execute($filterParams);
     $totalItems = (int) $countStmt->fetchColumn();
+
+    $queryParams = $filterParams;
+    $orderBySql = ($query !== '') ? productSearchOrderBySql($query, $queryParams, 'p') : "ORDER BY p.created_at DESC";
 
     $sql = "SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
             FROM products p
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-            WHERE p.status = 'active'" . $filterSql;
-
-    $sql .= " ORDER BY p.created_at DESC LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
+            WHERE p.status = 'active'" . $filterSql . " " . $orderBySql . " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    $stmt->execute($queryParams);
     $results = $stmt->fetchAll();
 
     $paginationQuery = $_GET;
@@ -123,8 +124,11 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="p-5 flex flex-col flex-grow bg-white">
                         <?php
                             $searchMeta = [];
-                            if (!empty($prod['location_town']) && $prod['location_town'] !== 'other') {
-                                $searchMeta[] = formatLocationTown($prod['location_town']);
+                            if (!empty($prod['location_town'])) {
+                                $locText = formatLocationTown($prod['location_town'], $prod['custom_location'] ?? null);
+                                if ($locText !== '' && $locText !== __('location.town.other')) {
+                                    $searchMeta[] = $locText;
+                                }
                             }
                             $searchMeta[] = sanitize($prod['category_name']);
                         ?>
