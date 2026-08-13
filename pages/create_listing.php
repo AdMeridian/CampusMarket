@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $condition      = sanitize($_POST['condition']);
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
+    $customLocation   = trim(sanitize($_POST['custom_location'] ?? ''));
     $userId         = currentUserId();
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
     // Collect manually-selected tag IDs from the pill UI
@@ -56,6 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.select_category');
     } elseif (!isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
+    } elseif ($locationTown === 'other' && empty($customLocation)) {
+        $error = __('create_listing.custom_location_required');
+    } elseif ($locationTown === 'other' && mb_strlen($customLocation) > 100) {
+        $error = 'Custom location cannot exceed 100 characters.';
     }
 
     if (!$error && isAgent()) {
@@ -105,8 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 1. Insert Product
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown]);
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town, custom_location) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown, ($locationTown === 'other' ? $customLocation : null)]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
@@ -246,8 +251,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch Categories & Tags
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
-$defaultTown = isLoggedIn() ? (getUserHomeTown((int)currentUserId()) ?? '') : '';
+$userHomeTownDetails = isLoggedIn() ? getUserHomeTownDetails((int)currentUserId()) : null;
+$defaultTown = $userHomeTownDetails['town'] ?? '';
+$defaultCustomLocation = $userHomeTownDetails['custom'] ?? '';
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
+$selectedCustomLocation = $_POST['custom_location'] ?? $defaultCustomLocation;
 $prevTags   = array_map('intval', $_POST['tags'] ?? []);
 $prevCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
 if (empty($prevCategoryIds) && !empty($_POST['category_id'])) {
@@ -394,6 +402,10 @@ include '../includes/header.php';
                                 <option value="<?php echo $townSlug; ?>" <?php echo $selectedTown === $townSlug ? 'selected' : ''; ?>><?php echo formatLocationTown($townSlug); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <div id="custom_location_container" class="mt-3 form-group" style="<?php echo ($selectedTown === 'other') ? '' : 'display: none;'; ?>">
+                            <label class="font-bold mb-1 block text-sm" style="color: var(--text-main);"><?= __('create_listing.custom_location_label') ?></label>
+                            <input type="text" name="custom_location" id="custom_location_input" value="<?= htmlspecialchars($selectedCustomLocation) ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="w-full premium-input" style="padding: 0.8rem 1rem;">
+                        </div>
                         <p class="text-muted small mt-2 mb-0"><?= __('create_listing.town_hint') ?></p>
                     </div>
                 </div>
@@ -934,6 +946,23 @@ document.addEventListener('DOMContentLoaded', function () {
             suggestBtn.innerHTML = '<svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Suggest Tags';
         }
     });
+
+    const townSelect = document.querySelector('select[name="location_town"]');
+    const customLocContainer = document.getElementById('custom_location_container');
+    const customLocInput = document.getElementById('custom_location_input');
+    if (townSelect && customLocContainer) {
+        function updateCustomLocVisibility() {
+            if (townSelect.value === 'other') {
+                customLocContainer.style.display = 'block';
+                if (customLocInput) customLocInput.required = true;
+            } else {
+                customLocContainer.style.display = 'none';
+                if (customLocInput) customLocInput.required = false;
+            }
+        }
+        townSelect.addEventListener('change', updateCustomLocVisibility);
+        updateCustomLocVisibility();
+    }
 });
 </script>
 

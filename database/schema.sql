@@ -20,6 +20,7 @@ CREATE TABLE users (
     avatar        VARCHAR(255) NULL,
     account_status    ENUM('active', 'suspended') NOT NULL DEFAULT 'active',
     home_town         VARCHAR(32)  NULL,
+    custom_home_town    VARCHAR(100) NULL,
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -58,6 +59,7 @@ CREATE TABLE products (
     status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
     moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
+    custom_location VARCHAR(100) NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
     views       INT            NOT NULL DEFAULT 0,

@@ -466,5 +466,10 @@
     "location.town.guzelyurt": "Güzelyurt",
     "location.town.lefke": "Lefke",
     "location.town.iskele": "İskele",
-    "location.town.other": "Diğer"
+    "location.town.other": "Diğer",
+    "create_listing.custom_location_label": "Konum Belirtin",
+    "create_listing.custom_location_placeholder": "ör. Kampüs Kütüphanesi, Yurt 3, Girne Limanı",
+    "create_listing.custom_location_required": "Lütfen 'Diğer' seçeneğini seçtiğinizde konumunuzu girin.",
+    "profile.custom_home_town_label": "Belirli Konum",
+    "profile.custom_home_town_placeholder": "ör. Kampüs, Lefkoşa Merkez"
 }
