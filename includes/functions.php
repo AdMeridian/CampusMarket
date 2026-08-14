@@ -1504,79 +1504,62 @@ function setUserPreferredLanguage(PDO $pdo, int $userId, string $lang): bool {
 /**
  * Expand a search query with common synonyms
  */
+/**
+ * Expand a search query with common synonyms
+ */
 function expandSearchQuery(string $query): array {
     $lowerQuery = mb_strtolower(trim($query));
     if ($lowerQuery === '') return [];
     
-    $synonyms = [
-        // Electronics
-        'mobile'      => ['phone', 'iphone', 'smartphone', 'cellphone'],
-        'phone'       => ['mobile', 'iphone', 'smartphone', 'cellphone'],
-        'pc'          => ['laptop', 'computer', 'macbook', 'desktop'],
-        'laptop'      => ['pc', 'computer', 'macbook', 'desktop', 'mac'],
-        'computer'    => ['pc', 'laptop', 'macbook', 'desktop', 'mac'],
-        'tech'        => ['electronics', 'device', 'gadget', 'apple', 'huawei'],
-        'device'      => ['electronics', 'tech', 'gadget'],
-        'audio'       => ['speaker', 'headphones', 'earbuds', 'airpods'],
-        'tablet'      => ['ipad', 'pad'],
-
-        // Books & Study
-        'book'        => ['notebook', 'study', 'literature', 'guide', 'novel', 'read'],
-        'math'        => ['calculus', 'algebra', 'geometry'],
-        'science'     => ['biology', 'chemistry', 'physics'],
-
-        // Furniture
-        'furniture'   => ['desk', 'chair', 'sofa', 'lamp', 'shelf', 'table', 'bed', 'mirror', 'nightstand'],
-        'seat'        => ['chair', 'sofa', 'couch'],
-        'storage'     => ['shelf', 'bookshelf', 'cart', 'drawer'],
-
-        // Clothing
-        'clothes'     => ['clothing', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel', 'outfit'],
-        'clothing'    => ['clothes', 'dress', 'shirt', 'jeans', 'jacket', 'trousers', 'wear', 'apparel', 'outfit'],
-        'shirt'       => ['t-shirt', 'tee', 'blouse', 'top'],
-        'pants'       => ['jeans', 'trousers'],
-
-        // Kitchen
-        'kitchen'     => ['cook', 'food', 'appliance', 'cutlery', 'microwave', 'fridge', 'blender'],
-        'cutlery'     => ['fork', 'spoon', 'knife'],
-        'appliance'   => ['microwave', 'fridge', 'cooker', 'blender', 'air fryer'],
-        'cookware'    => ['pot', 'pan', 'board', 'cutter'],
-
-        // Health & Care
-        'health'      => ['care', 'hygiene', 'wash', 'sanitizer', 'first aid', 'skincare'],
-        'hygiene'     => ['wash', 'soap', 'deodorant', 'shampoo', 'toothpaste'],
-        'beauty'      => ['skincare', 'wash', 'lotion'],
-
-        // Food & Beverages
-        'food'        => ['snack', 'drink', 'beverage', 'candy', 'juice', 'soda', 'chips', 'chocolate'],
-        'drink'       => ['beverage', 'juice', 'soda', 'coca-cola', 'fanta', 'lemonade', 'water'],
-        'beverage'    => ['drink', 'juice', 'soda'],
-        'snack'       => ['chips', 'candy', 'popcorn', 'chocolate', 'doritos', 'skittles'],
-
-        // Stationery
-        'stationery'  => ['paper', 'pen', 'pencil', 'notebook', 'ruler', 'calculator', 'eraser'],
-        'writing'     => ['pen', 'pencil', 'marker'],
-        'school'      => ['stationery', 'book', 'notebook', 'calculator', 'bag'],
-
-        // Dorm Essentials
-        'dorm'        => ['room', 'decor', 'essential', 'hanger', 'lamp', 'laundry', 'mirror'],
-        'room'        => ['dorm', 'decor', 'lamp', 'mirror', 'storage'],
-
-        // Transportation
-        'transport'   => ['bike', 'bicycle', 'scooter', 'cycling', 'ride'],
-        'bike'        => ['bicycle', 'scooter', 'transport', 'cycling'],
-        'bicycle'     => ['bike', 'cycling', 'transport'],
-        'scooter'     => ['bike', 'bicycle', 'transport', 'kick scooter']
+    // Curated clusters of true, equivalent synonyms
+    $synonymMap = [
+        'iphone'       => ['phone', 'mobile', 'smartphone', 'cellphone', 'apple'],
+        'ipad'         => ['tablet'],
+        'tablet'       => ['ipad'],
+        'mobile'       => ['phone', 'smartphone', 'cellphone'],
+        'phone'        => ['mobile', 'smartphone', 'cellphone'],
+        'laptop'       => ['pc', 'computer', 'macbook', 'notebook'],
+        'macbook'      => ['laptop', 'mac', 'apple', 'computer'],
+        'pc'           => ['laptop', 'computer', 'desktop'],
+        'computer'     => ['pc', 'laptop', 'desktop', 'macbook'],
+        'audio'        => ['speaker', 'headphones', 'earbuds', 'airpods'],
+        'airpods'      => ['earbuds', 'headphones', 'audio', 'apple'],
+        'headphones'   => ['headset', 'earbuds', 'audio'],
+        'tv'           => ['television', 'monitor', 'screen'],
+        'television'   => ['tv', 'monitor'],
+        
+        'book'         => ['textbook', 'novel'],
+        'textbook'     => ['book', 'study'],
+        
+        'seat'         => ['chair', 'sofa', 'couch'],
+        'sofa'         => ['couch', 'seat'],
+        'couch'        => ['sofa', 'seat'],
+        'chair'        => ['seat', 'stool'],
+        'desk'         => ['table', 'workstation'],
+        'bed'          => ['mattress', 'cot'],
+        
+        'clothes'      => ['clothing', 'apparel', 'outfit'],
+        'clothing'     => ['clothes', 'apparel', 'outfit'],
+        'shirt'        => ['t-shirt', 'tee', 'top'],
+        't-shirt'      => ['shirt', 'tee'],
+        'pants'        => ['trousers', 'jeans'],
+        
+        'kitchen'      => ['appliance', 'cookware'],
+        'fridge'       => ['refrigerator', 'appliance'],
+        'refrigerator' => ['fridge', 'appliance'],
+        'microwave'    => ['appliance', 'oven'],
+        
+        'bike'         => ['bicycle', 'cycling'],
+        'bicycle'      => ['bike', 'cycling'],
+        'scooter'      => ['moped', 'bike']
     ];
-    
+
     $terms = [$lowerQuery];
-    foreach ($synonyms as $key => $synList) {
-        if (strpos($lowerQuery, $key) !== false || in_array($lowerQuery, $synList)) {
-            $terms = array_merge($terms, $synList);
-            $terms[] = $key;
+    if (isset($synonymMap[$lowerQuery])) {
+        foreach ($synonymMap[$lowerQuery] as $syn) {
+            $terms[] = mb_strtolower($syn);
         }
     }
-    
     return array_unique($terms);
 }
 
@@ -1603,17 +1586,11 @@ function productSearchFilterSql(string $search, array &$params, string $productA
         }
         $tokenVariants = array_unique($tokenVariants);
 
+        // Title, Category, and Tag check across token variants
         $variantSubConditions = [];
         foreach ($tokenVariants as $variant) {
-            $ftsTerm = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $variant));
-            if ($ftsTerm === '') {
-                $ftsTerm = $variant;
-            }
-
             $variantSubConditions[] = "(
-                ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
-                OR LOWER({$productAlias}.title) LIKE ?
-                OR LOWER({$productAlias}.description) LIKE ?
+                LOWER({$productAlias}.title) LIKE ?
                 OR LOWER({$categoryAlias}.name) LIKE ?
                 OR EXISTS (
                     SELECT 1 FROM product_tags pt
@@ -1621,14 +1598,25 @@ function productSearchFilterSql(string $search, array &$params, string $productA
                     WHERE pt.product_id = {$productAlias}.id AND LOWER(t.name) LIKE ?
                 )
             )";
-            $params[] = $ftsTerm;
-            $params[] = "%$variant%";
             $params[] = "%$variant%";
             $params[] = "%$variant%";
             $params[] = "%$variant%";
         }
 
-        // Each token MUST be matched by at least one of its variants
+        // Description check ONLY against the user's exact token using full-text tsvector or word boundary regex
+        $ftsTerm = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $token));
+        if ($ftsTerm === '') {
+            $ftsTerm = $token;
+        }
+
+        $variantSubConditions[] = "(
+            ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
+            OR LOWER({$productAlias}.description) ~* ?
+        )";
+        $params[] = $ftsTerm;
+        $params[] = '\y' . preg_quote($token, '/') . '\y';
+
+        // Each token MUST be matched in Title/Category/Tags (by a variant) OR in Description (by full-text/word-boundary token)
         $allTokenGroupConditions[] = '(' . implode(' OR ', $variantSubConditions) . ')';
     }
 
@@ -1639,7 +1627,7 @@ function productSearchFilterSql(string $search, array &$params, string $productA
 /**
  * Build ORDER BY clause for relevance scoring (title-first weighting).
  */
-function productSearchOrderBySql(string $search, array &$params, string $productAlias = 'p'): string {
+function productSearchOrderBySql(string $search, array &$params, string $productAlias = 'p', string $categoryAlias = 'c'): string {
     $trimmed = mb_strtolower(trim($search));
     if ($trimmed === '') {
         return "ORDER BY {$productAlias}.created_at DESC";
@@ -1647,25 +1635,39 @@ function productSearchOrderBySql(string $search, array &$params, string $product
 
     $rawTokens = array_unique(array_filter(preg_split('/\s+/u', $trimmed)));
 
-    // Score calculations:
-    // +100 for exact title match
-    // +50 for title starting with full query
-    // +30 for title containing full query
-    // +20 per token appearing in title
     $scoreParts = [];
+
+    // Exact title match (+100)
     $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) = ? THEN 100 ELSE 0 END)";
     $params[] = $trimmed;
 
-    $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 50 ELSE 0 END)";
+    // Title starts with query (+60)
+    $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 60 ELSE 0 END)";
     $params[] = $trimmed . '%';
 
-    $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 30 ELSE 0 END)";
+    // Title contains full query (+40)
+    $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 40 ELSE 0 END)";
     $params[] = '%' . $trimmed . '%';
 
+    // Category contains query (+35)
+    $scoreParts[] = "(CASE WHEN LOWER({$categoryAlias}.name) LIKE ? THEN 35 ELSE 0 END)";
+    $params[] = '%' . $trimmed . '%';
+
+    // Per-token matches in title (+20)
     foreach ($rawTokens as $t) {
         $scoreParts[] = "(CASE WHEN LOWER({$productAlias}.title) LIKE ? THEN 20 ELSE 0 END)";
         $params[] = '%' . $t . '%';
     }
+
+    // Per-token matches in category (+15)
+    foreach ($rawTokens as $t) {
+        $scoreParts[] = "(CASE WHEN LOWER({$categoryAlias}.name) LIKE ? THEN 15 ELSE 0 END)";
+        $params[] = '%' . $t . '%';
+    }
+
+    // Full-text vector match on description (+10)
+    $scoreParts[] = "(CASE WHEN {$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?) THEN 10 ELSE 0 END)";
+    $params[] = $trimmed;
 
     $scoreExpr = implode(' + ', $scoreParts);
     return "ORDER BY (" . $scoreExpr . ") DESC, {$productAlias}.created_at DESC";

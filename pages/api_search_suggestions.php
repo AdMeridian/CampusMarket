@@ -12,40 +12,17 @@ if ($query === '') {
 }
 
 try {
-    $searchTerms = expandSearchQuery($query);
-    $termConditions = [];
     $params = [];
-    
-    foreach ($searchTerms as $term) {
-        $termConditions[] = "(
-            LOWER(p.title) LIKE ?
-            OR LOWER(p.description) LIKE ?
-            OR LOWER(c.name) LIKE ?
-            OR EXISTS (
-                SELECT 1 FROM product_tags pt
-                JOIN tags t ON pt.tag_id = t.id
-                WHERE pt.product_id = p.id AND LOWER(t.name) LIKE ?
-            )
-        )";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-        $params[] = "%$term%";
-    }
+    $filterSql = productSearchFilterSql($query, $params, 'p', 'c');
     
     $sql = "SELECT p.id, p.title, p.price, p.discount_percent, p.price_currency, c.name as category_name, i.image_path 
             FROM products p
             JOIN categories c ON p.category_id = c.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-            WHERE p.status = 'active'";
+            WHERE p.status = 'active'" . $filterSql;
             
-    if (!empty($termConditions)) {
-        $sql .= " AND (" . implode(" OR ", $termConditions) . ")";
-    }
-    
-    // Prioritize exact or prefix matches in sorting, then latest
-    $sql .= " ORDER BY (LOWER(p.title) LIKE ?) DESC, p.created_at DESC LIMIT 5";
-    $params[] = $query . "%"; // For sorting priority
+    $orderBySql = productSearchOrderBySql($query, $params, 'p', 'c');
+    $sql .= " " . $orderBySql . " LIMIT 5";
     
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
