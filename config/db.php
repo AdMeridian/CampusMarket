@@ -115,9 +115,12 @@ if (!function_exists('resolveDatabaseConfig')) {
                 $supaHost = strtolower((string)($parsedSupa['host'] ?? ''));
                 if (preg_match('/^([a-z0-9]+)\.supabase\.co$/i', $supaHost, $matches)) {
                     $targetRef = $matches[1];
-                    if (preg_match('/^db\.([a-z0-9]+)\.supabase\.co$/i', $config['host'], $dbMatches)) {
-                        if ($dbMatches[1] !== $targetRef) {
-                            $config['host'] = 'db.' . $targetRef . '.supabase.co';
+                    if (!str_contains(strtolower($config['host']), $targetRef)) {
+                        $config['host'] = 'db.' . $targetRef . '.supabase.co';
+                        $config['port'] = '5432';
+                        // Clean user if pooler user was passed
+                        if (str_contains($config['user'], '.')) {
+                            $config['user'] = 'postgres';
                         }
                     }
                 }
