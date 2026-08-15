@@ -94,6 +94,23 @@ if (!function_exists('parseDatabaseUrl')) {
             }
         }
 
+        // Auto-align DB host with SUPABASE_URL project ref if SUPABASE_URL is set
+        $supabaseUrl = appEnv('SUPABASE_URL');
+        if ($supabaseUrl !== '') {
+            $parsedSupa = parse_url($supabaseUrl);
+            $supaHost = strtolower((string)($parsedSupa['host'] ?? ''));
+            if (preg_match('/^([a-z0-9]+)\.supabase\.co$/i', $supaHost, $matches)) {
+                $targetRef = $matches[1];
+                if (!str_contains(strtolower($config['host']), $targetRef)) {
+                    $config['host'] = 'db.' . $targetRef . '.supabase.co';
+                    $config['port'] = '5432';
+                    if (str_contains($config['user'], '.')) {
+                        $config['user'] = 'postgres';
+                    }
+                }
+            }
+        }
+
         return $config;
     }
 }
