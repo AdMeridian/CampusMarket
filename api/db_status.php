@@ -8,15 +8,17 @@ try {
     $dbConfig = resolveDatabaseConfig();
     $supaUrl = appEnv('SUPABASE_URL');
     
-    // Test PDO connection
     global $pdo;
     $universityCount = 0;
+    $pdoError = null;
+
     if (isset($pdo)) {
         try {
-            $stmt = $pdo->query('SELECT count(*) FROM universities');
+            $stmt = $pdo->query('SELECT count(*) FROM public.universities');
             $universityCount = (int) $stmt->fetchColumn();
         } catch (Throwable $t) {
             $universityCount = -1;
+            $pdoError = $t->getMessage();
         }
     }
 
@@ -27,6 +29,7 @@ try {
         'resolved_db_host' => $dbConfig['host'] ?? 'unknown',
         'resolved_db_source' => $dbConfig['source'] ?? 'unknown',
         'universities_count_in_db' => $universityCount,
+        'db_error_details' => $pdoError,
     ], JSON_PRETTY_PRINT);
 } catch (Throwable $e) {
     echo json_encode([
