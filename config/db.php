@@ -94,7 +94,7 @@ if (!function_exists('parseDatabaseUrl')) {
             }
         }
 
-        // Auto-align DB host with SUPABASE_URL project ref if SUPABASE_URL is set
+        // Auto-align DB host and user with SUPABASE_URL project ref
         $supabaseUrl = appEnv('SUPABASE_URL');
         if ($supabaseUrl !== '') {
             $parsedSupa = parse_url($supabaseUrl);
@@ -112,6 +112,19 @@ if (!function_exists('parseDatabaseUrl')) {
                         $config['host'] = 'db.' . $targetRef . '.supabase.co';
                         $config['port'] = '5432';
                     }
+                }
+
+                // Ensure username format matches the host type
+                if (str_contains(strtolower($config['host']), 'pooler.supabase.com')) {
+                    if (!str_contains($config['user'], '.')) {
+                        $config['user'] = 'postgres.' . $targetRef;
+                    }
+                    $config['port'] = '6543';
+                } elseif (str_contains(strtolower($config['host']), '.supabase.co')) {
+                    if (str_contains($config['user'], '.')) {
+                        $config['user'] = explode('.', $config['user'])[0];
+                    }
+                    $config['port'] = '5432';
                 }
             }
         }
