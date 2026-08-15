@@ -101,11 +101,16 @@ if (!function_exists('parseDatabaseUrl')) {
             $supaHost = strtolower((string)($parsedSupa['host'] ?? ''));
             if (preg_match('/^([a-z0-9]+)\.supabase\.co$/i', $supaHost, $matches)) {
                 $targetRef = $matches[1];
-                if (!str_contains(strtolower($config['host']), $targetRef)) {
-                    $config['host'] = 'db.' . $targetRef . '.supabase.co';
-                    $config['port'] = '5432';
-                    if (str_contains($config['user'], '.')) {
-                        $config['user'] = 'postgres';
+                $isTargetRefMatched = str_contains(strtolower($config['host']), $targetRef) 
+                                   || str_contains(strtolower($config['user']), $targetRef);
+
+                if (!$isTargetRefMatched) {
+                    if (str_contains(strtolower($config['host']), 'pooler.supabase.com')) {
+                        $config['user'] = 'postgres.' . $targetRef;
+                        $config['port'] = '6543';
+                    } else {
+                        $config['host'] = 'db.' . $targetRef . '.supabase.co';
+                        $config['port'] = '5432';
                     }
                 }
             }
