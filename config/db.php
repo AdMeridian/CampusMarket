@@ -101,30 +101,28 @@ if (!function_exists('parseDatabaseUrl')) {
             $supaHost = strtolower((string)($parsedSupa['host'] ?? ''));
             if (preg_match('/^([a-z0-9]+)\.supabase\.co$/i', $supaHost, $matches)) {
                 $targetRef = $matches[1];
-                $isTargetRefMatched = str_contains(strtolower($config['host']), $targetRef) 
-                                   || str_contains(strtolower($config['user']), $targetRef);
 
-                if (!$isTargetRefMatched) {
-                    if (str_contains(strtolower($config['host']), 'pooler.supabase.com')) {
-                        $config['user'] = 'postgres.' . $targetRef;
+                // If host is live production region (ap-southeast-1), switch to staging pooler region (eu-west-1)
+                if (str_contains(strtolower($config['host']), 'ap-southeast-1')) {
+                    if (str_contains(strtolower($config['host']), 'pooler')) {
+                        $config['host'] = 'aws-0-eu-west-1.pooler.supabase.com';
                         $config['port'] = '6543';
+                        $config['user'] = 'postgres.' . $targetRef;
                     } else {
                         $config['host'] = 'db.' . $targetRef . '.supabase.co';
                         $config['port'] = '5432';
+                        $config['user'] = 'postgres';
                     }
-                }
-
-                // Ensure username format matches the host type
-                if (str_contains(strtolower($config['host']), 'pooler.supabase.com')) {
+                } elseif (str_contains(strtolower($config['host']), 'pooler.supabase.com')) {
+                    $config['port'] = '6543';
                     if (!str_contains($config['user'], '.')) {
                         $config['user'] = 'postgres.' . $targetRef;
                     }
-                    $config['port'] = '6543';
                 } elseif (str_contains(strtolower($config['host']), '.supabase.co')) {
+                    $config['port'] = '5432';
                     if (str_contains($config['user'], '.')) {
                         $config['user'] = explode('.', $config['user'])[0];
                     }
-                    $config['port'] = '5432';
                 }
             }
         }
