@@ -24,6 +24,7 @@ try {
 
     echo json_encode([
         'ok' => true,
+        'build_time' => '2026-08-15T22:48:00+03:00',
         'vercel_env' => appEnv('VERCEL_ENV') ?: 'local',
         'supabase_url' => $supaUrl,
         'resolved_db_host' => $dbConfig['host'] ?? 'unknown',
@@ -37,6 +38,7 @@ try {
 } catch (Throwable $e) {
     echo json_encode([
         'ok' => false,
+        'build_time' => '2026-08-15T22:48:00+03:00',
         'error' => $e->getMessage(),
         'trace' => $e->getFile() . ':' . $e->getLine(),
     ], JSON_PRETTY_PRINT);
