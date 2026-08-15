@@ -107,6 +107,22 @@ if (!function_exists('resolveDatabaseConfig')) {
         if ($urls !== []) {
             $config = parseDatabaseUrl($urls[0]);
             $config['source'] = 'url';
+
+            // Auto-align DB host with SUPABASE_URL project ref if SUPABASE_URL is explicitly set
+            $supabaseUrl = appEnv('SUPABASE_URL');
+            if ($supabaseUrl !== '') {
+                $parsedSupa = parse_url($supabaseUrl);
+                $supaHost = strtolower((string)($parsedSupa['host'] ?? ''));
+                if (preg_match('/^([a-z0-9]+)\.supabase\.co$/i', $supaHost, $matches)) {
+                    $targetRef = $matches[1];
+                    if (preg_match('/^db\.([a-z0-9]+)\.supabase\.co$/i', $config['host'], $dbMatches)) {
+                        if ($dbMatches[1] !== $targetRef) {
+                            $config['host'] = 'db.' . $targetRef . '.supabase.co';
+                        }
+                    }
+                }
+            }
+
             return $config;
         }
 
