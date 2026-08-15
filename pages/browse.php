@@ -11,6 +11,20 @@ $maxPrice = $_GET['max_price'] ?? '';
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, (int)($_GET['page'] ?? 1));
 
+// Country & University Marketplace Filters
+$selectedCountry = $_GET['country'] ?? '';
+$selectedUniversity = $_GET['university'] ?? '';
+
+$userMarketplace = isLoggedIn() && function_exists('getUserUniversityAndCountry') ? getUserUniversityAndCountry($pdo, (int)currentUserId()) : null;
+
+// Default country filter to logged-in user's country if not explicitly specified
+if ($selectedCountry === '' && !isset($_GET['country']) && $userMarketplace && !empty($userMarketplace['country_code'])) {
+    $selectedCountry = $userMarketplace['country_code'];
+}
+
+$availableCountries = function_exists('getAvailableCountries') ? getAvailableCountries($pdo) : [];
+$availableUniversities = function_exists('getAvailableUniversities') ? getAvailableUniversities($pdo, $selectedCountry ?: null) : [];
+
 if ($myTown && isLoggedIn()) {
     $userTown = getUserHomeTown((int)currentUserId());
     if ($userTown) {
@@ -24,6 +38,14 @@ $userHomeTown = isLoggedIn() ? getUserHomeTown((int)currentUserId()) : null;
 $params = [];
 $filterSql = '';
 
+if ($selectedCountry !== '') {
+    $filterSql .= " AND (p.country_code = ? OR p.country_code IS NULL)";
+    $params[] = strtoupper($selectedCountry);
+}
+if ($selectedUniversity !== '') {
+    $filterSql .= " AND p.university_id = ?";
+    $params[] = (int)$selectedUniversity;
+}
 if ($search !== '') {
     $filterSql .= productSearchFilterSql($search, $params);
 }
@@ -149,6 +171,48 @@ include '../includes/header.php';
                         <?php endif; ?>
                         <?php if($sort): ?>
                             <input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>">
+                        <?php endif; ?>
+
+                        <!-- Country Marketplace Block -->
+                        <?php if (!empty($availableCountries)): ?>
+                        <div class="filter-block mb-8">
+                            <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
+                                <span>Country Marketplace</span>
+                            </div>
+                            <div class="relative">
+                                <select name="country" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                    <option value="">All Countries 🌐</option>
+                                    <?php 
+                                    $countryFlags = ['GB' => '🇬🇧', 'US' => '🇺🇸', 'TR' => '🇹🇷', 'DE' => '🇩🇪', 'CA' => '🇨🇦'];
+                                    foreach ($availableCountries as $c): 
+                                        $flag = $countryFlags[$c['code']] ?? '🌐';
+                                    ?>
+                                        <option value="<?php echo $c['code']; ?>" <?php echo strtoupper($selectedCountry) === $c['code'] ? 'selected' : ''; ?>>
+                                            <?php echo $flag; ?> <?php echo sanitize($c['name']); ?> (<?php echo sanitize($c['default_currency']); ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- University Campus Block -->
+                        <?php if (!empty($availableUniversities)): ?>
+                        <div class="filter-block mb-8">
+                            <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
+                                <span>Campus / University</span>
+                            </div>
+                            <div class="relative">
+                                <select name="university" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                    <option value="">All Campuses 🎓</option>
+                                    <?php foreach ($availableUniversities as $uni): ?>
+                                        <option value="<?php echo $uni['id']; ?>" <?php echo (string)$selectedUniversity === (string)$uni['id'] ? 'selected' : ''; ?>>
+                                            🎓 <?php echo sanitize($uni['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                         <?php endif; ?>
                         
                         <!-- Category Block -->

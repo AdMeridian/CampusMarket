@@ -120,8 +120,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
                 $conditionValue = ($listingType === 'service') ? null : $condition;
                 $statusValue = ($listingType === 'service') ? 'pending_approval' : 'active';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null)]);
+                $sellerMarketplace = function_exists('getUserUniversityAndCountry') ? getUserUniversityAndCountry($pdo, $userId) : null;
+                $sellerCountry = $sellerMarketplace['country_code'] ?? 'TR';
+                $sellerUniversityId = $sellerMarketplace['university_id'] ?? null;
+
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location, country_code, university_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null), $sellerCountry, $sellerUniversityId]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {

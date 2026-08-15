@@ -136,18 +136,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
         try {
             $studentId = studentIdFromUniversityEmail($email);
+            $uniLookup = function_exists('lookupUniversityByEmail') ? lookupUniversityByEmail($pdo, $email) : null;
+            $uniId = $uniLookup ? (int)$uniLookup['university_id'] : null;
 
             $ins = $pdo->prepare("
-                INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified)
-                VALUES (:u, :e, :s, :h, 'user', :p, :v)
+                INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified, university_id)
+                VALUES (:u, :e, :s, :h, 'user', :p, :v, :uni)
             ");
             $ins->execute([
-                ':u' => $username,
-                ':e' => $email,
-                ':s' => $studentId,
-                ':h' => $hash,
-                ':p' => $phone !== '' ? $phone : null,
-                ':v' => $isVerified,
+                ':u'   => $username,
+                ':e'   => $email,
+                ':s'   => $studentId,
+                ':h'   => $hash,
+                ':p'   => $phone !== '' ? $phone : null,
+                ':v'   => $isVerified,
+                ':uni' => $uniId,
             ]);
 
             $newUserId = (int)$pdo->lastInsertId();
