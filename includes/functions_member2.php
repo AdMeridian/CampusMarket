@@ -39,22 +39,27 @@ if (!function_exists('universityDomainCustomOption')) {
 }
 
 /**
- * True when the domain is a Turkish university address (e.g. ciu.edu.tr, staff.neu.edu.tr).
+ * True when the domain is a valid university academic address (e.g. .edu.tr, .ac.uk, .edu, .edu.de).
  */
 if (!function_exists('isEduTrEmailDomain')) {
     function isEduTrEmailDomain(string $domain): bool {
         $domain = strtolower(trim($domain));
-        if ($domain === '' || $domain === 'edu.tr') {
+        if ($domain === '' || $domain === 'edu.tr' || $domain === 'edu' || $domain === 'ac.uk') {
             return false;
         }
 
-        return str_ends_with($domain, '.edu.tr');
+        return str_ends_with($domain, '.edu.tr')
+            || str_ends_with($domain, '.ac.uk')
+            || str_ends_with($domain, '.edu')
+            || str_ends_with($domain, '.edu.de')
+            || str_ends_with($domain, '.edu.ca')
+            || str_ends_with($domain, '.edu.au')
+            || str_ends_with($domain, '.tum.de');
     }
 }
 
 /**
- * True if the email is well-formed AND uses an allowed campus domain.
- * Any *@*.edu.tr address is accepted (students and staff).
+ * True if the email is well-formed AND uses an allowed campus domain worldwide.
  */
 if (!function_exists('isAllowedUniversityEmail')) {
     function isAllowedUniversityEmail(string $email): bool {
