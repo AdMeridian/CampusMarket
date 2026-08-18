@@ -63,6 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.image_required');
     } elseif ($listingType === 'product' && ($categoryId <= 0 || empty($selectedCategoryIds))) {
         $error = __('create_listing.select_category');
+    }
+
     if ($listingType === 'service' && ($locationTown === '' || !isValidLocationTown($locationTown))) {
         // Default services to 'remote' when not specified — most student services are online-capable
         $locationTown = 'remote';
