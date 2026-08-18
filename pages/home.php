@@ -44,7 +44,7 @@ $displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HO
                     <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn hero-cta hero-cta--secondary"><?= __('home.join_to_sell') ?></a>
                 <?php endif; ?>
             </div>
-            <a href="<?php echo BASE_URL; ?>pages/services.php" class="btn hero-cta hero-cta--services">Explore Services</a>
+            <a href="<?php echo BASE_URL; ?>pages/services.php" class="btn hero-cta hero-cta--services"><?= __('home.explore_services') ?></a>
         </div>
     </div>
 </section>
@@ -85,23 +85,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 ['id' => 2,  'name' => 'Books and study materials',     'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>']
             ];
 
-            foreach ($hardcodedCategories as $cat): 
-                // Fetch real count for each hardcoded category (including multi-category mappings)
-                $stmt = $pdo->prepare("
-                    SELECT COUNT(DISTINCT p.id) 
-                    FROM products p 
-                    WHERE p.status = 'active' 
-                      AND (
-                          p.category_id = ? 
-                          OR EXISTS (
-                              SELECT 1 
-                              FROM product_categories pc 
-                              WHERE pc.product_id = p.id AND pc.category_id = ?
-                          )
-                      )
-                ");
-                $stmt->execute([$cat['id'], $cat['id']]);
-                $count = $stmt->fetchColumn();
+            // Batch category counts — one query instead of N queries
+            $catIds = array_column($hardcodedCategories, 'id');
+            $catPlaceholders = implode(',', array_fill(0, count($catIds), '?'));
+            $catCountStmt = $pdo->prepare("
+                SELECT cat_id, COUNT(DISTINCT product_id) AS cnt FROM (
+                    SELECT p.category_id AS cat_id, p.id AS product_id
+                    FROM products p
+                    WHERE p.status = 'active' AND p.listing_type = 'product'
+                      AND p.category_id IN ($catPlaceholders)
+                    UNION ALL
+                    SELECT pc.category_id AS cat_id, pc.product_id
+                    FROM product_categories pc
+                    JOIN products p ON p.id = pc.product_id
+                    WHERE p.status = 'active' AND p.listing_type = 'product'
+                      AND pc.category_id IN ($catPlaceholders)
+                ) sub
+                GROUP BY cat_id
+            ");
+            $catCountStmt->execute(array_merge($catIds, $catIds));
+            $categoryCounts = array_column($catCountStmt->fetchAll(PDO::FETCH_ASSOC), 'cnt', 'cat_id');
+
+            foreach ($hardcodedCategories as $cat):
+                $count = (int)($categoryCounts[$cat['id']] ?? 0);
             ?>
                 <a href="<?php echo $pagesBase; ?>browse.php?category=<?php echo $cat['id']; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
                     <div style="color: var(--text-muted); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">

@@ -646,11 +646,16 @@ body.dark-mode .btn-white-solid:hover {
                         <span>No reviews yet</span>
                     <?php endif; ?>
                 </div>
-                <div style="margin-top: 0.45rem; display: inline-flex; align-items: center; gap: 0.45rem;">
+                <div style="margin-top: 0.45rem; display: inline-flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
                     <span class="badge" style="background: rgba(255,255,255,0.22); color: #fff; font-size: 0.72rem; padding: 0.18rem 0.55rem; border: 1px solid rgba(255,255,255,0.35); border-radius: var(--radius-lg);">
                         <?php echo sanitize($trust['tier']); ?>
                     </span>
                     <span style="font-size: 0.82rem; color: rgba(255,255,255,0.88);">Trust Score: <?php echo (int)$trust['score']; ?>/100</span>
+                    <?php if ($serviceCount > 0): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/services.php?seller=<?php echo (int)$user['id']; ?>" class="badge" style="background: var(--service); color: #fff; text-decoration: none; font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: var(--radius-lg); font-weight: 700;">
+                        🛠️ Service Provider (<?php echo $serviceCount; ?>)
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
 

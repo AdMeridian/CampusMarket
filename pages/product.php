@@ -307,6 +307,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     } catch (Exception $e) {
         $pdo->rollBack();
         error_log('[product:update_categories] ' . $e->getMessage());
+        if (function_exists('logSystemError')) {
+            logSystemError($pdo, 'product_categories', $e->getMessage(), $e, (int)currentUserId());
+        }
         setFlash('error', __('product.update_categories_failed'));
     }
 
@@ -334,6 +337,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             setFlash('success', __('product.primary_image_updated'));
         } catch (Exception $e) {
             $pdo->rollBack();
+            if (function_exists('logSystemError')) {
+                logSystemError($pdo, 'product_images', 'Set primary image failed: ' . $e->getMessage(), $e, (int)currentUserId());
+            }
             setFlash('error', __('product.db_error'));
         }
     } else {
@@ -378,6 +384,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             setFlash('success', __('product.image_deleted'));
         } catch (Exception $e) {
             $pdo->rollBack();
+            if (function_exists('logSystemError')) {
+                logSystemError($pdo, 'product_images', 'Delete image failed: ' . $e->getMessage(), $e, (int)currentUserId());
+            }
             setFlash('error', __('product.delete_image_failed'));
         }
     } else {
@@ -1127,8 +1136,8 @@ body.dark-mode .scc-badge {
                 <div style="position: absolute; top: 1.5rem; right: 1.5rem;">
                     <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
                         <?php $isHourly = ($product['pricing_model'] ?? 'flat') === 'hourly'; ?>
-                        <span class="badge shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px); background: #ef4444; color: white;">
-                            <?= $isHourly ? '⏱ ' . __('product.hourly_rate') : '🛠️ ' . __('product.service_badge') ?>
+                        <span class="badge shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px); background: var(--service); color: white;">
+                            <?= $isHourly ? '⏱ ' . __('product.hourly_badge') : '🛠️ ' . __('product.service_badge') ?>
                         </span>
                     <?php else: ?>
                         <?php $badge = conditionBadge($product['condition']); ?>
@@ -1657,11 +1666,26 @@ body.dark-mode .scc-badge {
             <!-- Action Buttons for Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
                 <?php $isServiceListing = ($product['listing_type'] ?? 'product') === 'service'; ?>
-                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
-                   class="btn flex-grow justify-center py-4 text-lg hover-scale"
-                   style="<?= $isServiceListing ? 'background: #ef4444; color: white; border: none;' : '' ?>">
-                    <?= $isServiceListing ? '🛠️ ' . __('product.book_service') : __('product.message_seller') ?>
-                </a>
+                <?php if ($isServiceListing): ?>
+                    <!-- Service CTA: price display + request button -->
+                    <div style="display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.25rem;">
+                        <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($product); ?></span>
+                        <?php if (($product['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                            <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted);">/ hour</span>
+                        <?php endif; ?>
+                    </div>
+                    <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
+                       class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale">
+                        🛠️ <?= __('product.request_service') ?>
+                    </a>
+                    <p class="text-muted small text-center mb-0" style="font-size: 0.82rem;"><?= __('product.service_contact_hint') ?></p>
+                <?php else: ?>
+                    <!-- Product CTA: message seller -->
+                    <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
+                       class="btn flex-grow justify-center py-4 text-lg hover-scale">
+                        <?= __('product.message_seller') ?>
+                    </a>
+                <?php endif; ?>
                 <button
                     type="button"
                     class="product-share-btn w-full justify-center py-3 text-lg"

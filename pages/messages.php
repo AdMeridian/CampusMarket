@@ -18,7 +18,7 @@ if (!$otherUserId) {
 
 if ($productId > 0) {
     // Fetch context info
-    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
+    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, p.listing_type, p.pricing_model, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
 
@@ -173,17 +173,18 @@ $presenceText = match($otherPresence['status']) {
             <p class="chat-deal-bar__hint text-muted small mb-3"><?= __('chat.orders_deal_explainer') ?></p>
         </div>
         <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
-            <div class="chat-action-bar purchase-cta-bar">
+            <?php $isServiceChat = ($product['listing_type'] ?? 'product') === 'service'; ?>
+            <div class="chat-action-bar purchase-cta-bar" <?= $isServiceChat ? 'style="border-left: 4px solid var(--service);"' : '' ?>>
                 <div class="chat-action-bar__copy">
-                    <strong><?= __('chat.ready_to_buy') ?></strong>
-                    <span><?= __('chat.send_purchase_request') ?></span>
+                    <strong><?= $isServiceChat ? '🗓️ Book This Service' : __('chat.ready_to_buy') ?></strong>
+                    <span><?= $isServiceChat ? 'Schedule and agree on a service time' : __('chat.send_purchase_request') ?></span>
                 </div>
                 <form action="api_messages.php" method="POST" class="m-0">
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="proposeOrder()">
-                        <?= __('chat.propose_order') ?>
+                    <button type="button" class="btn <?= $isServiceChat ? 'btn--service' : 'btn-primary' ?> btn-sm" onclick="<?= $isServiceChat ? 'checkDealStatus()' : 'proposeOrder()' ?>">
+                        <?= $isServiceChat ? '🛠️ Book Service' : __('chat.propose_order') ?>
                     </button>
                 </form>
             </div>

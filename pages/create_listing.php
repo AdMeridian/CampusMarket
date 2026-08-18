@@ -63,11 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.image_required');
     } elseif ($listingType === 'product' && ($categoryId <= 0 || empty($selectedCategoryIds))) {
         $error = __('create_listing.select_category');
-    } elseif ($listingType === 'product' && !isValidLocationTown($locationTown)) {
+    if ($listingType === 'service' && ($locationTown === '' || !isValidLocationTown($locationTown))) {
+        // Default services to 'remote' when not specified — most student services are online-capable
+        $locationTown = 'remote';
+    }
+
+    if (!$error && $listingType === 'product' && !isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
-    } elseif ($locationTown === 'other' && empty($customLocation)) {
+    } elseif (!$error && $locationTown === 'other' && empty($customLocation)) {
         $error = __('create_listing.custom_location_required');
-    } elseif ($locationTown === 'other' && mb_strlen($customLocation) > 100) {
+    } elseif (!$error && $locationTown === 'other' && mb_strlen($customLocation) > 100) {
         $error = 'Custom location cannot exceed 100 characters.';
     }
 
@@ -131,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!empty($selectedCategoryIds)) {
                     $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                     $categoryInsertSql = ($driverName === 'pgsql')
-                        ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT DO NOTHING'
-                        : 'INSERT IGNORE INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?)';
+                        ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = EXCLUDED.is_primary'
+                        : 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_primary = VALUES(is_primary)';
                     $categoryInsert = $pdo->prepare($categoryInsertSql);
                     foreach ($selectedCategoryIds as $catId) {
                         try {
@@ -206,7 +211,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-                // 3. Save tags — manual selection first, then AI-generated as fallback
                 $tagsToSave = [];
                 if (!empty($selectedTagIds)) {
                     // User explicitly picked tags from the pill UI
@@ -218,6 +222,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $nameStmt->execute($aiResult['tags']);
                     $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
                 }
+
+                // Process user-suggested new tags
+                $newTagNames = array_slice(array_unique(array_filter(
+                    array_map(fn($t) => mb_strtolower(trim(sanitize((string)$t))), $_POST['new_tags'] ?? [])
+                )), 0, 5);
+
+                foreach ($newTagNames as $newName) {
+                    if (mb_strlen($newName) < 2 || mb_strlen($newName) > 40) continue;
+                    $slug = strtolower(preg_replace('/[^a-z0-9\-]+/u', '-', $newName));
+                    $slug = trim($slug, '-');
+                    if ($slug === '') continue;
+
+                    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                    $existing = $pdo->prepare("SELECT id FROM tags WHERE slug = ? OR LOWER(name) = ? LIMIT 1");
+                    $existing->execute([$slug, $newName]);
+                    $newTagId = $existing->fetchColumn();
+
+                    if (!$newTagId) {
+                        $insertTagSql = ($driver === 'pgsql')
+                            ? "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?) RETURNING id"
+                            : "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?)";
+                        $tagStmt = $pdo->prepare($insertTagSql);
+                        try {
+                            $tagStmt->execute([$newName, $slug, $userId]);
+                            $newTagId = ($driver === 'pgsql') ? $tagStmt->fetchColumn() : $pdo->lastInsertId();
+                        } catch (Throwable $eT) {
+                            $existing->execute([$slug, $newName]);
+                            $newTagId = $existing->fetchColumn();
+                        }
+                    }
+
+                    if ($newTagId) {
+                        $tagsToSave[] = (int)$newTagId;
+                    }
+                }
+                $tagsToSave = array_values(array_unique(array_map('intval', $tagsToSave)));
+
                 if (!empty($tagsToSave)) {
                     $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                     $tagSql = ($driverName === 'pgsql')
@@ -405,12 +446,19 @@ include '../includes/header.php';
                             <div class="font-bold text-main" style="font-size: 0.95rem;">Physical Item</div>
                             <div class="text-muted" style="font-size: 0.78rem;">Something you can hand over</div>
                         </label>
-                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo $isServiceMode ? '#ef4444' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo $isServiceMode ? 'rgba(239,68,68,0.08)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
+                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo $isServiceMode ? 'var(--service)' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo $isServiceMode ? 'var(--service-light)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
                             <input type="radio" name="listing_type" value="service" <?php echo $isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-service">
                             <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">🛠️</div>
                             <div class="font-bold text-main" style="font-size: 0.95rem;">Service</div>
                             <div class="text-muted" style="font-size: 0.78rem;">Tutoring, cleaning, photography...</div>
                         </label>
+                    </div>
+
+                    <!-- Service Catalog Quick-Pick Button -->
+                    <div class="js-service-only" style="<?php echo !$isServiceMode ? 'display:none;' : ''; ?> margin-top: 0.75rem;">
+                        <button type="button" id="btn-open-service-catalog" class="btn btn-sm btn--service" style="border-radius: var(--radius-lg); width: 100%; padding: 0.65rem 1rem; font-size: 0.88rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            ✨ Pick from Service Templates (Tutoring, Cleaning, Photography, Moving)
+                        </button>
                     </div>
                 </div>
                 <div class="form-group">
@@ -434,18 +482,33 @@ include '../includes/header.php';
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.town_label') ?></label>
-                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
-                            <option value=""><?= __('create_listing.select_town') ?></option>
-                            <?php foreach (locationTownSlugs() as $townSlug): ?>
-                                <option value="<?php echo $townSlug; ?>" <?php echo $selectedTown === $townSlug ? 'selected' : ''; ?>><?php echo formatLocationTown($townSlug); ?></option>
+                        <label class="font-bold mb-2 block" style="color: var(--text-main);">
+                            <span class="js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.town_label') ?></span>
+                            <span class="js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>📍 Availability / Location</span>
+                        </label>
+                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;">
+                            <?php
+                            $townSlugs = locationTownSlugs();
+                            // For services, pre-select 'remote' when no prior selection
+                            $resolvedTown = $selectedTown;
+                            if ($resolvedTown === '' && $isServiceMode) {
+                                $resolvedTown = 'remote';
+                            }
+                            foreach ($townSlugs as $townSlug):
+                                // Show 'Remote' option only for services; show towns first for products
+                                if ($townSlug === 'remote' && !$isServiceMode) continue;
+                            ?>
+                                <option value="<?php echo $townSlug; ?>" <?php echo $resolvedTown === $townSlug ? 'selected' : ''; ?>>
+                                    <?php echo formatLocationTown($townSlug); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                         <div id="custom_location_container" class="mt-3 form-group" style="<?php echo ($selectedTown === 'other') ? '' : 'display: none;'; ?>">
                             <label class="font-bold mb-1 block text-sm" style="color: var(--text-main);"><?= __('create_listing.custom_location_label') ?></label>
                             <input type="text" name="custom_location" id="custom_location_input" value="<?= htmlspecialchars($selectedCustomLocation) ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="w-full premium-input" style="padding: 0.8rem 1rem;">
                         </div>
-                        <p class="text-muted small mt-2 mb-0"><?= __('create_listing.town_hint') ?></p>
+                        <p class="text-muted small mt-2 mb-0 js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.town_hint') ?></p>
+                        <p class="text-muted small mt-2 mb-0 js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>Choose <strong>Remote / Online</strong> if your service can be done virtually, or pick the campus town where you'll be available in person.</p>
                     </div>
                 </div>
 
@@ -581,6 +644,16 @@ include '../includes/header.php';
                             <span class="tag-pill-label">#<?php echo sanitize($tag['name']); ?></span>
                         </label>
                         <?php endforeach; ?>
+                    </div>
+
+                    <!-- Custom Tag Creation -->
+                    <div id="new-tag-wrapper" style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-light);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; max-width: 420px;">
+                            <input type="text" id="new-tag-input" placeholder="+ Add a custom tag (e.g. vintage, calculus)" maxlength="40" class="premium-input" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: var(--radius-full); flex: 1;">
+                            <button type="button" id="btn-add-custom-tag" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.4rem 1rem;">Add</button>
+                        </div>
+                        <div id="custom-tags-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;"></div>
+                        <p class="text-muted small mt-1 mb-0" style="font-size: 0.76rem;">Don't see a tag you need? Type it above to add it to your listing.</p>
                     </div>
                 </div>
 
@@ -1010,6 +1083,61 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Custom tag creation logic
+    const customTagInput = document.getElementById('new-tag-input');
+    const addCustomTagBtn = document.getElementById('btn-add-custom-tag');
+    const customTagsContainer = document.getElementById('custom-tags-container');
+
+    function addCustomTag() {
+        if (!customTagInput || !customTagsContainer) return;
+        const val = customTagInput.value.trim().replace(/^#+/, '');
+        if (val.length < 2) {
+            alert('Tag must be at least 2 characters long.');
+            return;
+        }
+        if (val.length > 40) {
+            alert('Tag cannot exceed 40 characters.');
+            return;
+        }
+        
+        const totalChecked = document.querySelectorAll('.tag-pill-check:checked').length;
+        const totalCustom = customTagsContainer.querySelectorAll('input[name="new_tags[]"]').length;
+        if (totalChecked + totalCustom >= 5) {
+            alert('You can choose or create up to 5 tags maximum.');
+            return;
+        }
+
+        // Duplicate check
+        const existingCustom = [...customTagsContainer.querySelectorAll('input[name="new_tags[]"]')].map(i => i.value.toLowerCase());
+        if (existingCustom.includes(val.toLowerCase())) {
+            alert('This tag is already added.');
+            return;
+        }
+
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill';
+        pill.style = 'display: inline-flex; align-items: center; gap: 0.35rem; background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); border-radius: var(--radius-full); padding: 0.25rem 0.65rem; font-size: 0.8rem; font-weight: 600;';
+        pill.innerHTML = `
+            <span>#${val}</span>
+            <input type="hidden" name="new_tags[]" value="${val.replace(/"/g, '&quot;')}">
+            <button type="button" style="background:none; border:none; color:inherit; font-size:0.9rem; cursor:pointer; padding:0; line-height:1;" title="Remove tag">&times;</button>
+        `;
+
+        pill.querySelector('button').addEventListener('click', () => pill.remove());
+        customTagsContainer.appendChild(pill);
+        customTagInput.value = '';
+    }
+
+    if (addCustomTagBtn && customTagInput) {
+        addCustomTagBtn.addEventListener('click', addCustomTag);
+        customTagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustomTag();
+            }
+        });
+    }
+
     const townSelect = document.querySelector('select[name="location_town"]');
     const customLocContainer = document.getElementById('custom_location_container');
     const customLocInput = document.getElementById('custom_location_input');
@@ -1115,5 +1243,183 @@ document.addEventListener('DOMContentLoaded', function () {
         applyModel(activeModel.value);
     }
 })();
+
+// Service Template Catalog Modal Logic
+(function() {
+    const catalogModal = document.getElementById('service-catalog-modal');
+    const openBtn = document.getElementById('btn-open-service-catalog');
+    const closeBtn = document.getElementById('btn-close-service-catalog');
+    const tabsContainer = document.getElementById('catalog-category-tabs');
+    const gridContainer = document.getElementById('catalog-templates-grid');
+
+    if (!catalogModal) return;
+
+    let catalogData = [];
+    let isLoaded = false;
+
+    async function loadCatalog() {
+        if (isLoaded) return;
+        try {
+            const res = await fetch('<?= BASE_URL ?>api/service_templates.php');
+            const data = await res.json();
+            if (data.success && data.categories) {
+                catalogData = data.categories;
+                isLoaded = true;
+                renderCategories();
+            }
+        } catch (e) {
+            console.error('Failed to load service catalog', e);
+        }
+    }
+
+    function renderCategories() {
+        if (!tabsContainer || catalogData.length === 0) return;
+        tabsContainer.innerHTML = '';
+        catalogData.forEach((cat, idx) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-sm ${idx === 0 ? 'btn-primary' : 'btn-secondary'}`;
+            btn.style = 'border-radius: var(--radius-full); font-size: 0.82rem; padding: 0.35rem 0.85rem;';
+            btn.textContent = cat.category_name;
+            btn.addEventListener('click', () => {
+                tabsContainer.querySelectorAll('button').forEach(b => {
+                    b.className = 'btn btn-sm btn-secondary';
+                });
+                btn.className = 'btn btn-sm btn-primary';
+                renderTemplates(cat.templates);
+            });
+            tabsContainer.appendChild(btn);
+        });
+
+        if (catalogData[0]) {
+            renderTemplates(catalogData[0].templates);
+        }
+    }
+
+    function renderTemplates(templates) {
+        if (!gridContainer) return;
+        gridContainer.innerHTML = '';
+        templates.forEach(t => {
+            const card = document.createElement('div');
+            card.style = 'border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem; background: var(--bg-surface); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; position: relative;';
+            card.className = 'card-hover';
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 1.6rem;">${t.icon || '🛠️'}</span>
+                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; background: var(--service-light); color: var(--service); padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">
+                        ${t.pricing_model === 'hourly' ? '⏱ Hourly' : '💵 Flat'}
+                    </span>
+                </div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${t.name}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${t.description_template}</div>
+                <div style="margin-top: auto; padding-top: 0.5rem; border-top: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                    <span style="font-weight: 700; color: var(--primary);">Suggested: ${t.suggested_price_min} - ${t.suggested_price_max}</span>
+                    <span style="color: var(--service); font-weight: 600;">Use Template →</span>
+                </div>
+            `;
+
+            card.addEventListener('click', () => {
+                applyTemplate(t);
+                catalogModal.style.display = 'none';
+            });
+
+            gridContainer.appendChild(card);
+        });
+    }
+
+    function applyTemplate(t) {
+        const titleInput = document.getElementById('title-input');
+        const descInput = document.getElementById('description-textarea');
+        const priceInput = document.querySelector('input[name="price"]');
+        const typeServiceRadio = document.getElementById('type-service');
+        const hourlyRadio = document.querySelector('input[name="pricing_model"][value="hourly"]');
+        const flatRadio = document.querySelector('input[name="pricing_model"][value="flat"]');
+
+        if (typeServiceRadio) {
+            typeServiceRadio.checked = true;
+            typeServiceRadio.dispatchEvent(new Event('change'));
+        }
+
+        if (titleInput) titleInput.value = t.title_template;
+        if (descInput) descInput.value = t.description_template;
+        if (priceInput && t.suggested_price_min) priceInput.value = t.suggested_price_min;
+
+        if (t.pricing_model === 'hourly' && hourlyRadio) {
+            hourlyRadio.checked = true;
+            hourlyRadio.dispatchEvent(new Event('change'));
+        } else if (flatRadio) {
+            flatRadio.checked = true;
+            flatRadio.dispatchEvent(new Event('change'));
+        }
+
+        // Highlight tags
+        if (Array.isArray(t.suggested_tags) && t.suggested_tags.length > 0) {
+            t.suggested_tags.forEach(slug => {
+                const chk = document.querySelector(`.tag-pill-check[data-slug="${slug}"]`) || document.querySelector(`.tag-pill-check[value="${slug}"]`);
+                if (chk) chk.checked = true;
+            });
+        }
+
+        titleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        titleInput.focus();
+    }
+
+    if (openBtn) {
+        openBtn.addEventListener('click', () => {
+            catalogModal.style.display = 'flex';
+            loadCatalog();
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            catalogModal.style.display = 'none';
+        });
+    }
+
+    catalogModal.addEventListener('click', (e) => {
+        if (e.target === catalogModal) {
+            catalogModal.style.display = 'none';
+        }
+    });
+
+    // Auto-open modal on first switch to Service radio if no title is typed
+    const typeServiceRadio = document.getElementById('type-service');
+    if (typeServiceRadio) {
+        typeServiceRadio.addEventListener('change', () => {
+            const titleInput = document.getElementById('title-input');
+            if (typeServiceRadio.checked && titleInput && !titleInput.value.trim()) {
+                catalogModal.style.display = 'flex';
+                loadCatalog();
+            }
+        });
+    }
+})();
 </script>
+
+<!-- Service Catalog Modal HTML -->
+<div id="service-catalog-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px);">
+    <div style="background: var(--bg-surface); width: 100%; max-width: 780px; max-height: 90vh; border-radius: var(--radius-xl); border: 1px solid var(--border-light); display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-xl);">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; background: var(--bg-card);">
+            <div>
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main);">✨ Pick a Service Template</h3>
+                <p style="margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--text-muted);">Choose a popular template to pre-fill your listing, or customize everything as you go.</p>
+            </div>
+            <button type="button" id="btn-close-service-catalog" style="background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 0.25rem;">&times;</button>
+        </div>
+
+        <div style="padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border-light); display: flex; gap: 0.5rem; overflow-x: auto;" id="catalog-category-tabs">
+            <!-- Tabs loaded via JS -->
+        </div>
+
+        <div style="padding: 1.5rem; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem;" id="catalog-templates-grid">
+            <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2rem;">Loading templates...</div>
+        </div>
+
+        <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: var(--bg-card);">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">You can always edit every detail after choosing.</span>
+            <button type="button" onclick="document.getElementById('service-catalog-modal').style.display='none'" class="btn btn-sm btn-secondary" style="border-radius: var(--radius-lg);">Skip &amp; Write Blank</button>
+        </div>
+    </div>
+</div>
 

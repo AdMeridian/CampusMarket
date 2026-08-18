@@ -1713,7 +1713,7 @@ function invalidateNavCategoriesCache(): void {
  * Allowed North Cyprus town slugs for listing geotags.
  */
 function locationTownSlugs(): array {
-    return ['lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele', 'other'];
+    return ['remote', 'lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele', 'other'];
 }
 
 function isValidLocationTown(?string $town): bool {
@@ -1726,6 +1726,9 @@ function isValidLocationTown(?string $town): bool {
 function formatLocationTown(?string $town, ?string $customLocation = null): string {
     if (!isValidLocationTown($town)) {
         return '';
+    }
+    if (strtolower($town) === 'remote') {
+        return 'Remote / Online';
     }
     if (strtolower($town) === 'other' && !empty(trim((string)$customLocation))) {
         return trim((string)$customLocation);

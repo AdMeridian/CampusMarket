@@ -11,6 +11,10 @@
   
   --accent: #d63c4a;
   
+  --service: #e53e3e;
+  --service-hover: #c53030;
+  --service-light: #fee2e2;
+  
   --bg-main: #f5f3f0;
   --bg-surface: #ffffff;
   
@@ -68,6 +72,10 @@ body.dark-mode {
   
   --secondary: #fbbf24;
   --secondary-hover: #f59e0b;
+  
+  --service: #f87171;
+  --service-hover: #ef4444;
+  --service-light: rgba(239, 68, 68, 0.15);
   
   --bg-main: #1c1917;
   --bg-surface: #292524;
@@ -1328,6 +1336,32 @@ body.dark-mode .toggle-icon { display: block; }
 .btn-danger:hover {
   background: #dc2626;
   box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+}
+
+.btn--service,
+.btn-service {
+  background: var(--service);
+  color: #fff !important;
+  border: none;
+}
+
+.btn--service:hover,
+.btn-service:hover {
+  background: var(--service-hover);
+  color: #fff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(229, 62, 62, 0.25);
+}
+
+.hero-cta--services {
+  background: var(--service);
+  color: #fff !important;
+  border: none;
+}
+
+.hero-cta--services:hover {
+  background: var(--service-hover);
+  color: #fff !important;
 }
 
 .btn-sm {
