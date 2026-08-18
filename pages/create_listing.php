@@ -1306,16 +1306,15 @@ document.addEventListener('DOMContentLoaded', function () {
             card.style = 'border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem; background: var(--bg-surface); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; position: relative;';
             card.className = 'card-hover';
             card.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-size: 1.6rem;">${t.icon || '🛠️'}</span>
-                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; background: var(--service-light); color: var(--service); padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">
-                        ${t.pricing_model === 'hourly' ? '⏱ Hourly' : '💵 Flat'}
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                    <div style="font-weight: 700; font-size: 0.98rem; color: var(--text-main);">${t.name}</div>
+                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; background: var(--service-light); color: var(--service); padding: 0.15rem 0.55rem; border-radius: var(--radius-full); white-space: nowrap;">
+                        ${t.pricing_model === 'hourly' ? 'Hourly' : 'Fixed Price'}
                     </span>
                 </div>
-                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${t.name}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${t.description_template}</div>
-                <div style="margin-top: auto; padding-top: 0.5rem; border-top: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
-                    <span style="font-weight: 700; color: var(--primary);">Suggested: ${t.suggested_price_min} - ${t.suggested_price_max}</span>
+                <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 0.25rem;">${t.description_template}</div>
+                <div style="margin-top: auto; padding-top: 0.6rem; border-top: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem;">
+                    <span style="font-weight: 700; color: var(--primary);">Suggested: ${t.suggested_price_min} – ${t.suggested_price_max}</span>
                     <span style="color: var(--service); font-weight: 600;">Use Template →</span>
                 </div>
             `;

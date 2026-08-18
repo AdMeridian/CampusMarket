@@ -20,7 +20,6 @@ try {
                 id BIGSERIAL PRIMARY KEY,
                 category_id BIGINT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
                 name VARCHAR(100) NOT NULL,
-                icon VARCHAR(10) NOT NULL DEFAULT '🛠️',
                 title_template VARCHAR(200) NOT NULL,
                 description_template TEXT NOT NULL,
                 suggested_price_min NUMERIC(10,2) NULL,
@@ -38,7 +37,6 @@ try {
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 category_id BIGINT NOT NULL,
                 name VARCHAR(100) NOT NULL,
-                icon VARCHAR(10) NOT NULL DEFAULT '🛠️',
                 title_template VARCHAR(200) NOT NULL,
                 description_template TEXT NOT NULL,
                 suggested_price_min NUMERIC(10,2) NULL,
@@ -58,7 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_template'])) {
     verifyCsrfToken();
     $categoryId = (int)($_POST['category_id'] ?? 0);
     $name = sanitize($_POST['name'] ?? '');
-    $icon = sanitize($_POST['icon'] ?? '🛠️');
     $titleTemplate = sanitize($_POST['title_template'] ?? '');
     $descriptionTemplate = sanitize($_POST['description_template'] ?? '');
     $minPrice = !empty($_POST['suggested_price_min']) ? (float)$_POST['suggested_price_min'] : null;
@@ -68,10 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_template'])) {
     if ($categoryId > 0 && !empty($name) && !empty($titleTemplate)) {
         try {
             $stmt = $pdo->prepare("
-                INSERT INTO service_templates (category_id, name, icon, title_template, description_template, suggested_price_min, suggested_price_max, pricing_model)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO service_templates (category_id, name, title_template, description_template, suggested_price_min, suggested_price_max, pricing_model)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$categoryId, $name, $icon, $titleTemplate, $descriptionTemplate, $minPrice, $maxPrice, $pricingModel]);
+            $stmt->execute([$categoryId, $name, $titleTemplate, $descriptionTemplate, $minPrice, $maxPrice, $pricingModel]);
             setFlash('success', "Template '$name' added successfully.");
         } catch (Throwable $e) {
             setFlash('error', 'Failed to add template: ' . $e->getMessage());
@@ -147,7 +144,6 @@ require_once '../includes/header.php';
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th style="width: 50px;">Icon</th>
                             <th>Template Name</th>
                             <th>Category</th>
                             <th>Pricing</th>
@@ -158,9 +154,8 @@ require_once '../includes/header.php';
                     <tbody>
                         <?php if (empty($templates)): ?>
                         <tr>
-                            <td colspan="6">
+                            <td colspan="5">
                                 <div class="admin-empty">
-                                    <span class="admin-empty-icon">🛠️</span>
                                     No custom service templates yet. Use the form on the right to add templates.
                                 </div>
                             </td>
@@ -168,7 +163,6 @@ require_once '../includes/header.php';
                         <?php else: ?>
                         <?php foreach ($templates as $t): ?>
                         <tr>
-                            <td style="font-size: 1.4rem; text-align: center;"><?php echo $t['icon'] ?: '🛠️'; ?></td>
                             <td>
                                 <strong style="color: var(--text-main); font-size: 0.92rem;"><?php echo sanitize($t['name']); ?></strong>
                                 <div style="font-size: 0.78rem; color: var(--text-muted);"><?php echo sanitize($t['title_template']); ?></div>
@@ -177,13 +171,13 @@ require_once '../includes/header.php';
                             <td>
                                 <div style="font-size: 0.85rem; font-weight: 600;">
                                     <?php if ($t['suggested_price_min']): ?>
-                                        <?php echo (float)$t['suggested_price_min']; ?> - <?php echo (float)$t['suggested_price_max']; ?>
+                                        <?php echo (float)$t['suggested_price_min']; ?> – <?php echo (float)$t['suggested_price_max']; ?>
                                     <?php else: ?>
                                         —
                                     <?php endif; ?>
                                 </div>
                                 <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">
-                                    <?php echo $t['pricing_model'] === 'hourly' ? '⏱ Hourly' : '💵 Flat'; ?>
+                                    <?php echo $t['pricing_model'] === 'hourly' ? 'Hourly' : 'Fixed Price'; ?>
                                 </div>
                             </td>
                             <td style="text-align: center;">
@@ -231,16 +225,13 @@ require_once '../includes/header.php';
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Template Short Name &amp; Emoji</label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="text" name="icon" class="form-control" style="max-width: 60px; text-align: center;" value="🛠️" placeholder="Emoji">
-                                <input type="text" name="name" class="form-control" placeholder="e.g. Math Tutoring" required>
-                            </div>
+                            <label class="form-label">Template Short Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Custom Website Development" required>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">Default Title Template</label>
-                            <input type="text" name="title_template" class="form-control" placeholder="e.g. Math Tutoring — All Levels Help" required>
+                            <input type="text" name="title_template" class="form-control" placeholder="e.g. Custom Website Development — Responsive & Modern" required>
                         </div>
 
                         <div class="form-group">
@@ -251,16 +242,16 @@ require_once '../includes/header.php';
                         <div class="form-group">
                             <label class="form-label">Pricing Model</label>
                             <select name="pricing_model" class="form-control">
-                                <option value="hourly">⏱️ Hourly Rate</option>
-                                <option value="flat">💵 Flat Rate</option>
+                                <option value="hourly">Hourly Rate</option>
+                                <option value="flat">Fixed Price / Flat Rate</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Suggested Price Range (Min - Max)</label>
+                            <label class="form-label">Suggested Price Range (Min – Max)</label>
                             <div style="display: flex; gap: 0.5rem;">
-                                <input type="number" step="0.01" name="suggested_price_min" class="form-control" placeholder="Min (e.g. 15)">
-                                <input type="number" step="0.01" name="suggested_price_max" class="form-control" placeholder="Max (e.g. 40)">
+                                <input type="number" step="0.01" name="suggested_price_min" class="form-control" placeholder="Min (e.g. 150)">
+                                <input type="number" step="0.01" name="suggested_price_max" class="form-control" placeholder="Max (e.g. 600)">
                             </div>
                         </div>
 
