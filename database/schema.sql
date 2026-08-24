@@ -1,6 +1,9 @@
 -- ============================================================
--- CampusMarket â€” Full Database Schema (ERD v2)
--- Run this in phpMyAdmin or MySQL CLI
+-- CampusMarket — Database Reference Schema
+-- 
+-- NOTE: In production (Vercel + Supabase), PostgreSQL migrations
+-- located in `supabase/migrations/` are the authoritative source of truth.
+-- This file serves as a MySQL / local reference document.
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS campusmarket CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
