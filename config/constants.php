@@ -162,6 +162,17 @@ if (!defined('WEB_PUSH_PUBLIC_KEY')) {
     define('WEB_PUSH_PUBLIC_KEY', getenv('WEB_PUSH_PUBLIC_KEY') ?: '');
 }
 
+// Marketing Emails
+if (!defined('MARKETING_FROM_EMAIL')) {
+    define('MARKETING_FROM_EMAIL', getenv('MARKETING_FROM_EMAIL') ?: 'marketing@campusmarketplace.site');
+}
+if (!defined('MARKETING_FROM_NAME')) {
+    define('MARKETING_FROM_NAME', getenv('MARKETING_FROM_NAME') ?: 'CampusMarket');
+}
+if (!defined('MARKETING_REPLY_TO')) {
+    define('MARKETING_REPLY_TO', getenv('MARKETING_REPLY_TO') ?: 'marketing@campusmarketplace.site');
+}
+
 // AI listing moderation — auto-approve when passed and confidence meets this (0–1).
 define('AI_MODERATION_MIN_CONFIDENCE', 0.65);
 
