@@ -157,6 +157,31 @@ function formatPrice($amount, ?string $currencyCode = null): string {
 }
 
 /**
+ * Convert an amount from one currency to another using exchange rates.
+ */
+function convertCurrency(float $amount, string $fromCurrency, string $toCurrency = 'TRY'): float {
+    $from = strtoupper(trim($fromCurrency));
+    $to   = strtoupper(trim($toCurrency));
+
+    if ($from === $to) {
+        return $amount;
+    }
+
+    $rates = defined('CURRENCY_EXCHANGE_RATES_TO_TRY') ? CURRENCY_EXCHANGE_RATES_TO_TRY : [
+        'TRY' => 1.0,
+        'USD' => 34.0,
+        'EUR' => 37.0,
+        'GBP' => 44.0,
+    ];
+
+    $fromRate = (float)($rates[$from] ?? 1.0);
+    $toRate   = (float)($rates[$to] ?? 1.0);
+
+    $amountInTry = $amount * $fromRate;
+    return $toRate > 0 ? ($amountInTry / $toRate) : $amountInTry;
+}
+
+/**
  * Calculate discounted listing price.
  */
 function getDiscountedPrice(array $product): float {

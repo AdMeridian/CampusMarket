@@ -59,9 +59,15 @@ $deals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Summary stats
 $totalCount = count($deals);
 $currencyTotals = [];
+$totalValueTry = 0.0;
+$totalValueUsd = 0.0;
+
 foreach ($deals as $d) {
     $curr = productCurrencyCode(['price_currency' => $d['product_price_currency'] ?? DEFAULT_PRODUCT_CURRENCY]);
-    $currencyTotals[$curr] = ($currencyTotals[$curr] ?? 0.0) + (float)$d['product_price'];
+    $price = (float)$d['product_price'];
+    $currencyTotals[$curr] = ($currencyTotals[$curr] ?? 0.0) + $price;
+    $totalValueTry += convertCurrency($price, $curr, 'TRY');
+    $totalValueUsd += convertCurrency($price, $curr, 'USD');
 }
 
 require_once __DIR__ . '/../includes/header.php';
@@ -69,10 +75,10 @@ require_once __DIR__ . '/../includes/header.php';
 
 <style>
 .txn-summary-bar {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: 1.25rem;
     margin-bottom: 1.5rem;
-    flex-wrap: wrap;
 }
 
 .txn-summary-stat {
@@ -80,9 +86,10 @@ require_once __DIR__ . '/../includes/header.php';
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
     padding: 1.25rem 1.5rem;
-    flex: 1;
-    min-width: 220px;
     border-left: 4px solid #10b981;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .txn-summary-stat .label {
@@ -96,16 +103,22 @@ require_once __DIR__ . '/../includes/header.php';
 
 .txn-summary-stat .value {
     font-family: 'Outfit', sans-serif;
-    font-size: 1.8rem;
+    font-size: 1.7rem;
     font-weight: 800;
     color: var(--text-main);
-    line-height: 1.1;
+    line-height: 1.15;
+}
+
+.txn-summary-stat .sub-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
 }
 
 .txn-currency-pills {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 0.65rem;
+    gap: 0.4rem 0.5rem;
     align-items: center;
     margin-top: 0.25rem;
 }
@@ -113,22 +126,22 @@ require_once __DIR__ . '/../includes/header.php';
 .txn-currency-pill {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.35rem;
+    gap: 0.3rem;
     background: rgba(16, 185, 129, 0.08);
     border: 1px solid rgba(16, 185, 129, 0.22);
-    padding: 0.25rem 0.6rem;
+    padding: 0.2rem 0.5rem;
     border-radius: var(--radius-md);
 }
 
 .txn-currency-pill .txn-pill-code {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 700;
     color: var(--text-muted);
 }
 
 .txn-currency-pill .txn-pill-amount {
     font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: #059669;
 }
@@ -193,25 +206,42 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="txn-summary-stat">
             <div class="label">Total Completed Deals</div>
             <div class="value"><?php echo $totalCount; ?></div>
+            <div class="sub-hint"><?php echo ($dateFrom || $dateTo || $selectedCurrency) ? 'Filtered results' : 'All-time verified'; ?></div>
         </div>
         <div class="txn-summary-stat">
-            <div class="label">Total Transaction Value</div>
-            <?php if (empty($currencyTotals)): ?>
-                <div class="value"><?php echo formatPrice(0, DEFAULT_PRODUCT_CURRENCY); ?></div>
-            <?php elseif (count($currencyTotals) === 1): ?>
-                <?php $singleCurr = array_key_first($currencyTotals); ?>
-                <div class="value" style="color: #059669;"><?php echo formatPrice($currencyTotals[$singleCurr], $singleCurr); ?></div>
-            <?php else: ?>
-                <div class="txn-currency-pills">
-                    <?php foreach ($currencyTotals as $currCode => $sumAmount): ?>
-                        <span class="txn-currency-pill">
-                            <span class="txn-pill-code"><?php echo htmlspecialchars($currCode); ?></span>
-                            <span class="txn-pill-amount"><?php echo formatPrice($sumAmount, $currCode); ?></span>
-                        </span>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+            <div class="label">Total Valuation (TRY)</div>
+            <div class="value" style="color: #059669;">
+                <?php 
+                    $hasMultiOrForeign = count($currencyTotals) > 1 || (!empty($selectedCurrency) && $selectedCurrency !== 'TRY');
+                    echo ($hasMultiOrForeign && $totalValueTry > 0 ? '≈ ' : '') . formatPrice($totalValueTry, 'TRY'); 
+                ?>
+            </div>
+            <div class="sub-hint">Est. aggregate in Turkish Lira</div>
         </div>
+        <div class="txn-summary-stat">
+            <div class="label">Total Valuation (USD)</div>
+            <div class="value" style="color: #059669;">
+                <?php 
+                    $hasMultiOrNonUsd = count($currencyTotals) > 1 || (!empty($selectedCurrency) && $selectedCurrency !== 'USD');
+                    echo ($hasMultiOrNonUsd && $totalValueUsd > 0 ? '≈ ' : '') . formatPrice($totalValueUsd, 'USD'); 
+                ?>
+            </div>
+            <div class="sub-hint">Est. aggregate in US Dollars</div>
+        </div>
+        <?php if (!empty($currencyTotals)): ?>
+        <div class="txn-summary-stat" style="border-left-color: #3b82f6;">
+            <div class="label">Recorded By Currency</div>
+            <div class="txn-currency-pills">
+                <?php foreach ($currencyTotals as $currCode => $sumAmount): ?>
+                    <span class="txn-currency-pill">
+                        <span class="txn-pill-code"><?php echo htmlspecialchars($currCode); ?></span>
+                        <span class="txn-pill-amount"><?php echo formatPrice($sumAmount, $currCode); ?></span>
+                    </span>
+                <?php endforeach; ?>
+            </div>
+            <div class="sub-hint">Original listing currency totals</div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Date Range & Currency Filter -->

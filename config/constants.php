@@ -128,6 +128,14 @@ define('PRODUCT_CURRENCIES', [
 ]);
 define('DEFAULT_PRODUCT_CURRENCY', 'TRY');
 
+/** Baseline exchange rates relative to TRY (1 Unit = X TRY) */
+define('CURRENCY_EXCHANGE_RATES_TO_TRY', [
+    'TRY' => 1.0,
+    'USD' => (float)(getenv('FX_RATE_USD_TRY') ?: 34.0),
+    'EUR' => (float)(getenv('FX_RATE_EUR_TRY') ?: 37.0),
+    'GBP' => (float)(getenv('FX_RATE_GBP_TRY') ?: 44.0),
+]);
+
 // Social (public profiles)
 define('INSTAGRAM_URL', 'https://www.instagram.com/campusmarketplace_nc/');
 
