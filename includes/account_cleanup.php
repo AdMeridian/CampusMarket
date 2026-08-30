@@ -19,6 +19,13 @@ if (!function_exists('isAuthorizedCronRequest')) {
             return false;
         }
 
+        // 1. Check HTTP_X_VERCEL_CRON_SECRET header
+        $vercelHeader = trim((string) ($_SERVER['HTTP_X_VERCEL_CRON_SECRET'] ?? ''));
+        if ($vercelHeader !== '' && hash_equals($secret, $vercelHeader)) {
+            return true;
+        }
+
+        // 2. Check Authorization: Bearer <token>
         $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
         if (preg_match('/^Bearer\s+(.+)$/i', $auth, $matches)) {
             return hash_equals($secret, trim($matches[1]));

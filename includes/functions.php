@@ -98,6 +98,21 @@ function currentUserId(): ?int {
 }
 
 /**
+ * Get current logged in user array from session or fallback
+ */
+function currentUser(): ?array {
+    if (!isLoggedIn()) {
+        return null;
+    }
+    return [
+        'id' => $_SESSION['user_id'] ?? null,
+        'username' => $_SESSION['username'] ?? '',
+        'email' => $_SESSION['email'] ?? '',
+        'role' => $_SESSION['role'] ?? 'user',
+    ];
+}
+
+/**
  * Require login — redirect to login page if not authenticated
  */
 function requireLogin(): void {
@@ -154,6 +169,31 @@ function formatPrice($amount, ?string $currencyCode = null): string {
         return $symbol . $formatted;
     }
     return $formatted . ' ' . $symbol;
+}
+
+/**
+ * Convert an amount from one currency to another using exchange rates.
+ */
+function convertCurrency(float $amount, string $fromCurrency, string $toCurrency = 'TRY'): float {
+    $from = strtoupper(trim($fromCurrency));
+    $to   = strtoupper(trim($toCurrency));
+
+    if ($from === $to) {
+        return $amount;
+    }
+
+    $rates = defined('CURRENCY_EXCHANGE_RATES_TO_TRY') ? CURRENCY_EXCHANGE_RATES_TO_TRY : [
+        'TRY' => 1.0,
+        'USD' => 34.0,
+        'EUR' => 37.0,
+        'GBP' => 44.0,
+    ];
+
+    $fromRate = (float)($rates[$from] ?? 1.0);
+    $toRate   = (float)($rates[$to] ?? 1.0);
+
+    $amountInTry = $amount * $fromRate;
+    return $toRate > 0 ? ($amountInTry / $toRate) : $amountInTry;
 }
 
 /**

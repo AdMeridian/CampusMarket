@@ -128,6 +128,14 @@ define('PRODUCT_CURRENCIES', [
 ]);
 define('DEFAULT_PRODUCT_CURRENCY', 'TRY');
 
+/** Baseline exchange rates relative to TRY (1 Unit = X TRY) */
+define('CURRENCY_EXCHANGE_RATES_TO_TRY', [
+    'TRY' => 1.0,
+    'USD' => (float)(getenv('FX_RATE_USD_TRY') ?: 34.0),
+    'EUR' => (float)(getenv('FX_RATE_EUR_TRY') ?: 37.0),
+    'GBP' => (float)(getenv('FX_RATE_GBP_TRY') ?: 44.0),
+]);
+
 // Social (public profiles)
 define('INSTAGRAM_URL', 'https://www.instagram.com/campusmarketplace_nc/');
 
@@ -152,6 +160,17 @@ if (!defined('STRIPE_SECRET_KEY')) {
 // Web Push (VAPID)
 if (!defined('WEB_PUSH_PUBLIC_KEY')) {
     define('WEB_PUSH_PUBLIC_KEY', getenv('WEB_PUSH_PUBLIC_KEY') ?: '');
+}
+
+// Marketing Emails
+if (!defined('MARKETING_FROM_EMAIL')) {
+    define('MARKETING_FROM_EMAIL', getenv('MARKETING_FROM_EMAIL') ?: 'marketing@campusmarketplace.site');
+}
+if (!defined('MARKETING_FROM_NAME')) {
+    define('MARKETING_FROM_NAME', getenv('MARKETING_FROM_NAME') ?: 'CampusMarket');
+}
+if (!defined('MARKETING_REPLY_TO')) {
+    define('MARKETING_REPLY_TO', getenv('MARKETING_REPLY_TO') ?: 'marketing@campusmarketplace.site');
 }
 
 // AI listing moderation — auto-approve when passed and confidence meets this (0–1).

@@ -72,39 +72,51 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="scroll-row">
             <?php 
-            // Hardcoded categories as requested
-            $hardcodedCategories = [
-                ['id' => 5,  'name' => 'Kitchen essentials',            'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>'],
-                ['id' => 1,  'name' => 'Electronics and accessories',    'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'],
-                ['id' => 4,  'name' => 'Clothing and fashion',          'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a8 8 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>'],
-                ['id' => 9,  'name' => 'Dorms and living essentials',   'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'],
-                ['id' => 10, 'name' => 'Transportation',                'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>'],
-                ['id' => 2,  'name' => 'Books and study materials',     'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>']
+            $quickCategoryDefs = [
+                ['slug' => 'kitchen-essentials', 'default_id' => 5, 'default_name' => 'Kitchen essentials', 'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>'],
+                ['slug' => 'electronics-accessories', 'default_id' => 1, 'default_name' => 'Electronics and accessories', 'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'],
+                ['slug' => 'clothing-fashion', 'default_id' => 4, 'default_name' => 'Clothing and fashion', 'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a8 8 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>'],
+                ['slug' => 'dorm-living-essentials', 'default_id' => 9, 'default_name' => 'Dorms and living essentials', 'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'],
+                ['slug' => 'transportation', 'default_id' => 10, 'default_name' => 'Transportation', 'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>'],
+                ['slug' => 'books-study-materials', 'default_id' => 2, 'default_name' => 'Books and study materials', 'icon' => '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>']
             ];
 
-            foreach ($hardcodedCategories as $cat): 
-                // Fetch real count for each hardcoded category (including multi-category mappings)
-                $stmt = $pdo->prepare("
-                    SELECT COUNT(DISTINCT p.id) 
-                    FROM products p 
-                    WHERE p.status = 'active' 
-                      AND (
-                          p.category_id = ? 
-                          OR EXISTS (
-                              SELECT 1 
-                              FROM product_categories pc 
-                              WHERE pc.product_id = p.id AND pc.category_id = ?
-                          )
-                      )
-                ");
-                $stmt->execute([$cat['id'], $cat['id']]);
-                $count = $stmt->fetchColumn();
+            // Single query to fetch categories by slug with live active item counts (including multi-category mappings)
+            $slugList = array_column($quickCategoryDefs, 'slug');
+            $inPlaceholders = implode(',', array_fill(0, count($slugList), '?'));
+            $catStmt = $pdo->prepare("
+                SELECT c.id, c.name, c.slug, 
+                       COUNT(DISTINCT p.id) AS active_count
+                FROM categories c
+                LEFT JOIN products p ON p.status = 'active' AND (
+                    p.category_id = c.id
+                    OR EXISTS (
+                        SELECT 1 
+                        FROM product_categories pc 
+                        WHERE pc.product_id = p.id AND pc.category_id = c.id
+                    )
+                )
+                WHERE c.slug IN ($inPlaceholders)
+                GROUP BY c.id, c.name, c.slug
+            ");
+            $catStmt->execute($slugList);
+            $dbCategories = [];
+            foreach ($catStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $dbCategories[$row['slug']] = $row;
+            }
+
+            foreach ($quickCategoryDefs as $catDef): 
+                $slug = $catDef['slug'];
+                $catData = $dbCategories[$slug] ?? null;
+                $catId = $catData['id'] ?? $catDef['default_id'];
+                $catName = $catData['name'] ?? $catDef['default_name'];
+                $count = (int)($catData['active_count'] ?? 0);
             ?>
-                <a href="<?php echo $pagesBase; ?>browse.php?category=<?php echo $cat['id']; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
+                <a href="<?php echo $pagesBase; ?>browse.php?category=<?php echo $catId; ?>" class="card card-hover p-6 flex flex-col items-center justify-center text-center">
                     <div style="color: var(--text-muted); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                        <?php echo $cat['icon']; ?>
+                        <?php echo $catDef['icon']; ?>
                     </div>
-                    <strong class="home-category-card__name"><?php echo translateCategory($cat['name']); ?></strong>
+                    <strong class="home-category-card__name"><?php echo translateCategory($catName); ?></strong>
                     <?php if ($count >= 45): ?>
                         <span class="text-muted small"><?= __('home.items_available', ['count' => $count > 100 ? '100+' : $count]) ?></span>
                     <?php endif; ?>
