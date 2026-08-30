@@ -6,8 +6,20 @@ require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/admin_audit.php';
 
 $pageTitle = "Email Marketing & Campaigns";
-$currentAdmin = currentUser();
-$adminEmail = $currentAdmin['email'] ?? '';
+$currentAdmin = currentUser() ?: [];
+$adminEmail = $currentAdmin['email'] ?? ($_SESSION['email'] ?? '');
+
+if (empty($adminEmail) && currentUserId()) {
+    $uStmt = $pdo->prepare("SELECT email, username FROM users WHERE id = :id LIMIT 1");
+    $uStmt->execute([':id' => currentUserId()]);
+    $row = $uStmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $adminEmail = $row['email'] ?? '';
+        if (empty($currentAdmin['username'])) {
+            $currentAdmin['username'] = $row['username'] ?? 'Admin';
+        }
+    }
+}
 
 // Ensure tables exist
 try {

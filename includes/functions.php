@@ -98,6 +98,21 @@ function currentUserId(): ?int {
 }
 
 /**
+ * Get current logged in user array from session or fallback
+ */
+function currentUser(): ?array {
+    if (!isLoggedIn()) {
+        return null;
+    }
+    return [
+        'id' => $_SESSION['user_id'] ?? null,
+        'username' => $_SESSION['username'] ?? '',
+        'email' => $_SESSION['email'] ?? '',
+        'role' => $_SESSION['role'] ?? 'user',
+    ];
+}
+
+/**
  * Require login — redirect to login page if not authenticated
  */
 function requireLogin(): void {
