@@ -5,9 +5,10 @@ requireAdmin();
 
 $pageTitle = "Verified Transactions";
 
-// Date range filter
-$dateFrom = isset($_GET['date_from']) ? $_GET['date_from'] : '';
-$dateTo   = isset($_GET['date_to'])   ? $_GET['date_to']   : '';
+// Filters
+$dateFrom         = isset($_GET['date_from']) ? $_GET['date_from'] : '';
+$dateTo           = isset($_GET['date_to'])   ? $_GET['date_to']   : '';
+$selectedCurrency = isset($_GET['currency'])  ? strtoupper(trim($_GET['currency'])) : '';
 
 $whereClause = "WHERE dc.status = 'completed'";
 $params = [];
@@ -19,6 +20,14 @@ if (!empty($dateFrom)) {
 if (!empty($dateTo)) {
     $whereClause .= " AND dc.seller_confirmed_at <= :date_to";
     $params[':date_to'] = $dateTo . ' 23:59:59';
+}
+if (!empty($selectedCurrency) && array_key_exists($selectedCurrency, PRODUCT_CURRENCIES)) {
+    if ($selectedCurrency === DEFAULT_PRODUCT_CURRENCY) {
+        $whereClause .= " AND (p.price_currency = :currency OR p.price_currency IS NULL OR p.price_currency = '')";
+    } else {
+        $whereClause .= " AND p.price_currency = :currency";
+    }
+    $params[':currency'] = $selectedCurrency;
 }
 
 // Fetch deals
@@ -49,9 +58,10 @@ $deals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Summary stats
 $totalCount = count($deals);
-$totalValue = 0;
+$currencyTotals = [];
 foreach ($deals as $d) {
-    $totalValue += (float)$d['product_price'];
+    $curr = productCurrencyCode(['price_currency' => $d['product_price_currency'] ?? DEFAULT_PRODUCT_CURRENCY]);
+    $currencyTotals[$curr] = ($currencyTotals[$curr] ?? 0.0) + (float)$d['product_price'];
 }
 
 require_once __DIR__ . '/../includes/header.php';
@@ -71,7 +81,7 @@ require_once __DIR__ . '/../includes/header.php';
     border-radius: var(--radius-lg);
     padding: 1.25rem 1.5rem;
     flex: 1;
-    min-width: 180px;
+    min-width: 220px;
     border-left: 4px solid #10b981;
 }
 
@@ -89,7 +99,38 @@ require_once __DIR__ . '/../includes/header.php';
     font-size: 1.8rem;
     font-weight: 800;
     color: var(--text-main);
-    line-height: 1;
+    line-height: 1.1;
+}
+
+.txn-currency-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.65rem;
+    align-items: center;
+    margin-top: 0.25rem;
+}
+
+.txn-currency-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-md);
+}
+
+.txn-currency-pill .txn-pill-code {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.txn-currency-pill .txn-pill-amount {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #059669;
 }
 
 .txn-filter-bar {
@@ -114,13 +155,18 @@ require_once __DIR__ . '/../includes/header.php';
     margin-bottom: 0.35rem;
 }
 
-.txn-filter-bar input[type="date"] {
+.txn-filter-bar input[type="date"],
+.txn-filter-bar select {
     padding: 0.45rem 0.75rem;
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     font-size: 0.9rem;
     background: var(--bg-main);
     color: var(--text-main);
+}
+
+.txn-filter-bar select {
+    min-width: 140px;
 }
 
 .badge-completed {
@@ -150,11 +196,25 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
         <div class="txn-summary-stat">
             <div class="label">Total Transaction Value</div>
-            <div class="value"><?php echo formatPrice($totalValue); ?></div>
+            <?php if (empty($currencyTotals)): ?>
+                <div class="value"><?php echo formatPrice(0, DEFAULT_PRODUCT_CURRENCY); ?></div>
+            <?php elseif (count($currencyTotals) === 1): ?>
+                <?php $singleCurr = array_key_first($currencyTotals); ?>
+                <div class="value" style="color: #059669;"><?php echo formatPrice($currencyTotals[$singleCurr], $singleCurr); ?></div>
+            <?php else: ?>
+                <div class="txn-currency-pills">
+                    <?php foreach ($currencyTotals as $currCode => $sumAmount): ?>
+                        <span class="txn-currency-pill">
+                            <span class="txn-pill-code"><?php echo htmlspecialchars($currCode); ?></span>
+                            <span class="txn-pill-amount"><?php echo formatPrice($sumAmount, $currCode); ?></span>
+                        </span>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
-    <!-- Date Range Filter -->
+    <!-- Date Range & Currency Filter -->
     <form method="GET" class="txn-filter-bar">
         <div>
             <label for="date_from">From</label>
@@ -164,8 +224,19 @@ require_once __DIR__ . '/../includes/header.php';
             <label for="date_to">To</label>
             <input type="date" id="date_to" name="date_to" value="<?php echo htmlspecialchars($dateTo); ?>">
         </div>
+        <div>
+            <label for="currency">Currency</label>
+            <select id="currency" name="currency">
+                <option value="">All Currencies</option>
+                <?php foreach (PRODUCT_CURRENCIES as $code => $info): ?>
+                    <option value="<?php echo $code; ?>" <?php echo ($selectedCurrency === $code) ? 'selected' : ''; ?>>
+                        <?php echo $code; ?> (<?php echo $info['symbol']; ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <button type="submit" class="btn btn-primary btn-sm" style="margin-bottom: 1px;">Filter</button>
-        <?php if ($dateFrom || $dateTo): ?>
+        <?php if ($dateFrom || $dateTo || $selectedCurrency): ?>
             <a href="transactions.php" class="btn btn-secondary btn-sm" style="margin-bottom: 1px;">Clear</a>
         <?php endif; ?>
     </form>
@@ -217,7 +288,7 @@ require_once __DIR__ . '/../includes/header.php';
         <?php if (empty($deals)): ?>
             <div class="text-center p-8 text-muted">
                 <span class="text-4xl mb-4 block"><svg style="width: 48px; height: 48px; display: inline-block; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-                No verified transactions found<?php echo ($dateFrom || $dateTo) ? ' for the selected date range' : ''; ?>.
+                No verified transactions found<?php echo ($dateFrom || $dateTo || $selectedCurrency) ? ' for the selected filters' : ''; ?>.
             </div>
         <?php endif; ?>
     </div>
