@@ -3632,3 +3632,38 @@ body.page-chat .chat-send-btn {
   transform: translateY(-50%) scale(1.05) !important;
 }
 
+/* ── Seller Live Preview Bar ── */
+.seller-preview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-surface));
+    border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+    box-shadow: var(--shadow-sm);
+    flex-wrap: wrap;
+}
+
+.seller-preview-bar__info {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--primary);
+}
+
+.seller-preview-bar__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+
