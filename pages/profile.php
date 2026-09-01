@@ -889,9 +889,12 @@ body.dark-mode .btn-white-solid:hover {
                                 </h3>
 
                                 <?php if ($isSelf): ?>
-                                    <div class="mt-4" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-primary btn-sm w-full" style="padding: 0.45rem 0.75rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md);">
-                                            <?= __('product.manage_listing') ?>
+                                    <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+                                        <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-primary btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
+                                            ⚙️ Manage
+                                        </a>
+                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
+                                            👁️ View
                                         </a>
                                     </div>
                                 <?php endif; ?>
@@ -952,9 +955,12 @@ body.dark-mode .btn-white-solid:hover {
                                     </a>
                                 </h3>
                                 <?php if ($isSelf): ?>
-                                    <div class="mt-4" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm w-full" style="padding: 0.45rem 0.75rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); background: #ef4444; color: white; border: none;">
-                                            Manage Service
+                                    <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+                                        <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); background: #ef4444; color: white; border: none; font-weight: 700;">
+                                            ⚙️ Manage
+                                        </a>
+                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
+                                            👁️ View
                                         </a>
                                     </div>
                                 <?php endif; ?>
