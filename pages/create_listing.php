@@ -21,30 +21,65 @@ $createdListingMeta = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
     $title          = sanitize($_POST['title']);
-    $categoryId     = (int)$_POST['category_id'];
+    $categoryId     = (int)($_POST['category_id'] ?? 0);
     $price          = (float)$_POST['price'];
     $priceCurrency  = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
     if (!array_key_exists($priceCurrency, PRODUCT_CURRENCIES)) {
         $priceCurrency = DEFAULT_PRODUCT_CURRENCY;
     }
-    $condition      = sanitize($_POST['condition']);
+    $condition      = sanitize($_POST['condition'] ?? '');
+    $listingType    = in_array($_POST['listing_type'] ?? 'product', ['product', 'service']) ? ($_POST['listing_type'] ?? 'product') : 'product';
+    $pricingModel   = in_array($_POST['pricing_model'] ?? 'flat', ['flat', 'hourly']) ? ($_POST['pricing_model'] ?? 'flat') : 'flat';
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $customLocation   = trim(sanitize($_POST['custom_location'] ?? ''));
     $userId         = currentUserId();
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
+    // ── Service-specific fields ──────────────────────────────────
+    $deliveryDays     = null;
+    $revisionCount    = null;
+    $availabilityStatus = 'available';
+    $availabilityResetAt = null;
+    $portfolioLink    = null;
+    if ($listingType === 'service') {
+        $rawDelivery = (int)($_POST['delivery_days'] ?? 0);
+        $deliveryDays = ($rawDelivery > 0 && $rawDelivery <= 365) ? $rawDelivery : null;
+        $rawRevisions = $_POST['revision_count'] ?? '';
+        if ($rawRevisions === 'unlimited') {
+            $revisionCount = 99;
+        } elseif (is_numeric($rawRevisions) && (int)$rawRevisions >= 0) {
+            $revisionCount = (int)$rawRevisions;
+        }
+        $availabilityStatus = in_array($_POST['availability_status'] ?? '', ['available','busy','unavailable'])
+            ? $_POST['availability_status']
+            : 'available';
+        $rawResetDays = (int)($_POST['availability_reset_days'] ?? 0);
+        if ($rawResetDays > 0) {
+            $availabilityResetAt = date('Y-m-d H:i:s', strtotime("+{$rawResetDays} days"));
+        }
+        $rawPortfolio = trim($_POST['portfolio_link'] ?? '');
+        if ($rawPortfolio !== '' && filter_var($rawPortfolio, FILTER_VALIDATE_URL)) {
+            $portfolioLink = mb_substr($rawPortfolio, 0, 500);
+        }
+    }
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
-    $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
-    $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
-    if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
-        $primaryCategoryId = (int)$selectedCategoryIds[0];
+    if ($listingType === 'service') {
+        $firstServiceCat = $pdo->query("SELECT id FROM categories WHERE type = 'service' ORDER BY id ASC LIMIT 1")->fetchColumn();
+        $categoryId = $firstServiceCat ? (int)$firstServiceCat : 11;
+        $selectedCategoryIds = [$categoryId];
+    } else {
+        $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
+        $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
+        if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
+            $primaryCategoryId = (int)$selectedCategoryIds[0];
+        }
+        if ($primaryCategoryId > 0) {
+            $selectedCategoryIds[] = $primaryCategoryId;
+        }
+        $selectedCategoryIds = array_values(array_unique(array_filter($selectedCategoryIds)));
+        $categoryId = $primaryCategoryId > 0 ? $primaryCategoryId : ($selectedCategoryIds[0] ?? 0);
     }
-    if ($primaryCategoryId > 0) {
-        $selectedCategoryIds[] = $primaryCategoryId;
-    }
-    $selectedCategoryIds = array_values(array_unique(array_filter($selectedCategoryIds)));
-    $categoryId = $primaryCategoryId > 0 ? $primaryCategoryId : ($selectedCategoryIds[0] ?? 0);
 
     // Validate Title and Image Presence
     if (empty($title) || mb_strlen($title) < 3) {
@@ -53,13 +88,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.title_too_long');
     } elseif (empty($_FILES['images']['name'][0]) || $_FILES['images']['error'][0] === UPLOAD_ERR_NO_FILE) {
         $error = __('create_listing.image_required');
-    } elseif ($categoryId <= 0 || empty($selectedCategoryIds)) {
+    } elseif ($listingType === 'product' && ($categoryId <= 0 || empty($selectedCategoryIds))) {
         $error = __('create_listing.select_category');
-    } elseif (!isValidLocationTown($locationTown)) {
+    }
+
+    if ($listingType === 'service' && ($locationTown === '' || !isValidLocationTown($locationTown))) {
+        // Default services to 'remote' when not specified — most student services are online-capable
+        $locationTown = 'remote';
+    }
+
+    if (!$error && $listingType === 'product' && !isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
-    } elseif ($locationTown === 'other' && empty($customLocation)) {
+    } elseif (!$error && $locationTown === 'other' && empty($customLocation)) {
         $error = __('create_listing.custom_location_required');
-    } elseif ($locationTown === 'other' && mb_strlen($customLocation) > 100) {
+    } elseif (!$error && $locationTown === 'other' && mb_strlen($customLocation) > 100) {
         $error = 'Custom location cannot exceed 100 characters.';
     }
 
@@ -110,15 +152,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 1. Insert Product
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town, custom_location) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown, ($locationTown === 'other' ? $customLocation : null)]);
+                $conditionValue = ($listingType === 'service') ? null : $condition;
+                $statusValue = ($listingType === 'service') ? 'pending_approval' : 'active';
+                $sellerMarketplace = function_exists('getUserUniversityAndCountry') ? getUserUniversityAndCountry($pdo, $userId) : null;
+                $sellerCountry = $sellerMarketplace['country_code'] ?? 'TR';
+                $sellerUniversityId = $sellerMarketplace['university_id'] ?? null;
+
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location, country_code, university_id, delivery_days, revision_count, availability_status, availability_reset_at, portfolio_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null), $sellerCountry, $sellerUniversityId, $deliveryDays, $revisionCount, $availabilityStatus, $availabilityResetAt, $portfolioLink]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
                     $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                     $categoryInsertSql = ($driverName === 'pgsql')
-                        ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT DO NOTHING'
-                        : 'INSERT IGNORE INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?)';
+                        ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = EXCLUDED.is_primary'
+                        : 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_primary = VALUES(is_primary)';
                     $categoryInsert = $pdo->prepare($categoryInsertSql);
                     foreach ($selectedCategoryIds as $catId) {
                         try {
@@ -192,7 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-                // 3. Save tags — manual selection first, then AI-generated as fallback
                 $tagsToSave = [];
                 if (!empty($selectedTagIds)) {
                     // User explicitly picked tags from the pill UI
@@ -204,6 +251,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $nameStmt->execute($aiResult['tags']);
                     $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
                 }
+
+                // Process user-suggested new tags
+                $newTagNames = array_slice(array_unique(array_filter(
+                    array_map(fn($t) => mb_strtolower(trim(sanitize((string)$t))), $_POST['new_tags'] ?? [])
+                )), 0, 5);
+
+                foreach ($newTagNames as $newName) {
+                    if (mb_strlen($newName) < 2 || mb_strlen($newName) > 40) continue;
+                    $slug = strtolower(preg_replace('/[^a-z0-9\-]+/u', '-', $newName));
+                    $slug = trim($slug, '-');
+                    if ($slug === '') continue;
+
+                    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                    $existing = $pdo->prepare("SELECT id FROM tags WHERE slug = ? OR LOWER(name) = ? LIMIT 1");
+                    $existing->execute([$slug, $newName]);
+                    $newTagId = $existing->fetchColumn();
+
+                    if (!$newTagId) {
+                        $insertTagSql = ($driver === 'pgsql')
+                            ? "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?) RETURNING id"
+                            : "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?)";
+                        $tagStmt = $pdo->prepare($insertTagSql);
+                        try {
+                            $tagStmt->execute([$newName, $slug, $userId]);
+                            $newTagId = ($driver === 'pgsql') ? $tagStmt->fetchColumn() : $pdo->lastInsertId();
+                        } catch (Throwable $eT) {
+                            $existing->execute([$slug, $newName]);
+                            $newTagId = $existing->fetchColumn();
+                        }
+                    }
+
+                    if ($newTagId) {
+                        $tagsToSave[] = (int)$newTagId;
+                    }
+                }
+                $tagsToSave = array_values(array_unique(array_map('intval', $tagsToSave)));
+
                 if (!empty($tagsToSave)) {
                     $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                     $tagSql = ($driverName === 'pgsql')
@@ -248,8 +332,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch Categories & Tags
-$categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
+// Determine if this is a service listing (from URL or previous POST)
+$isServiceMode = ($_GET['type'] ?? '') === 'service' || ($_POST['listing_type'] ?? '') === 'service';
+
+// Fetch product categories only (services have their own category tree)
+$categories = $pdo->query("SELECT * FROM categories WHERE type = 'product' ORDER BY name ASC")->fetchAll();
+$serviceCategories = $pdo->query("SELECT * FROM categories WHERE type = 'service' ORDER BY name ASC")->fetchAll();
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
 $userHomeTownDetails = isLoggedIn() ? getUserHomeTownDetails((int)currentUserId()) : null;
 $defaultTown = $userHomeTownDetails['town'] ?? '';
@@ -376,37 +464,73 @@ include '../includes/header.php';
         <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
             <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 js-form-loading" data-loading-text="<?= htmlspecialchars(__('create_listing.submitting_review'), ENT_QUOTES, 'UTF-8') ?>">
                 <?php echo csrfTokenField(); ?>
+
+                <!-- Listing Type Selector (Product vs Service) -->
                 <div class="form-group">
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
-                    <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <label class="font-bold mb-3 block" style="color: var(--text-main);">What are you listing?</label>
+                    <div class="flex gap-6" id="listing-type-selector">
+                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo !$isServiceMode ? 'var(--primary)' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo !$isServiceMode ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
+                            <input type="radio" name="listing_type" value="product" <?php echo !$isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-product">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📦</div>
+                            <div class="font-bold text-main" style="font-size: 0.95rem;">Physical Item</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">Something you can hand over</div>
+                        </label>
+                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo $isServiceMode ? 'var(--service)' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo $isServiceMode ? 'var(--service-light)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
+                            <input type="radio" name="listing_type" value="service" <?php echo $isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-service">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">🛠️</div>
+                            <div class="font-bold text-main" style="font-size: 0.95rem;">Service</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">Tutoring, cleaning, photography...</div>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label id="title-label" class="font-bold mb-2 block" style="color: var(--text-main);"><?= $isServiceMode ? __('create_listing.sell_label_service') : __('create_listing.sell_label') ?></label>
+                    <input type="text" id="title-input" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.title_placeholder_service')) : addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="form-group" style="grid-column: 1 / -1;">
+                    <!-- Category Selector (product only) -->
+                    <div class="form-group js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?> style="grid-column: 1 / -1;">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.category_label') ?></label>
                         <p class="text-muted small mb-3">Choose every category that fits. One will be used as the primary category.</p>
+                        
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <?php foreach ($categories as $cat): ?>
                                 <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
-                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) ? 'checked' : ''; ?>>
+                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) && !$isServiceMode ? 'checked' : ''; ?>>
                                     <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
                                 </label>
                             <?php endforeach; ?>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.town_label') ?></label>
-                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
-                            <option value=""><?= __('create_listing.select_town') ?></option>
-                            <?php foreach (locationTownSlugs() as $townSlug): ?>
-                                <option value="<?php echo $townSlug; ?>" <?php echo $selectedTown === $townSlug ? 'selected' : ''; ?>><?php echo formatLocationTown($townSlug); ?></option>
+                        <label class="font-bold mb-2 block" style="color: var(--text-main);">
+                            <span class="js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.town_label') ?></span>
+                            <span class="js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>📍 Availability / Location</span>
+                        </label>
+                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;">
+                            <?php
+                            $townSlugs = locationTownSlugs();
+                            // For services, pre-select 'remote' when no prior selection
+                            $resolvedTown = $selectedTown;
+                            if ($resolvedTown === '' && $isServiceMode) {
+                                $resolvedTown = 'remote';
+                            }
+                            foreach ($townSlugs as $townSlug):
+                                // Show 'Remote' option only for services; show towns first for products
+                                if ($townSlug === 'remote' && !$isServiceMode) continue;
+                            ?>
+                                <option value="<?php echo $townSlug; ?>" <?php echo $resolvedTown === $townSlug ? 'selected' : ''; ?>>
+                                    <?php echo formatLocationTown($townSlug); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                         <div id="custom_location_container" class="mt-3 form-group" style="<?php echo ($selectedTown === 'other') ? '' : 'display: none;'; ?>">
                             <label class="font-bold mb-1 block text-sm" style="color: var(--text-main);"><?= __('create_listing.custom_location_label') ?></label>
                             <input type="text" name="custom_location" id="custom_location_input" value="<?= htmlspecialchars($selectedCustomLocation) ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="w-full premium-input" style="padding: 0.8rem 1rem;">
                         </div>
-                        <p class="text-muted small mt-2 mb-0"><?= __('create_listing.town_hint') ?></p>
+                        <p class="text-muted small mt-2 mb-0 js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.town_hint') ?></p>
+                        <p class="text-muted small mt-2 mb-0 js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>Choose <strong>Remote / Online</strong> if your service can be done virtually, or pick the campus town where you'll be available in person.</p>
                     </div>
                 </div>
 
@@ -433,10 +557,11 @@ include '../includes/header.php';
                     </div>
                 </div>
 
-                <div class="form-group">
+                <!-- Condition (product only) -->
+                <div class="form-group js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>>
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.condition_label') ?></label>
                     <div class="flex flex-wrap gap-3" style="gap: 0.5rem;">
-                        <?php 
+                        <?php
                         $opts = [
                             'new' => __('create_listing.cond_new'),
                             'like_new' => __('create_listing.cond_like_new'),
@@ -453,9 +578,118 @@ include '../includes/header.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
+
+                <!-- Pricing Model (service only) -->
+                <div class="form-group js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
+                    <label class="font-bold mb-2 block" style="color: var(--text-main);">Pricing Model</label>
+                    <div class="flex gap-3">
+                        <label class="pricing-model-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
+                            <input type="radio" name="pricing_model" value="flat" <?php echo (($_POST['pricing_model'] ?? 'flat') === 'flat') ? 'checked' : ''; ?> class="hidden-radio">
+                            <div class="font-bold text-main">Flat Rate</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">One price for the job</div>
+                        </label>
+                        <label class="pricing-model-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
+                            <input type="radio" name="pricing_model" value="hourly" <?php echo (($_POST['pricing_model'] ?? '') === 'hourly') ? 'checked' : ''; ?> class="hidden-radio">
+                            <div class="font-bold text-main">Hourly Rate</div>
+                            <div class="text-muted" style="font-size: 0.78rem;">Price per hour</div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- ── Service Details Block (service only) ─────────────────── -->
+                <div class="js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
+                    <div style="border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; background: color-mix(in srgb, var(--service) 4%, var(--bg-surface)); display: grid; gap: 1.5rem;">
+                        <div style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--service); margin-bottom: -0.5rem;">Service Details</div>
+
+                        <!-- Delivery Days -->
+                        <div class="form-group mb-0">
+                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">How long to deliver?</label>
+                            <p class="text-muted small mb-3" style="font-size: 0.82rem;">Set an honest estimate — buyers will count on this.</p>
+                            <div class="flex flex-wrap gap-2" id="delivery-days-pills">
+                                <?php
+                                $deliveryOptions = [1 => 'Same day', 2 => '2 days', 3 => '3 days', 5 => '5 days', 7 => '1 week', 14 => '2 weeks', 30 => '1 month'];
+                                $prevDelivery = (int)($_POST['delivery_days'] ?? 0);
+                                foreach ($deliveryOptions as $days => $label): ?>
+                                <label style="cursor:pointer;">
+                                    <input type="radio" name="delivery_days" value="<?= $days ?>" class="hidden-radio" <?= $prevDelivery === $days ? 'checked' : '' ?>>
+                                    <span class="tag-pill-label js-delivery-pill" style="padding: 0.4rem 1rem; font-size: 0.85rem;"><?= $label ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                                <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                                    <input type="radio" name="delivery_days" value="0" class="hidden-radio" <?= $prevDelivery === 0 ? 'checked' : '' ?>>
+                                    <span class="tag-pill-label js-delivery-pill" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Varies / Let's discuss</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Revisions -->
+                        <div class="form-group mb-0">
+                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">Revisions included</label>
+                            <div class="flex flex-wrap gap-2">
+                                <?php
+                                $revisionOptions = ['0' => 'None', '1' => '1', '2' => '2', '3' => '3', '5' => '5', 'unlimited' => 'Unlimited'];
+                                $prevRevisions = isset($_POST['revision_count']) ? (string)$_POST['revision_count'] : '';
+                                foreach ($revisionOptions as $val => $label): ?>
+                                <label style="cursor:pointer;">
+                                    <input type="radio" name="revision_count" value="<?= $val ?>" class="hidden-radio" <?= $prevRevisions === (string)$val ? 'checked' : '' ?>>
+                                    <span class="tag-pill-label" style="padding: 0.4rem 1rem; font-size: 0.85rem;"><?= $label ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Availability Status -->
+                        <div class="form-group mb-0">
+                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">Your current availability</label>
+                            <div class="flex flex-col gap-2" id="availability-radios">
+                                <?php
+                                $availOptions = [
+                                    'available'   => ['label' => 'Available — taking new clients', 'color' => '#22c55e'],
+                                    'busy'        => ['label' => 'Busy — open but might be slow',  'color' => '#f59e0b'],
+                                    'unavailable' => ['label' => 'Unavailable — on a break',        'color' => '#ef4444'],
+                                ];
+                                $prevAvail = $_POST['availability_status'] ?? 'available';
+                                foreach ($availOptions as $val => $meta): ?>
+                                <label style="cursor:pointer; display:flex; align-items:center; gap:0.75rem; padding:0.65rem 1rem; border-radius:var(--radius-lg); border:2px solid var(--border-light); background:var(--bg-surface); transition:all 0.2s;" class="avail-label">
+                                    <input type="radio" name="availability_status" value="<?= $val ?>" class="hidden-radio avail-radio" <?= $prevAvail === $val ? 'checked' : '' ?>>
+                                    <span style="width:10px;height:10px;border-radius:50%;background:<?= $meta['color'] ?>;flex-shrink:0;"></span>
+                                    <span style="font-weight:600;color:var(--text-main);font-size:0.9rem;"><?= $meta['label'] ?></span>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <!-- Auto-reset option -->
+                            <div id="avail-reset-block" style="margin-top:1rem; padding:0.85rem 1rem; border-radius:var(--radius-md); background:color-mix(in srgb, var(--bg-surface) 80%, var(--bg-main)); border:1px dashed var(--border-light);">
+                                <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-weight:600; color:var(--text-main); font-size:0.88rem;">
+                                    <input type="checkbox" id="avail-reset-toggle" style="width:16px;height:16px;" <?= !empty($_POST['availability_reset_days']) ? 'checked' : '' ?>>
+                                    Auto-reset to Available after:
+                                </label>
+                                <div id="avail-reset-days-wrapper" style="margin-top:0.6rem; display:<?= !empty($_POST['availability_reset_days']) ? 'flex' : 'none' ?>; align-items:center; gap:0.75rem;">
+                                    <select name="availability_reset_days" class="premium-input" style="padding:0.5rem 0.8rem; font-size:0.88rem; width:auto;">
+                                        <?php foreach ([3 => '3 days', 7 => '1 week', 14 => '2 weeks', 30 => '1 month'] as $d => $l): ?>
+                                        <option value="<?= $d ?>" <?= (int)($_POST['availability_reset_days'] ?? 0) === $d ? 'selected' : '' ?>><?= $l ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <span class="text-muted" style="font-size:0.82rem;">Your status will automatically go back to Available after this time.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Portfolio / Social Link -->
+                        <div class="form-group mb-0">
+                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">Portfolio or Social Link <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
+                            <input type="url" name="portfolio_link" value="<?= htmlspecialchars($_POST['portfolio_link'] ?? '') ?>" placeholder="https://instagram.com/yourhandle" class="w-full premium-input" style="padding: 0.8rem 1rem;" maxlength="500">
+                            <p class="text-muted small mt-2 mb-0" style="font-size:0.8rem;">Paste any link — Instagram, TikTok, Behance, LinkedIn, your personal site, etc.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
-                    <textarea name="description" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                    <label class="font-bold mb-2 block" style="color: var(--text-main);">
+                        <span class="js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.description_label') ?></span>
+                        <span class="js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>Tell people about this skill</span>
+                    </label>
+                    <p class="text-muted small mb-2 js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?> style="font-size:0.83rem;">How long have you been doing this? What makes your work stand out? Write like you're talking to a friend.</p>
+                    <textarea id="description-textarea" name="description" rows="5" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.desc_placeholder_service')) : addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
 
                 <?php if (isAgent()): ?>
@@ -524,6 +758,16 @@ include '../includes/header.php';
                             <span class="tag-pill-label">#<?php echo sanitize($tag['name']); ?></span>
                         </label>
                         <?php endforeach; ?>
+                    </div>
+
+                    <!-- Custom Tag Creation -->
+                    <div id="new-tag-wrapper" style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-light);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; max-width: 420px;">
+                            <input type="text" id="new-tag-input" placeholder="+ Add a custom tag (e.g. vintage, calculus)" maxlength="40" class="premium-input" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: var(--radius-full); flex: 1;">
+                            <button type="button" id="btn-add-custom-tag" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.4rem 1rem;">Add</button>
+                        </div>
+                        <div id="custom-tags-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;"></div>
+                        <p class="text-muted small mt-1 mb-0" style="font-size: 0.76rem;">Don't see a tag you need? Type it above to add it to your listing.</p>
                     </div>
                 </div>
 
@@ -680,7 +924,13 @@ const createListingI18n = {
     compressing: <?= json_encode(__('create_listing.compressing_images')) ?>,
     maxFilesAlert: <?= json_encode(__('create_listing.max_files_alert', ['max' => MAX_IMAGES])) ?>,
     publishLabel: <?= json_encode(__('create_listing.publish')) ?>,
-    uploadHelp: <?= json_encode(__('create_listing.upload_desc')) ?>
+    uploadHelp: <?= json_encode(__('create_listing.upload_desc')) ?>,
+    sellLabel: <?= json_encode(__('create_listing.sell_label')) ?>,
+    offerLabel: <?= json_encode(__('create_listing.sell_label_service')) ?>,
+    titlePlaceholder: <?= json_encode(__('create_listing.title_placeholder')) ?>,
+    titlePlaceholderService: <?= json_encode(__('create_listing.title_placeholder_service')) ?>,
+    descPlaceholder: <?= json_encode(__('create_listing.desc_placeholder')) ?>,
+    descPlaceholderService: <?= json_encode(__('create_listing.desc_placeholder_service')) ?>
 };
 
 function updateFileInput() {
@@ -947,6 +1197,114 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Custom tag creation logic
+    const customTagInput = document.getElementById('new-tag-input');
+    const addCustomTagBtn = document.getElementById('btn-add-custom-tag');
+    const customTagsContainer = document.getElementById('custom-tags-container');
+
+    function addCustomTag() {
+        if (!customTagInput || !customTagsContainer) return;
+        const val = customTagInput.value.trim().replace(/^#+/, '');
+        if (val.length < 2) {
+            alert('Tag must be at least 2 characters long.');
+            return;
+        }
+        if (val.length > 40) {
+            alert('Tag cannot exceed 40 characters.');
+            return;
+        }
+        
+        const totalChecked = document.querySelectorAll('.tag-pill-check:checked').length;
+        const totalCustom = customTagsContainer.querySelectorAll('input[name="new_tags[]"]').length;
+        if (totalChecked + totalCustom >= 5) {
+            alert('You can choose or create up to 5 tags maximum.');
+            return;
+        }
+
+        // Duplicate check
+        const existingCustom = [...customTagsContainer.querySelectorAll('input[name="new_tags[]"]')].map(i => i.value.toLowerCase());
+        if (existingCustom.includes(val.toLowerCase())) {
+            alert('This tag is already added.');
+            return;
+        }
+
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill';
+        pill.style = 'display: inline-flex; align-items: center; gap: 0.35rem; background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); border-radius: var(--radius-full); padding: 0.25rem 0.65rem; font-size: 0.8rem; font-weight: 600;';
+        pill.innerHTML = `
+            <span>#${val}</span>
+            <input type="hidden" name="new_tags[]" value="${val.replace(/"/g, '&quot;')}">
+            <button type="button" style="background:none; border:none; color:inherit; font-size:0.9rem; cursor:pointer; padding:0; line-height:1;" title="Remove tag">&times;</button>
+        `;
+
+        pill.querySelector('button').addEventListener('click', () => pill.remove());
+        customTagsContainer.appendChild(pill);
+        customTagInput.value = '';
+    }
+
+    if (addCustomTagBtn && customTagInput) {
+        addCustomTagBtn.addEventListener('click', addCustomTag);
+        customTagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustomTag();
+            }
+        });
+    }
+
+    // Availability auto-reset toggle
+    const availResetToggle = document.getElementById('avail-reset-toggle');
+    const availResetWrapper = document.getElementById('avail-reset-days-wrapper');
+    if (availResetToggle && availResetWrapper) {
+        availResetToggle.addEventListener('change', function() {
+            availResetWrapper.style.display = this.checked ? 'flex' : 'none';
+        });
+    }
+
+    // Highlight selected availability label
+    document.querySelectorAll('.avail-radio').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.avail-label').forEach(function(lbl) {
+                lbl.style.borderColor = 'var(--border-light)';
+                lbl.style.background = 'var(--bg-surface)';
+            });
+            if (this.checked) {
+                const lbl = this.closest('.avail-label');
+                if (lbl) {
+                    lbl.style.borderColor = 'var(--service)';
+                    lbl.style.background = 'color-mix(in srgb, var(--service) 6%, var(--bg-surface))';
+                }
+            }
+        });
+        // Apply on load for pre-selected state
+        if (radio.checked) {
+            const lbl = radio.closest('.avail-label');
+            if (lbl) {
+                lbl.style.borderColor = 'var(--service)';
+                lbl.style.background = 'color-mix(in srgb, var(--service) 6%, var(--bg-surface))';
+            }
+        }
+    });
+
+    // Highlight selected delivery pill
+    document.querySelectorAll('input[name="delivery_days"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.js-delivery-pill').forEach(function(pill) {
+                pill.style.borderColor = 'var(--border-light)';
+                pill.style.background = 'var(--bg-main)';
+                pill.style.color = 'var(--text-muted)';
+            });
+            if (this.checked) {
+                const pill = this.nextElementSibling;
+                if (pill) {
+                    pill.style.borderColor = 'var(--service)';
+                    pill.style.background = 'var(--service-light)';
+                    pill.style.color = 'var(--service)';
+                }
+            }
+        });
+    });
+
     const townSelect = document.querySelector('select[name="location_town"]');
     const customLocContainer = document.getElementById('custom_location_container');
     const customLocInput = document.getElementById('custom_location_input');
@@ -967,3 +1325,90 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
+<script>
+// Dynamic listing type toggle
+(function() {
+    const typeRadios = document.querySelectorAll('input[name="listing_type"]');
+    const productOnlyEls = document.querySelectorAll('.js-product-only');
+    const serviceOnlyEls = document.querySelectorAll('.js-service-only');
+    const typeBtns = document.querySelectorAll('.listing-type-btn');
+
+    function applyType(type) {
+        productOnlyEls.forEach(el => el.style.display = type === 'product' ? '' : 'none');
+        serviceOnlyEls.forEach(el => el.style.display = type === 'service' ? '' : 'none');
+
+        // Dynamically update labels & placeholders
+        const titleLabel = document.getElementById('title-label');
+        const titleInput = document.getElementById('title-input');
+        const descTextarea = document.getElementById('description-textarea');
+        
+        if (titleLabel && titleInput && descTextarea) {
+            if (type === 'service') {
+                titleLabel.textContent = createListingI18n.offerLabel;
+                titleInput.placeholder = createListingI18n.titlePlaceholderService;
+                descTextarea.placeholder = createListingI18n.descPlaceholderService;
+            } else {
+                titleLabel.textContent = createListingI18n.sellLabel;
+                titleInput.placeholder = createListingI18n.titlePlaceholder;
+                descTextarea.placeholder = createListingI18n.descPlaceholder;
+            }
+        }
+
+        typeBtns.forEach(btn => {
+            const radio = btn.querySelector('input[name="listing_type"]');
+            const isSelected = radio && radio.value === type;
+            const color = radio && radio.value === 'service' ? '#ef4444' : 'var(--primary)';
+            btn.style.border = isSelected ? `2px solid ${color}` : '2px solid var(--border-light)';
+            if (isSelected && radio.value === 'service') {
+                btn.style.background = 'rgba(239,68,68,0.08)';
+            } else if (isSelected) {
+                btn.style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)';
+            } else {
+                btn.style.background = 'var(--bg-surface)';
+            }
+        });
+    }
+
+    typeRadios.forEach(radio => {
+        radio.addEventListener('change', () => applyType(radio.value));
+    });
+
+    // Run once on load to initialize state
+    const activeType = document.querySelector('input[name="listing_type"]:checked');
+    if (activeType) {
+        applyType(activeType.value);
+    }
+})();
+
+// Dynamic pricing model toggle
+(function() {
+    const modelRadios = document.querySelectorAll('input[name="pricing_model"]');
+    const modelBtns = document.querySelectorAll('.pricing-model-btn');
+
+    function applyModel(model) {
+        modelBtns.forEach(btn => {
+            const radio = btn.querySelector('input[name="pricing_model"]');
+            const isSelected = radio && radio.value === model;
+            if (isSelected) {
+                btn.style.border = '2px solid #ef4444';
+                btn.style.background = 'rgba(239,68,68,0.08)';
+            } else {
+                btn.style.border = '2px solid var(--border-light)';
+                btn.style.background = 'var(--bg-surface)';
+            }
+        });
+    }
+
+    modelRadios.forEach(radio => {
+        radio.addEventListener('change', () => applyModel(radio.value));
+    });
+
+    // Run once on load to initialize styling
+    const activeModel = document.querySelector('input[name="pricing_model"]:checked');
+    if (activeModel) {
+        applyModel(activeModel.value);
+    }
+})();
+</script>
+

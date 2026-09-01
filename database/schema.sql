@@ -33,7 +33,8 @@ CREATE TABLE users (
 CREATE TABLE categories (
     id    INT AUTO_INCREMENT PRIMARY KEY,
     name  VARCHAR(100) NOT NULL,
-    slug  VARCHAR(100) NOT NULL UNIQUE
+    slug  VARCHAR(100) NOT NULL UNIQUE,
+    `type`  ENUM('product', 'service') NOT NULL DEFAULT 'product'
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -58,11 +59,18 @@ CREATE TABLE products (
     price_currency VARCHAR(3)  NOT NULL DEFAULT 'TRY',
     discount_percent TINYINT   NOT NULL DEFAULT 0,
     discount_set_at DATETIME   NULL,
-    `condition`   ENUM('new', 'like_new', 'used', 'poor') NOT NULL DEFAULT 'used',
+    `condition`   ENUM('new', 'like_new', 'used', 'poor') NULL DEFAULT 'used',
     status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
+    listing_type ENUM('product', 'service') NOT NULL DEFAULT 'product',
+    pricing_model ENUM('flat', 'hourly') NOT NULL DEFAULT 'flat',
     moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
     custom_location VARCHAR(100) NULL,
+    delivery_days TINYINT UNSIGNED NULL DEFAULT NULL,
+    revision_count TINYINT UNSIGNED NULL DEFAULT NULL,
+    availability_status VARCHAR(20) NOT NULL DEFAULT 'available',
+    availability_reset_at TIMESTAMP NULL DEFAULT NULL,
+    portfolio_link VARCHAR(500) NULL DEFAULT NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
     views       INT            NOT NULL DEFAULT 0,
@@ -156,6 +164,8 @@ CREATE TABLE orders (
     status        ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
     meeting_point VARCHAR(255)   NULL,
     notes         TEXT           NULL,
+    scheduled_start DATETIME     NULL,
+    scheduled_end   DATETIME     NULL,
     created_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (buyer_id)   REFERENCES users(id)    ON DELETE CASCADE,

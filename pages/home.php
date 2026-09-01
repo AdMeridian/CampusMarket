@@ -36,12 +36,15 @@ $displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HO
         <h1 class="hero-title"><?= __('home.hero_title') ?></h1>
         <p class="hero-subtitle"><?= __('home.hero_desc') ?></p>
         <div class="hero-actions">
-            <a href="<?php echo BASE_URL; ?>pages/browse.php" class="btn hero-cta hero-cta--primary"><?= __('home.start_browsing') ?></a>
-            <?php if (isLoggedIn()): ?>
-                <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn hero-cta hero-cta--secondary"><?= __('home.sell_an_item') ?></a>
-            <?php else: ?>
-                <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn hero-cta hero-cta--secondary"><?= __('home.join_to_sell') ?></a>
-            <?php endif; ?>
+            <div class="hero-actions-row">
+                <a href="<?php echo BASE_URL; ?>pages/browse.php" class="btn hero-cta hero-cta--primary"><?= __('home.start_browsing') ?></a>
+                <?php if (isLoggedIn()): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn hero-cta hero-cta--secondary"><?= __('home.sell_an_item') ?></a>
+                <?php else: ?>
+                    <a href="<?php echo BASE_URL; ?>pages/register.php" class="btn hero-cta hero-cta--secondary"><?= __('home.join_to_sell') ?></a>
+                <?php endif; ?>
+            </div>
+            <a href="<?php echo BASE_URL; ?>pages/services.php" class="btn hero-cta hero-cta--services"><?= __('home.explore_services') ?></a>
         </div>
     </div>
 </section>
@@ -88,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 SELECT c.id, c.name, c.slug, 
                        COUNT(DISTINCT p.id) AS active_count
                 FROM categories c
-                LEFT JOIN products p ON p.status = 'active' AND (
+                LEFT JOIN products p ON p.status = 'active' AND (p.listing_type = 'product' OR p.listing_type IS NULL) AND (
                     p.category_id = c.id
                     OR EXISTS (
                         SELECT 1 

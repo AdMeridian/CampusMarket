@@ -299,11 +299,27 @@ $navCategories = getNavCategories($pdo);
 ?>
 <nav class="navbar">
     <div class="container flex justify-between items-center">
-        <!-- Logo -->
-        <a href="<?php echo BASE_URL; ?>" class="logo" style="display: flex; align-items: center; gap: 0.6rem;">
-            <img src="<?php echo rtrim(BASE_URL, '/'); ?>/public/images/logo.png" alt="CampusMarket Logo" style="height: 42px; width: auto; object-fit: contain;">
-            <span>CampusMarket</span>
-        </a>
+        <!-- Logo & Marketplace Badge -->
+        <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <a href="<?php echo BASE_URL; ?>" class="logo" style="display: flex; align-items: center; gap: 0.6rem;">
+                <img src="<?php echo rtrim(BASE_URL, '/'); ?>/public/images/logo.png" alt="CampusMarket Logo" style="height: 42px; width: auto; object-fit: contain;">
+                <span>CampusMarket</span>
+            </a>
+            <?php
+            $countryFlags = ['GB' => '🇬🇧', 'US' => '🇺🇸', 'TR' => '🇹🇷', 'DE' => '🇩🇪', 'CA' => '🇨🇦'];
+            $activeUserMarketplace = null;
+            if (isLoggedIn() && function_exists('getUserUniversityAndCountry')) {
+                $activeUserMarketplace = getUserUniversityAndCountry($pdo, (int)currentUserId());
+            }
+            if ($activeUserMarketplace):
+                $flag = $countryFlags[$activeUserMarketplace['country_code']] ?? '🌐';
+            ?>
+            <a href="<?php echo BASE_URL; ?>pages/browse.php?country=<?php echo sanitize($activeUserMarketplace['country_code']); ?>" class="lg-flex hidden" style="align-items: center; gap: 0.4rem; padding: 0.3rem 0.75rem; border-radius: 9999px; background: rgba(79, 70, 229, 0.08); border: 1px solid rgba(79, 70, 229, 0.2); color: var(--primary); font-size: 0.8rem; font-weight: 600; text-decoration: none;" title="Marketplace: <?php echo sanitize($activeUserMarketplace['country_name']); ?> (<?php echo sanitize($activeUserMarketplace['university_name']); ?>)">
+                <span><?php echo $flag; ?></span>
+                <span><?php echo sanitize($activeUserMarketplace['country_code']); ?> · <?php echo sanitize($activeUserMarketplace['university_name']); ?></span>
+            </a>
+            <?php endif; ?>
+        </div>
         
         <!-- Mobile Tools (Visible only on mobile next to the logo) -->
         <div class="lg-hidden flex items-center gap-2" style="margin-left: auto;">
@@ -371,6 +387,7 @@ $navCategories = getNavCategories($pdo);
 
             <div class="navbar-desktop-actions lg-flex">
                 <a href="<?php echo BASE_URL; ?>pages/browse.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none;"><?= __('nav.browse') ?></a>
+                <a href="<?php echo BASE_URL; ?>pages/services.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none;"><?= __('nav.services') ?></a>
                 <?php if (isLoggedIn()): ?>
                     <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none; position: relative;">
                         <?= __('nav.inbox') ?>

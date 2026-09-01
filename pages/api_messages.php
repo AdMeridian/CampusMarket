@@ -387,7 +387,7 @@ if ($action === 'check_deal_status') {
 
         // Check if there is an active buyer_confirmed deal
         $stmtDeal = $pdo->prepare("
-            SELECT d.*, p.title as product_title, p.user_id as seller_id, u.username as buyer_username
+            SELECT d.*, p.title as product_title, p.listing_type, p.pricing_model, p.user_id as seller_id, u.username as buyer_username
             FROM deal_confirmations d
             JOIN products p ON d.product_id = p.id
             JOIN users u ON d.buyer_id = u.id
@@ -410,7 +410,9 @@ if ($action === 'check_deal_status') {
                     'is_seller' => $isSeller,
                     'buyer_username' => $deal['buyer_username'],
                     'product_title' => $deal['product_title'],
-                    'product_id' => $deal['product_id']
+                    'product_id' => $deal['product_id'],
+                    'listing_type' => $deal['listing_type'],
+                    'pricing_model' => $deal['pricing_model']
                 ]
             ]);
             exit;
@@ -490,10 +492,10 @@ if ($action === 'check_deal_status') {
     $stmtBuyerName->execute([':id' => $buyerId]);
     $buyerUsername = $stmtBuyerName->fetchColumn();
 
-    // Fetch product title for display
-    $stmtProd = $pdo->prepare("SELECT title FROM products WHERE id = :id");
+    // Fetch product info for display
+    $stmtProd = $pdo->prepare("SELECT title, listing_type, pricing_model FROM products WHERE id = :id");
     $stmtProd->execute([':id' => $productId]);
-    $productTitle = $stmtProd->fetchColumn();
+    $productInfo = $stmtProd->fetch(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'show_handshake' => true,
@@ -504,7 +506,9 @@ if ($action === 'check_deal_status') {
             'seller_confirmed_at' => $deal['seller_confirmed_at'],
             'is_seller' => $isSeller,
             'buyer_username' => $buyerUsername,
-            'product_title' => $productTitle,
+            'product_title' => $productInfo['title'] ?? '',
+            'listing_type' => $productInfo['listing_type'] ?? 'product',
+            'pricing_model' => $productInfo['pricing_model'] ?? 'flat'
         ]
     ]);
     exit;
@@ -521,8 +525,8 @@ if ($action === 'confirm_deal') {
         exit;
     }
 
-    // Determine seller
-    $stmt = $pdo->prepare("SELECT user_id, title FROM products WHERE id = :pid");
+    // Determine seller and product info
+    $stmt = $pdo->prepare("SELECT user_id, title, listing_type FROM products WHERE id = :pid");
     $stmt->execute([':pid' => $productId]);
     $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -533,6 +537,7 @@ if ($action === 'confirm_deal') {
 
     $sellerId = (int)$product['user_id'];
     $productTitle = $product['title'];
+    $listingType = $product['listing_type'];
     $isSeller = ($currentUserId === $sellerId);
     $buyerId = $isSeller ? $otherUserId : $currentUserId;
 
@@ -566,17 +571,28 @@ if ($action === 'confirm_deal') {
                 $stmtIns->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
             }
 
+            // Capture scheduling data if provided
+            $schedStart = !empty($_POST['scheduled_start']) ? $_POST['scheduled_start'] : null;
+            $schedEnd = !empty($_POST['scheduled_end']) ? $_POST['scheduled_end'] : null;
+
             // Buyer confirms → awaiting seller
             $stmtUp = $pdo->prepare("
                 UPDATE deal_confirmations 
-                SET buyer_confirmed_at = NOW(), status = 'buyer_confirmed', updated_at = NOW()
+                SET buyer_confirmed_at = NOW(), status = 'buyer_confirmed', updated_at = NOW(),
+                    scheduled_start = :start, scheduled_end = :end
                 WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
             ");
-            $stmtUp->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            $stmtUp->execute([
+                ':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId,
+                ':start' => $schedStart, ':end' => $schedEnd
+            ]);
 
             // Notify seller
-            createNotification($pdo, $sellerId, 'order', 'Deal Confirmation Request',
-                "$myUsername says the deal for '$productTitle' is done. Open the chat to confirm and delist.", $productId);
+            $notificationTitle = ($listingType === 'service') ? 'Service Booking Request' : 'Deal Confirmation Request';
+            $notificationMsg = ($listingType === 'service')
+                ? "$myUsername wants to book your service '$productTitle'. Open the chat to confirm the schedule."
+                : "$myUsername says the deal for '$productTitle' is done. Open the chat to confirm and delist.";
+            createNotification($pdo, $sellerId, 'order', $notificationTitle, $notificationMsg, $productId);
 
             $pdo->commit();
             echo json_encode(['success' => true, 'action' => 'awaiting_seller']);

@@ -22,17 +22,21 @@ INSERT INTO users (id, username, email, password_hash, role) VALUES
 (5, 'chris_e', 'chris@student.edu', '$2y$10$yH9NwmMe1YkBTVg1HVA.NOF0z/fdkuFG8nkklTJT250.7HmVHUlAO', 'user');
 
 -- ─── Categories ───────────────────────────────────────────
-INSERT INTO categories (id, name, slug) VALUES
-(1,  'Electronics & Accessories', 'electronics-accessories'),
-(2,  'Books & Study Materials', 'books-study-materials'),
-(3,  'Furniture', 'furniture'),
-(4,  'Clothing & Fashion', 'clothing-fashion'),
-(5,  'Kitchen Essentials', 'kitchen-essentials'),
-(6,  'Health & Personal Care', 'health-personal-care'),
-(7,  'Food & Beverages', 'food-beverages'),
-(8,  'Stationery & Study Supplies', 'stationery-study-supplies'),
-(9,  'Dorm & Living Essentials', 'dorm-living-essentials'),
-(10, 'Transportation (Bikes & Scooters)', 'transportation');
+INSERT INTO categories (id, name, slug, `type`) VALUES
+(1,  'Electronics & Accessories', 'electronics-accessories', 'product'),
+(2,  'Books & Study Materials', 'books-study-materials', 'product'),
+(3,  'Furniture', 'furniture', 'product'),
+(4,  'Clothing & Fashion', 'clothing-fashion', 'product'),
+(5,  'Kitchen Essentials', 'kitchen-essentials', 'product'),
+(6,  'Health & Personal Care', 'health-personal-care', 'product'),
+(7,  'Food & Beverages', 'food-beverages', 'product'),
+(8,  'Stationery & Study Supplies', 'stationery-study-supplies', 'product'),
+(9,  'Dorm & Living Essentials', 'dorm-living-essentials', 'product'),
+(10, 'Transportation (Bikes & Scooters)', 'transportation', 'product'),
+(11, 'Tutoring & Academic Help', 'tutoring', 'service'),
+(12, 'Cleaning Services', 'cleaning', 'service'),
+(13, 'Moving & Packing', 'moving', 'service'),
+(14, 'Photography & Media', 'photography', 'service');
 
 -- ─── Tags ───────────────────────────────────────────────────
 INSERT INTO tags (id, name, slug) VALUES

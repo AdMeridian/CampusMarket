@@ -307,9 +307,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     } catch (Exception $e) {
         $pdo->rollBack();
         error_log('[product:update_categories] ' . $e->getMessage());
+        if (function_exists('logSystemError')) {
+            logSystemError($pdo, 'product_categories', $e->getMessage(), $e, (int)currentUserId());
+        }
         setFlash('error', __('product.update_categories_failed'));
     }
 
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+}
+
+// Handle Service Details Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_service_details') {
+    verifyCsrfToken();
+    $rawDelivery = (int)($_POST['delivery_days'] ?? 0);
+    $newDeliveryDays = ($rawDelivery > 0 && $rawDelivery <= 365) ? $rawDelivery : null;
+    
+    $rawRevisions = $_POST['revision_count'] ?? '';
+    if ($rawRevisions === 'unlimited') {
+        $newRevisionCount = 99;
+    } elseif (is_numeric($rawRevisions) && (int)$rawRevisions >= 0) {
+        $newRevisionCount = (int)$rawRevisions;
+    } else {
+        $newRevisionCount = null;
+    }
+
+    $newAvailStatus = in_array($_POST['availability_status'] ?? '', ['available','busy','unavailable'])
+        ? $_POST['availability_status']
+        : 'available';
+
+    $rawResetDays = (int)($_POST['availability_reset_days'] ?? 0);
+    $newResetAt = null;
+    if ($rawResetDays > 0) {
+        $newResetAt = date('Y-m-d H:i:s', strtotime("+{$rawResetDays} days"));
+    }
+
+    $rawPortfolio = trim($_POST['portfolio_link'] ?? '');
+    $newPortfolioLink = null;
+    if ($rawPortfolio !== '' && filter_var($rawPortfolio, FILTER_VALIDATE_URL)) {
+        $newPortfolioLink = mb_substr($rawPortfolio, 0, 500);
+    }
+
+    $stmtUp = $pdo->prepare("
+        UPDATE products 
+        SET delivery_days = :del_days,
+            revision_count = :rev_count,
+            availability_status = :avail_status,
+            availability_reset_at = :avail_reset,
+            portfolio_link = :port_link,
+            updated_at = NOW()
+        WHERE id = :id
+    ");
+    $stmtUp->execute([
+        ':del_days' => $newDeliveryDays,
+        ':rev_count' => $newRevisionCount,
+        ':avail_status' => $newAvailStatus,
+        ':avail_reset' => $newResetAt,
+        ':port_link' => $newPortfolioLink,
+        ':id' => $productId,
+    ]);
+
+    setFlash('success', 'Service details updated successfully.');
     redirect(BASE_URL . 'pages/product.php?id=' . $productId);
 }
 
@@ -334,6 +391,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             setFlash('success', __('product.primary_image_updated'));
         } catch (Exception $e) {
             $pdo->rollBack();
+            if (function_exists('logSystemError')) {
+                logSystemError($pdo, 'product_images', 'Set primary image failed: ' . $e->getMessage(), $e, (int)currentUserId());
+            }
             setFlash('error', __('product.db_error'));
         }
     } else {
@@ -378,6 +438,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             setFlash('success', __('product.image_deleted'));
         } catch (Exception $e) {
             $pdo->rollBack();
+            if (function_exists('logSystemError')) {
+                logSystemError($pdo, 'product_images', 'Delete image failed: ' . $e->getMessage(), $e, (int)currentUserId());
+            }
             setFlash('error', __('product.delete_image_failed'));
         }
     } else {
@@ -394,6 +457,25 @@ $images = $stmt->fetchAll();
 // Fetch Seller Stats (for SCC)
 $rating = getSellerRating($pdo, (int)$product['seller_id']);
 $trust  = getSellerTrustScore($pdo, (int)$product['seller_id']);
+
+// Fetch Service-Specific Reviews and Stats
+$stmtServiceStats = $pdo->prepare("SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as review_count FROM ratings WHERE product_id = ?");
+$stmtServiceStats->execute([$productId]);
+$serviceRatingStats = $stmtServiceStats->fetch();
+$serviceAvg = (float)$serviceRatingStats['avg_rating'];
+$serviceCount = (int)$serviceRatingStats['review_count'];
+
+$stmtServiceReviews = $pdo->prepare("
+    SELECT r.*, u.username as reviewer_name, p.title as product_title
+    FROM ratings r
+    JOIN users u ON u.id = r.reviewer_id
+    JOIN products p ON p.id = r.product_id
+    WHERE r.product_id = ?
+    ORDER BY r.created_at DESC
+    LIMIT 6
+");
+$stmtServiceReviews->execute([$productId]);
+$serviceReviews = $stmtServiceReviews->fetchAll();
 
 // Fetch REAL unique view count from product_views table (fallback when table is missing locally)
 if ($hasProductViewsTable) {
@@ -1053,17 +1135,18 @@ body.dark-mode .scc-badge {
         </div>
     <?php endif; ?>
     <?php if ($isOwner): ?>
-        <div class="seller-management-banner" style="background: var(--primary); color: white; padding: 1.25rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1);">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 flex items-center justify-center" style="border-radius: var(--radius-md); background: rgba(255,255,255,0.2);">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                </div>
-                <div>
-                    <h4 class="mb-0 font-bold" style="line-height: 1.2; font-size: 1.25rem; color: white;"><?= __('product.mgmt_mode') ?></h4>
-                    <p class="mb-0 opacity-90 small" style="color: white; font-weight: 500;"><?= __('product.mgmt_mode_desc') ?></p>
-                </div>
+        <!-- Seller Live Preview Bar -->
+        <div class="seller-preview-bar flex flex-wrap items-center justify-between gap-4 p-3.5 px-5 mb-6 rounded-xl glass-panel shadow-sm" style="background: color-mix(in srgb, var(--primary) 8%, var(--bg-surface)); border: 1.5px solid var(--primary);">
+            <div class="flex items-center gap-2.5 font-bold text-sm" style="color: var(--primary);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>You are viewing this listing as buyers see it (Live Preview)</span>
             </div>
-            <a href="<?php echo BASE_URL; ?>pages/profile.php" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);"><?= __('product.go_to_dashboard') ?></a>
+            <div class="flex items-center gap-2">
+                <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary btn-sm flex items-center gap-1.5" style="border-radius: var(--radius-md); font-weight: 700; padding: 0.5rem 1rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    ⚙️ Manage &amp; Edit
+                </a>
+            </div>
         </div>
     <?php endif; ?>
 
@@ -1071,9 +1154,13 @@ body.dark-mode .scc-badge {
     <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
         <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors"><?= __('product.home') ?></a>
         <span class="opacity-50">/</span>
-        <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
-        <span class="opacity-50">/</span>
-        <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+        <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <a href="<?php echo BASE_URL; ?>pages/services.php" class="hover:text-primary transition-colors"><?= __('nav.services') ?></a>
+        <?php else: ?>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
+            <span class="opacity-50">/</span>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+        <?php endif; ?>
     </div>
 
     <div class="grid grid-cols-1 lg-grid-cols-2 gap-12 lg-gap-16">
@@ -1102,8 +1189,15 @@ body.dark-mode .scc-badge {
                 <?php endif; ?>
 
                 <div style="position: absolute; top: 1.5rem; right: 1.5rem;">
-                    <?php $badge = conditionBadge($product['condition']); ?>
-                    <span class="badge <?php echo $badge['class']; ?> shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px);"><?php echo $badge['label']; ?></span>
+                    <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+                        <?php $isHourly = ($product['pricing_model'] ?? 'flat') === 'hourly'; ?>
+                        <span class="badge shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px); background: var(--service); color: white;">
+                            <?= $isHourly ? '⏱ ' . __('product.hourly_badge') : '🛠️ ' . __('product.service_badge') ?>
+                        </span>
+                    <?php else: ?>
+                        <?php $badge = conditionBadge($product['condition']); ?>
+                        <span class="badge <?php echo $badge['class']; ?> shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px);"><?php echo $badge['label']; ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
             
@@ -1125,27 +1219,8 @@ body.dark-mode .scc-badge {
         <div class="flex flex-col">
             <div class="mb-6 border-b border-gray-100 pb-6">
                 <p class="text-primary font-bold tracking-widest uppercase small mb-2" style="font-size: 0.8rem;"><?php echo sanitize(translateCategory($product['category_name'])); ?></p>
-                <?php if ($isOwner): ?>
-                    <form method="post" class="mb-4">
-                        <?php echo csrfTokenField(); ?>
-                        <input type="hidden" name="action" value="update_title">
-                        <label for="listing-title" class="font-bold mb-2 block" style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em;"><?= __('product.listing_title_label') ?></label>
-                        <input
-                            type="text"
-                            id="listing-title"
-                            name="title"
-                            value="<?php echo htmlspecialchars($product['title'], ENT_QUOTES, 'UTF-8'); ?>"
-                            maxlength="100"
-                            required
-                            class="w-full premium-input product-title-edit-input"
-                            style="padding: 0.85rem 1rem; font-size: 1.5rem; font-weight: 700; line-height: 1.2; margin-bottom: 0.75rem;"
-                        >
-                        <button type="submit" class="btn btn-primary btn-sm"><?= __('product.update_title') ?></button>
-                    </form>
-                <?php else: ?>
-                    <h1 class="product-title mb-4 text-main font-bold"><?php echo sanitize($product['title']); ?></h1>
-                <?php endif; ?>
-                <?php if (!empty($productCategories)): ?>
+                <h1 class="product-title mb-4 text-main font-bold"><?php echo sanitize($product['title']); ?></h1>
+                <?php if (($product['listing_type'] ?? 'product') !== 'service' && !empty($productCategories)): ?>
                 <div class="flex flex-wrap gap-2 mb-4">
                     <?php foreach ($productCategories as $category): ?>
                         <a href="<?php echo BASE_URL; ?>pages/browse.php?category=<?php echo (int)$category['id']; ?>" class="inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold transition-colors hover:text-primary" style="border-color: var(--border-light); background: var(--bg-surface); color: var(--text-main); text-decoration: none;">
@@ -1205,6 +1280,59 @@ body.dark-mode .scc-badge {
                 </div>
             </div>
 
+            <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <?php
+            $availColors = ['available' => '#22c55e', 'busy' => '#f59e0b', 'unavailable' => '#ef4444'];
+            $availLabels = ['available' => 'Available now', 'busy' => 'Busy — might be slow', 'unavailable' => 'Currently unavailable'];
+            $availStatus = $product['availability_status'] ?? 'available';
+            $availColor  = $availColors[$availStatus] ?? '#22c55e';
+            $availLabel  = $availLabels[$availStatus] ?? 'Available';
+            $deliveryDays  = (int)($product['delivery_days'] ?? 0);
+            $revisionCount = $product['revision_count'] ?? null;
+            $portfolioLink = trim((string)($product['portfolio_link'] ?? ''));
+            $deliveryLabel = match(true) {
+                $deliveryDays === 1 => 'Same day',
+                $deliveryDays > 1 && $deliveryDays < 7 => $deliveryDays . ' days',
+                $deliveryDays === 7 => '1 week',
+                $deliveryDays === 14 => '2 weeks',
+                $deliveryDays === 30 => '1 month',
+                $deliveryDays > 0 => $deliveryDays . ' days',
+                default => null,
+            };
+            $revisionLabel = match(true) {
+                $revisionCount === null => null,
+                $revisionCount === 0 => 'No revisions',
+                (int)$revisionCount === 99 => 'Unlimited revisions',
+                default => $revisionCount . ' revision' . ((int)$revisionCount > 1 ? 's' : '') . ' included',
+            };
+            ?>
+            <div style="margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-card); display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center;">
+                <!-- Availability -->
+                <div style="display:flex; align-items:center; gap:0.5rem; font-weight:600; font-size:0.9rem; color:var(--text-main);">
+                    <span style="width:9px;height:9px;border-radius:50%;background:<?= $availColor ?>;flex-shrink:0;"></span>
+                    <?= htmlspecialchars($availLabel) ?>
+                </div>
+                <?php if ($deliveryLabel): ?>
+                <div style="display:flex; align-items:center; gap:0.45rem; font-weight:600; font-size:0.88rem; color:var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Delivers in <?= htmlspecialchars($deliveryLabel) ?>
+                </div>
+                <?php endif; ?>
+                <?php if ($revisionLabel): ?>
+                <div style="display:flex; align-items:center; gap:0.45rem; font-weight:600; font-size:0.88rem; color:var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+                    <?= htmlspecialchars($revisionLabel) ?>
+                </div>
+                <?php endif; ?>
+                <?php if ($portfolioLink !== ''): ?>
+                <a href="<?= htmlspecialchars($portfolioLink) ?>" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:0.45rem; font-weight:700; font-size:0.88rem; color:var(--primary); text-decoration:none; padding:0.3rem 0.75rem; border-radius:var(--radius-full); border:1px solid var(--primary); transition:all 0.18s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    View Portfolio
+                </a>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
             <!-- SELLER PROFILE CARD (Visible to Everyone) -->
             <div class="scc-wrapper mt-8">
                 <div class="scc-seller-card">
@@ -1233,400 +1361,57 @@ body.dark-mode .scc-badge {
                 </div>
             </div>
 
-            <!-- LISTING INSIGHTS CENTER -->
-            <?php if ($isOwner): ?>
-            <div class="scc-wrapper">
-                <!-- MAIN INSIGHTS BOX -->
-                <div class="scc-main-card" style="padding: 2rem; margin-bottom: 2rem; margin-left: auto; border-radius: var(--radius-lg); background: var(--bg-card); border: 1px solid var(--border-light);">
-                    <!-- Insights Header -->
-                    <div class="flex items-start justify-between mb-8">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 flex items-center justify-center text-indigo-500" style="border-radius: var(--radius-xl); background: var(--bg-main);">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                            </div>
-                            <div>
-                                <h3 class="m-0 font-black text-main" style="font-size: 1.4rem; color: var(--text-main);"><?= __('product.listing_insights') ?></h3>
-                                <p class="m-0 text-muted font-bold" style="font-size: 0.9rem;"><?= __('product.live_performance') ?></p>
-                            </div>
-                        </div>
-                        <span style="font-size: 0.65rem; font-weight: 900; color: #94a3b8; background: #f8fafc; padding: 0.25rem 0.6rem; border-radius: 6px; letter-spacing: 0.05em; border: 1px solid #f1f5f9;"><?php echo $isOwner ? __('product.seller_badge') : __('product.livestats_badge'); ?></span>
+            <!-- Description -->
+            <div class="product-desc-card mt-8">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-10 h-10 flex items-center justify-center" style="border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary);">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     </div>
-
-                    <!-- Metrics Grid -->
-                    <div class="grid grid-cols-1 md-grid-cols-3 gap-5 mb-7">
-                        <!-- Card 1: Total Reach -->
-                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden scc-metric-blue">
-                            <div class="relative z-10">
-                                <div class="flex items-center gap-4 mb-4">
-                                    <div class="flex items-center justify-center text-indigo-600 shadow-sm" style="width: 48px; height: 48px; border-radius: var(--radius-xl); background: var(--bg-main);">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                    </div>
-                                    <span class="text-[0.95rem] font-bold text-muted"><?= __('product.total_reach') ?></span>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <h2 class="stat-value text-main count-up" data-value="<?php echo $uniqueViewCount; ?>">0</h2>
-                                </div>
-                                <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.unique_views') ?></p>
-                            </div>
-                            <?php
-                                // Build SVG path from real daily data
-                                $vPath = '';
-                                $vFill = '';
-                                for ($i = 0; $i < 6; $i++) {
-                                    $cmd = $i === 0 ? 'M' : 'L';
-                                    $vPath .= "$cmd {$xPos[$i]} {$viewY[$i]} ";
-                                }
-                                $vFill = $vPath . "L 100 40 L 0 40 Z";
-                            ?>
-                            <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
-                                <defs>
-                                    <linearGradient id="reachFill" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#2563eb" stop-opacity="0.25"/>
-                                        <stop offset="100%" stop-color="#2563eb" stop-opacity="0.02"/>
-                                    </linearGradient>
-                                </defs>
-                                <path d="<?php echo $vFill; ?>" fill="url(#reachFill)"/>
-                                <path d="<?php echo $vPath; ?>" class="graph-line" stroke="#1d4ed8" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-
-                        <!-- Card 2: Student Interest -->
-                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden scc-metric-violet">
-                            <div class="relative z-10">
-                                <div class="flex items-center gap-4 mb-4">
-                                    <!-- Owner sees a read-only heart — not clickable, so they can't self-save -->
-                                    <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
-                                        <svg class="w-6 h-6" fill="<?php echo $wishlistCount > 0 ? 'currentColor' : 'none'; ?>" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                                    </div>
-                                    <span class="text-[0.95rem] font-bold text-muted"><?= __('product.student_interest') ?></span>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <h2 class="stat-value text-main count-up" data-value="<?php echo $wishlistCount; ?>">0</h2>
-                                    <span class="text-emerald-500 font-black text-[0.8rem] flex items-center gap-1">
-                                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                        <?= __('product.live_label') ?>
-                                    </span>
-                                </div>
-                                <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.saved_by') ?></p>
-                            </div>
-                            <?php
-                                // Build SVG path from real daily wishlist data
-                                $wPath = '';
-                                for ($i = 0; $i < 6; $i++) {
-                                    $cmd = $i === 0 ? 'M' : 'L';
-                                    $wPath .= "$cmd {$xPos[$i]} {$wishY[$i]} ";
-                                }
-                                $wFill = $wPath . "L 100 40 L 0 40 Z";
-                            ?>
-                            <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
-                                <defs>
-                                    <linearGradient id="interestFill" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.25"/>
-                                        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.02"/>
-                                    </linearGradient>
-                                </defs>
-                                <path d="<?php echo $wFill; ?>" fill="url(#interestFill)"/>
-                                <path d="<?php echo $wPath; ?>" class="graph-line-wish" stroke="#9333ea" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-
-                        <!-- Card 3: External shares -->
-                        <div class="p-5 rounded-[1rem] relative border border-[#edf2fb] bg-white shadow-sm overflow-hidden scc-metric-emerald">
-                            <div class="relative z-10">
-                                <div class="flex items-center gap-4 mb-4">
-                                    <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-sm">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/></svg>
-                                    </div>
-                                    <span class="text-[0.95rem] font-bold text-muted"><?= __('product.external_shares') ?></span>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <h2 class="stat-value text-main count-up" data-value="<?php echo $shareCount; ?>">0</h2>
-                                </div>
-                                <p class="text-[0.75rem] font-bold text-light m-0 mt-1"><?= __('product.shared_outside_app') ?></p>
-                            </div>
-                            <?php
-                                $sPath = '';
-                                for ($i = 0; $i < 6; $i++) {
-                                    $cmd = $i === 0 ? 'M' : 'L';
-                                    $sPath .= "$cmd {$xPos[$i]} {$shareY[$i]} ";
-                                }
-                                $sFill = $sPath . "L 100 40 L 0 40 Z";
-                            ?>
-                            <svg class="absolute bottom-0 right-0 w-full h-14 opacity-70" viewBox="0 0 100 40" preserveAspectRatio="none">
-                                <defs>
-                                    <linearGradient id="shareFill" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stop-color="#059669" stop-opacity="0.25"/>
-                                        <stop offset="100%" stop-color="#059669" stop-opacity="0.02"/>
-                                    </linearGradient>
-                                </defs>
-                                <path d="<?php echo $sFill; ?>" fill="url(#shareFill)"/>
-                                <path d="<?php echo $sPath; ?>" class="graph-line" stroke="#059669" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- PRICING STRATEGY -->
-                    <div class="scc-mgmt-section">
-                        <h4><?= __('product.pricing_strategy') ?></h4>
-                        <form method="post" class="scc-mgmt-form">
-                            <?php echo csrfTokenField(); ?>
-                            <input type="hidden" name="action" value="update_price">
-                            <div class="scc-mgmt-field">
-                                <span class="scc-mgmt-field-prefix">
-                                    <?php echo currencySymbol($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY); ?>
-                                </span>
-                                <input type="number" name="new_price" step="0.01" value="<?php echo (float)$product['price']; ?>" required>
-                            </div>
-                            <div class="scc-mgmt-field">
-                                <select name="price_currency" required>
-                                    <?php
-                                        $selectedCurrency = strtoupper(trim((string)($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
-                                        if (!array_key_exists($selectedCurrency, PRODUCT_CURRENCIES)) {
-                                            $selectedCurrency = DEFAULT_PRODUCT_CURRENCY;
-                                        }
-                                    ?>
-                                    <?php foreach (PRODUCT_CURRENCIES as $code => $meta): ?>
-                                        <option value="<?php echo $code; ?>" <?php echo $selectedCurrency === $code ? 'selected' : ''; ?>>
-                                            <?= __('create_listing.currency_' . strtolower($code)) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <button type="submit" class="scc-mgmt-btn">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <?= __('product.update_price') ?>
-                            </button>
-                        </form>
-
-                        <form method="post" class="scc-mgmt-form">
-                            <?php echo csrfTokenField(); ?>
-                            <input type="hidden" name="action" value="set_discount">
-                            <div class="scc-mgmt-field">
-                                <select name="discount_percent">
-                                    <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
-                                        <option value="<?php echo $d; ?>" <?php echo ((int)($product['discount_percent'] ?? 0) === $d) ? 'selected' : ''; ?>>
-                                            <?php echo $d === 0 ? __('product.no_discount') : ('-' . $d . '%'); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <button type="submit" class="scc-mgmt-btn scc-mgmt-btn--danger">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                                <?= __('product.apply_discount') ?>
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- LOCATION -->
-                    <div class="scc-mgmt-section">
-                        <h4><?= __('product.listing_location') ?></h4>
-                        <form method="post" class="scc-mgmt-form" style="flex-direction: column; align-items: stretch; gap: 0.5rem;">
-                            <?php echo csrfTokenField(); ?>
-                            <input type="hidden" name="action" value="update_location_town">
-                            <div class="scc-mgmt-field">
-                                <select name="location_town" id="product_mgmt_location_town" aria-label="<?= htmlspecialchars(__('product.listing_location')) ?>">
-                                    <?php foreach (locationTownSlugs() as $townSlug): ?>
-                                        <option value="<?php echo $townSlug; ?>" <?php echo (($product['location_town'] ?? 'other') === $townSlug) ? 'selected' : ''; ?>>
-                                            <?php echo formatLocationTown($townSlug); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div id="product_mgmt_custom_loc_container" style="<?= (($product['location_town'] ?? '') === 'other') ? '' : 'display: none;' ?>">
-                                <input type="text" name="custom_location" id="product_mgmt_custom_loc" value="<?= htmlspecialchars($product['custom_location'] ?? '') ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="premium-input w-full" style="padding: 0.6rem 0.8rem; font-size: 0.9rem;">
-                            </div>
-                            <button type="submit" class="scc-mgmt-btn" style="margin-top: 0.25rem;">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                <?= __('product.update_town') ?>
-                            </button>
-                        </form>
-                        <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            const mgmtSelect = document.getElementById('product_mgmt_location_town');
-                            const mgmtContainer = document.getElementById('product_mgmt_custom_loc_container');
-                            if (mgmtSelect && mgmtContainer) {
-                                mgmtSelect.addEventListener('change', function() {
-                                    mgmtContainer.style.display = (this.value === 'other') ? 'block' : 'none';
-                                });
-                            }
-                        });
-                        </script>
-                    </div>
-
-                    <!-- CATEGORIES -->
-                    <div class="scc-mgmt-section">
-                        <h4><?= __('product.manage_categories') ?></h4>
-                        <form method="post" class="scc-mgmt-form" style="flex-direction: column; gap: 0.75rem;">
-                            <?php echo csrfTokenField(); ?>
-                            <input type="hidden" name="action" value="update_categories">
-                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                <p class="text-muted small mb-2"><?= __('product.manage_categories_hint') ?></p>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" style="margin-bottom: 0.5rem;">
-                                    <?php
-                                        $curCatIds = array_map(function($r){ return (int)$r['id']; }, $productCategories);
-                                        foreach ($categories as $cat):
-                                            $cid = (int)$cat['id'];
-                                    ?>
-                                        <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
-                                            <input type="checkbox" name="category_ids[]" value="<?php echo $cid; ?>" <?php echo in_array($cid, $curCatIds, true) ? 'checked' : ''; ?>>
-                                            <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
-                                <button type="submit" class="scc-mgmt-btn">
-                                    <?= __('product.update_categories_btn') ?>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="scc-mgmt-actions">
-                        <form method="post" onsubmit="return confirm('<?= addslashes(__('product.confirm_mark_sold')) ?>')">
-                            <?php echo csrfTokenField(); ?>
-                            <input type="hidden" name="action" value="mark_sold">
-                            <button type="submit" class="scc-mgmt-btn">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <?= __('product.mark_sold_btn') ?>
-                            </button>
-                        </form>
-                        
-                        <form method="post" onsubmit="return confirm('<?= addslashes(__('product.confirm_delete')) ?>')">
-                            <?php echo csrfTokenField(); ?>
-                            <input type="hidden" name="action" value="delete_listing">
-                            <button type="submit" class="scc-mgmt-btn" style="color: #ef4444;">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                <?= __('product.delete_listing_btn') ?>
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- GALLERY MANAGEMENT -->
-                    <div class="mb-8 border-t border-slate-100 pt-6 mt-6">
-                        <h4 class="font-bold text-main mb-4" style="font-size: 1.15rem; color: var(--text-main);"><?= __('product.manage_gallery') ?></h4>
-                        
-                        <!-- Thumbnail Grid -->
-                        <div class="grid grid-cols-5 gap-3 mb-6">
-                            <?php foreach ($images as $img): ?>
-                                <div class="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-50" style="width: 100%;">
-                                    <img src="<?php echo getProductImage($img['image_path']); ?>" alt="Gallery Image" class="w-full h-full object-contain" style="object-fit: contain; background: #f8fafc;">
-
-                                    <!-- Delete button (always visible when there are 2+ images) -->
-                                    <?php if (count($images) > 1): ?>
-                                        <form method="post"
-                                              onsubmit="return confirm('<?= addslashes(__('product.confirm_delete_image')) ?>')"
-                                              style="position: absolute; top: 6px; right: 6px; z-index: 5; display: inline;">
-                                            <?php echo csrfTokenField(); ?>
-                                            <input type="hidden" name="action" value="delete_image">
-                                            <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
-                                            <button
-                                                type="submit"
-                                                title="<?= addslashes(__('product.delete_image_btn')) ?>"
-                                                style="border: 1px solid rgba(255,255,255,0.6); cursor: pointer; background: rgba(220,38,38,0.92); color: #fff; width: 28px; height: 28px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.18);"
-                                            >
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
-                                    
-                                    <!-- Badges & Controls Overlay -->
-                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5">
-                                        <div class="flex justify-between items-start">
-                                            <?php if ($img['is_primary']): ?>
-                                                <span class="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow"><?= __('product.primary') ?></span>
-                                            <?php else: ?>
-                                                <form method="post" style="display:inline;">
-                                                    <?php echo csrfTokenField(); ?>
-                                                    <input type="hidden" name="action" value="set_primary">
-                                                    <input type="hidden" name="image_id" value="<?php echo $img['id']; ?>">
-                                                    <button type="submit" class="bg-white/90 hover:bg-white text-indigo-600 p-1 rounded shadow transition-colors" title="<?= addslashes(__('product.set_primary')) ?>" style="border:none; cursor:pointer;">
-                                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Fallback Indicator for Primary on non-hover -->
-                                    <?php if ($img['is_primary']): ?>
-                                        <div class="absolute bottom-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow" style="pointer-events: none;">
-                                            <svg class="w-2.5 h-2.5" style="width: 10px; height: 10px; display: block;" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endforeach; ?>
-                            
-                            <!-- Empty Slots if < 5 -->
-                            <?php for ($i = count($images); $i < 5; $i++): ?>
-                                <div class="mgmt-empty-slot border border-dashed border-slate-200 rounded-lg flex items-center justify-center aspect-square text-slate-300 cursor-pointer hover:bg-slate-50 transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                </div>
-                            <?php endfor; ?>
-                        </div>
-
-                        <!-- Add Images Form -->
-                        <?php if (count($images) < 5): ?>
-                            <form method="post" enctype="multipart/form-data" class="mt-4">
-                                <?php echo csrfTokenField(); ?>
-                                <input type="hidden" name="action" value="add_images">
-                                
-                                <div class="flex items-center gap-3">
-                                    <label class="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-sm cursor-pointer" style="margin-bottom:0;">
-                                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                        <?= __('product.select_files') ?>
-                                        <input type="file" id="mgmtImgInput" name="images[]" multiple accept="image/*" class="hidden">
-                                    </label>
-                                    <span id="mgmtUploadHelp" class="text-xs text-slate-400"><?= __('product.more_photos_help', ['count' => (5 - count($images))]) ?></span>
-                                    
-                                    <button type="submit" id="mgmtSubmitBtn" class="btn btn-primary btn-sm px-4 py-2 ml-auto" style="height:38px; display:none; font-weight:bold;">
-                                        <?= __('product.upload_btn') ?>
-                                    </button>
-                                </div>
-                                <div id="mgmtPreview" class="flex flex-wrap gap-2 mt-3"></div>
-                            </form>
-                        <?php endif; ?>
-                    </div>
-
-                    <!-- FOOTER NAVIGATION -->
-                    <a href="<?php echo BASE_URL; ?>pages/profile.php" class="inline-flex items-center gap-2 font-bold text-[1rem] mt-12 hover-scale" style="color: var(--primary);">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="stroke-width: 2;"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                        <?= __('product.return_dashboard') ?>
-                    </a>
+                    <h3 class="m-0 font-bold text-main" style="font-size: 1.3rem; color: var(--text-main);"><?= __('product.description_title') ?></h3>
+                </div>
+                <div style="line-height: 1.8; color: var(--text-muted); font-size: 1.05rem;">
+                    <?php echo nl2br(sanitize($product['description'])); ?>
                 </div>
             </div>
-            <?php endif; ?>
 
-                <!-- DESCRIPTION CARD (BOTTOM) -->
-                <div class="product-desc-card">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-10 h-10 flex items-center justify-center" style="border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary);">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        </div>
-                        <h3 class="m-0 font-bold text-main" style="font-size: 1.4rem; color: var(--text-main);"><?= $isOwner ? __('product.listing_details_title') : __('product.description_title') ?></h3>
-                    </div>
-                    <div style="line-height: 2; color: var(--text-muted); font-size: 1.15rem;">
-                        <?php if ($isOwner): ?>
-                            <form method="post">
-                                <?php echo csrfTokenField(); ?>
-                                <input type="hidden" name="action" value="update_description">
-                                <textarea name="description" rows="6" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg); line-height: 1.6; font-size: 1rem; margin-bottom: 0.75rem;" required><?php echo htmlspecialchars($product['description']); ?></textarea>
-                                <button type="submit" class="btn btn-primary btn-sm"><?= __('product.update_description') ?></button>
-                            </form>
-                        <?php else: ?>
-                            <?php echo nl2br(sanitize($product['description'])); ?>
-                        <?php endif; ?>
-                    </div>
+            <?php if ($isOwner): ?>
+            <!-- Owner Floating Management Action -->
+            <div class="flex flex-col gap-3 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1.5px solid var(--primary); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
+                <div class="flex items-center justify-between">
+                    <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">You own this listing</span>
+                    <span class="badge" style="background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.78rem; text-transform: uppercase;">
+                        <?= ucfirst(str_replace('_', ' ', $product['status'])) ?>
+                    </span>
                 </div>
-
-            <?php if (!$isOwner && isLoggedIn()): ?>
+                <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary w-full py-3 text-base flex items-center justify-center gap-2" style="font-weight: 700; border-radius: var(--radius-md);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    ⚙️ Manage &amp; Edit Listing
+                </a>
+            </div>
+            <?php elseif (isLoggedIn()): ?>
             <!-- Action Buttons for Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
-                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale">
-                    <?= __('product.message_seller') ?>
-                </a>
+                <?php $isServiceListing = ($product['listing_type'] ?? 'product') === 'service'; ?>
+                <?php if ($isServiceListing): ?>
+                    <!-- Service CTA: price display + request button -->
+                    <div style="display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.25rem;">
+                        <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($product); ?></span>
+                        <?php if (($product['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                            <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted);">/ hour</span>
+                        <?php endif; ?>
+                    </div>
+                    <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
+                       class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale">
+                        🛠️ <?= __('product.request_service') ?>
+                    </a>
+                    <p class="text-muted small text-center mb-0" style="font-size: 0.82rem;"><?= __('product.service_contact_hint') ?></p>
+                <?php else: ?>
+                    <!-- Product CTA: message seller -->
+                    <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
+                       class="btn flex-grow justify-center py-4 text-lg hover-scale">
+                        <?= __('product.message_seller') ?>
+                    </a>
+                <?php endif; ?>
                 <button
                     type="button"
                     class="product-share-btn w-full justify-center py-3 text-lg"
@@ -1646,6 +1431,63 @@ body.dark-mode .scc-badge {
         </div>
 
     </div>
+
+    <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+    <!-- Service Provider Reviews Section -->
+    <div class="mt-16 border-t border-slate-100 pt-12" style="max-width: 1200px; margin-left: auto; margin-right: auto;">
+        <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+            <div>
+                <h2 class="page-section-title mb-1 text-main font-bold" style="font-size: 1.6rem; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
+                    Client Reviews
+                </h2>
+                <p class="text-muted small mb-0">What other students say about this specific service.</p>
+            </div>
+            <?php if ($serviceCount > 0): ?>
+            <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2" style="background: var(--bg-card);">
+                <div class="text-center">
+                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);"><?php echo number_format($serviceAvg, 1); ?></span>
+                    <span style="font-size: 0.85rem; color: var(--text-light); font-weight: 600;">/ 5</span>
+                </div>
+                <div style="border-left: 1px solid var(--border-light); padding-left: 1rem;">
+                    <div style="color: #f59e0b; line-height: 1;"><?php echo renderStars($serviceAvg); ?></div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;"><?php echo $serviceCount; ?> <?= $serviceCount === 1 ? __('product.review') : __('product.reviews') ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <?php if (empty($serviceReviews)): ?>
+            <div class="glass-panel p-12 text-center" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 2px dashed var(--border-light);">
+                <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.6;">💬</span>
+                <h4 class="mb-1 text-main" style="font-weight: 700;">No reviews for this service yet</h4>
+                <p class="text-muted mb-0">Be the first to hire @<?php echo sanitize($product['seller_name']); ?> for this service and leave a review!</p>
+            </div>
+        <?php else: ?>
+            <div class="grid grid-cols-1 md-grid-cols-2 gap-6">
+                <?php foreach ($serviceReviews as $review): ?>
+                    <div class="card p-5 hover-scale" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); transition: var(--transition);">
+                        <div class="flex justify-between items-start gap-4 mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 flex items-center justify-center rounded-lg" style="background: var(--bg-main); color: var(--text-main); font-weight: 700; border: 1px solid var(--border-light);">
+                                    <?php echo strtoupper(substr($review['reviewer_name'], 0, 1)); ?>
+                                </div>
+                                <div>
+                                    <h4 class="mb-0 text-main" style="font-size: 0.95rem; font-weight: 700;">@<?php echo sanitize($review['reviewer_name']); ?></h4>
+                                    <span style="font-size: 0.78rem; color: var(--text-light);"><?php echo timeAgo($review['created_at']); ?></span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
+                        </div>
+                        <?php if (trim((string)$review['comment']) !== ''): ?>
+                            <p class="mb-0 text-main" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
 </div>
 
 <script>

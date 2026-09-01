@@ -225,11 +225,12 @@ function renderProductPrice(array $product): string {
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
+    $unitSuffix = (($product['pricing_model'] ?? 'flat') === 'hourly') ? ' <small style="font-size:0.75em;color:var(--text-muted);font-weight:500;">/hr</small>' : '';
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span>' . formatPrice($base, $currency) . '</span>';
+        return '<span>' . formatPrice($base, $currency) . $unitSuffix . '</span>';
     }
     return
-        '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final, $currency) . '</span> ' .
+        '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final, $currency) . $unitSuffix . '</span> ' .
         '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . formatPrice($base, $currency) . '</span> ' .
         '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">Discounted</span> ' .
         '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>';
@@ -243,9 +244,10 @@ function renderProductCardPrice(array $product): string {
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
+    $unitSuffix = (($product['pricing_model'] ?? 'flat') === 'hourly') ? ' <small style="font-size:0.75em;color:var(--text-muted);font-weight:500;">/hr</small>' : '';
 
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span class="product-card-price__now product-card-price__now--regular">' . formatPrice($base, $currency) . '</span>';
+        return '<span class="product-card-price__now product-card-price__now--regular">' . formatPrice($base, $currency) . $unitSuffix . '</span>';
     }
 
     return
@@ -253,7 +255,7 @@ function renderProductCardPrice(array $product): string {
             '<span class="product-card-price__original">' . formatPrice($base, $currency) . '</span>' .
             '<span class="product-card-price__pct">-' . $discountPercent . '%</span>' .
         '</span>' .
-        '<span class="product-card-price__now">' . formatPrice($final, $currency) . '</span>';
+        '<span class="product-card-price__now">' . formatPrice($final, $currency) . $unitSuffix . '</span>';
 }
 
 /**
@@ -839,7 +841,7 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'{$dateFilter}
+        WHERE p.status = 'active' AND p.listing_type = 'product'{$dateFilter}
         ORDER BY p.created_at DESC
         LIMIT :limit
     ");
@@ -853,7 +855,16 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
  * Fetch the latest active products without a recent-time window.
  */
 function getLatestActiveProducts(PDO $pdo, int $limit = 8): array {
-    $stmt = $pdo->prepare("\n        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name\n        FROM products p\n        JOIN categories c ON p.category_id = c.id\n        JOIN users u ON p.user_id = u.id\n        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE\n        WHERE p.status = 'active'\n        ORDER BY p.created_at DESC\n        LIMIT :limit\n    ");
+    $stmt = $pdo->prepare("
+        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active' AND p.listing_type = 'product'
+        ORDER BY p.created_at DESC
+        LIMIT :limit
+    ");
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll();
@@ -878,7 +889,7 @@ function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $prod
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-            WHERE p.category_id = :category_id AND p.status = 'active'
+            WHERE p.category_id = :category_id AND p.status = 'active' AND p.listing_type = 'product'
             ORDER BY p.created_at DESC
             LIMIT :limit
         ");
@@ -928,7 +939,7 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active' AND p.is_featured = TRUE{$featuredWindowFilter}
+        WHERE p.status = 'active' AND p.is_featured = TRUE AND p.listing_type = 'product'{$featuredWindowFilter}
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
@@ -944,7 +955,7 @@ function getTopCategories(PDO $pdo): array {
     return $pdo->query("
         SELECT c.*, COUNT(DISTINCT p.id) as product_count
         FROM categories c
-        LEFT JOIN products p ON p.status = 'active' AND (
+        LEFT JOIN products p ON p.status = 'active' AND p.listing_type = 'product' AND (
             p.category_id = c.id
             OR EXISTS (
                 SELECT 1
@@ -1744,7 +1755,7 @@ function invalidateNavCategoriesCache(): void {
  * Allowed North Cyprus town slugs for listing geotags.
  */
 function locationTownSlugs(): array {
-    return ['lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele', 'other'];
+    return ['remote', 'lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele', 'other'];
 }
 
 function isValidLocationTown(?string $town): bool {
@@ -1757,6 +1768,9 @@ function isValidLocationTown(?string $town): bool {
 function formatLocationTown(?string $town, ?string $customLocation = null): string {
     if (!isValidLocationTown($town)) {
         return '';
+    }
+    if (strtolower($town) === 'remote') {
+        return 'Remote / Online';
     }
     if (strtolower($town) === 'other' && !empty(trim((string)$customLocation))) {
         return trim((string)$customLocation);

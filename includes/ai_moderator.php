@@ -282,7 +282,7 @@ function aiModeratorPrepareImage(string $binary, string $mime): ?array {
                 $resized = imagecreatetruecolor($newW, $newH);
                 if ($resized !== false) {
                     imagecopyresampled($resized, $img, 0, 0, 0, 0, $newW, $newH, $width, $height);
-                    imagedestroy($img);
+                    @imagedestroy($img);
                     $img = $resized;
                 }
             }
@@ -290,7 +290,7 @@ function aiModeratorPrepareImage(string $binary, string $mime): ?array {
             ob_start();
             imagejpeg($img, null, 82);
             $jpeg = ob_get_clean();
-            imagedestroy($img);
+            @imagedestroy($img);
 
             if ($jpeg !== false && $jpeg !== '') {
                 return ['mime' => 'image/jpeg', 'base64' => base64_encode($jpeg)];

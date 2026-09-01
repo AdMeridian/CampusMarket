@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'clear_all') {
         try {
-            $pdo->exec("TRUNCATE TABLE system_logs");
+            $pdo->exec("DELETE FROM system_logs");
             setFlash('success', 'All system error logs have been cleared.');
             logAdminAction($pdo, 'clear_system_logs', 'system', null);
         } catch (Throwable $e) {

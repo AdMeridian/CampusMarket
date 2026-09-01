@@ -18,7 +18,7 @@ if (!$otherUserId) {
 
 if ($productId > 0) {
     // Fetch context info
-    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
+    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, p.listing_type, p.pricing_model, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
 
@@ -173,17 +173,18 @@ $presenceText = match($otherPresence['status']) {
             <p class="chat-deal-bar__hint text-muted small mb-3"><?= __('chat.orders_deal_explainer') ?></p>
         </div>
         <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
-            <div class="chat-action-bar purchase-cta-bar">
+            <?php $isServiceChat = ($product['listing_type'] ?? 'product') === 'service'; ?>
+            <div class="chat-action-bar purchase-cta-bar" <?= $isServiceChat ? 'style="border-left: 4px solid var(--service);"' : '' ?>>
                 <div class="chat-action-bar__copy">
-                    <strong><?= __('chat.ready_to_buy') ?></strong>
-                    <span><?= __('chat.send_purchase_request') ?></span>
+                    <strong><?= $isServiceChat ? '🗓️ Book This Service' : __('chat.ready_to_buy') ?></strong>
+                    <span><?= $isServiceChat ? 'Schedule and agree on a service time' : __('chat.send_purchase_request') ?></span>
                 </div>
                 <form action="api_messages.php" method="POST" class="m-0">
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="proposeOrder()">
-                        <?= __('chat.propose_order') ?>
+                    <button type="button" class="btn <?= $isServiceChat ? 'btn--service' : 'btn-primary' ?> btn-sm" onclick="<?= $isServiceChat ? 'checkDealStatus()' : 'proposeOrder()' ?>">
+                        <?= $isServiceChat ? '🛠️ Book Service' : __('chat.propose_order') ?>
                     </button>
                 </form>
             </div>
@@ -712,23 +713,50 @@ function renderHandshakeBar(deal) {
         `;
     } else if (status === 'pending') {
         borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
+        const isService = deal.listing_type === 'service';
+        
+        let promptText = isService ? __('deal.want_to_book_service', {default: 'Want to book this service?'}) : __('deal.did_deal_happen');
+        let promptSub = isService ? __('deal.select_time_to_book', {default: 'Select a time to book this service.'}) : __('deal.confirm_marks_sold');
+        let yesBtnText = isService ? __('deal.book_service', {default: 'Book Service'}) : __('deal.yes_done');
+        
+        let extraFields = '';
+        if (isService) {
+            extraFields = `
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-light); width: 100%;">
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 140px;">
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">Start Date & Time</label>
+                            <input type="datetime-local" id="deal_sched_start" class="premium-input" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border-radius: var(--radius-md);">
+                        </div>
+                        <div style="flex: 1; min-width: 140px;">
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">End Date & Time</label>
+                            <input type="datetime-local" id="deal_sched_end" class="premium-input" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         html = `
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
+            <div style="display: flex; flex-direction: column; width: 100%;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
+                            <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${promptText}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${promptSub}</div>
+                        </div>
                     </div>
-                    <div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.did_deal_happen')}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.confirm_marks_sold')}</div>
+                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                        <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${yesBtnText}</button>
+                        <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_yet')}</button>
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.yes_done')}</button>
-                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_yet')}</button>
-                </div>
+                ${extraFields}
             </div>
         `;
     } else if (status === 'buyer_confirmed' && !isSeller) {
@@ -848,6 +876,16 @@ function confirmDeal(prodId = null, isSellerOverride = null) {
     formData.append('product_id', finalProductId);
     formData.append('other_user_id', otherUserId);
     formData.append('csrf_token', window.__csrfToken || '');
+
+    // Grab scheduling inputs if present
+    const schedStart = document.getElementById('deal_sched_start');
+    const schedEnd = document.getElementById('deal_sched_end');
+    if (schedStart && schedStart.value) {
+        formData.append('scheduled_start', schedStart.value);
+    }
+    if (schedEnd && schedEnd.value) {
+        formData.append('scheduled_end', schedEnd.value);
+    }
 
     fetch('api_messages.php', { method: 'POST', body: formData })
         .then(res => res.json())

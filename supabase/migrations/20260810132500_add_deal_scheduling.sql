@@ -1,0 +1,1 @@
+ALTER TABLE deal_confirmations ADD COLUMN scheduled_start timestamptz, ADD COLUMN scheduled_end timestamptz;

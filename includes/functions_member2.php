@@ -39,22 +39,27 @@ if (!function_exists('universityDomainCustomOption')) {
 }
 
 /**
- * True when the domain is a Turkish university address (e.g. ciu.edu.tr, staff.neu.edu.tr).
+ * True when the domain is a valid university academic address (e.g. .edu.tr, .ac.uk, .edu, .edu.de).
  */
 if (!function_exists('isEduTrEmailDomain')) {
     function isEduTrEmailDomain(string $domain): bool {
         $domain = strtolower(trim($domain));
-        if ($domain === '' || $domain === 'edu.tr') {
+        if ($domain === '' || $domain === 'edu.tr' || $domain === 'edu' || $domain === 'ac.uk') {
             return false;
         }
 
-        return str_ends_with($domain, '.edu.tr');
+        return str_ends_with($domain, '.edu.tr')
+            || str_ends_with($domain, '.ac.uk')
+            || str_ends_with($domain, '.edu')
+            || str_ends_with($domain, '.edu.de')
+            || str_ends_with($domain, '.edu.ca')
+            || str_ends_with($domain, '.edu.au')
+            || str_ends_with($domain, '.tum.de');
     }
 }
 
 /**
- * True if the email is well-formed AND uses an allowed campus domain.
- * Any *@*.edu.tr address is accepted (students and staff).
+ * True if the email is well-formed AND uses an allowed campus domain worldwide.
  */
 if (!function_exists('isAllowedUniversityEmail')) {
     function isAllowedUniversityEmail(string $email): bool {
@@ -208,5 +213,98 @@ if (!function_exists('formatJoinDate')) {
     function formatJoinDate(string $timestamp): string {
         $ts = strtotime($timestamp);
         return $ts ? date('M Y', $ts) : 'Unknown';
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * Multi-Country & University Helpers
+ * ───────────────────────────────────────────────────────────── */
+
+if (!function_exists('getUserUniversityAndCountry')) {
+    function getUserUniversityAndCountry(PDO $pdo, int $userId): ?array {
+        try {
+            $stmt = $pdo->prepare('
+                SELECT 
+                    u.id AS user_id,
+                    un.id AS university_id,
+                    un.name AS university_name,
+                    un.slug AS university_slug,
+                    un.domain_pattern,
+                    un.city AS university_city,
+                    c.code AS country_code,
+                    c.name AS country_name,
+                    c.default_currency,
+                    c.currency_symbol,
+                    c.symbol_position
+                FROM users u
+                JOIN universities un ON un.id = u.university_id
+                JOIN countries c ON c.code = un.country_code
+                WHERE u.id = :uid LIMIT 1
+            ');
+            $stmt->execute([':uid' => $userId]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $res ?: null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('lookupUniversityByEmail')) {
+    function lookupUniversityByEmail(PDO $pdo, string $email): ?array {
+        try {
+            $stmt = $pdo->prepare('SELECT * FROM get_university_by_email(:email)');
+            $stmt->execute([':email' => $email]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $res ?: null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('getAvailableCountries')) {
+    function getAvailableCountries(PDO $pdo): array {
+        try {
+            $stmt = $pdo->query('SELECT code, name, default_currency, currency_symbol, symbol_position FROM countries WHERE is_active = TRUE ORDER BY name ASC');
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+}
+
+if (!function_exists('getAvailableUniversities')) {
+    function getAvailableUniversities(PDO $pdo, ?string $countryCode = null): array {
+        try {
+            if ($countryCode) {
+                $stmt = $pdo->prepare('SELECT id, name, slug, domain_pattern, city, country_code FROM universities WHERE is_active = TRUE AND country_code = :cc ORDER BY name ASC');
+                $stmt->execute([':cc' => strtoupper($countryCode)]);
+            } else {
+                $stmt = $pdo->query('SELECT id, name, slug, domain_pattern, city, country_code FROM universities WHERE is_active = TRUE ORDER BY name ASC');
+            }
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+}
+
+if (!function_exists('formatProductPriceWithCurrency')) {
+    function formatProductPriceWithCurrency(float $price, string $currencyCode = 'USD'): string {
+        $currencies = defined('PRODUCT_CURRENCIES') ? PRODUCT_CURRENCIES : [
+            'TRY' => ['symbol' => '₺', 'position' => 'after'],
+            'USD' => ['symbol' => '$', 'position' => 'before'],
+            'EUR' => ['symbol' => '€', 'position' => 'before'],
+            'GBP' => ['symbol' => '£', 'position' => 'before'],
+            'CAD' => ['symbol' => '$', 'position' => 'before'],
+        ];
+
+        $info = $currencies[strtoupper($currencyCode)] ?? ['symbol' => '$', 'position' => 'before'];
+        $formattedPrice = number_format($price, 2);
+
+        return $info['position'] === 'after'
+            ? $formattedPrice . ' ' . $info['symbol']
+            : $info['symbol'] . $formattedPrice;
     }
 }
