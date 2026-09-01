@@ -192,18 +192,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-                // 3. Save tags — manual selection first, then AI-generated as fallback
+                // 3. Save tags — manual selection + custom created tags, then AI-generated as fallback
                 $tagsToSave = [];
                 if (!empty($selectedTagIds)) {
-                    // User explicitly picked tags from the pill UI
                     $tagsToSave = $selectedTagIds;
-                } elseif ($status === 'active' && !empty($aiResult['tags'])) {
+                }
+
+                // Process newly created custom tags
+                $rawNewTags = $_POST['new_tags'] ?? [];
+                if (!empty($rawNewTags) && is_array($rawNewTags)) {
+                    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                    $existing = $pdo->prepare("SELECT id FROM tags WHERE slug = ? OR LOWER(name) = LOWER(?) LIMIT 1");
+                    foreach ($rawNewTags as $rawName) {
+                        $newName = trim(preg_replace('/^#+/', '', (string)$rawName));
+                        if (mb_strlen($newName) < 2 || mb_strlen($newName) > 40) {
+                            continue;
+                        }
+                        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $newName), '-'));
+                        if (empty($slug)) {
+                            $slug = 'tag-' . substr(md5($newName), 0, 8);
+                        }
+                        $existing->execute([$slug, $newName]);
+                        $newTagId = $existing->fetchColumn();
+
+                        if (!$newTagId) {
+                            $insertTagSql = ($driver === 'pgsql')
+                                ? "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?) RETURNING id"
+                                : "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?)";
+                            $tagStmt = $pdo->prepare($insertTagSql);
+                            try {
+                                $tagStmt->execute([$newName, $slug, $userId]);
+                                $newTagId = ($driver === 'pgsql') ? $tagStmt->fetchColumn() : $pdo->lastInsertId();
+                            } catch (Throwable $eT) {
+                                $existing->execute([$slug, $newName]);
+                                $newTagId = $existing->fetchColumn();
+                            }
+                        }
+
+                        if ($newTagId) {
+                            $tagsToSave[] = (int)$newTagId;
+                        }
+                    }
+                }
+
+                if (empty($tagsToSave) && $status === 'active' && !empty($aiResult['tags'])) {
                     // Auto-approved with no manual selection: resolve AI tag names → IDs
                     $placeholders = implode(',', array_fill(0, count($aiResult['tags']), '?'));
                     $nameStmt = $pdo->prepare("SELECT id FROM tags WHERE name IN ($placeholders)");
                     $nameStmt->execute($aiResult['tags']);
                     $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
                 }
+                $tagsToSave = array_values(array_unique(array_map('intval', $tagsToSave)));
                 if (!empty($tagsToSave)) {
                     $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                     $tagSql = ($driverName === 'pgsql')
@@ -524,6 +563,16 @@ include '../includes/header.php';
                             <span class="tag-pill-label">#<?php echo sanitize($tag['name']); ?></span>
                         </label>
                         <?php endforeach; ?>
+                    </div>
+
+                    <!-- Custom Tag Creation -->
+                    <div id="new-tag-wrapper" style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-light);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; max-width: 420px;">
+                            <input type="text" id="new-tag-input" placeholder="+ Add a custom tag (e.g. vintage, calculus)" maxlength="40" class="premium-input" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: var(--radius-full); flex: 1;">
+                            <button type="button" id="btn-add-custom-tag" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.4rem 1rem;">Add</button>
+                        </div>
+                        <div id="custom-tags-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;"></div>
+                        <p class="text-muted small mt-1 mb-0" style="font-size: 0.76rem;">Don't see a tag you need? Type it above to add it to your listing.</p>
                     </div>
                 </div>
 
@@ -946,6 +995,64 @@ document.addEventListener('DOMContentLoaded', function () {
             suggestBtn.innerHTML = '<svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Suggest Tags';
         }
     });
+
+    // Custom tag creation logic
+    const customTagInput = document.getElementById('new-tag-input');
+    const addCustomTagBtn = document.getElementById('btn-add-custom-tag');
+    const customTagsContainer = document.getElementById('custom-tags-container');
+
+    function addCustomTag() {
+        if (!customTagInput || !customTagsContainer) return;
+        const val = customTagInput.value.trim().replace(/^#+/, '');
+        if (val.length < 2) {
+            alert('Tag must be at least 2 characters long.');
+            return;
+        }
+        if (val.length > 40) {
+            alert('Tag cannot exceed 40 characters.');
+            return;
+        }
+        
+        const totalChecked = document.querySelectorAll('.tag-pill-check:checked').length;
+        const totalCustom = customTagsContainer.querySelectorAll('input[name="new_tags[]"]').length;
+        if (totalChecked + totalCustom >= 5) {
+            alert('You can choose or create up to 5 tags maximum.');
+            return;
+        }
+
+        // Duplicate check
+        const existingCustom = [...customTagsContainer.querySelectorAll('input[name="new_tags[]"]')].map(i => i.value.toLowerCase());
+        if (existingCustom.includes(val.toLowerCase())) {
+            alert('This tag is already added.');
+            return;
+        }
+
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill';
+        pill.style = 'display: inline-flex; align-items: center; gap: 0.35rem; background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); border-radius: var(--radius-full); padding: 0.25rem 0.65rem; font-size: 0.8rem; font-weight: 600;';
+        pill.innerHTML = `
+            <span>#${val}</span>
+            <input type="hidden" name="new_tags[]" value="${val.replace(/"/g, '&quot;')}">
+            <button type="button" style="background: none; border: none; cursor: pointer; color: var(--primary); font-size: 14px; line-height: 1; padding: 0 2px; font-weight: bold;">&times;</button>
+        `;
+        pill.querySelector('button').addEventListener('click', function () {
+            pill.remove();
+        });
+        customTagsContainer.appendChild(pill);
+        customTagInput.value = '';
+    }
+
+    if (addCustomTagBtn) {
+        addCustomTagBtn.addEventListener('click', addCustomTag);
+    }
+    if (customTagInput) {
+        customTagInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustomTag();
+            }
+        });
+    }
 
     const townSelect = document.querySelector('select[name="location_town"]');
     const customLocContainer = document.getElementById('custom_location_container');
