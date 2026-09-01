@@ -316,6 +316,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     redirect(BASE_URL . 'pages/product.php?id=' . $productId);
 }
 
+// Handle Service Details Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_service_details') {
+    verifyCsrfToken();
+    $rawDelivery = (int)($_POST['delivery_days'] ?? 0);
+    $newDeliveryDays = ($rawDelivery > 0 && $rawDelivery <= 365) ? $rawDelivery : null;
+    
+    $rawRevisions = $_POST['revision_count'] ?? '';
+    if ($rawRevisions === 'unlimited') {
+        $newRevisionCount = 99;
+    } elseif (is_numeric($rawRevisions) && (int)$rawRevisions >= 0) {
+        $newRevisionCount = (int)$rawRevisions;
+    } else {
+        $newRevisionCount = null;
+    }
+
+    $newAvailStatus = in_array($_POST['availability_status'] ?? '', ['available','busy','unavailable'])
+        ? $_POST['availability_status']
+        : 'available';
+
+    $rawResetDays = (int)($_POST['availability_reset_days'] ?? 0);
+    $newResetAt = null;
+    if ($rawResetDays > 0) {
+        $newResetAt = date('Y-m-d H:i:s', strtotime("+{$rawResetDays} days"));
+    }
+
+    $rawPortfolio = trim($_POST['portfolio_link'] ?? '');
+    $newPortfolioLink = null;
+    if ($rawPortfolio !== '' && filter_var($rawPortfolio, FILTER_VALIDATE_URL)) {
+        $newPortfolioLink = mb_substr($rawPortfolio, 0, 500);
+    }
+
+    $stmtUp = $pdo->prepare("
+        UPDATE products 
+        SET delivery_days = :del_days,
+            revision_count = :rev_count,
+            availability_status = :avail_status,
+            availability_reset_at = :avail_reset,
+            portfolio_link = :port_link,
+            updated_at = NOW()
+        WHERE id = :id
+    ");
+    $stmtUp->execute([
+        ':del_days' => $newDeliveryDays,
+        ':rev_count' => $newRevisionCount,
+        ':avail_status' => $newAvailStatus,
+        ':avail_reset' => $newResetAt,
+        ':port_link' => $newPortfolioLink,
+        ':id' => $productId,
+    ]);
+
+    setFlash('success', 'Service details updated successfully.');
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+}
+
 // Handle Set Primary Image
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'set_primary') {
     verifyCsrfToken();
@@ -1244,6 +1298,59 @@ body.dark-mode .scc-badge {
                 </div>
             </div>
 
+            <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <?php
+            $availColors = ['available' => '#22c55e', 'busy' => '#f59e0b', 'unavailable' => '#ef4444'];
+            $availLabels = ['available' => 'Available now', 'busy' => 'Busy — might be slow', 'unavailable' => 'Currently unavailable'];
+            $availStatus = $product['availability_status'] ?? 'available';
+            $availColor  = $availColors[$availStatus] ?? '#22c55e';
+            $availLabel  = $availLabels[$availStatus] ?? 'Available';
+            $deliveryDays  = (int)($product['delivery_days'] ?? 0);
+            $revisionCount = $product['revision_count'] ?? null;
+            $portfolioLink = trim((string)($product['portfolio_link'] ?? ''));
+            $deliveryLabel = match(true) {
+                $deliveryDays === 1 => 'Same day',
+                $deliveryDays > 1 && $deliveryDays < 7 => $deliveryDays . ' days',
+                $deliveryDays === 7 => '1 week',
+                $deliveryDays === 14 => '2 weeks',
+                $deliveryDays === 30 => '1 month',
+                $deliveryDays > 0 => $deliveryDays . ' days',
+                default => null,
+            };
+            $revisionLabel = match(true) {
+                $revisionCount === null => null,
+                $revisionCount === 0 => 'No revisions',
+                (int)$revisionCount === 99 => 'Unlimited revisions',
+                default => $revisionCount . ' revision' . ((int)$revisionCount > 1 ? 's' : '') . ' included',
+            };
+            ?>
+            <div style="margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-card); display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center;">
+                <!-- Availability -->
+                <div style="display:flex; align-items:center; gap:0.5rem; font-weight:600; font-size:0.9rem; color:var(--text-main);">
+                    <span style="width:9px;height:9px;border-radius:50%;background:<?= $availColor ?>;flex-shrink:0;"></span>
+                    <?= htmlspecialchars($availLabel) ?>
+                </div>
+                <?php if ($deliveryLabel): ?>
+                <div style="display:flex; align-items:center; gap:0.45rem; font-weight:600; font-size:0.88rem; color:var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Delivers in <?= htmlspecialchars($deliveryLabel) ?>
+                </div>
+                <?php endif; ?>
+                <?php if ($revisionLabel): ?>
+                <div style="display:flex; align-items:center; gap:0.45rem; font-weight:600; font-size:0.88rem; color:var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+                    <?= htmlspecialchars($revisionLabel) ?>
+                </div>
+                <?php endif; ?>
+                <?php if ($portfolioLink !== ''): ?>
+                <a href="<?= htmlspecialchars($portfolioLink) ?>" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:0.45rem; font-weight:700; font-size:0.88rem; color:var(--primary); text-decoration:none; padding:0.3rem 0.75rem; border-radius:var(--radius-full); border:1px solid var(--primary); transition:all 0.18s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    View Portfolio
+                </a>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
             <!-- SELLER PROFILE CARD (Visible to Everyone) -->
             <div class="scc-wrapper mt-8">
                 <div class="scc-seller-card">
@@ -1492,7 +1599,7 @@ body.dark-mode .scc-badge {
                         </script>
                     </div>
 
-                    <!-- CATEGORIES -->
+                    <!-- CATEGORIES / SERVICE SETTINGS -->
                     <?php if (($product['listing_type'] ?? 'product') !== 'service'): ?>
                     <div class="scc-mgmt-section">
                         <h4><?= __('product.manage_categories') ?></h4>
@@ -1517,6 +1624,70 @@ body.dark-mode .scc-badge {
                             <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
                                 <button type="submit" class="scc-mgmt-btn">
                                     <?= __('product.update_categories_btn') ?>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <?php else: ?>
+                    <div class="scc-mgmt-section">
+                        <h4>Service Settings & Availability</h4>
+                        <form method="post" class="scc-mgmt-form" style="flex-direction: column; gap: 1rem;">
+                            <?php echo csrfTokenField(); ?>
+                            <input type="hidden" name="action" value="update_service_details">
+
+                            <div>
+                                <label class="font-bold mb-1 block small text-muted">Availability Status</label>
+                                <div class="scc-mgmt-field">
+                                    <select name="availability_status">
+                                        <option value="available" <?= ($product['availability_status'] ?? 'available') === 'available' ? 'selected' : '' ?>>🟢 Available — taking new clients</option>
+                                        <option value="busy" <?= ($product['availability_status'] ?? '') === 'busy' ? 'selected' : '' ?>>🟡 Busy — open but might be slow</option>
+                                        <option value="unavailable" <?= ($product['availability_status'] ?? '') === 'unavailable' ? 'selected' : '' ?>>🔴 Unavailable — on a break</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="font-bold mb-1 block small text-muted">Delivery Time</label>
+                                    <div class="scc-mgmt-field">
+                                        <select name="delivery_days">
+                                            <option value="0" <?= empty($product['delivery_days']) ? 'selected' : '' ?>>Varies / Let's discuss</option>
+                                            <option value="1" <?= (int)($product['delivery_days'] ?? 0) === 1 ? 'selected' : '' ?>>Same day</option>
+                                            <option value="2" <?= (int)($product['delivery_days'] ?? 0) === 2 ? 'selected' : '' ?>>2 days</option>
+                                            <option value="3" <?= (int)($product['delivery_days'] ?? 0) === 3 ? 'selected' : '' ?>>3 days</option>
+                                            <option value="5" <?= (int)($product['delivery_days'] ?? 0) === 5 ? 'selected' : '' ?>>5 days</option>
+                                            <option value="7" <?= (int)($product['delivery_days'] ?? 0) === 7 ? 'selected' : '' ?>>1 week</option>
+                                            <option value="14" <?= (int)($product['delivery_days'] ?? 0) === 14 ? 'selected' : '' ?>>2 weeks</option>
+                                            <option value="30" <?= (int)($product['delivery_days'] ?? 0) === 30 ? 'selected' : '' ?>>1 month</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="font-bold mb-1 block small text-muted">Revisions Included</label>
+                                    <div class="scc-mgmt-field">
+                                        <select name="revision_count">
+                                            <option value="" <?= !isset($product['revision_count']) ? 'selected' : '' ?>>Not specified</option>
+                                            <option value="0" <?= isset($product['revision_count']) && (int)$product['revision_count'] === 0 ? 'selected' : '' ?>>None</option>
+                                            <option value="1" <?= (int)($product['revision_count'] ?? -1) === 1 ? 'selected' : '' ?>>1 revision</option>
+                                            <option value="2" <?= (int)($product['revision_count'] ?? -1) === 2 ? 'selected' : '' ?>>2 revisions</option>
+                                            <option value="3" <?= (int)($product['revision_count'] ?? -1) === 3 ? 'selected' : '' ?>>3 revisions</option>
+                                            <option value="5" <?= (int)($product['revision_count'] ?? -1) === 5 ? 'selected' : '' ?>>5 revisions</option>
+                                            <option value="unlimited" <?= (int)($product['revision_count'] ?? -1) === 99 ? 'selected' : '' ?>>Unlimited</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="font-bold mb-1 block small text-muted">Portfolio / Social Link</label>
+                                <div class="scc-mgmt-field">
+                                    <input type="url" name="portfolio_link" value="<?= htmlspecialchars($product['portfolio_link'] ?? '') ?>" placeholder="https://instagram.com/yourhandle" maxlength="500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <button type="submit" class="scc-mgmt-btn">
+                                    Update Service Details
                                 </button>
                             </div>
                         </form>

@@ -56,11 +56,17 @@ $orderBy = match($sort) {
     default      => "p.created_at DESC",
 };
 
-$sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_path
+$sql = "SELECT p.*, c.name as category_name, u.username as seller_name, u.avatar as seller_avatar, i.image_path,
+        p.delivery_days, p.availability_status,
+        COALESCE(r.avg_rating, 0) as avg_rating, COALESCE(r.review_count, 0) as review_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        LEFT JOIN (
+            SELECT product_id, ROUND(AVG(rating),1) as avg_rating, COUNT(*) as review_count
+            FROM ratings GROUP BY product_id
+        ) r ON r.product_id = p.id
         WHERE p.status = 'active' AND p.listing_type = 'service'" . $filterSql .
        " ORDER BY " . $orderBy .
        " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
@@ -227,7 +233,7 @@ include '../includes/header.php';
                     </div>
                 </div>
 
-                <?php if (empty($services)): ?>
+                            <?php if (empty($services)): ?>
                     <div class="glass-panel p-16 text-center shadow-sm" style="border-radius: var(--radius-lg); border: 2px dashed var(--border-light); background: var(--bg-card);">
                         <div class="mb-4 flex justify-center" style="color: var(--text-muted); opacity: 0.5;">
                             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
@@ -241,48 +247,93 @@ include '../includes/header.php';
                         <?php endif; ?>
                     </div>
                 <?php else: ?>
+                    <!-- Category pills strip -->
+                    <?php if (!empty($serviceCategories)): ?>
+                    <div style="display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:1.5rem; scrollbar-width:none;" class="category-pill-strip">
+                        <a href="services.php<?= $search ? '?q='.urlencode($search) : '' ?>" style="flex-shrink:0; padding:0.45rem 1rem; border-radius:99px; font-size:0.85rem; font-weight:700; text-decoration:none; white-space:nowrap; border:1.5px solid <?= !$category ? 'var(--service)' : 'var(--border-light)' ?>; background:<?= !$category ? 'var(--service-light)' : 'var(--bg-surface)' ?>; color:<?= !$category ? 'var(--service)' : 'var(--text-muted)' ?>; transition:all 0.18s;">All</a>
+                        <?php foreach ($serviceCategories as $cat): ?>
+                        <a href="services.php?category=<?= (int)$cat['id'] ?><?= $search ? '&q='.urlencode($search) : '' ?>" style="flex-shrink:0; padding:0.45rem 1rem; border-radius:99px; font-size:0.85rem; font-weight:700; text-decoration:none; white-space:nowrap; border:1.5px solid <?= $category == $cat['id'] ? 'var(--service)' : 'var(--border-light)' ?>; background:<?= $category == $cat['id'] ? 'var(--service-light)' : 'var(--bg-surface)' ?>; color:<?= $category == $cat['id'] ? 'var(--service)' : 'var(--text-muted)' ?>; transition:all 0.18s;"><?= sanitize(translateCategory($cat['name'])) ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
                     <div class="grid grid-cols-1 md-grid-cols-2 xl-grid-cols-3 gap-6">
                         <?php foreach ($services as $prod): ?>
-                        <div class="card card-hover flex flex-col" style="position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); overflow: hidden; padding: 1.5rem; transition: var(--transition);">
-                            <!-- Service Badge -->
-                            <div style="position: absolute; top: 1rem; left: 1rem; z-index: 10;">
-                                <span style="background: var(--service); color: white; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
-                                    <?php echo ($prod['pricing_model'] ?? 'flat') === 'hourly' ? __('product.hourly_badge') : __('product.service_badge'); ?>
-                                </span>
-                            </div>
-
+                        <?php
+                        $sAvail  = $prod['availability_status'] ?? 'available';
+                        $sAvailColors = ['available'=>'#22c55e','busy'=>'#f59e0b','unavailable'=>'#ef4444'];
+                        $sAvailColor = $sAvailColors[$sAvail] ?? '#22c55e';
+                        $sDays   = (int)($prod['delivery_days'] ?? 0);
+                        $sDayLabel = match(true) {
+                            $sDays === 1 => 'Same day',
+                            $sDays > 1 && $sDays < 7 => $sDays . 'd',
+                            $sDays === 7 => '1 wk',
+                            $sDays === 14 => '2 wks',
+                            $sDays === 30 => '1 mo',
+                            $sDays > 0 => $sDays . 'd',
+                            default => null,
+                        };
+                        $sAvgRating  = (float)($prod['avg_rating'] ?? 0);
+                        $sReviewCount = (int)($prod['review_count'] ?? 0);
+                        ?>
+                        <div class="card card-hover flex flex-col" style="position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); overflow: hidden; transition: var(--transition);">
                             <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo $prod['id']; ?>" style="text-decoration: none; display: flex; flex-direction: column; height: 100%;">
                                 <!-- Image -->
-                                <div class="product-card-image-wrap" style="border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+                                <div class="product-card-image-wrap" style="border-radius: 0; margin-bottom: 0; position: relative;">
                                     <img src="<?php echo getProductImage($prod['image_path'] ?? null); ?>" alt="<?php echo sanitize($prod['title']); ?>">
+                                    <!-- Top-left: availability + delivery -->
+                                    <div style="position:absolute; top:0.75rem; left:0.75rem; display:flex; gap:0.4rem; align-items:center;">
+                                        <span style="display:flex; align-items:center; gap:0.35rem; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); color:white; padding:0.25rem 0.6rem; border-radius:99px; font-size:0.72rem; font-weight:700;">
+                                            <span style="width:7px;height:7px;border-radius:50%;background:<?= $sAvailColor ?>;flex-shrink:0;"></span>
+                                            <?= ucfirst($sAvail) ?>
+                                        </span>
+                                        <?php if ($sDayLabel): ?>
+                                        <span style="background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); color:white; padding:0.25rem 0.6rem; border-radius:99px; font-size:0.72rem; font-weight:700;">
+                                            <?= $sDayLabel ?> delivery
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <!-- Top-right: pricing badge -->
+                                    <div style="position:absolute; top:0.75rem; right:0.75rem;">
+                                        <span style="background: var(--service); color: white; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                                            <?php echo ($prod['pricing_model'] ?? 'flat') === 'hourly' ? __('product.hourly_badge') : __('product.service_badge'); ?>
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <!-- Info -->
-                                <div class="flex flex-col flex-grow px-1">
-                                    <h4 class="mb-3 text-main product-card-title"><?php echo sanitize($prod['title']); ?></h4>
+                                <div class="flex flex-col flex-grow" style="padding: 1rem 1.25rem 1.25rem;">
+                                    <h4 class="mb-2 text-main product-card-title" style="font-size:0.98rem; line-height:1.35;"><?php echo sanitize($prod['title']); ?></h4>
 
-                                    <div class="mt-auto product-card-price-block">
-                                        <div class="product-card-price-row">
-                                            <div class="product-card-price-stack">
-                                                <span class="product-card-price__now product-card-price__now--regular">
-                                                    <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
-                                                    <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
-                                                        <small style="font-size: 0.75em; color: var(--text-muted); font-weight: 500;">/hr</small>
-                                                    <?php endif; ?>
-                                                </span>
-                                            </div>
+                                    <!-- Star rating -->
+                                    <?php if ($sReviewCount > 0): ?>
+                                    <div style="display:flex; align-items:center; gap:0.3rem; margin-bottom:0.6rem; font-size:0.82rem; font-weight:700;">
+                                        <span style="color:#f59e0b;">&#9733;</span>
+                                        <span style="color:var(--text-main);"><?= number_format($sAvgRating, 1) ?></span>
+                                        <span style="color:var(--text-muted); font-weight:500;">(<?= $sReviewCount ?>)</span>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <div class="mt-auto">
+                                        <!-- Price -->
+                                        <div style="margin-bottom:0.75rem;">
+                                            <span class="product-card-price__now product-card-price__now--regular">
+                                                <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
+                                                <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                                                    <small style="font-size:0.75em; color:var(--text-muted); font-weight:500;">/hr</small>
+                                                <?php endif; ?>
+                                            </span>
+                                        </div>
+                                        <!-- Seller row -->
+                                        <div style="display:flex; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-light);">
+                                            <img src="<?= avatarUrl($prod['seller_avatar'] ?? null) ?>" alt="@<?= sanitize($prod['seller_name']) ?>" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid var(--border-light);">
+                                            <span style="font-size:0.82rem; font-weight:700; color:var(--text-muted);">@<?php echo sanitize($prod['seller_name']); ?></span>
+                                            <?php if (!empty($prod['location_town']) && isValidLocationTown($prod['location_town'])): ?>
+                                            <span style="margin-left:auto; font-size:0.75rem; font-weight:600; color:var(--text-muted); background:var(--bg-main); border:1px solid var(--border-light); padding:0.15rem 0.5rem; border-radius:99px; white-space:nowrap;"><?= sanitize(formatLocationTown($prod['location_town'])) ?></span>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
                             </a>
-
-                            <!-- Seller pill -->
-                            <div class="product-card-seller-slot" style="margin-top: 0.75rem;">
-                                <div class="product-card-seller-pill">
-                                    <svg class="product-card-seller-pill__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                    <span class="product-card-seller-pill__text">@<?php echo sanitize($prod['seller_name']); ?></span>
-                                </div>
-                            </div>
                         </div>
                         <?php endforeach; ?>
                     </div>
