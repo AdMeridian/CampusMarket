@@ -60,7 +60,7 @@ CREATE TABLE products (
     discount_percent TINYINT   NOT NULL DEFAULT 0,
     discount_set_at DATETIME   NULL,
     `condition`   ENUM('new', 'like_new', 'used', 'poor') NULL DEFAULT 'used',
-    status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
+    status      ENUM('active', 'sold', 'flagged', 'pending_approval', 'pending_payment', 'expired')       NOT NULL DEFAULT 'active',
     listing_type ENUM('product', 'service') NOT NULL DEFAULT 'product',
     pricing_model ENUM('flat', 'hourly') NOT NULL DEFAULT 'flat',
     moderation_note TEXT        NULL,
@@ -71,6 +71,7 @@ CREATE TABLE products (
     availability_status VARCHAR(20) NOT NULL DEFAULT 'available',
     availability_reset_at TIMESTAMP NULL DEFAULT NULL,
     portfolio_link VARCHAR(500) NULL DEFAULT NULL,
+    service_expires_at DATETIME NULL DEFAULT NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
     views       INT            NOT NULL DEFAULT 0,
@@ -304,5 +305,12 @@ CREATE TABLE IF NOT EXISTS promotion_payments (
     FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_promo_user_status (user_id, status),
     INDEX idx_promo_product_status (product_id, status)
+) ENGINE=InnoDB;
+
+-- System Settings
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key   VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 

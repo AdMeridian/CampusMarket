@@ -45,14 +45,19 @@ $activeTab = in_array($_GET['tab'] ?? 'listings', ['listings', 'services', 'abou
 
 // Fetch listings count for the stat pill. Owners see their pending review items too.
 $visibleListingStatusSql = $isSelf || isAdmin()
-    ? "status IN ('active', 'pending_approval')"
-    : "status = 'active'";
-$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND listing_type = 'product' AND {$visibleListingStatusSql}");
+    ? "p.status IN ('active', 'pending_approval')"
+    : "p.status = 'active'";
+
+$visibleServiceStatusSql = $isSelf || isAdmin()
+    ? "p.status IN ('active', 'pending_approval', 'pending_payment')"
+    : "p.status = 'active' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW())";
+
+$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products p WHERE p.user_id = :uid AND p.listing_type = 'product' AND {$visibleListingStatusSql}");
 $listingCountStmt->execute([':uid' => $viewId]);
 $listingCount = (int)$listingCountStmt->fetchColumn();
 
 // Fetch services count
-$serviceCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND listing_type = 'service' AND {$visibleListingStatusSql}");
+$serviceCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products p WHERE p.user_id = :uid AND p.listing_type = 'service' AND {$visibleServiceStatusSql}");
 $serviceCountStmt->execute([':uid' => $viewId]);
 $serviceCount = (int)$serviceCountStmt->fetchColumn();
 
@@ -74,7 +79,7 @@ $stmtServices = $pdo->prepare("
     FROM products p
     JOIN categories c ON p.category_id = c.id
     LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-    WHERE p.user_id = :uid AND p.listing_type = 'service' AND {$visibleListingStatusSql}
+    WHERE p.user_id = :uid AND p.listing_type = 'service' AND {$visibleServiceStatusSql}
     ORDER BY p.created_at DESC
 ");
 $stmtServices->execute([':uid' => $viewId]);

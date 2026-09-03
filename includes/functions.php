@@ -939,7 +939,7 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active' AND p.is_featured = TRUE AND p.listing_type = 'product'{$featuredWindowFilter}
+        WHERE p.status = 'active' AND p.is_featured = TRUE AND (p.listing_type = 'product' OR (p.listing_type = 'service' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW()))){$featuredWindowFilter}
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
@@ -2073,6 +2073,69 @@ function logSystemError(PDO $pdo, string $category, string $message, $rawTrace =
     } catch (Throwable $e) {
         error_log('[logSystemError failed] ' . $e->getMessage());
     }
+}
+
+/**
+ * Retrieve a system setting from the database with in-memory caching and default fallback.
+ */
+function getSystemSetting(PDO $pdo, string $key, $default = null): ?string {
+    static $cache = [];
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        if ($val !== false && $val !== null) {
+            $cache[$key] = (string)$val;
+            return (string)$val;
+        }
+    } catch (Throwable $e) {
+        // Table may not exist yet or connection issue
+    }
+
+    $cache[$key] = ($default !== null) ? (string)$default : null;
+    return $cache[$key];
+}
+
+/**
+ * Set or update a system setting in the database.
+ */
+function setSystemSetting(PDO $pdo, string $key, string $value): bool {
+    try {
+        $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $sql = ($driverName === 'pgsql')
+            ? "INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()"
+            : "INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()";
+
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute([$key, $value]);
+    } catch (Throwable $e) {
+        error_log('[setSystemSetting] ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Retrieve all service pricing & duration configuration parameters.
+ */
+function getServicePricingSettings(PDO $pdo): array {
+    $listingFee = (float) getSystemSetting($pdo, 'service_listing_fee', '30.00');
+    $boostFee   = (float) getSystemSetting($pdo, 'service_boost_fee', '30.00');
+    $listingDays = (int) getSystemSetting($pdo, 'service_listing_days', '30');
+    $boostDays   = (int) getSystemSetting($pdo, 'service_boost_days', '7');
+    $freeTrialEnabled = (bool) ((int) getSystemSetting($pdo, 'service_free_trial_enabled', '1') === 1);
+
+    return [
+        'listing_fee'        => max(0.0, $listingFee),
+        'boost_fee'          => max(0.0, $boostFee),
+        'total_boosted_fee'  => max(0.0, $listingFee + $boostFee),
+        'listing_days'       => max(1, $listingDays),
+        'boost_days'         => max(1, $boostDays),
+        'free_trial_enabled' => $freeTrialEnabled,
+    ];
 }
 
 

@@ -40,9 +40,51 @@ if (!function_exists('resolveDonationPayment')) {
     }
 }
 
+if (!function_exists('resolveServiceListingPayment')) {
+    /**
+     * Map a service listing payment request to validated tier and pricing.
+     */
+    function resolveServiceListingPayment(string $tier, ?PDO $pdo = null): ?array {
+        $cleanTier = strtolower(trim($tier));
+        $db = $pdo ?? ($GLOBALS['pdo'] ?? null);
+
+        $pricing = ($db instanceof PDO && function_exists('getServicePricingSettings'))
+            ? getServicePricingSettings($db)
+            : [
+                'listing_fee'       => 30.00,
+                'boost_fee'         => 30.00,
+                'total_boosted_fee' => 60.00,
+                'listing_days'      => 30,
+                'boost_days'        => 7,
+            ];
+
+        if ($cleanTier === 'boosted') {
+            return [
+                'tier'          => 'boosted',
+                'amount'        => (float)$pricing['total_boosted_fee'],
+                'listing_days'  => (int)$pricing['listing_days'],
+                'featured_days' => (int)$pricing['boost_days'],
+                'name'          => 'CampusMarket Service Listing + ' . (int)$pricing['boost_days'] . '-Day Homepage Boost',
+            ];
+        }
+
+        if ($cleanTier === 'standard' || $cleanTier === 'renewal' || $cleanTier === '') {
+            return [
+                'tier'          => 'standard',
+                'amount'        => (float)$pricing['listing_fee'],
+                'listing_days'  => (int)$pricing['listing_days'],
+                'featured_days' => 0,
+                'name'          => 'CampusMarket Service Listing (' . (int)$pricing['listing_days'] . ' Days)',
+            ];
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('fulfillStripeCheckoutSession')) {
     /**
-     * Record a paid Stripe Checkout session and apply promotion side effects.
+     * Record a paid Stripe Checkout session and apply promotion / service listing side effects.
      *
      * @return array{ok:bool,already_processed?:bool,error?:string,payment_type?:string,product_id?:?int}
      */
@@ -62,6 +104,8 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
         $paymentType = sanitize((string) ($meta['payment_type'] ?? 'promotion'));
         $amount = (float) ($meta['amount'] ?? 0);
         $promotionDays = (int) ($meta['promotion_days'] ?? 0);
+        $listingDays = (int) ($meta['listing_days'] ?? 30);
+        $featuredDays = (int) ($meta['featured_days'] ?? 0);
 
         if ($userId <= 0 || $amount <= 0) {
             return ['ok' => false, 'error' => 'Invalid payment metadata.'];
@@ -72,6 +116,8 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
         if ($check->fetch()) {
             return ['ok' => true, 'already_processed' => true, 'payment_type' => $paymentType, 'product_id' => $productId];
         }
+
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
         $pdo->beginTransaction();
         try {
@@ -91,16 +137,58 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
 
             if ($paymentType === 'promotion' && $productId) {
                 $days = $promotionDays > 0 ? $promotionDays : max(1, (int) floor($amount / 15));
-                $upd = $pdo->prepare("
-                    UPDATE products
-                    SET is_featured = TRUE,
-                        discount_set_at = NOW(),
-                        featured_until = NOW() + (CAST(? AS text) || ' days')::interval
-                    WHERE id = ? AND status = 'active'
-                ");
+                $updSql = ($driver === 'pgsql')
+                    ? "UPDATE products
+                       SET is_featured = TRUE,
+                           discount_set_at = NOW(),
+                           featured_until = NOW() + (CAST(? AS text) || ' days')::interval
+                       WHERE id = ? AND status = 'active'"
+                    : "UPDATE products
+                       SET is_featured = 1,
+                           discount_set_at = NOW(),
+                           featured_until = DATE_ADD(NOW(), INTERVAL ? DAY)
+                       WHERE id = ? AND status = 'active'";
+
+                $upd = $pdo->prepare($updSql);
                 $upd->execute([$days, $productId]);
                 if ($upd->rowCount() === 0) {
                     throw new RuntimeException('Listing is not active and cannot be promoted yet.');
+                }
+            } elseif ($paymentType === 'service_listing' && $productId) {
+                $activeDays = $listingDays > 0 ? $listingDays : 30;
+
+                if ($featuredDays > 0) {
+                    $svcSql = ($driver === 'pgsql')
+                        ? "UPDATE products
+                           SET status = 'active',
+                               service_expires_at = NOW() + (CAST(? AS text) || ' days')::interval,
+                               is_featured = TRUE,
+                               featured_until = NOW() + (CAST(? AS text) || ' days')::interval,
+                               updated_at = NOW()
+                           WHERE id = ?"
+                        : "UPDATE products
+                           SET status = 'active',
+                               service_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY),
+                               is_featured = 1,
+                               featured_until = DATE_ADD(NOW(), INTERVAL ? DAY),
+                               updated_at = NOW()
+                           WHERE id = ?";
+                    $svcStmt = $pdo->prepare($svcSql);
+                    $svcStmt->execute([$activeDays, $featuredDays, $productId]);
+                } else {
+                    $svcSql = ($driver === 'pgsql')
+                        ? "UPDATE products
+                           SET status = 'active',
+                               service_expires_at = NOW() + (CAST(? AS text) || ' days')::interval,
+                               updated_at = NOW()
+                           WHERE id = ?"
+                        : "UPDATE products
+                           SET status = 'active',
+                               service_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY),
+                               updated_at = NOW()
+                           WHERE id = ?";
+                    $svcStmt = $pdo->prepare($svcSql);
+                    $svcStmt->execute([$activeDays, $productId]);
                 }
             }
 

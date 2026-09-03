@@ -21,6 +21,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     verifyCsrfToken();
     $action = sanitize($_POST['action']);
 
+    if ($action === 'update_service_pricing') {
+        $listingFee = max(0.0, (float)($_POST['service_listing_fee'] ?? 30.0));
+        $boostFee   = max(0.0, (float)($_POST['service_boost_fee'] ?? 30.0));
+        $listingDays = max(1, (int)($_POST['service_listing_days'] ?? 30));
+        $boostDays   = max(1, (int)($_POST['service_boost_days'] ?? 7));
+        $freeTrialEnabled = isset($_POST['service_free_trial_enabled']) ? '1' : '0';
+
+        setSystemSetting($pdo, 'service_listing_fee', (string)$listingFee);
+        setSystemSetting($pdo, 'service_boost_fee', (string)$boostFee);
+        setSystemSetting($pdo, 'service_listing_days', (string)$listingDays);
+        setSystemSetting($pdo, 'service_boost_days', (string)$boostDays);
+        setSystemSetting($pdo, 'service_free_trial_enabled', $freeTrialEnabled);
+
+        setFlash('success', 'Service pricing and duration settings updated successfully!');
+        redirect(BASE_URL . 'admin/promotion_payments.php');
+    }
+
     if ($action === 'clear_donations') {
         try {
             $removed = clearDonationData($pdo);
@@ -59,27 +76,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 // Fetch the product_id, type, and amount for this payment
                 $pInfo = $pdo->prepare('SELECT product_id, payment_type, amount FROM promotion_payments WHERE id = ?');
                 $pInfo->execute([$paymentId]);
-                $payData = $pInfo->fetch();
+                $paymentRow = $pInfo->fetch(PDO::FETCH_ASSOC);
 
-                if ($payData && $payData['payment_type'] === 'promotion' && !empty($payData['product_id'])) {
-                    // Flat promotion pricing: 15 TL per day, minimum 1 day.
-                    $amount = (float)$payData['amount'];
-                    $days = max(1, (int) floor($amount / 15));
+                if ($paymentRow && $paymentRow['product_id']) {
+                    $pid = (int)$paymentRow['product_id'];
+                    $amount = (float)$paymentRow['amount'];
+                    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-                    // Automatically feature the product with expiration
-                    $updProd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ? AND status = 'active'");
-                    $updProd->execute([$days, $payData['product_id']]);
-                    if ($updProd->rowCount() === 0) {
-                        throw new Exception('This listing is not active and cannot be promoted yet.');
+                    if ($paymentRow['payment_type'] === 'promotion') {
+                        $days = max(1, (int)floor($amount / 15));
+                        $updSql = ($driver === 'pgsql')
+                            ? "UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ?"
+                            : "UPDATE products SET is_featured = 1, discount_set_at = NOW(), featured_until = DATE_ADD(NOW(), INTERVAL ? DAY) WHERE id = ?";
+                        $upd = $pdo->prepare($updSql);
+                        $upd->execute([$days, $pid]);
+                    } elseif ($paymentRow['payment_type'] === 'service_listing') {
+                        $updSql = ($driver === 'pgsql')
+                            ? "UPDATE products SET status = 'active', service_expires_at = NOW() + INTERVAL '30 days', updated_at = NOW() WHERE id = ?"
+                            : "UPDATE products SET status = 'active', service_expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY), updated_at = NOW() WHERE id = ?";
+                        $upd = $pdo->prepare($updSql);
+                        $upd->execute([$pid]);
                     }
                 }
             }
 
             $pdo->commit();
-            setFlash('success', 'Payment request ' . $newStatus . '.');
+            setFlash('success', "Payment #{$paymentId} marked as {$newStatus}.");
         } catch (Exception $e) {
             $pdo->rollBack();
-            setFlash('error', 'Error processing request: ' . $e->getMessage());
+            setFlash('error', 'Update failed: ' . $e->getMessage());
         }
     }
 
@@ -97,6 +122,7 @@ $rows = $pdo->query('
 ')->fetchAll();
 
 $donationCount = countDonationRecords($pdo);
+$svcPricing = getServicePricingSettings($pdo);
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -104,9 +130,9 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container mt-24 mb-16 admin-payments-page">
     <div class="flex justify-between items-end mb-6 admin-page-toolbar" style="gap: 1rem; flex-wrap: wrap;">
         <div>
-            <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Payment Reviews</div>
-            <h1 class="mb-0">Promotion & Donation Payments</h1>
-            <p class="text-muted mb-2">Donations support CampusMarket generally and do not become promotion credits. Promotion requests can later be consumed to feature an approved listing.</p>
+            <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Payment & Pricing Management</div>
+            <h1 class="mb-0">Monetization & Payment Reviews</h1>
+            <p class="text-muted mb-2">Configure platform service listing fees and review promotion / service transactions.</p>
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($rows); ?> Requests</div>
@@ -117,6 +143,59 @@ require_once __DIR__ . '/../includes/header.php';
             </form>
             <?php endif; ?>
         </div>
+    </div>
+
+    <!-- Service Pricing Settings Panel -->
+    <div class="glass-panel p-6 mb-8" style="border-radius: var(--radius-xl); border: 1px solid var(--border-light); background: var(--bg-surface);">
+        <div class="flex items-center gap-3 mb-4">
+            <span style="font-size: 1.5rem;">⚙️</span>
+            <div>
+                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main);">Service Listing Pricing &amp; Duration Settings</h2>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Adjust listing fees, duration, and promotional boost add-on pricing across the marketplace.</p>
+            </div>
+        </div>
+
+        <form method="POST" action="promotion_payments.php" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <?php echo csrfTokenField(); ?>
+            <input type="hidden" name="action" value="update_service_pricing">
+
+            <div class="form-group">
+                <label class="form-label font-bold mb-1 block" style="font-size: 0.88rem; color: var(--text-main);">Standard Listing Fee (₺ TRY)</label>
+                <input type="number" step="1" min="0" max="10000" name="service_listing_fee" value="<?= htmlspecialchars((string)$svcPricing['listing_fee']) ?>" class="premium-input w-full" style="padding: 0.65rem 0.85rem;" required>
+                <small class="text-muted" style="font-size: 0.76rem;">Fee charged to list or renew a standard service.</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label font-bold mb-1 block" style="font-size: 0.88rem; color: var(--text-main);">Homepage Boost Add-On Fee (₺ TRY)</label>
+                <input type="number" step="1" min="0" max="10000" name="service_boost_fee" value="<?= htmlspecialchars((string)$svcPricing['boost_fee']) ?>" class="premium-input w-full" style="padding: 0.65rem 0.85rem;" required>
+                <small class="text-muted" style="font-size: 0.76rem;">Extra fee added for featured placement (Total: ₺<?= number_format($svcPricing['total_boosted_fee'], 0) ?>).</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label font-bold mb-1 block" style="font-size: 0.88rem; color: var(--text-main);">Listing Active Duration (Days)</label>
+                <input type="number" step="1" min="1" max="365" name="service_listing_days" value="<?= (int)$svcPricing['listing_days'] ?>" class="premium-input w-full" style="padding: 0.65rem 0.85rem;" required>
+                <small class="text-muted" style="font-size: 0.76rem;">Number of days before service expires.</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label font-bold mb-1 block" style="font-size: 0.88rem; color: var(--text-main);">Boost Duration (Days)</label>
+                <input type="number" step="1" min="1" max="365" name="service_boost_days" value="<?= (int)$svcPricing['boost_days'] ?>" class="premium-input w-full" style="padding: 0.65rem 0.85rem;" required>
+                <small class="text-muted" style="font-size: 0.76rem;">Days the service remains featured on the homepage.</small>
+            </div>
+
+            <div class="form-group flex items-center gap-3 pt-6">
+                <label class="flex items-center gap-2 cursor-pointer" style="margin: 0;">
+                    <input type="checkbox" name="service_free_trial_enabled" value="1" <?= $svcPricing['free_trial_enabled'] ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: var(--primary);">
+                    <span class="font-bold" style="font-size: 0.88rem; color: var(--text-main);">1st Service Listing Free Trial</span>
+                </label>
+            </div>
+
+            <div class="form-group flex items-end">
+                <button type="submit" class="btn btn-primary w-full" style="padding: 0.7rem 1.2rem; font-weight: 700;">
+                    Save Pricing Settings
+                </button>
+            </div>
+        </form>
     </div>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">

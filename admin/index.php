@@ -562,8 +562,8 @@ require_once __DIR__ . '/../includes/header.php';
                     <a href="promotion_payments.php" class="module-card" style="--module-color: #d97706; --module-bg: #fffbeb;">
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
                         <div class="module-info">
-                            <div class="module-name">Payments & Donations</div>
-                            <div class="module-desc">Review promotion and donation requests</div>
+                            <div class="module-name">Pricing &amp; Payments</div>
+                            <div class="module-desc">Adjust service fees &amp; review transactions</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>

@@ -44,16 +44,16 @@ if ($sellerId > 0) {
 $fromSql = " FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
-        WHERE p.status = 'active' AND p.listing_type = 'service'" . $filterSql;
+        WHERE p.status = 'active' AND p.listing_type = 'service' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW())" . $filterSql;
 
 $countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
 $countStmt->execute($params);
 $totalItems = (int) $countStmt->fetchColumn();
 
 $orderBy = match($sort) {
-    'price_asc'  => "p.price ASC",
-    'price_desc' => "p.price DESC",
-    default      => "p.created_at DESC",
+    'price_asc'  => "p.is_featured DESC, p.price ASC",
+    'price_desc' => "p.is_featured DESC, p.price DESC",
+    default      => "p.is_featured DESC, p.created_at DESC",
 };
 
 $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, u.avatar as seller_avatar, i.image_path,
@@ -67,7 +67,7 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, u.avatar
             SELECT product_id, ROUND(AVG(rating),1) as avg_rating, COUNT(*) as review_count
             FROM ratings GROUP BY product_id
         ) r ON r.product_id = p.id
-        WHERE p.status = 'active' AND p.listing_type = 'service'" . $filterSql .
+        WHERE p.status = 'active' AND p.listing_type = 'service' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW())" . $filterSql .
        " ORDER BY " . $orderBy .
        " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
 
@@ -292,8 +292,13 @@ include '../includes/header.php';
                                         </span>
                                         <?php endif; ?>
                                     </div>
-                                    <!-- Top-right: pricing badge -->
-                                    <div style="position:absolute; top:0.75rem; right:0.75rem;">
+                                    <!-- Top-right: badges -->
+                                    <div style="position:absolute; top:0.75rem; right:0.75rem; display:flex; gap:0.35rem; align-items:center;">
+                                        <?php if (!empty($prod['is_featured'])): ?>
+                                        <span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 0.25rem 0.55rem; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:2px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                            ⚡ Featured
+                                        </span>
+                                        <?php endif; ?>
                                         <span style="background: var(--service); color: white; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
                                             <?php echo ($prod['pricing_model'] ?? 'flat') === 'hourly' ? __('product.hourly_badge') : __('product.service_badge'); ?>
                                         </span>

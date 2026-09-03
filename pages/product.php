@@ -19,7 +19,7 @@ $stmt = $pdo->prepare("
     JOIN users u ON p.user_id = u.id
     WHERE p.id = :id
       AND (
-          p.status = 'active'
+          (p.status = 'active' AND (p.listing_type <> 'service' OR p.service_expires_at IS NULL OR p.service_expires_at > NOW()))
           OR (p.status <> 'deleted' AND (p.user_id = :viewer_id OR :viewer_is_admin = 1))
       )
 ");
@@ -1133,6 +1133,26 @@ body.dark-mode .scc-badge {
                 <?php endif; ?>
             </p>
         </div>
+    <?php endif; ?>
+    <?php if ($isOwner && ($product['listing_type'] ?? '') === 'service'): ?>
+        <?php 
+            $svcPricing = getServicePricingSettings($pdo);
+            $isSvcExpired = !empty($product['service_expires_at']) && strtotime($product['service_expires_at']) <= time();
+            $isPendingPayment = ($product['status'] ?? '') === 'pending_payment';
+        ?>
+        <?php if ($isPendingPayment || $isSvcExpired): ?>
+            <div class="glass-panel p-4 mb-6 flex flex-wrap items-center justify-between gap-4" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-lg);">
+                <div class="flex items-center gap-3">
+                    <span style="font-size: 1.4rem;">⚠️</span>
+                    <span style="font-weight: 600; color: var(--text-main);">
+                        <?= $isPendingPayment ? 'This service is saved but pending payment and not visible to buyers.' : 'This service listing has expired and is hidden from search.' ?>
+                    </span>
+                </div>
+                <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary btn-sm" style="font-weight: 700;">
+                    <?= $isPendingPayment ? 'Activate Listing (₺' . number_format($svcPricing['listing_fee'], 0) . ')' : 'Renew Listing (₺' . number_format($svcPricing['listing_fee'], 0) . ')' ?>
+                </a>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
     <?php if ($isOwner): ?>
         <!-- Seller Live Preview Bar -->
