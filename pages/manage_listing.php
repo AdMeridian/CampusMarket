@@ -98,6 +98,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } elseif ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
         setFlash('error', __('product.discount_range_error', ['max' => LISTING_DISCOUNT_MAX_PERCENT]));
     } else {
+        $oldBase = (float)($product['price'] ?? 0);
+        $oldDisc = (int)($product['discount_percent'] ?? 0);
+        $oldEffective = $oldDisc > 0 ? $oldBase * (1 - ($oldDisc / 100)) : $oldBase;
+        $newEffective = $discountPercent > 0 ? $newPrice * (1 - ($discountPercent / 100)) : $newPrice;
+
         $stmtUp = $pdo->prepare("
             UPDATE products 
             SET price = :price, 
@@ -113,6 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ':dp' => $discountPercent,
             ':id' => $productId
         ]);
+
+        if ($newEffective < $oldEffective) {
+            triggerPriceDropAlerts($pdo, $productId, $oldEffective, $newEffective, $newCurrency);
+        }
+
         setFlash('success', 'Pricing updated successfully.');
     }
     redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);

@@ -76,6 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             $pdo->commit();
+            if ($newStatus === 'verified' && !empty($payData['product_id'])) {
+                triggerFeaturedListingAlert($pdo, (int)$payData['product_id']);
+            }
             setFlash('success', 'Payment request ' . $newStatus . '.');
         } catch (Exception $e) {
             $pdo->rollBack();

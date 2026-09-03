@@ -95,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("UPDATE promotion_payments SET consumed_at = NOW(), consumed_for = 'feature' WHERE id = :id")
                     ->execute([':id' => $paymentId]);
                 $pdo->commit();
+                triggerFeaturedListingAlert($pdo, $id);
                 setFlash('success', 'Listing featured using approved promotion payment.');
                 logAdminAction($pdo, 'feature_listing', 'product', $id, ['payment_id' => $paymentId]);
             } catch (PDOException $e) {
@@ -141,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     "Your listing '" . $prod['title'] . "' has been selected to appear in the Featured Spotlight for {$durationDays} day(s).",
                     $id
                 );
+                triggerFeaturedListingAlert($pdo, $id);
                 setFlash('success', "Listing boosted and featured for {$durationDays} day(s).");
                 logAdminAction($pdo, 'admin_boost_listing', 'product', $id, [
                     'duration_days' => $durationDays,
