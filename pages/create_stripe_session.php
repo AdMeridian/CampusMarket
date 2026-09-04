@@ -84,6 +84,10 @@ if ($paymentType === 'promotion') {
         setFlash('error', 'Service listing not found.');
         redirect(BASE_URL . 'pages/services.php');
     }
+    if (!in_array($svcRow['status'] ?? '', ['pending_payment', 'active', 'expired'], true)) {
+        setFlash('error', 'This service must be approved before payment is available.');
+        redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+    }
 }
 
 $unitAmount = (int) round($amount * 100);

@@ -22,10 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = sanitize($_POST['action']);
 
     if ($action === 'update_service_pricing') {
-        $listingFee = max(0.0, (float)($_POST['service_listing_fee'] ?? 30.0));
-        $boostFee   = max(0.0, (float)($_POST['service_boost_fee'] ?? 30.0));
-        $listingDays = max(1, (int)($_POST['service_listing_days'] ?? 30));
-        $boostDays   = max(1, (int)($_POST['service_boost_days'] ?? 7));
+        $listingFee = min(10000.0, max(0.01, (float)($_POST['service_listing_fee'] ?? 30.0)));
+        $boostFee   = min(10000.0, max(0.0, (float)($_POST['service_boost_fee'] ?? 30.0)));
+        $listingDays = min(365, max(1, (int)($_POST['service_listing_days'] ?? 30)));
+        $boostDays   = min(365, max(1, (int)($_POST['service_boost_days'] ?? 7)));
         $freeTrialEnabled = isset($_POST['service_free_trial_enabled']) ? '1' : '0';
 
         setSystemSetting($pdo, 'service_listing_fee', (string)$listingFee);
@@ -91,11 +91,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $upd = $pdo->prepare($updSql);
                         $upd->execute([$days, $pid]);
                     } elseif ($paymentRow['payment_type'] === 'service_listing') {
+                        $serviceDays = getServicePricingSettings($pdo)['listing_days'];
                         $updSql = ($driver === 'pgsql')
-                            ? "UPDATE products SET status = 'active', service_expires_at = NOW() + INTERVAL '30 days', updated_at = NOW() WHERE id = ?"
-                            : "UPDATE products SET status = 'active', service_expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY), updated_at = NOW() WHERE id = ?";
+                            ? "UPDATE products SET status = 'active', service_expires_at = NOW() + (CAST(? AS text) || ' days')::interval, updated_at = NOW() WHERE id = ?"
+                            : "UPDATE products SET status = 'active', service_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY), updated_at = NOW() WHERE id = ?";
                         $upd = $pdo->prepare($updSql);
-                        $upd->execute([$pid]);
+                        $upd->execute([$serviceDays, $pid]);
                     }
                 }
             }

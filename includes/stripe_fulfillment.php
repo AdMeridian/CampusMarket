@@ -110,6 +110,9 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
         if ($userId <= 0 || $amount <= 0) {
             return ['ok' => false, 'error' => 'Invalid payment metadata.'];
         }
+        if (!in_array($paymentType, ['promotion', 'donation', 'service_listing'], true)) {
+            return ['ok' => false, 'error' => 'Unsupported payment type.'];
+        }
 
         $check = $pdo->prepare('SELECT id FROM promotion_payments WHERE transaction_ref = ?');
         $check->execute([$sessionId]);
@@ -121,6 +124,22 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
 
         $pdo->beginTransaction();
         try {
+            if ($productId) {
+                $productStmt = $pdo->prepare('SELECT user_id, listing_type, status FROM products WHERE id = ? FOR UPDATE');
+                $productStmt->execute([$productId]);
+                $product = $productStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$product || (int)$product['user_id'] !== $userId) {
+                    throw new RuntimeException('Payment product ownership could not be verified.');
+                }
+                if ($paymentType === 'service_listing' && $product['listing_type'] !== 'service') {
+                    throw new RuntimeException('Payment product is not a service listing.');
+                }
+                if ($paymentType === 'promotion' && ($product['status'] !== 'active' || $product['listing_type'] === 'service')) {
+                    throw new RuntimeException('Listing is not eligible for promotion.');
+                }
+            }
+
             $ins = $pdo->prepare("
                 INSERT INTO promotion_payments
                     (user_id, product_id, payment_type, payment_method, amount, transaction_ref, status, approved_at, notes)
@@ -142,15 +161,15 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
                        SET is_featured = TRUE,
                            discount_set_at = NOW(),
                            featured_until = NOW() + (CAST(? AS text) || ' days')::interval
-                       WHERE id = ? AND status = 'active'"
+                       WHERE id = ? AND user_id = ? AND status = 'active'"
                     : "UPDATE products
                        SET is_featured = 1,
                            discount_set_at = NOW(),
                            featured_until = DATE_ADD(NOW(), INTERVAL ? DAY)
-                       WHERE id = ? AND status = 'active'";
+                       WHERE id = ? AND user_id = ? AND status = 'active'";
 
                 $upd = $pdo->prepare($updSql);
-                $upd->execute([$days, $productId]);
+                $upd->execute([$days, $productId, $userId]);
                 if ($upd->rowCount() === 0) {
                     throw new RuntimeException('Listing is not active and cannot be promoted yet.');
                 }
@@ -165,30 +184,37 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
                                is_featured = TRUE,
                                featured_until = NOW() + (CAST(? AS text) || ' days')::interval,
                                updated_at = NOW()
-                           WHERE id = ?"
+                           WHERE id = ? AND user_id = ? AND listing_type = 'service'
+                             AND status IN ('pending_payment', 'active', 'expired')"
                         : "UPDATE products
                            SET status = 'active',
                                service_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY),
                                is_featured = 1,
                                featured_until = DATE_ADD(NOW(), INTERVAL ? DAY),
                                updated_at = NOW()
-                           WHERE id = ?";
+                           WHERE id = ? AND user_id = ? AND listing_type = 'service'
+                             AND status IN ('pending_payment', 'active', 'expired')";
                     $svcStmt = $pdo->prepare($svcSql);
-                    $svcStmt->execute([$activeDays, $featuredDays, $productId]);
+                    $svcStmt->execute([$activeDays, $featuredDays, $productId, $userId]);
                 } else {
                     $svcSql = ($driver === 'pgsql')
                         ? "UPDATE products
                            SET status = 'active',
                                service_expires_at = NOW() + (CAST(? AS text) || ' days')::interval,
                                updated_at = NOW()
-                           WHERE id = ?"
+                           WHERE id = ? AND user_id = ? AND listing_type = 'service'
+                             AND status IN ('pending_payment', 'active', 'expired')"
                         : "UPDATE products
                            SET status = 'active',
                                service_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY),
                                updated_at = NOW()
-                           WHERE id = ?";
+                           WHERE id = ? AND user_id = ? AND listing_type = 'service'
+                             AND status IN ('pending_payment', 'active', 'expired')";
                     $svcStmt = $pdo->prepare($svcSql);
-                    $svcStmt->execute([$activeDays, $productId]);
+                    $svcStmt->execute([$activeDays, $productId, $userId]);
+                }
+                if ($svcStmt->rowCount() === 0) {
+                    throw new RuntimeException('Service listing is not eligible for activation.');
                 }
             }
 
@@ -197,6 +223,11 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
+            }
+            $duplicateCheck = $pdo->prepare('SELECT id FROM promotion_payments WHERE transaction_ref = ?');
+            $duplicateCheck->execute([$sessionId]);
+            if ($duplicateCheck->fetchColumn()) {
+                return ['ok' => true, 'already_processed' => true, 'payment_type' => $paymentType, 'product_id' => $productId];
             }
             error_log('[stripe_fulfillment] ' . $e->getMessage());
             return ['ok' => false, 'error' => $e->getMessage()];

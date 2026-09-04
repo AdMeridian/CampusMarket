@@ -227,10 +227,13 @@ if ($action === 'send') {
         
         // Auto-create order if a product is involved
         if ($productId > 0) {
-            $stmtProd = $pdo->prepare("SELECT user_id, price FROM products WHERE id = ?");
+            $stmtProd = $pdo->prepare("SELECT user_id, price, status, listing_type, service_expires_at FROM products WHERE id = ?");
             $stmtProd->execute([$productId]);
             $prod = $stmtProd->fetch();
-            if ($prod) {
+            $serviceBookable = ($prod['listing_type'] ?? 'product') !== 'service'
+                || (($prod['status'] ?? '') === 'active'
+                    && (empty($prod['service_expires_at']) || strtotime($prod['service_expires_at']) > time()));
+            if ($prod && ($prod['status'] ?? '') === 'active' && $serviceBookable) {
                 $sellerId = (int)$prod['user_id'];
                 $buyerId = ($currentUserId === $sellerId) ? $receiverId : $currentUserId;
                 

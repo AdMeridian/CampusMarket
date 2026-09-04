@@ -43,7 +43,7 @@ if ($result['ok']) {
         setFlash('info', __('stripe.flash_already_processed'));
     } else {
         if ($paymentType === 'service_listing') {
-            setFlash('success', '🎉 Payment successful! Your service listing is now active for 30 days.');
+            setFlash('success', 'Payment successful! Your service listing has been updated and will appear after approval when required.');
         } elseif ($paymentType === 'promotion') {
             setFlash('success', __('stripe.flash_promo_success'));
         } else {

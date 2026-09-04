@@ -288,7 +288,7 @@ CREATE TABLE IF NOT EXISTS promotion_payments (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     user_id         INT NOT NULL,
     product_id      INT NULL,
-    payment_type    ENUM('promotion', 'donation') NOT NULL,
+    payment_type    ENUM('promotion', 'donation', 'service_listing', 'service_boost') NOT NULL,
     payment_method  ENUM('cash', 'venmo', 'zelle', 'other') NOT NULL DEFAULT 'other',
     amount          DECIMAL(10,2) NOT NULL,
     transaction_ref VARCHAR(255) NULL,
@@ -304,7 +304,8 @@ CREATE TABLE IF NOT EXISTS promotion_payments (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
     FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_promo_user_status (user_id, status),
-    INDEX idx_promo_product_status (product_id, status)
+    INDEX idx_promo_product_status (product_id, status),
+    UNIQUE KEY uq_promotion_transaction_ref (transaction_ref)
 ) ENGINE=InnoDB;
 
 -- System Settings

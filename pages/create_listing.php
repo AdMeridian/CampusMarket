@@ -154,23 +154,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
                 $conditionValue = ($listingType === 'service') ? null : $condition;
                 
-                $isFirstFreeService = false;
                 $serviceExpiresAt = null;
-                $svcPricing = getServicePricingSettings($pdo);
+                $statusValue = 'pending_approval';
 
                 if ($listingType === 'service') {
-                    $existingSvcCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND listing_type = 'service' AND status != 'deleted'");
-                    $existingSvcCountStmt->execute([':uid' => $userId]);
-                    $isFirstFreeService = ($svcPricing['free_trial_enabled'] && (int)$existingSvcCountStmt->fetchColumn() === 0);
-
-                    if ($isFirstFreeService) {
-                        $statusValue = 'active';
-                        $listingDays = (int)$svcPricing['listing_days'];
-                        $serviceExpiresAt = ($driver === 'pgsql') ? date('Y-m-d H:i:sP', strtotime("+{$listingDays} days")) : date('Y-m-d H:i:s', strtotime("+{$listingDays} days"));
-                    } else {
-                        $statusValue = 'pending_payment';
-                        $serviceExpiresAt = null;
-                    }
+                    // Every service requires approval before it can be paid for or published.
                 } else {
                     $statusValue = 'active';
                 }
@@ -238,29 +226,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if ($statusValue !== 'pending_payment') {
-                    if (aiModeratorShouldAutoApprove($aiResult)) {
-                        $status = 'active';
-                    } else {
-                        $status = 'pending_approval';
-                        $sellerNote = listingModerationSellerFacingReason($aiResult);
-                        $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
-                        $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
-                        listingModerationSaveNote($pdo, (int)$productId, $sellerNote);
-                        notifyAdminsPendingListing(
-                            $pdo,
-                            (int)$productId,
-                            $title,
-                            $sellerNote
-                        );
-                        notifySellerPendingListing(
-                            $pdo,
-                            (int)$userId,
-                            (int)$productId,
-                            $title,
-                            $sellerNote
-                        );
-                    }
+                if ($listingType === 'service') {
+                    $status = 'pending_approval';
+                    $sellerNote = listingModerationSellerFacingReason($aiResult);
+                    $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
+                    $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+                    listingModerationSaveNote($pdo, (int)$productId, $sellerNote);
+                    notifyAdminsPendingListing($pdo, (int)$productId, $title, $sellerNote);
+                    notifySellerPendingListing($pdo, (int)$userId, (int)$productId, $title, $sellerNote);
+                } elseif (aiModeratorShouldAutoApprove($aiResult)) {
+                    $status = 'active';
+                } else {
+                    $status = 'pending_approval';
+                    $sellerNote = listingModerationSellerFacingReason($aiResult);
+                    $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
+                    $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
+                    listingModerationSaveNote($pdo, (int)$productId, $sellerNote);
+                    notifyAdminsPendingListing($pdo, (int)$productId, $title, $sellerNote);
+                    notifySellerPendingListing($pdo, (int)$userId, (int)$productId, $title, $sellerNote);
                 }
 
                 $tagsToSave = [];

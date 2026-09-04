@@ -25,7 +25,9 @@ $stmt = $pdo->prepare("
     JOIN users u ON p.user_id = u.id 
     JOIN categories c ON p.category_id = c.id
     LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-    WHERE p.id = :id AND p.status = 'active'
+        WHERE p.id = :id
+            AND p.status = 'active'
+            AND (p.listing_type <> 'service' OR p.service_expires_at IS NULL OR p.service_expires_at > NOW())
 ");
 $stmt->execute([':id' => $productId]);
 $product = $stmt->fetch();

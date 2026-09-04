@@ -46,19 +46,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'approve') {
             // Fetch listing details to notify the owner
-            $stmt = $pdo->prepare("SELECT user_id, title FROM products WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT user_id, title, listing_type FROM products WHERE id = ?");
             $stmt->execute([$id]);
             $prod = $stmt->fetch();
             if ($prod) {
-                $stmtUpdate = $pdo->prepare("UPDATE products SET status = 'active' WHERE id = ?");
-                $stmtUpdate->execute([$id]);
+                $approvalStatus = 'active';
+                $serviceExpiresAt = null;
+                $approvalMessage = "Your listing for '" . $prod['title'] . "' has been approved and is now active.";
+
+                if (($prod['listing_type'] ?? 'product') === 'service') {
+                    $svcPricing = getServicePricingSettings($pdo);
+                    $otherServicesStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = ? AND listing_type = 'service' AND status != 'deleted' AND id <> ?");
+                    $otherServicesStmt->execute([(int)$prod['user_id'], $id]);
+                    $isFreeService = $svcPricing['free_trial_enabled'] && (int)$otherServicesStmt->fetchColumn() === 0;
+
+                    if ($isFreeService) {
+                        $listingDays = (int)$svcPricing['listing_days'];
+                        $approvalMessage = "Your first service listing has been approved and is active for {$listingDays} days at no charge.";
+                        $serviceExpiresAt = date('Y-m-d H:i:s', strtotime("+{$listingDays} days"));
+                    } else {
+                        $approvalStatus = 'pending_payment';
+                        $approvalMessage = "Your service listing has been approved. Choose a payment plan to activate it.";
+                    }
+                }
+
+                $stmtUpdate = $pdo->prepare("UPDATE products SET status = ?, service_expires_at = ?, updated_at = NOW() WHERE id = ?");
+                $stmtUpdate->execute([$approvalStatus, $serviceExpiresAt, $id]);
                 try {
                     $pdo->prepare("UPDATE products SET moderation_note = NULL WHERE id = ?")->execute([$id]);
                 } catch (PDOException $e) {
                     // moderation_note column may not exist until migration is applied
                 }
                 // Notify the seller
-                createNotification($pdo, (int)$prod['user_id'], 'system', 'Listing Approved', "Your listing for '" . $prod['title'] . "' has been approved and is now active.", $id);
+                createNotification($pdo, (int)$prod['user_id'], 'system', 'Listing Approved', $approvalMessage, $id);
                 setFlash('success', __('admin.flash_listing_approved'));
                 logAdminAction($pdo, 'approve_listing', 'product', $id, ['title' => $prod['title']]);
             } else {

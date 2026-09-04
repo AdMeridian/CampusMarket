@@ -27,6 +27,11 @@ CREATE INDEX IF NOT EXISTS idx_products_service_expiry
   ON products(listing_type, status, service_expires_at)
   WHERE listing_type = 'service';
 
+-- Stripe browser returns and webhook retries may fulfill the same session concurrently.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_promotion_payments_transaction_ref
+    ON promotion_payments(transaction_ref)
+    WHERE transaction_ref IS NOT NULL;
+
 -- 4. Update promotion_payments check constraint on payment_type if present
 DO $$
 BEGIN
