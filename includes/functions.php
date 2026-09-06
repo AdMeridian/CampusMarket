@@ -559,6 +559,15 @@ function notificationMessagesUrl(PDO $pdo, int $currentUserId, int $productId): 
  * Human-readable category label for activity feed rows.
  */
 function notificationActivityLabel(string $type, string $title): string {
+    if (str_starts_with($title, '🏷️') || str_contains($title, 'Price Drop') || str_contains($title, 'price drop')) {
+        return 'Price Drop';
+    }
+    if (str_starts_with($title, '⭐') || str_contains($title, 'Featured') || str_contains($title, 'featured')) {
+        return 'Featured Deal';
+    }
+    if (str_starts_with($title, '📢') || str_contains($title, 'Campaign') || str_contains($title, 'Announcement')) {
+        return 'Campaign';
+    }
     if ($title === 'Listing pending approval') {
         return 'Listing Approval';
     }
@@ -630,6 +639,12 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
             return $base . 'pages/my_orders.php?order_id=' . $refId;
         }
         return $base . 'pages/my_orders.php';
+    }
+
+    if (str_contains($title, 'Price Drop') || str_contains($title, 'Featured') || str_contains($title, 'Promo') || str_starts_with($title, '🏷️') || str_starts_with($title, '⭐')) {
+        if ($refId > 0) {
+            return $base . 'pages/product.php?id=' . $refId;
+        }
     }
 
     if ($type === 'wishlist') {
@@ -709,6 +724,173 @@ function createNotification(PDO $pdo, int $userId, string $type, string $title, 
         triggerWebPushBestEffort($userId, $title, $body, $targetUrl);
     } catch (Throwable $e) {
         // ignore
+    }
+}
+
+/**
+ * Check whether a user is eligible to receive an automated promo alert (rate-limiting & pacing).
+ */
+function canUserReceivePromoAlert(PDO $pdo, int $userId, string $promoType, ?int $productId = null): bool {
+    try {
+        if ($promoType === 'price_drop') {
+            // General interval cooldown: 1 price drop alert per 3 hours
+            $since3h = date('Y-m-d H:i:s', time() - (3 * 3600));
+            $stmt = $pdo->prepare("
+                SELECT 1 FROM notifications 
+                WHERE user_id = :uid 
+                  AND created_at >= :since 
+                  AND (title LIKE '🏷️%' OR title LIKE '%Price Drop%' OR title LIKE '%price drop%')
+                LIMIT 1
+            ");
+            $stmt->execute([':uid' => $userId, ':since' => $since3h]);
+            if ($stmt->fetchColumn()) {
+                return false;
+            }
+
+            // De-duplication: same product cannot re-alert the same user within 48 hours
+            if ($productId) {
+                $since48h = date('Y-m-d H:i:s', time() - (48 * 3600));
+                $stmt2 = $pdo->prepare("
+                    SELECT 1 FROM notifications 
+                    WHERE user_id = :uid 
+                      AND reference_id = :pid
+                      AND created_at >= :since
+                      AND (title LIKE '🏷️%' OR title LIKE '%Price Drop%' OR title LIKE '%price drop%')
+                    LIMIT 1
+                ");
+                $stmt2->execute([':uid' => $userId, ':pid' => $productId, ':since' => $since48h]);
+                if ($stmt2->fetchColumn()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        if ($promoType === 'featured') {
+            // General interval cooldown: 1 featured spotlight per 12 hours
+            $since12h = date('Y-m-d H:i:s', time() - (12 * 3600));
+            $stmt = $pdo->prepare("
+                SELECT 1 FROM notifications 
+                WHERE user_id = :uid 
+                  AND created_at >= :since 
+                  AND (title LIKE '⭐%' OR title LIKE '%Featured%' OR title LIKE '%featured%')
+                LIMIT 1
+            ");
+            $stmt->execute([':uid' => $userId, ':since' => $since12h]);
+            if ($stmt->fetchColumn()) {
+                return false;
+            }
+
+            // De-duplication: same product cannot re-feature alert the same user within 7 days
+            if ($productId) {
+                $since7d = date('Y-m-d H:i:s', time() - (7 * 86400));
+                $stmt2 = $pdo->prepare("
+                    SELECT 1 FROM notifications 
+                    WHERE user_id = :uid 
+                      AND reference_id = :pid
+                      AND created_at >= :since
+                      AND (title LIKE '⭐%' OR title LIKE '%Featured%' OR title LIKE '%featured%')
+                    LIMIT 1
+                ");
+                $stmt2->execute([':uid' => $userId, ':pid' => $productId, ':since' => $since7d]);
+                if ($stmt2->fetchColumn()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    } catch (Throwable $e) {
+        // Fallback safely if check fails
+        return true;
+    }
+    return true;
+}
+
+/**
+ * Trigger Price Drop Notifications to active users across campus.
+ */
+function triggerPriceDropAlerts(PDO $pdo, int $productId, float $oldPrice, float $newPrice, string $currency = 'TL'): int {
+    if ($oldPrice <= 0 || $newPrice <= 0 || $newPrice >= $oldPrice) {
+        return 0;
+    }
+
+    $diff = $oldPrice - $newPrice;
+    $pctDrop = round(($diff / $oldPrice) * 100);
+
+    // Significance threshold: drop of at least 5% or 10 TL
+    if ($diff < 10 && $pctDrop < 5) {
+        return 0;
+    }
+
+    try {
+        $pStmt = $pdo->prepare("SELECT title, user_id FROM products WHERE id = :id LIMIT 1");
+        $pStmt->execute([':id' => $productId]);
+        $prod = $pStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$prod) {
+            return 0;
+        }
+
+        $sellerId = (int)$prod['user_id'];
+        $title = trim($prod['title'] ?? 'Listing');
+
+        $uStmt = $pdo->prepare("SELECT id FROM users WHERE account_status = 'active' AND id != :seller_id");
+        $uStmt->execute([':seller_id' => $sellerId]);
+        $users = $uStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $sent = 0;
+        $notifTitle = "🏷️ Price Drop: " . mb_substr($title, 0, 40);
+        $notifBody = "Price dropped by {$pctDrop}% (from " . number_format($oldPrice, 0) . " to " . number_format($newPrice, 0) . " {$currency})! Tap to view deal.";
+
+        foreach ($users as $u) {
+            $uid = (int)$u['id'];
+            if (canUserReceivePromoAlert($pdo, $uid, 'price_drop', $productId)) {
+                createNotification($pdo, $uid, 'wishlist', $notifTitle, $notifBody, $productId);
+                $sent++;
+            }
+        }
+        return $sent;
+    } catch (Throwable $e) {
+        error_log("Failed to trigger price drop alerts: " . $e->getMessage());
+        return 0;
+    }
+}
+
+/**
+ * Trigger Featured Listing Spotlight Notifications to active campus users.
+ */
+function triggerFeaturedListingAlert(PDO $pdo, int $productId): int {
+    try {
+        $pStmt = $pdo->prepare("SELECT title, price, price_currency, user_id FROM products WHERE id = :id LIMIT 1");
+        $pStmt->execute([':id' => $productId]);
+        $prod = $pStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$prod) {
+            return 0;
+        }
+
+        $sellerId = (int)$prod['user_id'];
+        $title = trim($prod['title'] ?? 'Listing');
+        $price = (float)($prod['price'] ?? 0);
+        $curr = $prod['price_currency'] ?: 'TL';
+
+        $uStmt = $pdo->prepare("SELECT id FROM users WHERE account_status = 'active' AND id != :seller_id");
+        $uStmt->execute([':seller_id' => $sellerId]);
+        $users = $uStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $sent = 0;
+        $notifTitle = "⭐ Featured on Campus: " . mb_substr($title, 0, 40);
+        $notifBody = "Spotlight listing just featured for " . number_format($price, 0) . " {$curr}! Tap to view.";
+
+        foreach ($users as $u) {
+            $uid = (int)$u['id'];
+            if (canUserReceivePromoAlert($pdo, $uid, 'featured', $productId)) {
+                createNotification($pdo, $uid, 'system', $notifTitle, $notifBody, $productId);
+                $sent++;
+            }
+        }
+        return $sent;
+    } catch (Throwable $e) {
+        error_log("Failed to trigger featured listing alert: " . $e->getMessage());
+        return 0;
     }
 }
 
@@ -1612,6 +1794,9 @@ function productSearchFilterSql(string $search, array &$params, string $productA
         return '';
     }
 
+    global $pdo;
+    $isMySql = isset($pdo) && strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql';
+
     // Split search query into tokens (words)
     $rawTokens = array_unique(array_filter(preg_split('/\s+/u', mb_strtolower($trimmed))));
     if (empty($rawTokens)) {
@@ -1643,18 +1828,23 @@ function productSearchFilterSql(string $search, array &$params, string $productA
             $params[] = "%$variant%";
         }
 
-        // Description check ONLY against the user's exact token using full-text tsvector or word boundary regex
+        // Description check uses MySQL-compatible matching for local development.
         $ftsTerm = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $token));
         if ($ftsTerm === '') {
             $ftsTerm = $token;
         }
 
-        $variantSubConditions[] = "(
-            ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
-            OR LOWER({$productAlias}.description) ~* ?
-        )";
-        $params[] = $ftsTerm;
-        $params[] = '\y' . preg_quote($token, '/') . '\y';
+        if ($isMySql) {
+            $variantSubConditions[] = "LOWER(COALESCE({$productAlias}.description, '')) LIKE ?";
+            $params[] = '%' . mb_strtolower($ftsTerm) . '%';
+        } else {
+            $variantSubConditions[] = "(
+                ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
+                OR LOWER({$productAlias}.description) ~* ?
+            )";
+            $params[] = $ftsTerm;
+            $params[] = '\\y' . preg_quote($token, '/') . '\\y';
+        }
 
         // Each token MUST be matched in Title/Category/Tags (by a variant) OR in Description (by full-text/word-boundary token)
         $allTokenGroupConditions[] = '(' . implode(' OR ', $variantSubConditions) . ')';
@@ -1672,6 +1862,9 @@ function productSearchOrderBySql(string $search, array &$params, string $product
     if ($trimmed === '') {
         return "ORDER BY {$productAlias}.created_at DESC";
     }
+
+    global $pdo;
+    $isMySql = isset($pdo) && strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql';
 
     $rawTokens = array_unique(array_filter(preg_split('/\s+/u', $trimmed)));
 
@@ -1705,9 +1898,14 @@ function productSearchOrderBySql(string $search, array &$params, string $product
         $params[] = '%' . $t . '%';
     }
 
-    // Full-text vector match on description (+10)
-    $scoreParts[] = "(CASE WHEN {$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?) THEN 10 ELSE 0 END)";
-    $params[] = $trimmed;
+    // Description relevance uses a portable match for local MySQL development.
+    if ($isMySql) {
+        $scoreParts[] = "(CASE WHEN LOWER(COALESCE({$productAlias}.description, '')) LIKE ? THEN 10 ELSE 0 END)";
+        $params[] = '%' . $trimmed . '%';
+    } else {
+        $scoreParts[] = "(CASE WHEN {$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?) THEN 10 ELSE 0 END)";
+        $params[] = $trimmed;
+    }
 
     $scoreExpr = implode(' + ', $scoreParts);
     return "ORDER BY (" . $scoreExpr . ") DESC, {$productAlias}.created_at DESC";

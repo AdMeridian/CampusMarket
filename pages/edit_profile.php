@@ -227,7 +227,7 @@ require_once '../includes/header.php';
                     <label class="form-label font-bold mb-3 block text-main"><?= __('profile.choose_preset') ?></label>
                     <input type="hidden" id="selected-preset" name="selected_preset" value="">
                     
-                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-6 gap-4">
                         <?php
                         $presets = [
                             ['path' => 'images/avatars/avatar_scholar.svg', 'name' => 'Scholar'],

@@ -285,16 +285,43 @@ body.dark-mode .convo-card.unread {
             <?php foreach ($notifications as $n): ?>
                 <?php 
                     $isUnread = !$n['is_read'];
+                    $activityLabel = notificationActivityLabel((string)$n['type'], (string)$n['title']);
+                    $isPriceDrop = ($activityLabel === 'Price Drop' || str_starts_with($n['title'], '🏷️') || str_contains($n['title'], 'Price Drop'));
+                    $isFeatured = ($activityLabel === 'Featured Deal' || str_starts_with($n['title'], '⭐') || str_contains($n['title'], 'Featured'));
+                    $isCampaign = ($activityLabel === 'Campaign' || str_starts_with($n['title'], '📢') || str_contains($n['title'], 'Campaign'));
                     $isOrder = ($n['type'] === 'order');
                     $isMessage = ($n['type'] === 'message');
+                    $isWishlist = ($n['type'] === 'wishlist' && !$isPriceDrop);
                     $targetUrl = notificationTargetUrl($pdo, $n, $currentUserId);
-                    $activityLabel = notificationActivityLabel((string)$n['type'], (string)$n['title']);
-                    $accentColor = $isOrder ? 'var(--primary)' : ($isMessage ? 'var(--accent)' : 'var(--secondary)');
+
+                    if ($isPriceDrop) {
+                        $accentColor = '#10b981';
+                    } elseif ($isFeatured) {
+                        $accentColor = '#f59e0b';
+                    } elseif ($isCampaign) {
+                        $accentColor = '#8b5cf6';
+                    } elseif ($isWishlist) {
+                        $accentColor = '#ec4899';
+                    } elseif ($isOrder) {
+                        $accentColor = 'var(--primary)';
+                    } elseif ($isMessage) {
+                        $accentColor = 'var(--accent)';
+                    } else {
+                        $accentColor = 'var(--secondary)';
+                    }
                 ?>
                 <a href="<?= htmlspecialchars($targetUrl) ?>" class="convo-card <?= $isUnread ? 'unread' : '' ?>" style="border-left: 3px solid <?= $accentColor ?>;">
                     <!-- Icon Avatar -->
-                    <div class="convo-avatar" style="color: var(--text-muted);">
-                        <?php if ($isOrder): ?>
+                    <div class="convo-avatar" style="color: var(--text-muted); background: <?= $isPriceDrop ? 'rgba(16, 185, 129, 0.08)' : ($isFeatured ? 'rgba(245, 158, 11, 0.08)' : ($isCampaign ? 'rgba(139, 92, 246, 0.08)' : 'var(--bg-main)')) ?>;">
+                        <?php if ($isPriceDrop): ?>
+                            <svg style="width: 20px; height: 20px; color: #10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                        <?php elseif ($isFeatured): ?>
+                            <svg style="width: 20px; height: 20px; color: #f59e0b;" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <?php elseif ($isCampaign): ?>
+                            <svg style="width: 20px; height: 20px; color: #8b5cf6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        <?php elseif ($isWishlist): ?>
+                            <svg style="width: 20px; height: 20px; color: #ec4899;" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        <?php elseif ($isOrder): ?>
                             <svg style="width: 20px; height: 20px; color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                         <?php elseif ($isMessage): ?>
                             <svg style="width: 20px; height: 20px; color: var(--accent);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/></svg>

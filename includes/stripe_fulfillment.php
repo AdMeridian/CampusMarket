@@ -105,6 +105,9 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
             }
 
             $pdo->commit();
+            if ($paymentType === 'promotion' && $productId) {
+                triggerFeaturedListingAlert($pdo, (int)$productId);
+            }
             return ['ok' => true, 'already_processed' => false, 'payment_type' => $paymentType, 'product_id' => $productId];
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {

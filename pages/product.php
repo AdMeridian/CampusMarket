@@ -101,8 +101,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
         }
     }
     if ($newPrice > 0) {
+        $oldPrice = (float)($product['price'] ?? 0);
         $stmtUp = $pdo->prepare("UPDATE products SET price = :price, price_currency = :currency, updated_at = NOW() WHERE id = :id");
         $stmtUp->execute([':price' => $newPrice, ':currency' => $newCurrency, ':id' => $productId]);
+        if ($newPrice < $oldPrice) {
+            triggerPriceDropAlerts($pdo, $productId, $oldPrice, $newPrice, $newCurrency);
+        }
         setFlash('success', __('product.price_updated'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     } else {
@@ -118,8 +122,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     if ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
         setFlash('error', __('product.discount_range_error', ['max' => LISTING_DISCOUNT_MAX_PERCENT]));
     } else {
+        $basePrice = (float)($product['price'] ?? 0);
+        $oldDiscount = (int)($product['discount_percent'] ?? 0);
+        $oldEffective = $oldDiscount > 0 ? $basePrice * (1 - ($oldDiscount / 100)) : $basePrice;
+        $newEffective = $discountPercent > 0 ? $basePrice * (1 - ($discountPercent / 100)) : $basePrice;
+
         $stmtUp = $pdo->prepare("UPDATE products SET discount_percent = :dp, discount_set_at = NOW() WHERE id = :id");
         $stmtUp->execute([':dp' => $discountPercent, ':id' => $productId]);
+
+        if ($newEffective < $oldEffective) {
+            triggerPriceDropAlerts($pdo, $productId, $oldEffective, $newEffective, (string)($product['price_currency'] ?? 'TL'));
+        }
+
         setFlash('success', $discountPercent > 0 ? __('product.discount_applied') : __('product.discount_removed'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     }

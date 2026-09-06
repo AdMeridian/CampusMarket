@@ -31,6 +31,19 @@ $stats = [
     'completed_deals'           => $pdo->query("SELECT COUNT(*) FROM deal_confirmations WHERE status = 'completed'")->fetchColumn(),
 ];
 
+try {
+    $pwaDriver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+    $activePwaSince = $pwaDriver === 'mysql'
+        ? "DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        : "CURRENT_TIMESTAMP - INTERVAL '30 days'";
+    $stats['pwa_installs'] = (int)$pdo->query("SELECT COUNT(*) FROM pwa_installations WHERE install_event_at IS NOT NULL")->fetchColumn();
+    $stats['pwa_active_devices'] = (int)$pdo->query("SELECT COUNT(*) FROM pwa_installations WHERE last_standalone_at >= {$activePwaSince}")->fetchColumn();
+} catch (Throwable $e) {
+    // Keep the admin dashboard usable until the telemetry migration is applied.
+    $stats['pwa_installs'] = 0;
+    $stats['pwa_active_devices'] = 0;
+}
+
 // Top sellers by completed transactions
 $sellerTxnStmt = $pdo->query("
     SELECT
@@ -465,6 +478,16 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="stat-card-label"><svg style="width: 14px; height: 14px; display: inline-block; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Completed Deals</div>
             <div class="stat-card-num"><?php echo $stats['completed_deals']; ?></div>
             <div class="stat-card-sub">Verified transactions</div>
+        </div>
+        <div class="stat-card" style="border-left-color: var(--primary);">
+            <div class="stat-card-label">PWA Installs</div>
+            <div class="stat-card-num"><?php echo $stats['pwa_installs']; ?></div>
+            <div class="stat-card-sub">Confirmed install events</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #0ea5e9;">
+            <div class="stat-card-label">Active PWA Devices</div>
+            <div class="stat-card-num"><?php echo $stats['pwa_active_devices']; ?></div>
+            <div class="stat-card-sub">Standalone activity in 30 days</div>
         </div>
     </div>
 
