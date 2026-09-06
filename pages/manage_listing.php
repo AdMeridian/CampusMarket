@@ -494,9 +494,21 @@ require_once __DIR__ . '/../includes/header.php';
 .mgmt-topbar__actions {
     min-width: 0;
 }
+.mgmt-topbar__actions {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+}
 .mgmt-topbar__title {
     min-width: 0;
     overflow-wrap: anywhere;
+}
+@media (min-width: 641px) {
+    .mgmt-topbar__title {
+        order: 1;
+        margin-right: auto;
+    }
+    .mgmt-topbar__actions .mgmt-header-badge { order: 2; }
+    .mgmt-topbar__actions .btn-primary { order: 3; }
 }
 @media (max-width: 640px) {
     .mgmt-topbar {
@@ -514,6 +526,7 @@ require_once __DIR__ . '/../includes/header.php';
         gap: 0.75rem !important;
     }
     .mgmt-topbar__actions {
+        flex: 0 0 auto;
         flex-direction: column;
         align-items: stretch;
         gap: 0.65rem !important;
