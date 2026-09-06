@@ -272,6 +272,22 @@ CREATE TABLE email_verifications (
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS last_seen_at DATETIME NULL DEFAULT NULL;
 
+-- PWA installation and standalone activity telemetry
+CREATE TABLE IF NOT EXISTS pwa_installations (
+    installation_id VARCHAR(36) PRIMARY KEY,
+    user_id INT NULL,
+    first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    install_event_at DATETIME NULL,
+    last_standalone_at DATETIME NULL,
+    platform VARCHAR(40) NULL,
+    display_mode VARCHAR(30) NULL,
+    user_agent TEXT NULL,
+    INDEX idx_pwa_last_seen (last_seen_at),
+    INDEX idx_pwa_user_id (user_id),
+    CONSTRAINT fk_pwa_installations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- Promotion payments (manual verification workflow)
 CREATE TABLE IF NOT EXISTS promotion_payments (
     id              INT AUTO_INCREMENT PRIMARY KEY,
