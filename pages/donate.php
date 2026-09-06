@@ -27,7 +27,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="payment_type" value="donation">
                     
-                    <div class="grid grid-cols-3 gap-6 mb-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                         <div class="amount-pill active" data-amount="50"><span>₺50</span></div>
                         <div class="amount-pill" data-amount="100"><span>₺100</span></div>
                         <div class="amount-pill" data-amount="200"><span>₺200</span></div>

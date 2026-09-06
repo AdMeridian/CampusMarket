@@ -1794,6 +1794,9 @@ function productSearchFilterSql(string $search, array &$params, string $productA
         return '';
     }
 
+    global $pdo;
+    $isMySql = isset($pdo) && strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql';
+
     // Split search query into tokens (words)
     $rawTokens = array_unique(array_filter(preg_split('/\s+/u', mb_strtolower($trimmed))));
     if (empty($rawTokens)) {
@@ -1825,18 +1828,23 @@ function productSearchFilterSql(string $search, array &$params, string $productA
             $params[] = "%$variant%";
         }
 
-        // Description check ONLY against the user's exact token using full-text tsvector or word boundary regex
+        // Description check uses MySQL-compatible matching for local development.
         $ftsTerm = trim(preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $token));
         if ($ftsTerm === '') {
             $ftsTerm = $token;
         }
 
-        $variantSubConditions[] = "(
-            ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
-            OR LOWER({$productAlias}.description) ~* ?
-        )";
-        $params[] = $ftsTerm;
-        $params[] = '\y' . preg_quote($token, '/') . '\y';
+        if ($isMySql) {
+            $variantSubConditions[] = "LOWER(COALESCE({$productAlias}.description, '')) LIKE ?";
+            $params[] = '%' . mb_strtolower($ftsTerm) . '%';
+        } else {
+            $variantSubConditions[] = "(
+                ({$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?))
+                OR LOWER({$productAlias}.description) ~* ?
+            )";
+            $params[] = $ftsTerm;
+            $params[] = '\\y' . preg_quote($token, '/') . '\\y';
+        }
 
         // Each token MUST be matched in Title/Category/Tags (by a variant) OR in Description (by full-text/word-boundary token)
         $allTokenGroupConditions[] = '(' . implode(' OR ', $variantSubConditions) . ')';
@@ -1854,6 +1862,9 @@ function productSearchOrderBySql(string $search, array &$params, string $product
     if ($trimmed === '') {
         return "ORDER BY {$productAlias}.created_at DESC";
     }
+
+    global $pdo;
+    $isMySql = isset($pdo) && strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql';
 
     $rawTokens = array_unique(array_filter(preg_split('/\s+/u', $trimmed)));
 
@@ -1887,9 +1898,14 @@ function productSearchOrderBySql(string $search, array &$params, string $product
         $params[] = '%' . $t . '%';
     }
 
-    // Full-text vector match on description (+10)
-    $scoreParts[] = "(CASE WHEN {$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?) THEN 10 ELSE 0 END)";
-    $params[] = $trimmed;
+    // Description relevance uses a portable match for local MySQL development.
+    if ($isMySql) {
+        $scoreParts[] = "(CASE WHEN LOWER(COALESCE({$productAlias}.description, '')) LIKE ? THEN 10 ELSE 0 END)";
+        $params[] = '%' . $trimmed . '%';
+    } else {
+        $scoreParts[] = "(CASE WHEN {$productAlias}.search_vector IS NOT NULL AND {$productAlias}.search_vector @@ plainto_tsquery('simple', ?) THEN 10 ELSE 0 END)";
+        $params[] = $trimmed;
+    }
 
     $scoreExpr = implode(' + ', $scoreParts);
     return "ORDER BY (" . $scoreExpr . ") DESC, {$productAlias}.created_at DESC";
