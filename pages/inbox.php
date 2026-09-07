@@ -57,6 +57,12 @@ require_once __DIR__ . '/../includes/header.php';
     padding: 0 1.25rem;
 }
 
+@media (max-width: 1023px) {
+    .inbox-wrap {
+        margin-top: 1rem;
+    }
+}
+
 .inbox-header {
     display: flex;
     align-items: center;

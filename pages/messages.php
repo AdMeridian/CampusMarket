@@ -122,7 +122,7 @@ $presenceText = match($otherPresence['status']) {
             <div class="chat-peer">
                 <img src="<?= htmlspecialchars($otherAvatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" class="chat-peer-avatar chat-peer-avatar--logo">
                 <div class="chat-peer-meta">
-                    <span class="chat-peer-name">@<?= htmlspecialchars($otherUser['username']) ?></span>
+                        <span class="chat-peer-name chat-peer-name--support"><?= htmlspecialchars($product['title']) ?></span>
                     <p id="user-presence" class="chat-peer-status mb-0">
                         <span id="presence-dot" class="chat-presence-dot" style="background:<?= $presenceColor ?>;"></span>
                         <span id="presence-text"><?= htmlspecialchars($presenceText) ?></span>
@@ -190,6 +190,14 @@ $presenceText = match($otherPresence['status']) {
             </div>
         <?php endif; ?>
 
+        <div id="reply-preview" class="chat-reply-preview" hidden>
+            <div class="chat-reply-preview__copy">
+                <span class="chat-reply-preview__label">Replying to</span>
+                <span id="reply-preview-text" class="chat-reply-preview__text"></span>
+            </div>
+            <button type="button" id="cancel-reply-btn" class="chat-reply-preview__cancel" aria-label="Cancel reply">&times;</button>
+        </div>
+
         <div class="chat-input-bar">
             <form id="chat-form" class="chat-input-form m-0">
                 <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" required autocomplete="off" maxlength="250">
@@ -245,6 +253,8 @@ function goBackOrInbox() {
 
 const productId = <?= $productId ?>;
 const otherUserId = <?= $otherUserId ?>;
+const isServiceListing = <?= (($product['listing_type'] ?? 'product') === 'service') ? 'true' : 'false' ?>;
+const productTitle = <?= json_encode((string)($product['title'] ?? 'this service')) ?>;
 const dealExplainerHtml = <?= json_encode('<p class="chat-deal-bar__hint text-muted small mb-3">' . htmlspecialchars(__('chat.orders_deal_explainer'), ENT_QUOTES, 'UTF-8') . '</p>') ?>;
 const isAdmin = <?= isAdmin() ? 'true' : 'false' ?>;
 const chatBox = document.getElementById('chat-box');
@@ -257,6 +267,7 @@ let pollIntervalId = null;
 let translationConfigured = <?= getTranslationService()->isConfigured() ? 'true' : 'false' ?>;
 const translatedStorageKey = `cm_translated_${productId}_${otherUserId}`;
 let translatedMessageIds = new Set();
+let selectedReply = null;
 
 try {
     const storedTranslated = sessionStorage.getItem(translatedStorageKey);
@@ -408,15 +419,24 @@ function formatMessageTime(iso) {
 function buildMessageBubbleHtml(msg, options = {}) {
     const isMine = !!msg.is_mine;
     const canDelete = !options.sending;
+    const canReply = !options.sending && msg.id;
     const timeStr = options.sending ? __('chat.sending') : formatMessageTime(msg.created_at);
     const bodyHtml = isMine
         ? `<div class="message-body-wrap"><div class="message-text-content">${msg.body}</div></div>`
         : `<div class="message-body-wrap">${buildIncomingBodyHtml(msg)}</div>`;
+    const replyHtml = msg.reply_to_message_id && msg.reply_body
+        ? `<div class="message-reply-quote"><span class="message-reply-quote__label">Replying to ${msg.reply_sender_name || 'message'}</span><span class="message-reply-quote__text">${msg.reply_body}</span></div>`
+        : '';
+    const replyButton = canReply
+        ? `<button type="button" class="btn-reply-msg" onclick="selectReplyMessage(${msg.id})" title="Reply" aria-label="Reply">↩</button>`
+        : '';
 
     return `
         ${canDelete && msg.id ? `<button type="button" class="btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         </button>` : ''}
+        ${replyButton}
+        ${replyHtml}
         ${bodyHtml}
         <div class="message-time">${timeStr}</div>
     `;
@@ -435,10 +455,32 @@ function createMessageRow(msg, options = {}) {
     if (msg.id) {
         bubble.dataset.messageId = String(msg.id);
     }
+    bubble.dataset.replyText = msg.body || '';
     bubble.innerHTML = buildMessageBubbleHtml(msg, options);
     row.appendChild(bubble);
     return row;
 }
+
+window.selectReplyMessage = function(messageId) {
+    const bubble = chatBox.querySelector(`[data-message-id="${messageId}"]`);
+    if (!bubble) return;
+
+    selectedReply = {
+        id: Number(messageId),
+        text: bubble.dataset.replyText || ''
+    };
+    document.getElementById('reply-preview-text').textContent = selectedReply.text;
+    document.getElementById('reply-preview').hidden = false;
+    chatInput.focus();
+};
+
+function clearReplySelection() {
+    selectedReply = null;
+    document.getElementById('reply-preview').hidden = true;
+    document.getElementById('reply-preview-text').textContent = '';
+}
+
+document.getElementById('cancel-reply-btn').addEventListener('click', clearReplySelection);
 
 function renderMessages(messages) {
     if (loadingDiv) {
@@ -507,6 +549,9 @@ chatForm.addEventListener('submit', (e) => {
         id: null,
         is_mine: true,
         body: text,
+        reply_to_message_id: selectedReply ? selectedReply.id : null,
+        reply_body: selectedReply ? selectedReply.text : null,
+        reply_sender_name: selectedReply ? 'message' : null,
         created_at: new Date().toISOString()
     };
     chatBox.appendChild(createMessageRow(optimisticMsg, { sending: true }));
@@ -518,9 +563,13 @@ chatForm.addEventListener('submit', (e) => {
     formData.append('product_id', productId);
     formData.append('receiver_id', otherUserId);
     formData.append('body', text);
+    if (selectedReply) {
+        formData.append('reply_to_message_id', selectedReply.id);
+    }
     formData.append('csrf_token', window.__csrfToken || '');
     
     chatInput.value = '';
+    clearReplySelection();
     chatInput.focus();
     
     fetch('api_messages.php', {
@@ -623,12 +672,44 @@ function checkDealStatus() {
                 renderHandshakeBar(data.deal);
                 handshakeBar.hidden = false;
                 handshakeBar.style.display = 'block';
-            } else {
-                handshakeBar.hidden = true;
-                handshakeBar.style.display = 'none';
+                return;
             }
+
+            if (isServiceListing) {
+                renderHandshakeBar({
+                    id: null,
+                    status: 'pending',
+                    is_seller: false,
+                    buyer_username: '',
+                    product_title: productTitle,
+                    product_id: productId,
+                    listing_type: 'service',
+                    pricing_model: 'flat'
+                });
+                handshakeBar.hidden = false;
+                handshakeBar.style.display = 'block';
+                return;
+            }
+
+            handshakeBar.hidden = true;
+            handshakeBar.style.display = 'none';
         })
         .catch(() => {
+            if (isServiceListing) {
+                renderHandshakeBar({
+                    id: null,
+                    status: 'pending',
+                    is_seller: false,
+                    buyer_username: '',
+                    product_title: productTitle,
+                    product_id: productId,
+                    listing_type: 'service',
+                    pricing_model: 'flat'
+                });
+                handshakeBar.hidden = false;
+                handshakeBar.style.display = 'block';
+                return;
+            }
             handshakeBar.style.display = 'none';
         });
 }
@@ -776,23 +857,47 @@ function renderHandshakeBar(deal) {
         `;
     } else if (status === 'buyer_confirmed' && isSeller) {
         borderStyle = 'border-left: 4px solid var(--secondary); background: var(--bg-surface);';
+        const dealStart = deal.scheduled_start || '';
+        const dealEnd = deal.scheduled_end || '';
+        const serviceAdjustmentBlock = deal.listing_type === 'service' ? `
+            <div id="seller-amend-booking" style="display:none; width:100%; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-light);">
+                <div style="display:flex; flex-wrap:wrap; gap:0.75rem; width:100%;">
+                    <div style="flex:1; min-width:140px;">
+                        <label style="display:block; font-size:0.72rem; font-weight:700; color:var(--text-main); margin-bottom:0.25rem;">Proposed start</label>
+                        <input type="datetime-local" id="seller-amend-start" class="premium-input" value="${dealStart ? dealStart.slice(0, 16) : ''}" style="width:100%; padding:0.45rem 0.5rem; border-radius:var(--radius-md); font-size:0.85rem;">
+                    </div>
+                    <div style="flex:1; min-width:140px;">
+                        <label style="display:block; font-size:0.72rem; font-weight:700; color:var(--text-main); margin-bottom:0.25rem;">Proposed end</label>
+                        <input type="datetime-local" id="seller-amend-end" class="premium-input" value="${dealEnd ? dealEnd.slice(0, 16) : ''}" style="width:100%; padding:0.45rem 0.5rem; border-radius:var(--radius-md); font-size:0.85rem;">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
+                    <button onclick="submitSellerBookingAmend()" class="btn btn-primary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem;">Send revised time</button>
+                    <button onclick="hideSellerBookingAmend()" class="btn btn-secondary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem; opacity:0.7;">Cancel</button>
+                </div>
+            </div>
+        ` : '';
         html = `
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
+            <div style="display: flex; flex-direction: column; width: 100%; gap: 0.85rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
+                            <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.says_done', {buyer: buyerName})}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.confirm_to_mark', {product: productTitle})}</div>
+                        </div>
                     </div>
-                    <div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.says_done', {buyer: buyerName})}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.confirm_to_mark', {product: productTitle})}</div>
+                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0; flex-wrap: wrap;">
+                        <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">${__('deal.confirm_delist')}</button>
+                        ${deal.listing_type === 'service' ? '<button onclick="showSellerBookingAmend()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Amend</button>' : ''}
+                        <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_done_yet')}</button>
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">${__('deal.confirm_delist')}</button>
-                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_done_yet')}</button>
-                </div>
+                ${serviceAdjustmentBlock}
             </div>
         `;
     } else if (status === 'completed') {
@@ -857,6 +962,52 @@ function submitChosenProduct() {
     const isSeller = option.getAttribute('data-is-mine') === 'true';
     
     confirmDeal(prodId, isSeller);
+}
+
+function showSellerBookingAmend() {
+    const amendBox = document.getElementById('seller-amend-booking');
+    if (!amendBox) return;
+    amendBox.style.display = 'block';
+}
+
+function hideSellerBookingAmend() {
+    const amendBox = document.getElementById('seller-amend-booking');
+    if (!amendBox) return;
+    amendBox.style.display = 'none';
+}
+
+function submitSellerBookingAmend() {
+    const startInput = document.getElementById('seller-amend-start');
+    const endInput = document.getElementById('seller-amend-end');
+    if (!startInput || !endInput) return;
+
+    if (!startInput.value || !endInput.value) {
+        alert('Please set both a proposed start and end time for the booking.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'amend_service_booking');
+    formData.append('product_id', productId);
+    formData.append('other_user_id', otherUserId);
+    formData.append('scheduled_start', startInput.value);
+    formData.append('scheduled_end', endInput.value);
+    formData.append('csrf_token', window.__csrfToken || '');
+
+    fetch('api_messages.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const proposedMessage = `I can do the booking from ${startInput.value.replace('T', ' ')} to ${endInput.value.replace('T', ' ')} instead. Please let me know if that works for you.`;
+                chatInput.value = proposedMessage;
+                chatInput.focus();
+                hideSellerBookingAmend();
+                checkDealStatus();
+            } else {
+                alert('Error: ' + (data.error || 'Unable to amend the booking.'));
+            }
+        })
+        .catch(() => alert('Unable to amend the booking.'));
 }
 
 function confirmDeal(prodId = null, isSellerOverride = null) {

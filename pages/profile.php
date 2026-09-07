@@ -115,6 +115,12 @@ include '../includes/header.php';
     overflow: hidden;
 }
 
+@media (max-width: 1023px) {
+    .profile-hero {
+        padding-top: 1.25rem;
+    }
+}
+
 .profile-hero::before {
     content: '';
     position: absolute;
@@ -680,13 +686,13 @@ body.dark-mode .btn-white-solid:hover {
 
         <!-- Tab bar -->
         <nav class="profile-tabs">
-            <a href="#about" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>" data-tab="about">About</a>
-            <a href="#listings" class="profile-tab <?php echo $activeTab === 'listings' ? 'active' : ''; ?>" data-tab="listings">
+            <a href="?id=<?php echo (int)$viewId; ?>&amp;tab=about" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>">About</a>
+            <a href="?id=<?php echo (int)$viewId; ?>&amp;tab=listings" class="profile-tab <?php echo $activeTab === 'listings' ? 'active' : ''; ?>">
                 Listings
                 <span class="tab-count"><?php echo $listingCount; ?></span>
             </a>
             <?php if ($serviceCount > 0 || $isSelf): ?>
-            <a href="#services" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" data-tab="services" style="color: #ef4444;">
+            <a href="?id=<?php echo (int)$viewId; ?>&amp;tab=services" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" style="color: #ef4444;">
                 Services
                 <?php if ($serviceCount > 0): ?>
                 <span class="tab-count" style="background: #ef4444; color: white;"><?php echo $serviceCount; ?></span>
@@ -698,9 +704,10 @@ body.dark-mode .btn-white-solid:hover {
 </div>
 
 <!-- ═══ Profile Body ═══════════════════════════════════════════════ -->
-<div class="profile-body">
+<div class="profile-body profile-body--<?php echo htmlspecialchars($activeTab, ENT_QUOTES, 'UTF-8'); ?>">
 
     <!-- ── Sidebar (About) ────────────────────────────────────── -->
+    <?php if ($activeTab === 'about'): ?>
     <aside class="profile-sidebar" id="about">
 
         <!-- Stats row -->
@@ -841,9 +848,12 @@ body.dark-mode .btn-white-solid:hover {
         <?php endif; endif; ?>
 
     </aside>
+    <?php endif; ?>
 
+    <?php if ($activeTab !== 'about'): ?>
     <div class="profile-main">
         <!-- ── Listings Section ────────────────────────────────── -->
+        <?php if ($activeTab === 'listings'): ?>
         <section id="listings">
             <div class="listings-header">
                 <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
@@ -909,9 +919,10 @@ body.dark-mode .btn-white-solid:hover {
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
 
         <!-- ── Services Section ─────────────────────────────────── -->
-        <?php if ($serviceCount > 0 || $isSelf): ?>
+        <?php if ($activeTab === 'services' && ($serviceCount > 0 || $isSelf)): ?>
         <section id="services" style="margin-top: 2rem;">
             <div class="listings-header">
                 <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
@@ -978,6 +989,7 @@ body.dark-mode .btn-white-solid:hover {
         <?php endif; ?>
 
         <!-- ── Sold Items Section ──────────────────────────────── -->
+        <?php if ($activeTab === 'listings'): ?>
         <section id="sold-items">
             <h2 class="sold-section-title" style="margin: 2.5rem 0 1.25rem;">
                 ✅ Sold Items (<?php echo count($soldProducts); ?>)
@@ -1020,47 +1032,11 @@ body.dark-mode .btn-white-solid:hover {
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
     </div>
+    <?php endif; ?>
 
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const tabs = Array.from(document.querySelectorAll('.profile-tab'));
-    const aboutSection = document.getElementById('about');
-    const listingsSection = document.getElementById('listings');
-
-    function setActive(tabName) {
-        tabs.forEach(function (tab) {
-            tab.classList.toggle('active', tab.dataset.tab === tabName);
-        });
-    }
-
-    function scrollToSection(tabName) {
-        const target = tabName === 'about' ? aboutSection : listingsSection;
-        if (!target) return;
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    tabs.forEach(function (tab) {
-        tab.addEventListener('click', function (e) {
-            e.preventDefault();
-            const tabName = tab.dataset.tab;
-            setActive(tabName);
-            scrollToSection(tabName);
-            if (history.replaceState) {
-                history.replaceState(null, '', '#' + tabName);
-            }
-        });
-    });
-
-    const hash = (window.location.hash || '').replace('#', '');
-    if (hash === 'about' || hash === 'listings') {
-        setActive(hash);
-    } else {
-        setActive('<?php echo $activeTab; ?>');
-    }
-});
-</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

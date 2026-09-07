@@ -52,6 +52,9 @@ if (!function_exists('databaseUrlCandidates')) {
             if ($value === '' || isset($seen[$value])) {
                 continue;
             }
+            if (str_contains($value, 'YOUR_PROJECT_REF') || str_contains($value, 'YOUR_PASSWORD')) {
+                continue;
+            }
             $seen[$value] = true;
             $urls[] = $value;
         }
@@ -242,6 +245,84 @@ if (!function_exists('ensureServicesTable')) {
     }
 }
 
+if (!function_exists('ensureMessageTranslationsTable')) {
+    function ensureMessageTranslationsTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.message_translations (" .
+                "id BIGSERIAL PRIMARY KEY, " .
+                "message_id BIGINT NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE, " .
+                "target_lang VARCHAR(5) NOT NULL, " .
+                "translated_text TEXT NOT NULL, " .
+                "source_lang VARCHAR(5) NOT NULL, " .
+                "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+                "UNIQUE (message_id, target_lang))"
+            );
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS message_translations (" .
+            "id INT AUTO_INCREMENT PRIMARY KEY, " .
+            "message_id INT NOT NULL, " .
+            "target_lang VARCHAR(5) NOT NULL, " .
+            "translated_text TEXT NOT NULL, " .
+            "source_lang VARCHAR(5) NOT NULL, " .
+            "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+            "UNIQUE KEY uq_message_translation (message_id, target_lang), " .
+            "CONSTRAINT fk_message_translations_message FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE) ENGINE=InnoDB"
+        );
+    }
+}
+
+if (!function_exists('ensureMessageReplyColumn')) {
+    function ensureMessageReplyColumn(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec("ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT NULL");
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.columns " .
+            "WHERE table_schema = DATABASE() AND table_name = 'messages' AND column_name = 'reply_to_message_id'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() === 0) {
+            $pdo->exec("ALTER TABLE messages ADD COLUMN reply_to_message_id INT NULL");
+        }
+    }
+}
+
+if (!function_exists('ensureOrderExpiryColumns')) {
+    function ensureOrderExpiryColumns(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+        if ($driver === 'pgsql') {
+            $pdo->exec("ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NULL");
+            $pdo->exec("ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS expiry_reminder_sent_at TIMESTAMPTZ NULL");
+            return;
+        }
+
+        $columns = [
+            'expires_at' => 'DATETIME NULL',
+            'expiry_reminder_sent_at' => 'DATETIME NULL',
+        ];
+        foreach ($columns as $column => $definition) {
+            $check = $pdo->prepare(
+                "SELECT COUNT(*) FROM information_schema.columns " .
+                "WHERE table_schema = DATABASE() AND table_name = 'orders' AND column_name = ?"
+            );
+            $check->execute([$column]);
+            if ((int) $check->fetchColumn() === 0) {
+                $pdo->exec("ALTER TABLE orders ADD COLUMN {$column} {$definition}");
+            }
+        }
+    }
+}
+
 if (!function_exists('databaseEnvDiagnostics')) {
     /**
      * Safe summary for health checks (no secrets).
@@ -315,14 +396,14 @@ if (!function_exists('connectDatabase')) {
         $lastError = null;
         $urls = databaseUrlCandidates();
 
-        if ($urls === []) {
-            $attemptConfigs = [$config];
-        } else {
-            $attemptConfigs = [];
-            foreach ($urls as $url) {
-                $attemptConfigs[] = parseDatabaseUrl($url);
+        $attemptConfigs = [];
+        foreach ($urls as $url) {
+            $parsed = parseDatabaseUrl($url);
+            if (!str_contains($parsed['host'], 'YOUR_PROJECT_REF')) {
+                $attemptConfigs[] = $parsed;
             }
         }
+        $attemptConfigs[] = $config;
 
         foreach ($attemptConfigs as $attemptConfig) {
             $attemptDsn = buildPdoDsn($attemptConfig);
@@ -344,6 +425,9 @@ if (!function_exists('connectDatabase')) {
                 try {
                     ensureProductCategoriesTable($pdo);
                     ensureServicesTable($pdo);
+                    ensureMessageTranslationsTable($pdo);
+                    ensureMessageReplyColumn($pdo);
+                    ensureOrderExpiryColumns($pdo);
                     ensureCustomLocationColumns($pdo);
                 } catch (Throwable $ensureError) {
                     error_log('Product categories bootstrap failed: ' . $ensureError->getMessage());

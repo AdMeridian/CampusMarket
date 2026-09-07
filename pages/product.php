@@ -1120,7 +1120,7 @@ body.dark-mode .scc-badge {
 }
 </style>
 
-<div class="container pt-24 mb-20 relative">
+<div class="container product-page-container pt-24 mb-20 relative">
     <?php if ($isOwner && ($product['status'] ?? '') === 'pending_approval'): ?>
         <?php $moderationNote = trim((string)($product['moderation_note'] ?? '')); ?>
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #3b82f6; color: #1e3a8a; padding: 1.25rem 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
@@ -1154,20 +1154,6 @@ body.dark-mode .scc-badge {
             </div>
         <?php endif; ?>
     <?php endif; ?>
-    <?php if ($isOwner): ?>
-        <!-- Seller Live Preview Bar -->
-        <div class="seller-preview-bar">
-            <div class="seller-preview-bar__info">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; flex-shrink: 0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                <span>You are viewing this listing as buyers see it (Live Preview)</span>
-            </div>
-            <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary btn-sm seller-preview-bar__btn">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                ⚙️ Manage &amp; Edit
-            </a>
-        </div>
-    <?php endif; ?>
-
     <!-- Breadcrumb -->
     <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
         <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors"><?= __('product.home') ?></a>
@@ -1403,7 +1389,7 @@ body.dark-mode .scc-badge {
                 </div>
                 <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary w-full py-3 text-base flex items-center justify-center gap-2" style="font-weight: 700; border-radius: var(--radius-md);">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                    ⚙️ Manage &amp; Edit Listing
+                    Manage &amp; Edit Listing
                 </a>
             </div>
             <?php elseif (isLoggedIn()): ?>

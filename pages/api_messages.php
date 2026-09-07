@@ -131,10 +131,15 @@ if ($action === 'fetch') {
     // Fetch messages with translation for current user's preferred language (all messages between these two users)
     $myLang = i18nGetLocale();
     $stmt = $pdo->prepare("
-        SELECT m.*, u.username as sender_name,
-               t.translated_text, t.source_lang
+         SELECT m.*, u.username as sender_name,
+             replied.body AS reply_body,
+             replied.sender_id AS reply_sender_id,
+             reply_sender.username AS reply_sender_name,
+             t.translated_text, t.source_lang
         FROM messages m 
         JOIN users u ON m.sender_id = u.id
+         LEFT JOIN messages replied ON replied.id = m.reply_to_message_id
+         LEFT JOIN users reply_sender ON reply_sender.id = replied.sender_id
         LEFT JOIN message_translations t ON m.id = t.message_id AND t.target_lang = :mylang
         WHERE (
               (m.sender_id = :uid1 AND m.receiver_id = :other1 AND m.deleted_by_sender = 0) OR
@@ -171,6 +176,13 @@ if ($action === 'fetch') {
                 ? htmlspecialchars($cachedTranslation, ENT_QUOTES, 'UTF-8')
                 : null,
             'cached_source_lang' => $cachedSourceLang,
+            'reply_to_message_id' => !empty($msg['reply_to_message_id']) ? (int)$msg['reply_to_message_id'] : null,
+            'reply_body' => $msg['reply_body'] !== null
+                ? htmlspecialchars((string)$msg['reply_body'], ENT_QUOTES, 'UTF-8')
+                : null,
+            'reply_sender_name' => $msg['reply_sender_name'] !== null
+                ? htmlspecialchars((string)$msg['reply_sender_name'], ENT_QUOTES, 'UTF-8')
+                : null,
             'is_mine' => $msg['sender_id'] == $currentUserId,
             'sender_name' => $msg['sender_name'],
             'created_at' => date('c', strtotime((string)($msg['created_at'] ?? '')))
@@ -197,6 +209,7 @@ if ($action === 'send') {
     verifyCsrfTokenJson();
     $productId = (int)($_POST['product_id'] ?? 0);
     $receiverId = (int)($_POST['receiver_id'] ?? 0);
+    $replyToMessageId = (int)($_POST['reply_to_message_id'] ?? 0);
     $body = sanitize($_POST['body'] ?? '');
     
     if ($receiverId <= 0 || empty($body)) {
@@ -213,16 +226,32 @@ if ($action === 'send') {
         echo json_encode(['success' => false, 'error' => 'Invalid conversation context']);
         exit;
     }
+
+    if ($replyToMessageId > 0) {
+        $replyStmt = $pdo->prepare("SELECT id FROM messages WHERE id = :reply_id AND ((sender_id = :uid1 AND receiver_id = :other1) OR (sender_id = :other2 AND receiver_id = :uid2)) LIMIT 1");
+        $replyStmt->execute([
+            ':reply_id' => $replyToMessageId,
+            ':uid1' => $currentUserId,
+            ':other1' => $receiverId,
+            ':other2' => $receiverId,
+            ':uid2' => $currentUserId,
+        ]);
+        if (!$replyStmt->fetchColumn()) {
+            echo json_encode(['success' => false, 'error' => 'Invalid reply target']);
+            exit;
+        }
+    }
     
     try {
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, product_id, body) VALUES (:sid, :rid, :pid, :body)");
+        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, product_id, body, reply_to_message_id) VALUES (:sid, :rid, :pid, :body, :reply_to_message_id)");
         $stmt->execute([
             ':sid' => $currentUserId,
             ':rid' => $receiverId,
             ':pid' => $productId > 0 ? $productId : null,
-            ':body' => $body
+            ':body' => $body,
+            ':reply_to_message_id' => $replyToMessageId > 0 ? $replyToMessageId : null,
         ]);
         
         // Auto-create order if a product is involved
@@ -603,6 +632,65 @@ if ($action === 'confirm_deal') {
     } catch (PDOException $e) {
         $pdo->rollBack();
         echo json_encode(['error' => 'Database error']);
+    }
+    exit;
+}
+
+if ($action === 'amend_service_booking') {
+    verifyCsrfTokenJson();
+    $productId = (int)($_POST['product_id'] ?? 0);
+    $otherUserId = (int)($_POST['other_user_id'] ?? 0);
+    $schedStart = $_POST['scheduled_start'] ?? null;
+    $schedEnd = $_POST['scheduled_end'] ?? null;
+
+    if (!$productId || !$otherUserId || !$schedStart || !$schedEnd) {
+        echo json_encode(['success' => false, 'error' => 'Missing booking details']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT user_id, title, listing_type FROM products WHERE id = :pid");
+    $stmt->execute([':pid' => $productId]);
+    $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$product || ($product['listing_type'] ?? 'product') !== 'service') {
+        echo json_encode(['success' => false, 'error' => 'Invalid service booking']);
+        exit;
+    }
+
+    $sellerId = (int)$product['user_id'];
+    if ($currentUserId !== $sellerId) {
+        echo json_encode(['success' => false, 'error' => 'Only the seller can amend this booking']);
+        exit;
+    }
+
+    $buyerId = $otherUserId;
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmtDeal = $pdo->prepare("SELECT id FROM deal_confirmations WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid LIMIT 1");
+        $stmtDeal->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+        $dealId = $stmtDeal->fetchColumn();
+
+        if (!$dealId) {
+            $insertStmt = $pdo->prepare("INSERT INTO deal_confirmations (product_id, buyer_id, seller_id, status, scheduled_start, scheduled_end, updated_at) VALUES (:pid, :bid, :sid, 'buyer_confirmed', :start, :end, NOW())");
+            $insertStmt->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId, ':start' => $schedStart, ':end' => $schedEnd]);
+        } else {
+            $upd = $pdo->prepare("UPDATE deal_confirmations SET scheduled_start = :start, scheduled_end = :end, updated_at = NOW(), status = 'buyer_confirmed' WHERE id = :id");
+            $upd->execute([':start' => $schedStart, ':end' => $schedEnd, ':id' => $dealId]);
+        }
+
+        $stmtUser = $pdo->prepare("SELECT username FROM users WHERE id = :id");
+        $stmtUser->execute([':id' => $sellerId]);
+        $sellerName = $stmtUser->fetchColumn() ?: 'Seller';
+
+        createNotification($pdo, $buyerId, 'order', 'Service time updated', "$sellerName proposed a revised time for '{$product['title']}'. Open the chat to review it.", $productId);
+        $pdo->commit();
+
+        echo json_encode(['success' => true, 'message' => 'Booking time revised.']);
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        echo json_encode(['success' => false, 'error' => 'Database error']);
     }
     exit;
 }

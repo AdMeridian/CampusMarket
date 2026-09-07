@@ -18,10 +18,16 @@ if (!function_exists('pendingOrderReminderHours')) {
 }
 
 if (!function_exists('pendingOrderExpiresAtExpression')) {
-    /** SQL expression for expires_at on insert (Postgres). */
+    /** SQL expression for expires_at on insert. */
     function pendingOrderExpiresAtExpression(): string {
         $days = pendingOrderTtlDays();
-        return "NOW() + INTERVAL '{$days} days'";
+        $driver = null;
+        if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
+            $driver = $GLOBALS['pdo']->getAttribute(PDO::ATTR_DRIVER_NAME);
+        }
+        return $driver === 'pgsql'
+            ? "NOW() + INTERVAL '{$days} days'"
+            : "DATE_ADD(NOW(), INTERVAL {$days} DAY)";
     }
 }
 

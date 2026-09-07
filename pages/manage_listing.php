@@ -500,16 +500,13 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="container pt-24 mb-20">
     <!-- Top Action Bar -->
-    <div class="glass-panel p-4 mb-6 flex flex-wrap items-center justify-between gap-4" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
-        <div class="flex items-center gap-3">
+    <div class="glass-panel p-4 mb-6 flex flex-wrap items-center justify-between gap-4 mgmt-topbar" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+        <div class="flex items-center gap-3 mgmt-topbar__identity">
             <a href="<?= BASE_URL ?>pages/profile.php" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-md);">
                 ← Back to Dashboard
             </a>
-            <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
-                Editing: <span style="color: var(--primary);"><?= sanitize($product['title']) ?></span>
-            </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 mgmt-topbar__actions">
             <?php if ($isService && $product['status'] === 'pending_payment'): ?>
                 <span class="mgmt-header-badge" style="background: #fef3c7; color: #92400e;">
                     Pending Payment
@@ -523,6 +520,9 @@ require_once __DIR__ . '/../includes/header.php';
                     <?= ucfirst(str_replace('_', ' ', $product['status'])) ?>
                 </span>
             <?php endif; ?>
+            <div class="mgmt-topbar__title" style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
+                Editing: <span style="color: var(--primary);"><?= sanitize($product['title']) ?></span>
+            </div>
             <a href="<?= BASE_URL ?>pages/product.php?id=<?= $productId ?>" class="btn btn-primary btn-sm flex items-center gap-2" style="border-radius: var(--radius-md); font-weight: 700;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Preview as Buyer
