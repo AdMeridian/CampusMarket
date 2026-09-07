@@ -213,28 +213,6 @@ $presenceText = match($otherPresence['status']) {
 #chat-box::-webkit-scrollbar { width: 6px; }
 #chat-box::-webkit-scrollbar-track { background: transparent; }
 #chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.message-bubble .btn-delete-msg {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    background: none;
-    border: none;
-    padding: 4px;
-    cursor: pointer;
-    color: inherit;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    z-index: 2;
-}
-.message-bubble:hover .btn-delete-msg { opacity: 0.55; }
-.message-bubble:hover .btn-delete-msg:hover { opacity: 1; }
-.message-bubble--out .btn-delete-msg:hover { background: rgba(255,255,255,0.15); }
-.message-bubble--in .btn-delete-msg:hover { background: rgba(0,0,0,0.06); }
 </style>
 
 <script>
@@ -416,8 +394,6 @@ function formatMessageTime(iso) {
 
 function buildMessageBubbleHtml(msg, options = {}) {
     const isMine = !!msg.is_mine;
-    const canDelete = !options.sending;
-    const canReply = !options.sending && msg.id;
     const timeStr = options.sending ? __('chat.sending') : formatMessageTime(msg.created_at);
     const bodyHtml = isMine
         ? `<div class="message-body-wrap"><div class="message-text-content">${msg.body}</div></div>`
@@ -425,19 +401,92 @@ function buildMessageBubbleHtml(msg, options = {}) {
     const replyHtml = msg.reply_to_message_id && msg.reply_body
         ? `<div class="message-reply-quote"><span class="message-reply-quote__label">Replying to ${msg.reply_sender_name || 'message'}</span><span class="message-reply-quote__text">${msg.reply_body}</span></div>`
         : '';
-    const replyButton = canReply
-        ? `<button type="button" class="btn-reply-msg" onclick="selectReplyMessage(${msg.id})" title="Reply" aria-label="Reply">↩</button>`
-        : '';
 
     return `
-        ${canDelete && msg.id ? `<button type="button" class="btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        </button>` : ''}
-        ${replyButton}
         ${replyHtml}
         ${bodyHtml}
         <div class="message-time">${timeStr}</div>
     `;
+}
+
+function buildMessageActionsHtml(msg, options = {}) {
+    if (options.sending || !msg.id) return '';
+    const isMine = !!msg.is_mine;
+    const canDelete = isMine;
+    const canReply = true;
+
+    let html = '<div class="message-actions-bar">';
+    if (canReply) {
+        html += `<button type="button" class="btn-action-msg btn-reply-msg" onclick="selectReplyMessage(${msg.id})" title="Reply" aria-label="Reply">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+        </button>`;
+    }
+    if (canDelete) {
+        html += `<button type="button" class="btn-action-msg btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>`;
+    }
+    html += '</div>';
+    return html;
+}
+
+function attachSwipeToReply(row, bubble, messageId) {
+    let startX = 0;
+    let startY = 0;
+    let isSwiping = false;
+    let isHorizontal = null;
+
+    bubble.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isSwiping = true;
+        isHorizontal = null;
+        bubble.style.transition = 'none';
+    }, { passive: true });
+
+    bubble.addEventListener('touchmove', (e) => {
+        if (!isSwiping || e.touches.length !== 1) return;
+        const deltaX = e.touches[0].clientX - startX;
+        const deltaY = e.touches[0].clientY - startY;
+
+        if (isHorizontal === null) {
+            if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+                isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+            }
+        }
+
+        if (!isHorizontal) return;
+
+        // Swiping horizontally to the right
+        if (deltaX > 0 && deltaX < 140) {
+            const drag = Math.min(deltaX * 0.75, 65);
+            bubble.style.transform = `translateX(${drag}px)`;
+            if (drag > 38) {
+                row.classList.add('swiping-ready');
+            } else {
+                row.classList.remove('swiping-ready');
+            }
+        }
+    }, { passive: true });
+
+    const endSwipe = () => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        bubble.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        bubble.style.transform = '';
+
+        if (row.classList.contains('swiping-ready')) {
+            row.classList.remove('swiping-ready');
+            if (navigator.vibrate) {
+                try { navigator.vibrate(15); } catch(e) {}
+            }
+            selectReplyMessage(messageId);
+        }
+    };
+
+    bubble.addEventListener('touchend', endSwipe, { passive: true });
+    bubble.addEventListener('touchcancel', endSwipe, { passive: true });
 }
 
 function createMessageRow(msg, options = {}) {
@@ -451,11 +500,32 @@ function createMessageRow(msg, options = {}) {
         bubble.classList.add('message-bubble--pending');
     }
     if (msg.id) {
+        row.dataset.messageId = String(msg.id);
         bubble.dataset.messageId = String(msg.id);
     }
     bubble.dataset.replyText = msg.body || '';
     bubble.innerHTML = buildMessageBubbleHtml(msg, options);
-    row.appendChild(bubble);
+
+    const actionsHtml = buildMessageActionsHtml(msg, options);
+
+    if (isMine) {
+        row.innerHTML = actionsHtml;
+        row.appendChild(bubble);
+    } else {
+        row.appendChild(bubble);
+        if (actionsHtml) {
+            const t = document.createElement('div');
+            t.innerHTML = actionsHtml;
+            if (t.firstElementChild) {
+                row.appendChild(t.firstElementChild);
+            }
+        }
+    }
+
+    if (msg.id && !options.sending) {
+        attachSwipeToReply(row, bubble, msg.id);
+    }
+
     return row;
 }
 
