@@ -68,7 +68,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 .admin-wrap {
     max-width: var(--container-max);
-    margin: 120px auto 5rem;
+    margin: calc(70px + 1.5rem) auto 5rem;
     padding: 0 1.5rem;
 }
 
@@ -564,6 +564,11 @@ require_once __DIR__ . '/../includes/header.php';
                             <div class="module-name">Moderation</div>
                             <div class="module-desc">Review flagged content</div>
                         </div>
+                        <span class="module-arrow">›</span>
+                    </a>
+                    <a href="wanted_requests.php" class="module-card" style="--module-color: #d97706; --module-bg: #fffbeb;">
+                        <div class="module-icon">📣</div>
+                        <div class="module-info"><div class="module-name">Item Suggestions</div><div class="module-desc">Review and broadcast requests</div></div>
                         <span class="module-arrow">›</span>
                     </a>
                     <a href="transactions.php" class="module-card" style="--module-color: var(--success); --module-bg: var(--success-bg);">

@@ -417,7 +417,7 @@ include '../includes/header.php';
                 <?php echo csrfTokenField(); ?>
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
-                    <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

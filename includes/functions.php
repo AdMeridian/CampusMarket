@@ -583,6 +583,9 @@ function notificationActivityLabel(string $type, string $title): string {
     if (str_contains($title, 'Report') || str_contains($title, 'report')) {
         return 'Report Update';
     }
+    if (str_contains($title, 'Wanted request') || str_contains($title, 'Buyer request')) {
+        return 'Buyer Request';
+    }
     if ($title === 'Order Cancelled') {
         return 'Order Update';
     }
@@ -665,6 +668,9 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
     if ($title === 'New Seller Review' && $refId > 0) {
         return $base . 'pages/product.php?id=' . $refId;
     }
+    if (str_contains($title, 'Wanted request') || str_contains($title, 'Buyer request')) {
+        return $base . 'pages/browse.php';
+    }
     if ($title === 'Order Cancelled' && $refId > 0) {
         return $base . 'pages/my_orders.php?order_id=' . $refId;
     }
@@ -681,6 +687,27 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
     }
 
     return $base . 'pages/profile.php';
+}
+
+/**
+ * Fetch approved active wanted item requests (buyer suggestions) for site-wide display.
+ */
+function getActiveWantedItemRequests(PDO $pdo, int $limit = 6): array {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id, search_term, category_id, created_at, expires_at
+            FROM wanted_item_requests
+            WHERE status = 'approved'
+              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+            ORDER BY created_at DESC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
 }
 
 /**

@@ -18,7 +18,7 @@ if (!$otherUserId) {
 
 if ($productId > 0) {
     // Fetch context info
-    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
+    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, p.listing_type, p.pricing_model, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
 
@@ -173,21 +173,30 @@ $presenceText = match($otherPresence['status']) {
             <p class="chat-deal-bar__hint text-muted small mb-3"><?= __('chat.orders_deal_explainer') ?></p>
         </div>
         <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
-            <div class="chat-action-bar purchase-cta-bar">
+            <?php $isServiceChat = ($product['listing_type'] ?? 'product') === 'service'; ?>
+            <div class="chat-action-bar purchase-cta-bar" <?= $isServiceChat ? 'style="border-left: 4px solid var(--service);"' : '' ?>>
                 <div class="chat-action-bar__copy">
-                    <strong><?= __('chat.ready_to_buy') ?></strong>
-                    <span><?= __('chat.send_purchase_request') ?></span>
+                    <strong><?= $isServiceChat ? '­ƒùô´©Å Book This Service' : __('chat.ready_to_buy') ?></strong>
+                    <span><?= $isServiceChat ? 'Schedule and agree on a service time' : __('chat.send_purchase_request') ?></span>
                 </div>
                 <form action="api_messages.php" method="POST" class="m-0">
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="proposeOrder()">
-                        <?= __('chat.propose_order') ?>
+                    <button type="button" class="btn <?= $isServiceChat ? 'btn--service' : 'btn-primary' ?> btn-sm" onclick="<?= $isServiceChat ? 'checkDealStatus()' : 'proposeOrder()' ?>">
+                        <?= $isServiceChat ? '­ƒøá´©Å Book Service' : __('chat.propose_order') ?>
                     </button>
                 </form>
             </div>
         <?php endif; ?>
+
+        <div id="reply-preview" class="chat-reply-preview" hidden>
+            <div class="chat-reply-preview__copy">
+                <span class="chat-reply-preview__label">Replying to</span>
+                <span id="reply-preview-text" class="chat-reply-preview__text"></span>
+            </div>
+            <button type="button" id="cancel-reply-btn" class="chat-reply-preview__cancel" aria-label="Cancel reply">&times;</button>
+        </div>
 
         <div class="chat-input-bar">
             <form id="chat-form" class="chat-input-form m-0">
@@ -204,28 +213,6 @@ $presenceText = match($otherPresence['status']) {
 #chat-box::-webkit-scrollbar { width: 6px; }
 #chat-box::-webkit-scrollbar-track { background: transparent; }
 #chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.message-bubble .btn-delete-msg {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    background: none;
-    border: none;
-    padding: 4px;
-    cursor: pointer;
-    color: inherit;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    z-index: 2;
-}
-.message-bubble:hover .btn-delete-msg { opacity: 0.55; }
-.message-bubble:hover .btn-delete-msg:hover { opacity: 1; }
-.message-bubble--out .btn-delete-msg:hover { background: rgba(255,255,255,0.15); }
-.message-bubble--in .btn-delete-msg:hover { background: rgba(0,0,0,0.06); }
 </style>
 
 <script>
@@ -256,6 +243,7 @@ let pollIntervalId = null;
 let translationConfigured = <?= getTranslationService()->isConfigured() ? 'true' : 'false' ?>;
 const translatedStorageKey = `cm_translated_${productId}_${otherUserId}`;
 let translatedMessageIds = new Set();
+let selectedReply = null;
 
 try {
     const storedTranslated = sessionStorage.getItem(translatedStorageKey);
@@ -406,19 +394,99 @@ function formatMessageTime(iso) {
 
 function buildMessageBubbleHtml(msg, options = {}) {
     const isMine = !!msg.is_mine;
-    const canDelete = !options.sending;
     const timeStr = options.sending ? __('chat.sending') : formatMessageTime(msg.created_at);
     const bodyHtml = isMine
         ? `<div class="message-body-wrap"><div class="message-text-content">${msg.body}</div></div>`
         : `<div class="message-body-wrap">${buildIncomingBodyHtml(msg)}</div>`;
+    const replyHtml = msg.reply_to_message_id && msg.reply_body
+        ? `<div class="message-reply-quote"><span class="message-reply-quote__label">Replying to ${msg.reply_sender_name || 'message'}</span><span class="message-reply-quote__text">${msg.reply_body}</span></div>`
+        : '';
 
     return `
-        ${canDelete && msg.id ? `<button type="button" class="btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        </button>` : ''}
+        ${replyHtml}
         ${bodyHtml}
         <div class="message-time">${timeStr}</div>
     `;
+}
+
+function buildMessageActionsHtml(msg, options = {}) {
+    if (options.sending || !msg.id) return '';
+    const isMine = !!msg.is_mine;
+    const canDelete = isMine;
+    const canReply = true;
+
+    let html = '<div class="message-actions-bar">';
+    if (canReply) {
+        html += `<button type="button" class="btn-action-msg btn-reply-msg" onclick="selectReplyMessage(${msg.id})" title="Reply" aria-label="Reply">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+        </button>`;
+    }
+    if (canDelete) {
+        html += `<button type="button" class="btn-action-msg btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>`;
+    }
+    html += '</div>';
+    return html;
+}
+
+function attachSwipeToReply(row, bubble, messageId) {
+    let startX = 0;
+    let startY = 0;
+    let isSwiping = false;
+    let isHorizontal = null;
+
+    bubble.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isSwiping = true;
+        isHorizontal = null;
+        bubble.style.transition = 'none';
+    }, { passive: true });
+
+    bubble.addEventListener('touchmove', (e) => {
+        if (!isSwiping || e.touches.length !== 1) return;
+        const deltaX = e.touches[0].clientX - startX;
+        const deltaY = e.touches[0].clientY - startY;
+
+        if (isHorizontal === null) {
+            if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+                isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+            }
+        }
+
+        if (!isHorizontal) return;
+
+        // Swiping horizontally to the right
+        if (deltaX > 0 && deltaX < 140) {
+            const drag = Math.min(deltaX * 0.75, 65);
+            bubble.style.transform = `translateX(${drag}px)`;
+            if (drag > 38) {
+                row.classList.add('swiping-ready');
+            } else {
+                row.classList.remove('swiping-ready');
+            }
+        }
+    }, { passive: true });
+
+    const endSwipe = () => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        bubble.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        bubble.style.transform = '';
+
+        if (row.classList.contains('swiping-ready')) {
+            row.classList.remove('swiping-ready');
+            if (navigator.vibrate) {
+                try { navigator.vibrate(15); } catch(e) {}
+            }
+            selectReplyMessage(messageId);
+        }
+    };
+
+    bubble.addEventListener('touchend', endSwipe, { passive: true });
+    bubble.addEventListener('touchcancel', endSwipe, { passive: true });
 }
 
 function createMessageRow(msg, options = {}) {
@@ -432,12 +500,55 @@ function createMessageRow(msg, options = {}) {
         bubble.classList.add('message-bubble--pending');
     }
     if (msg.id) {
+        row.dataset.messageId = String(msg.id);
         bubble.dataset.messageId = String(msg.id);
     }
+    bubble.dataset.replyText = msg.body || '';
     bubble.innerHTML = buildMessageBubbleHtml(msg, options);
-    row.appendChild(bubble);
+
+    const actionsHtml = buildMessageActionsHtml(msg, options);
+
+    if (isMine) {
+        row.innerHTML = actionsHtml;
+        row.appendChild(bubble);
+    } else {
+        row.appendChild(bubble);
+        if (actionsHtml) {
+            const t = document.createElement('div');
+            t.innerHTML = actionsHtml;
+            if (t.firstElementChild) {
+                row.appendChild(t.firstElementChild);
+            }
+        }
+    }
+
+    if (msg.id && !options.sending) {
+        attachSwipeToReply(row, bubble, msg.id);
+    }
+
     return row;
 }
+
+window.selectReplyMessage = function(messageId) {
+    const bubble = chatBox.querySelector(`[data-message-id="${messageId}"]`);
+    if (!bubble) return;
+
+    selectedReply = {
+        id: Number(messageId),
+        text: bubble.dataset.replyText || ''
+    };
+    document.getElementById('reply-preview-text').textContent = selectedReply.text;
+    document.getElementById('reply-preview').hidden = false;
+    chatInput.focus();
+};
+
+function clearReplySelection() {
+    selectedReply = null;
+    document.getElementById('reply-preview').hidden = true;
+    document.getElementById('reply-preview-text').textContent = '';
+}
+
+document.getElementById('cancel-reply-btn').addEventListener('click', clearReplySelection);
 
 function renderMessages(messages) {
     if (loadingDiv) {
@@ -506,6 +617,9 @@ chatForm.addEventListener('submit', (e) => {
         id: null,
         is_mine: true,
         body: text,
+        reply_to_message_id: selectedReply ? selectedReply.id : null,
+        reply_body: selectedReply ? selectedReply.text : null,
+        reply_sender_name: selectedReply ? 'message' : null,
         created_at: new Date().toISOString()
     };
     chatBox.appendChild(createMessageRow(optimisticMsg, { sending: true }));
@@ -517,9 +631,13 @@ chatForm.addEventListener('submit', (e) => {
     formData.append('product_id', productId);
     formData.append('receiver_id', otherUserId);
     formData.append('body', text);
+    if (selectedReply) {
+        formData.append('reply_to_message_id', selectedReply.id);
+    }
     formData.append('csrf_token', window.__csrfToken || '');
     
     chatInput.value = '';
+    clearReplySelection();
     chatInput.focus();
     
     fetch('api_messages.php', {
@@ -712,23 +830,50 @@ function renderHandshakeBar(deal) {
         `;
     } else if (status === 'pending') {
         borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
+        const isService = deal.listing_type === 'service';
+
+        let promptText = isService ? __('deal.want_to_book_service', {default: 'Want to book this service?'}) : __('deal.did_deal_happen');
+        let promptSub = isService ? __('deal.select_time_to_book', {default: 'Select a time to book this service.'}) : __('deal.confirm_marks_sold');
+        let yesBtnText = isService ? __('deal.book_service', {default: 'Book Service'}) : __('deal.yes_done');
+
+        let extraFields = '';
+        if (isService) {
+            extraFields = `
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-light); width: 100%;">
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 140px;">
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">Start Date & Time</label>
+                            <input type="datetime-local" id="deal_sched_start" class="premium-input" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border-radius: var(--radius-md);">
+                        </div>
+                        <div style="flex: 1; min-width: 140px;">
+                            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">End Date & Time</label>
+                            <input type="datetime-local" id="deal_sched_end" class="premium-input" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         html = `
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
+            <div style="display: flex; flex-direction: column; width: 100%;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
+                            <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${promptText}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${promptSub}</div>
+                        </div>
                     </div>
-                    <div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.did_deal_happen')}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.confirm_marks_sold')}</div>
+                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                        <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${yesBtnText}</button>
+                        <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_yet')}</button>
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.yes_done')}</button>
-                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_yet')}</button>
-                </div>
+                ${extraFields}
             </div>
         `;
     } else if (status === 'buyer_confirmed' && !isSeller) {
@@ -848,6 +993,16 @@ function confirmDeal(prodId = null, isSellerOverride = null) {
     formData.append('product_id', finalProductId);
     formData.append('other_user_id', otherUserId);
     formData.append('csrf_token', window.__csrfToken || '');
+
+    // Grab scheduling inputs if present
+    const schedStart = document.getElementById('deal_sched_start');
+    const schedEnd = document.getElementById('deal_sched_end');
+    if (schedStart && schedStart.value) {
+        formData.append('scheduled_start', schedStart.value);
+    }
+    if (schedEnd && schedEnd.value) {
+        formData.append('scheduled_end', schedEnd.value);
+    }
 
     fetch('api_messages.php', { method: 'POST', body: formData })
         .then(res => res.json())
