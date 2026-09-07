@@ -17,6 +17,14 @@ ALTER TABLE managed_listings ENABLE ROW LEVEL SECURITY;
 -- Server-side PHP only; no client-facing policies on owner contact data.
 REVOKE ALL ON managed_listings FROM anon, authenticated;
 
+DROP POLICY IF EXISTS managed_listings_server_only ON managed_listings;
+CREATE POLICY managed_listings_server_only
+    ON managed_listings
+    FOR ALL
+    TO authenticated, anon
+    USING (false)
+    WITH CHECK (false);
+
 UPDATE users
 SET role = 'agent'
 WHERE username = 'Campus_Market_Listings';

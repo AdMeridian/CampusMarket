@@ -1,5 +1,5 @@
 -- Multi-Country & Universities Architecture Migration
--- Scopes marketplaces strictly by User -> University -> Country
+-- Scopes marketplaces strictly by User -> University -> Country with Supabase security hardening
 
 -- 1. Create Countries Table
 CREATE TABLE IF NOT EXISTS public.countries (
@@ -94,48 +94,59 @@ BEGIN
 END;
 $$;
 
+-- Revoke direct REST API execution of trigger function from PUBLIC
+REVOKE EXECUTE ON FUNCTION public.set_product_country_and_university() FROM PUBLIC;
+
 DROP TRIGGER IF EXISTS trg_set_product_country ON public.products;
 CREATE TRIGGER trg_set_product_country
 BEFORE INSERT ON public.products
 FOR EACH ROW
 EXECUTE FUNCTION public.set_product_country_and_university();
 
--- 9. RPC Function: University and Country Lookup by Email Domain
+-- 9. RPC Function: University and Country Lookup by Email Domain (Hardened with SECURITY INVOKER & search_path)
 CREATE OR REPLACE FUNCTION public.get_university_by_email(email_address TEXT)
 RETURNS TABLE (
-    university_id BIGINT,
-    university_name VARCHAR,
-    country_code CHAR(2),
-    currency VARCHAR(3),
+    university_id   BIGINT,
+    university_name TEXT,
+    country_code    CHAR(2),
+    currency        VARCHAR(3),
     currency_symbol VARCHAR(5)
 ) 
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
+SECURITY INVOKER
+STABLE
+SET search_path = ''
 AS $$
 DECLARE
-    domain_part TEXT;
+    v_domain TEXT;
 BEGIN
-    domain_part := LOWER(SPLIT_PART(email_address, '@', 2));
+    v_domain := lower(split_part(email_address, '@', 2));
     
     RETURN QUERY
     SELECT 
-        u.id AS university_id,
-        u.name AS university_name,
-        u.country_code,
-        c.default_currency AS currency,
-        c.currency_symbol
+        u.id                    AS university_id,
+        u.name::TEXT            AS university_name,
+        u.country_code          AS country_code,
+        c.default_currency      AS currency,
+        c.currency_symbol       AS currency_symbol
     FROM public.universities u
     JOIN public.countries c ON c.code = u.country_code
-    WHERE u.is_active = true
+    WHERE u.is_active = TRUE
+      AND c.is_active = TRUE
       AND (
-          u.domain_pattern = domain_part
-          OR domain_part LIKE REPLACE(u.domain_pattern, '*', '%')
+          lower(u.domain_pattern) = v_domain
+          OR (
+              u.domain_pattern LIKE '*%'
+              AND v_domain LIKE '%' || lower(substring(u.domain_pattern FROM 2))
+          )
       )
-    ORDER BY LENGTH(u.domain_pattern) DESC
+    ORDER BY
+        CASE WHEN lower(u.domain_pattern) = v_domain THEN 0 ELSE 1 END
     LIMIT 1;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.get_university_by_email(TEXT) TO anon, authenticated;
 
 -- 10. Seed Initial Countries and Top Universities
 INSERT INTO public.countries (code, name, default_currency, currency_symbol, symbol_position) VALUES

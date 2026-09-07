@@ -27,3 +27,9 @@ CREATE TABLE IF NOT EXISTS email_unsubscribes (
 
 CREATE INDEX IF NOT EXISTS idx_email_unsubscribes_email ON email_unsubscribes(email);
 CREATE INDEX IF NOT EXISTS idx_email_campaigns_created_at ON email_campaigns(created_at DESC);
+
+ALTER TABLE public.email_campaigns ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.email_campaigns FROM anon, authenticated;
+
+ALTER TABLE public.email_unsubscribes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.email_unsubscribes FROM anon, authenticated;

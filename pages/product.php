@@ -101,8 +101,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
         }
     }
     if ($newPrice > 0) {
+        $oldPrice = (float)($product['price'] ?? 0);
         $stmtUp = $pdo->prepare("UPDATE products SET price = :price, price_currency = :currency, updated_at = NOW() WHERE id = :id");
         $stmtUp->execute([':price' => $newPrice, ':currency' => $newCurrency, ':id' => $productId]);
+        if ($newPrice < $oldPrice) {
+            triggerPriceDropAlerts($pdo, $productId, $oldPrice, $newPrice, $newCurrency);
+        }
         setFlash('success', __('product.price_updated'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     } else {
@@ -118,8 +122,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     if ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
         setFlash('error', __('product.discount_range_error', ['max' => LISTING_DISCOUNT_MAX_PERCENT]));
     } else {
+        $basePrice = (float)($product['price'] ?? 0);
+        $oldDiscount = (int)($product['discount_percent'] ?? 0);
+        $oldEffective = $oldDiscount > 0 ? $basePrice * (1 - ($oldDiscount / 100)) : $basePrice;
+        $newEffective = $discountPercent > 0 ? $basePrice * (1 - ($discountPercent / 100)) : $basePrice;
+
         $stmtUp = $pdo->prepare("UPDATE products SET discount_percent = :dp, discount_set_at = NOW() WHERE id = :id");
         $stmtUp->execute([':dp' => $discountPercent, ':id' => $productId]);
+
+        if ($newEffective < $oldEffective) {
+            triggerPriceDropAlerts($pdo, $productId, $oldEffective, $newEffective, (string)($product['price_currency'] ?? 'TL'));
+        }
+
         setFlash('success', $discountPercent > 0 ? __('product.discount_applied') : __('product.discount_removed'));
         redirect(BASE_URL . 'pages/product.php?id=' . $productId);
     }
@@ -1154,6 +1168,19 @@ body.dark-mode .scc-badge {
             </div>
         <?php endif; ?>
     <?php endif; ?>
+    <?php if ($isOwner): ?>
+        <!-- Seller Live Preview Bar -->
+        <div class="seller-preview-bar">
+            <div class="seller-preview-bar__info">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; flex-shrink: 0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>You are viewing this listing as buyers see it (Live Preview)</span>
+            </div>
+            <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary btn-sm seller-preview-bar__btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                ⚙️ Manage &amp; Edit
+            </a>
+        </div>
+    <?php endif; ?>
     <!-- Breadcrumb -->
     <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
         <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors"><?= __('product.home') ?></a>
@@ -1365,7 +1392,7 @@ body.dark-mode .scc-badge {
                 </div>
             </div>
 
-            <!-- Description -->
+            <!-- DESCRIPTION CARD -->
             <div class="product-desc-card mt-8">
                 <div class="flex items-center gap-4 mb-6">
                     <div class="w-10 h-10 flex items-center justify-center" style="border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary);">
@@ -1389,7 +1416,7 @@ body.dark-mode .scc-badge {
                 </div>
                 <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary w-full py-3 text-base flex items-center justify-center gap-2" style="font-weight: 700; border-radius: var(--radius-md);">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                    Manage &amp; Edit Listing
+                    ⚙️ Manage &amp; Edit Listing
                 </a>
             </div>
             <?php elseif (isLoggedIn()): ?>

@@ -160,6 +160,37 @@ if (!empty($featuredProducts)):
 </section>
 <?php endif; ?>
 
+<!-- Wanted on Campus (Buyer Demand) -->
+<?php 
+$wantedRequests = getActiveWantedItemRequests($pdo, 4);
+if (!empty($wantedRequests)): 
+?>
+<section class="home-section mt-12">
+    <div class="container">
+        <div class="home-section__header">
+            <div>
+                <span class="badge" style="background: rgba(217, 119, 6, 0.12); color: #d97706; font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em; padding: 0.2rem 0.6rem; border-radius: var(--radius-lg); margin-bottom: 0.4rem; display: inline-block;">Buyer Demand</span>
+                <h2 class="home-section__title mb-0">Wanted on Campus 📣</h2>
+            </div>
+            <p class="text-muted small" style="margin: 0;">Have any of these? List them to make a quick sale.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <?php foreach ($wantedRequests as $wr): ?>
+                <div class="card p-5 flex flex-col justify-between" style="border: 1px solid var(--border-light); border-radius: var(--radius-xl); background: var(--bg-surface);">
+                    <div>
+                        <div class="text-xs text-muted font-bold uppercase tracking-wider mb-2">Looking for</div>
+                        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.5rem;"><?php echo htmlspecialchars($wr['search_term']); ?></h3>
+                    </div>
+                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php?title=<?php echo urlencode($wr['search_term']); ?>" class="btn btn-primary btn-sm mt-4 text-center" style="border-radius: var(--radius-md); font-weight: 700; justify-content: center;">
+                        + Sell This Item
+                    </a>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
+
 <!-- Recent Products -->
 <section class="home-section mt-12 mb-12">
     <div class="container">

@@ -131,15 +131,15 @@ if ($action === 'fetch') {
     // Fetch messages with translation for current user's preferred language (all messages between these two users)
     $myLang = i18nGetLocale();
     $stmt = $pdo->prepare("
-         SELECT m.*, u.username as sender_name,
-             replied.body AS reply_body,
-             replied.sender_id AS reply_sender_id,
-             reply_sender.username AS reply_sender_name,
-             t.translated_text, t.source_lang
+        SELECT m.*, u.username as sender_name,
+               replied.body AS reply_body,
+               replied.sender_id AS reply_sender_id,
+               reply_sender.username AS reply_sender_name,
+               t.translated_text, t.source_lang
         FROM messages m 
         JOIN users u ON m.sender_id = u.id
-         LEFT JOIN messages replied ON replied.id = m.reply_to_message_id
-         LEFT JOIN users reply_sender ON reply_sender.id = replied.sender_id
+        LEFT JOIN messages replied ON replied.id = m.reply_to_message_id
+        LEFT JOIN users reply_sender ON reply_sender.id = replied.sender_id
         LEFT JOIN message_translations t ON m.id = t.message_id AND t.target_lang = :mylang
         WHERE (
               (m.sender_id = :uid1 AND m.receiver_id = :other1 AND m.deleted_by_sender = 0) OR

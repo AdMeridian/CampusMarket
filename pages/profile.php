@@ -41,7 +41,7 @@ $isSelf  = isLoggedIn() && (int)currentUserId() === (int)$user['id'];
 $rating  = getSellerRating($pdo, (int)$user['id']);
 $trust   = getSellerTrustScore($pdo, (int)$user['id']);
 $pageTitle = sanitize($user['username']) . "'s Profile";
-$activeTab = in_array($_GET['tab'] ?? 'listings', ['listings', 'services', 'about']) ? ($_GET['tab'] ?? 'listings') : 'listings';
+$activeTab = in_array($_GET['tab'] ?? 'about', ['about', 'listings', 'services']) ? ($_GET['tab'] ?? 'about') : 'about';
 
 // Fetch listings count for the stat pill. Owners see their pending review items too.
 $visibleListingStatusSql = $isSelf || isAdmin()
@@ -109,15 +109,15 @@ include '../includes/header.php';
 
 .profile-hero {
     background: var(--primary);
-    padding: calc(75px + 2.5rem) 0 0;
+    padding: calc(70px + 1.25rem) 0 0;
     margin-bottom: 0;
     position: relative;
     overflow: hidden;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 768px) {
     .profile-hero {
-        padding-top: 1.25rem;
+        padding: calc(60px + 0.85rem) 0 0;
     }
 }
 
@@ -248,7 +248,7 @@ include '../includes/header.php';
 .profile-tabs {
     display: flex;
     gap: 0;
-    margin-top: 1.5rem;
+    margin-top: 1rem;
     border-bottom: none;
 }
 
@@ -264,6 +264,13 @@ include '../includes/header.php';
     cursor: pointer;
     transition: all 0.2s;
     text-decoration: none;
+}
+
+.profile-tab {
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    font-family: inherit;
 }
 
 .profile-tab.active,
@@ -282,28 +289,64 @@ include '../includes/header.php';
     font-weight: 700;
 }
 
-/* ── Profile Body ─────────────────────────────────────── */
+/* ── Profile Body & Tab Panels ────────────────────────── */
 
 .profile-body {
     max-width: var(--container-max);
-    margin: 2.5rem auto;
+    margin: 1.5rem auto 3.5rem;
     padding: 0 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .profile-body {
+        margin: 1rem auto 2.5rem;
+        padding: 0 1rem;
+    }
+}
+
+.profile-tab-panel {
+    display: none;
+    animation: fadeInProfileTab 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.profile-tab-panel.active {
+    display: block;
+}
+
+@keyframes fadeInProfileTab {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.about-grid-layout {
     display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 2.5rem;
+    grid-template-columns: minmax(300px, 360px) 1fr;
+    gap: 2rem;
     align-items: start;
 }
 
 @media (max-width: 900px) {
-    .profile-body { grid-template-columns: 1fr; }
+    .about-grid-layout {
+        grid-template-columns: 1fr;
+    }
     .profile-hero-body { flex-direction: column; align-items: flex-start; }
     .profile-hero-actions { margin-left: 0; }
-}
-
-@media (min-width: 901px) {
-    .profile-sidebar {
-        position: sticky;
-        top: 100px;
+    .profile-tabs {
+        width: 100%;
+        overflow-x: visible;
+    }
+    .profile-tab {
+        flex: 1 1 0;
+        justify-content: center;
+        min-width: 0;
+        padding: 0.75rem 0.5rem;
+        white-space: nowrap;
     }
 }
 
@@ -686,174 +729,194 @@ body.dark-mode .btn-white-solid:hover {
 
         <!-- Tab bar -->
         <nav class="profile-tabs">
-            <a href="?id=<?php echo (int)$viewId; ?>&amp;tab=about" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>">About</a>
-            <a href="?id=<?php echo (int)$viewId; ?>&amp;tab=listings" class="profile-tab <?php echo $activeTab === 'listings' ? 'active' : ''; ?>">
+            <button type="button" class="profile-tab <?php echo $activeTab === 'about' ? 'active' : ''; ?>" data-tab="about">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                About
+            </button>
+            <button type="button" class="profile-tab <?php echo $activeTab === 'listings' ? 'active' : ''; ?>" data-tab="listings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><path d="M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
                 Listings
                 <span class="tab-count"><?php echo $listingCount; ?></span>
-            </a>
+            </button>
             <?php if ($serviceCount > 0 || $isSelf): ?>
-            <a href="?id=<?php echo (int)$viewId; ?>&amp;tab=services" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" style="color: #ef4444;">
+            <button type="button" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" data-tab="services" style="color: var(--service);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
                 Services
                 <?php if ($serviceCount > 0): ?>
-                <span class="tab-count" style="background: #ef4444; color: white;"><?php echo $serviceCount; ?></span>
+                <span class="tab-count" style="background: var(--service); color: white;"><?php echo $serviceCount; ?></span>
                 <?php endif; ?>
-            </a>
+            </button>
             <?php endif; ?>
         </nav>
     </div>
 </div>
 
 <!-- ═══ Profile Body ═══════════════════════════════════════════════ -->
-<div class="profile-body profile-body--<?php echo htmlspecialchars($activeTab, ENT_QUOTES, 'UTF-8'); ?>">
+<div class="profile-body">
 
-    <!-- ── Sidebar (About) ────────────────────────────────────── -->
-    <?php if ($activeTab === 'about'): ?>
-    <aside class="profile-sidebar" id="about">
+    <!-- ── Tab Panel 1: About ──────────────────────────────────── -->
+    <div id="tab-panel-about" class="profile-tab-panel <?php echo $activeTab === 'about' ? 'active' : ''; ?>">
+        <div class="about-grid-layout">
 
-        <!-- Stats row -->
-        <div class="profile-stat-row" style="grid-template-columns: repeat(2, 1fr); border-radius: var(--radius-xl);">
-            <div class="profile-stat" style="border-bottom: 1px solid var(--border-light);">
-                <div class="profile-stat-num"><?php echo $listingCount; ?></div>
-                <div class="profile-stat-label">Listings</div>
-            </div>
-            <div class="profile-stat" style="border-right: none; border-bottom: 1px solid var(--border-light);">
-                <div class="profile-stat-num"><?php echo $rating['count']; ?></div>
-                <div class="profile-stat-label">Reviews</div>
-            </div>
-            <div class="profile-stat">
-                <div class="profile-stat-num"><?php echo $rating['count'] > 0 ? $rating['avg'] : '—'; ?></div>
-                <div class="profile-stat-label">Rating</div>
-            </div>
-            <div class="profile-stat" style="border-right: none;">
-                <div class="profile-stat-num"><?php echo (int)$trust['score']; ?></div>
-                <div class="profile-stat-label">Trust</div>
-            </div>
-        </div>
-
-        <!-- Info card -->
-        <div class="card" style="padding: 1.5rem; border-radius: var(--radius-xl);">
-            <h3 style="font-size: 1rem; margin-bottom: 1.25rem; color: var(--text-main);">Account Details</h3>
-            <div class="info-row">
-
-                <div class="info-item">
-                    <span class="info-label">Status</span>
-                    <span class="info-verified">
-                        <svg width="15" height="15" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                        Verified Student
-                    </span>
-                </div>
-
-                <div class="info-divider"></div>
-
-                <div class="info-item">
-                    <span class="info-label">Username</span>
-                    <span class="info-value">@<?php echo sanitize($user['username']); ?></span>
-                </div>
-
-                <div class="info-divider"></div>
-
-                <div class="info-item">
-                    <span class="info-label">Email</span>
-                    <span class="info-value" style="word-break: break-all;">
-                        <?php echo ($isSelf || isAdmin()) ? sanitize($user['email']) : '••••••••@••••.com'; ?>
-                    </span>
-                </div>
-
-                <?php if (!empty($user['phone'])): ?>
-                <div class="info-divider"></div>
-                <div class="info-item">
-                    <span class="info-label">Phone</span>
-                    <span class="info-value">
-                        <?php echo ($isSelf || isAdmin()) ? sanitize($user['phone']) : '••• ••• ••••'; ?>
-                    </span>
-                </div>
-                <?php endif; ?>
-
-                <?php if ($isSelf || isAdmin()): ?>
-                <div class="info-divider"></div>
-                <div class="info-item">
-                    <span class="info-label"><?= __('profile.preferred_language') ?></span>
-                    <span class="info-value">
-                        <?php 
-                        $langCode = $user['preferred_language'] ?? DEFAULT_LANGUAGE;
-                        echo htmlspecialchars(SUPPORTED_LANGUAGES[$langCode] ?? $langCode); 
-                        ?>
-                    </span>
-                </div>
-                <?php endif; ?>
-
-                <div class="info-divider"></div>
-
-                <div class="info-item">
-                    <span class="info-label">Member Since</span>
-                    <span class="info-value"><?php echo formatJoinDate($user['created_at']); ?></span>
-                </div>
-
-                <?php if ($user['role'] === 'admin'): ?>
-                <div class="info-divider"></div>
-                <div class="info-item">
-                    <span class="info-label">Role</span>
-                    <span class="badge" style="background: #fee2e2; color: #991b1b; font-size: 0.8rem; padding: 0.3rem 0.75rem; width: fit-content; display: inline-flex; align-items: center; gap: 0.3rem;"><svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Platform Administrator</span>
-                </div>
-                <?php endif; ?>
-
-            </div>
-        </div>
-
-        <?php if (!empty($reviews)): ?>
-            <div id="reviews" class="card mt-6" style="padding: 1.5rem; border-radius: var(--radius-xl);">
-                <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--text-main);">Recent Buyer Reviews</h3>
-                <?php foreach ($reviews as $review): ?>
-                    <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                            <div style="font-weight: 700; color: var(--text-main);"><?php echo sanitize($review['reviewer_name']); ?></div>
-                            <div style="font-size: 0.95rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
-                        </div>
-                        <?php if (!empty($review['product_title'])): ?>
-                            <div style="margin-top: 0.35rem; color: var(--text-muted); font-size: 0.85rem;"><?php echo sanitize($review['product_title']); ?></div>
-                        <?php endif; ?>
-                        <?php if (trim((string)$review['comment']) !== ''): ?>
-                            <p style="margin: 0.75rem 0 0; color: var(--text-main); line-height: 1.6; white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
-                        <?php endif; ?>
-                        <div style="margin-top: 0.75rem; font-size: 0.78rem; color: var(--text-muted);"><?php echo date('M d, Y', strtotime($review['created_at'])); ?></div>
+            <!-- Left column: Stats + Account Details -->
+            <div class="about-left-col">
+                <!-- Stats row -->
+                <div class="profile-stat-row" style="grid-template-columns: repeat(2, 1fr); border-radius: var(--radius-xl);">
+                    <div class="profile-stat" style="border-bottom: 1px solid var(--border-light);">
+                        <div class="profile-stat-num"><?php echo $listingCount; ?></div>
+                        <div class="profile-stat-label">Listings</div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+                    <div class="profile-stat" style="border-right: none; border-bottom: 1px solid var(--border-light);">
+                        <div class="profile-stat-num"><?php echo $rating['count']; ?></div>
+                        <div class="profile-stat-label">Reviews</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-num"><?php echo $rating['count'] > 0 ? $rating['avg'] : '—'; ?></div>
+                        <div class="profile-stat-label">Rating</div>
+                    </div>
+                    <div class="profile-stat" style="border-right: none;">
+                        <div class="profile-stat-num"><?php echo (int)$trust['score']; ?></div>
+                        <div class="profile-stat-label">Trust</div>
+                    </div>
+                </div>
 
-        <?php 
-        // Mini Analytics: Only show for self
-        if ($isSelf): 
-            $featuredOwn = array_filter($userProducts, function($p) { return $p['status'] === 'active' && (int)$p['is_featured'] === 1; });
-            if (!empty($featuredOwn)):
-        ?>
-            <div class="card mt-6" style="padding: 1.5rem; border-radius: var(--radius-xl); border: 1px solid rgba(99, 102, 241, 0.2); background: rgba(99, 102, 241, 0.02);">
-                <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                    Promotion Status
-                </h3>
-                <div class="info-row">
-                    <?php foreach ($featuredOwn as $fp): ?>
-                        <div class="info-item" style="padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); margin-bottom: 0.75rem;">
-                            <span class="info-value" style="font-size: 0.85rem; font-weight: 700;"><?php echo sanitize($fp['title']); ?></span>
-                            <span class="info-label" style="text-transform: none; font-size: 0.75rem; color: var(--success); display: flex; align-items: center; gap: 0.3rem;">
-                                <span style="display:inline-block; width: 6px; height: 6px; background: currentColor; border-radius: var(--radius-sm);"></span>
-                                Actively Promoted
+                <!-- Info card -->
+                <div class="card" style="padding: 1.5rem; border-radius: var(--radius-xl);">
+                    <h3 style="font-size: 1rem; margin-bottom: 1.25rem; color: var(--text-main);">Account Details</h3>
+                    <div class="info-row">
+
+                        <div class="info-item">
+                            <span class="info-label">Status</span>
+                            <span class="info-verified">
+                                <svg width="15" height="15" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                Verified Student
                             </span>
                         </div>
-                    <?php endforeach; ?>
+
+                        <div class="info-divider"></div>
+
+                        <div class="info-item">
+                            <span class="info-label">Username</span>
+                            <span class="info-value">@<?php echo sanitize($user['username']); ?></span>
+                        </div>
+
+                        <div class="info-divider"></div>
+
+                        <div class="info-item">
+                            <span class="info-label">Email</span>
+                            <span class="info-value" style="word-break: break-all;">
+                                <?php echo ($isSelf || isAdmin()) ? sanitize($user['email']) : '••••••••@••••.com'; ?>
+                            </span>
+                        </div>
+
+                        <?php if (!empty($user['phone'])): ?>
+                        <div class="info-divider"></div>
+                        <div class="info-item">
+                            <span class="info-label">Phone</span>
+                            <span class="info-value">
+                                <?php echo ($isSelf || isAdmin()) ? sanitize($user['phone']) : '••• ••• ••••'; ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if ($isSelf || isAdmin()): ?>
+                        <div class="info-divider"></div>
+                        <div class="info-item">
+                            <span class="info-label"><?= __('profile.preferred_language') ?></span>
+                            <span class="info-value">
+                                <?php 
+                                $langCode = $user['preferred_language'] ?? DEFAULT_LANGUAGE;
+                                echo htmlspecialchars(SUPPORTED_LANGUAGES[$langCode] ?? $langCode); 
+                                ?>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+
+                        <div class="info-divider"></div>
+
+                        <div class="info-item">
+                            <span class="info-label">Member Since</span>
+                            <span class="info-value"><?php echo formatJoinDate($user['created_at']); ?></span>
+                        </div>
+
+                        <?php if ($user['role'] === 'admin'): ?>
+                        <div class="info-divider"></div>
+                        <div class="info-item">
+                            <span class="info-label">Role</span>
+                            <span class="badge" style="background: #fee2e2; color: #991b1b; font-size: 0.8rem; padding: 0.3rem 0.75rem; width: fit-content; display: inline-flex; align-items: center; gap: 0.3rem;"><svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Platform Administrator</span>
+                        </div>
+                        <?php endif; ?>
+
+                    </div>
                 </div>
-                <p class="text-muted" style="font-size: 0.75rem; margin-top: 0.5rem;">These items are boosted to the top of search results and the homepage.</p>
             </div>
-        <?php endif; endif; ?>
 
-    </aside>
-    <?php endif; ?>
+            <!-- Right column: Reviews + Promotion -->
+            <div class="about-right-col">
+                <?php if (!empty($reviews)): ?>
+                    <div id="reviews" class="card" style="padding: 1.5rem; border-radius: var(--radius-xl);">
+                        <h3 style="font-size: 1.05rem; margin-bottom: 1.25rem; color: var(--text-main); font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Recent Buyer Reviews</span>
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);"><?php echo count($reviews); ?> review<?php echo count($reviews) !== 1 ? 's' : ''; ?></span>
+                        </h3>
+                        <?php foreach ($reviews as $review): ?>
+                            <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-light); margin-bottom: 1rem;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                    <div style="font-weight: 700; color: var(--text-main);"><?php echo sanitize($review['reviewer_name']); ?></div>
+                                    <div style="font-size: 0.95rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
+                                </div>
+                                <?php if (!empty($review['product_title'])): ?>
+                                    <div style="margin-top: 0.35rem; color: var(--text-muted); font-size: 0.85rem;"><?php echo sanitize($review['product_title']); ?></div>
+                                <?php endif; ?>
+                                <?php if (trim((string)$review['comment']) !== ''): ?>
+                                    <p style="margin: 0.75rem 0 0; color: var(--text-main); line-height: 1.6; white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
+                                <?php endif; ?>
+                                <div style="margin-top: 0.75rem; font-size: 0.78rem; color: var(--text-muted);"><?php echo date('M d, Y', strtotime($review['created_at'])); ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="card" style="padding: 2.5rem 1.5rem; border-radius: var(--radius-xl); text-align: center; color: var(--text-muted);">
+                        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⭐</div>
+                        <h4 style="margin: 0 0 0.35rem; color: var(--text-main); font-size: 1.05rem; font-weight: 700;">No Reviews Yet</h4>
+                        <p style="margin: 0; font-size: 0.9rem;">This user hasn't received reviews from completed orders yet.</p>
+                    </div>
+                <?php endif; ?>
 
-    <?php if ($activeTab !== 'about'): ?>
-    <div class="profile-main">
-        <!-- ── Listings Section ────────────────────────────────── -->
-        <?php if ($activeTab === 'listings'): ?>
+                <?php 
+                // Mini Analytics: Only show for self
+                if ($isSelf): 
+                    $featuredOwn = array_filter($userProducts, function($p) { return $p['status'] === 'active' && (int)$p['is_featured'] === 1; });
+                    if (!empty($featuredOwn)):
+                ?>
+                    <div class="card mt-6" style="padding: 1.5rem; border-radius: var(--radius-xl); border: 1px solid rgba(99, 102, 241, 0.2); background: rgba(99, 102, 241, 0.02);">
+                        <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            Promotion Status
+                        </h3>
+                        <div class="info-row">
+                            <?php foreach ($featuredOwn as $fp): ?>
+                                <div class="info-item" style="padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); margin-bottom: 0.75rem;">
+                                    <span class="info-value" style="font-size: 0.85rem; font-weight: 700;"><?php echo sanitize($fp['title']); ?></span>
+                                    <span class="info-label" style="text-transform: none; font-size: 0.75rem; color: var(--success); display: flex; align-items: center; gap: 0.3rem;">
+                                        <span style="display:inline-block; width: 6px; height: 6px; background: currentColor; border-radius: var(--radius-sm);"></span>
+                                        Actively Promoted
+                                    </span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="text-muted" style="font-size: 0.75rem; margin-top: 0.5rem;">These items are boosted to the top of search results and the homepage.</p>
+                    </div>
+                <?php endif; endif; ?>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── Tab Panel 2: Listings ───────────────────────────────── -->
+    <div id="tab-panel-listings" class="profile-tab-panel <?php echo $activeTab === 'listings' ? 'active' : ''; ?>">
+        
+        <!-- Active Listings Section -->
         <section id="listings">
             <div class="listings-header">
                 <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
@@ -867,7 +930,14 @@ body.dark-mode .btn-white-solid:hover {
             </div>
 
             <?php if (empty($userProducts)): ?>
-                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;"><?php echo $isSelf ? 'No listings yet' : 'No active listings'; ?></p>
+                <div class="card" style="padding: 3rem 1.5rem; text-align: center; border-radius: var(--radius-xl); color: var(--text-muted);">
+                    <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📦</div>
+                    <h4 style="margin: 0 0 0.35rem; color: var(--text-main); font-size: 1.05rem; font-weight: 700;"><?php echo $isSelf ? 'No listings yet' : 'No active listings'; ?></h4>
+                    <p style="margin: 0; font-size: 0.9rem;"><?php echo $isSelf ? 'Create your first listing to start selling to fellow students.' : 'This student does not have any active listings right now.'; ?></p>
+                    <?php if ($isSelf): ?>
+                        <a href="<?php echo BASE_URL; ?>pages/create_listing.php" class="btn btn-primary btn-sm mt-4 hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.6rem 1.25rem;">+ Create Listing</a>
+                    <?php endif; ?>
+                </div>
             <?php else: ?>
                 <div class="listing-grid">
                     <?php foreach ($userProducts as $prod): ?>
@@ -893,7 +963,7 @@ body.dark-mode .btn-white-solid:hover {
                                     <?php $pendingNote = trim((string)($prod['moderation_note'] ?? '')); ?>
                                     <?php if ($pendingNote !== ''): ?>
                                         <p class="mb-2" style="font-size: 0.78rem; color: #1d4ed8; line-height: 1.45;">
-                                            <?= sanitize($pendingNote) ?>
+                                             <?= sanitize($pendingNote) ?>
                                         </p>
                                     <?php endif; ?>
                                 <?php endif; ?>
@@ -919,79 +989,10 @@ body.dark-mode .btn-white-solid:hover {
                 </div>
             <?php endif; ?>
         </section>
-        <?php endif; ?>
 
-        <!-- ── Services Section ─────────────────────────────────── -->
-        <?php if ($activeTab === 'services' && ($serviceCount > 0 || $isSelf)): ?>
-        <section id="services" style="margin-top: 2rem;">
-            <div class="listings-header">
-                <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
-                    <?php echo $isSelf ? 'Your Services' : 'Services Offered'; ?> (<?php echo $serviceCount; ?>)
-                </h2>
-                <?php if ($isSelf): ?>
-                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; background: #ef4444; color: white; border: none;">
-                        + Offer a Service
-                    </a>
-                <?php endif; ?>
-            </div>
-
-            <?php if (empty($userServices)): ?>
-                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;"><?php echo $isSelf ? 'No services offered yet.' : 'No services offered.'; ?></p>
-            <?php else: ?>
-                <div class="listing-grid">
-                    <?php foreach ($userServices as $prod): ?>
-                        <?php $isPendingApproval = ($prod['status'] === 'pending_approval'); ?>
-                        <div class="listing-card" style="border-top: 3px solid #ef4444;">
-                            <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
-                                <img
-                                    class="listing-card-img"
-                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>"
-                                    alt="<?php echo sanitize($prod['title']); ?>"
-                                    loading="lazy"
-                                />
-                            </a>
-                            <div class="listing-card-body">
-                                <div class="listing-card-meta">
-                                    <span class="listing-card-price">
-                                        <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
-                                        <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
-                                            <small style="font-weight: 500; color: var(--text-muted);">/hr</small>
-                                        <?php endif; ?>
-                                    </span>
-                                </div>
-                                <?php if ($isSelf && $isPendingApproval): ?>
-                                    <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
-                                        Pending Review
-                                    </div>
-                                <?php endif; ?>
-                                <h3 class="listing-card-title">
-                                    <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit;">
-                                        <?php echo sanitize($prod['title']); ?>
-                                    </a>
-                                </h3>
-                                <?php if ($isSelf): ?>
-                                    <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-                                        <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); background: #ef4444; color: white; border: none; font-weight: 700;">
-                                            ⚙️ Manage
-                                        </a>
-                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
-                                            👁️ View
-                                        </a>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </section>
-        <?php endif; ?>
-
-        <!-- ── Sold Items Section ──────────────────────────────── -->
-        <?php if ($activeTab === 'listings'): ?>
+        <!-- Sold Items Section -->
         <section id="sold-items">
-            <h2 class="sold-section-title" style="margin: 2.5rem 0 1.25rem;">
+            <h2 class="sold-section-title" style="margin: 3rem 0 1.25rem;">
                 ✅ Sold Items (<?php echo count($soldProducts); ?>)
             </h2>
 
@@ -1032,11 +1033,136 @@ body.dark-mode .btn-white-solid:hover {
                 </div>
             <?php endif; ?>
         </section>
-        <?php endif; ?>
+    </div>
+
+    <!-- ── Tab Panel 3: Services ───────────────────────────────── -->
+    <?php if ($serviceCount > 0 || $isSelf): ?>
+    <div id="tab-panel-services" class="profile-tab-panel <?php echo $activeTab === 'services' ? 'active' : ''; ?>">
+        <section id="services" style="margin-top: 0;">
+            <div class="listings-header">
+                <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--service)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                    <?php echo $isSelf ? 'Your Services' : 'Services Offered'; ?> (<?php echo $serviceCount; ?>)
+                </h2>
+                <?php if ($isSelf): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; background: var(--service); color: white; border: none;">
+                        + Offer a Service
+                    </a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($userServices)): ?>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;"><?php echo $isSelf ? 'No services offered yet.' : 'No services offered.'; ?></p>
+            <?php else: ?>
+                <div class="listing-grid">
+                    <?php foreach ($userServices as $prod): ?>
+                        <?php $isPendingApproval = ($prod['status'] === 'pending_approval'); ?>
+                        <div class="listing-card" style="border-top: 3px solid var(--service);">
+                            <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
+                                <img
+                                    class="listing-card-img"
+                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>"
+                                    alt="<?php echo sanitize($prod['title']); ?>"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <div class="listing-card-body">
+                                <div class="listing-card-meta">
+                                    <span class="listing-card-price">
+                                        <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
+                                        <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                                            <small style="font-weight: 500; color: var(--text-muted);">/hr</small>
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                <?php if ($isSelf && $isPendingApproval): ?>
+                                    <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
+                                        Pending Review
+                                    </div>
+                                <?php endif; ?>
+                                <h3 class="listing-card-title">
+                                    <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit;">
+                                        <?php echo sanitize($prod['title']); ?>
+                                    </a>
+                                </h3>
+                                <?php if ($isSelf): ?>
+                                    <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+                                        <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); background: var(--service); color: white; border: none; font-weight: 700;">
+                                            ⚙️ Manage
+                                        </a>
+                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
+                                            👁️ View
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
     </div>
     <?php endif; ?>
 
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tabs = Array.from(document.querySelectorAll('.profile-tab'));
+    const panels = {
+        about: document.getElementById('tab-panel-about'),
+        listings: document.getElementById('tab-panel-listings'),
+        services: document.getElementById('tab-panel-services')
+    };
+
+    function switchTab(tabName, updateUrl = true) {
+        if (!panels[tabName]) tabName = 'about';
+
+        tabs.forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === tabName);
+        });
+
+        Object.keys(panels).forEach(key => {
+            if (panels[key]) {
+                panels[key].classList.toggle('active', key === tabName);
+            }
+        });
+
+        if (updateUrl && history.replaceState) {
+            history.replaceState(null, '', '#' + tabName);
+        }
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function (e) {
+            e.preventDefault();
+            const tabName = this.dataset.tab;
+            switchTab(tabName, true);
+        });
+    });
+
+    const validTabs = ['about', 'listings', 'services'];
+    const hash = (window.location.hash || '').replace('#', '');
+    if (validTabs.includes(hash) && panels[hash]) {
+        switchTab(hash, false);
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlTab = urlParams.get('tab');
+        if (validTabs.includes(urlTab) && panels[urlTab]) {
+            switchTab(urlTab, false);
+        } else {
+            switchTab('about', false);
+        }
+    }
+
+    window.addEventListener('hashchange', () => {
+        const newHash = (window.location.hash || '').replace('#', '');
+        if (validTabs.includes(newHash) && panels[newHash]) {
+            switchTab(newHash, false);
+        }
+    });
+});
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+

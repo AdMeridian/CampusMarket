@@ -15,6 +15,52 @@ $results = [];
 $totalItems = 0;
 $paginationBase = 'search.php';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit_wanted_request') {
+    verifyCsrfToken();
+    requireLogin();
+
+    $requestTerm = trim(sanitize($_POST['search_term'] ?? $query));
+    if ($requestTerm === '' || mb_strlen($requestTerm) > 200) {
+        setFlash('error', 'Please enter a product name up to 200 characters.');
+    } else {
+        $duplicateStmt = $pdo->prepare("SELECT id FROM wanted_item_requests
+            WHERE requester_id = ? AND LOWER(search_term) = LOWER(?)
+              AND status = 'pending'
+              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+            LIMIT 1");
+        $duplicateStmt->execute([currentUserId(), $requestTerm]);
+        if ($duplicateStmt->fetchColumn()) {
+            setFlash('error', 'You already have a pending suggestion for this item.');
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO wanted_item_requests
+                (requester_id, search_term, details, category_id, location_town, budget_max, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                currentUserId(),
+                $requestTerm,
+                null,
+                null,
+                null,
+                null,
+                date('Y-m-d H:i:s', strtotime('+30 days')),
+            ]);
+            setFlash('success', 'Your suggestion was submitted for review.');
+        }
+    }
+    redirect($_SERVER['REQUEST_URI']);
+}
+
+$hasPendingSuggestion = false;
+if ($query !== '' && isLoggedIn()) {
+    try {
+        $pendingCheck = $pdo->prepare("SELECT id FROM wanted_item_requests WHERE requester_id = ? AND LOWER(search_term) = LOWER(?) AND status = 'pending' AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) LIMIT 1");
+        $pendingCheck->execute([currentUserId(), $query]);
+        $hasPendingSuggestion = (bool)$pendingCheck->fetchColumn();
+    } catch (Throwable $e) {
+        $hasPendingSuggestion = false;
+    }
+}
+
 if ($query !== '' || $categoryId !== '' || $town !== '') {
     $filterSql = '';
     $filterParams = [];
@@ -105,13 +151,48 @@ require_once __DIR__ . '/../includes/header.php';
             <h3 class="empty-state-title mb-3"><?= __('search.no_items_matched') ?></h3>
             <p class="page-subtitle max-w-lg mx-auto mb-8"><?= __('search.no_items_desc', ['query' => '<strong class="text-primary">' . sanitize($query) . '</strong>']) ?></p>
             <div class="flex justify-center gap-4 flex-wrap">
-                <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
+                <a href="<?php echo BASE_URL; ?>pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
                 <?php if ($query !== ''): ?>
-                <a href="<?php echo BASE_URL; ?>pages/services.php?q=<?php echo urlencode($query); ?>" class="btn hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold; background: #e53e3e; color: white; border: none;">
-                    🛠️ Search Services instead
-                </a>
+                    <a href="<?php echo BASE_URL; ?>pages/services.php?q=<?php echo urlencode($query); ?>" class="btn hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold; background: #e53e3e; color: white; border: none;">
+                        🛠️ Search Services instead
+                    </a>
+                    <?php if ($hasPendingSuggestion): ?>
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; border-radius: var(--radius-lg); padding: 0.8rem 1.4rem; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">✓ Suggestion Under Review</span>
+                    <?php elseif (isLoggedIn()): ?>
+                        <button type="button" class="btn btn-primary" style="border-radius: var(--radius-lg);" onclick="document.getElementById('suggest-item-dialog').showModal();">Suggest item</button>
+                    <?php else: ?>
+                        <a class="btn btn-primary" href="<?php echo BASE_URL; ?>pages/login.php?redirect=<?php echo urlencode($_SERVER['REQUEST_URI']); ?>" style="border-radius: var(--radius-lg);">Log in to suggest</a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
+            <?php if ($query !== '' && isLoggedIn() && !$hasPendingSuggestion): ?>
+                <dialog id="suggest-item-dialog" class="suggest-item-dialog">
+                    <form method="POST" action="<?php echo htmlspecialchars($_SERVER['REQUEST_URI']); ?>" class="grid gap-4">
+                        <input type="hidden" name="action" value="submit_wanted_request">
+                        <?php echo csrfTokenField(); ?>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-primary font-bold" style="font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 .35rem;">Buyer suggestion</p>
+                                <h4 class="text-main font-bold" style="font-size: 1.35rem; margin: 0;">What item should we ask for?</h4>
+                            </div>
+                            <button type="button" aria-label="Close suggestion dialog" onclick="document.getElementById('suggest-item-dialog').close();" style="border: 0; background: transparent; font-size: 1.35rem; cursor: pointer;">&times;</button>
+                        </div>
+                        <label class="form-group">
+                            <span class="form-label">Product name</span>
+                            <input class="form-control" type="text" name="search_term" value="<?php echo htmlspecialchars($query); ?>" maxlength="200" required autofocus placeholder="e.g. graphing calculator">
+                        </label>
+                        <button type="submit" class="btn btn-primary" style="border-radius: var(--radius-md);">Send suggestion</button>
+                    </form>
+                </dialog>
+                <style>
+                    .suggest-item-dialog { position: fixed; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(92vw, 460px); max-height: 90vh; margin: 0; border: 1px solid var(--border-light); border-radius: var(--radius-xl); padding: 0; background: var(--bg-surface); color: var(--text-main); box-shadow: 0 24px 70px rgba(15, 23, 42, .22); }
+                    .suggest-item-dialog::backdrop { background: rgba(15, 23, 42, .42); backdrop-filter: blur(3px); }
+                    .suggest-item-dialog form { padding: 1.5rem; }
+                    .suggest-item-dialog .form-control { box-sizing: border-box; }
+                    .suggest-item-dialog .btn { width: 100%; justify-content: center; }
+                </style>
+            <?php endif; ?>
+>>>>>>> staging
         </div>
     <?php else: ?>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

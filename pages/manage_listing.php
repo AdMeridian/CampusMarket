@@ -98,6 +98,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } elseif ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
         setFlash('error', __('product.discount_range_error', ['max' => LISTING_DISCOUNT_MAX_PERCENT]));
     } else {
+        $oldBase = (float)($product['price'] ?? 0);
+        $oldDisc = (int)($product['discount_percent'] ?? 0);
+        $oldEffective = $oldDisc > 0 ? $oldBase * (1 - ($oldDisc / 100)) : $oldBase;
+        $newEffective = $discountPercent > 0 ? $newPrice * (1 - ($discountPercent / 100)) : $newPrice;
+
         $stmtUp = $pdo->prepare("
             UPDATE products 
             SET price = :price, 
@@ -113,6 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ':dp' => $discountPercent,
             ':id' => $productId
         ]);
+
+        if ($newEffective < $oldEffective) {
+            triggerPriceDropAlerts($pdo, $productId, $oldEffective, $newEffective, $newCurrency);
+        }
+
         setFlash('success', 'Pricing updated successfully.');
     }
     redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
@@ -487,6 +497,67 @@ require_once __DIR__ . '/../includes/header.php';
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+.mgmt-topbar {
+    min-width: 0;
+}
+.mgmt-topbar__identity,
+.mgmt-topbar__actions {
+    min-width: 0;
+}
+.mgmt-topbar__actions {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+}
+.mgmt-topbar__title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+@media (min-width: 641px) {
+    .mgmt-topbar__title {
+        order: 1;
+        margin-right: auto;
+    }
+    .mgmt-topbar__actions .mgmt-header-badge { order: 2; }
+    .mgmt-topbar__actions .btn-primary { order: 3; }
+}
+@media (max-width: 640px) {
+    .mgmt-topbar {
+        align-items: stretch !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    .mgmt-topbar__identity,
+    .mgmt-topbar__actions {
+        width: 100%;
+    }
+    .mgmt-topbar__identity {
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem !important;
+    }
+    .mgmt-topbar__actions {
+        flex: 0 0 auto;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.65rem !important;
+    }
+    .mgmt-topbar__title {
+        order: 2;
+        width: 100%;
+        padding-top: 0.15rem;
+        font-size: 1rem !important;
+        line-height: 1.35;
+    }
+    .mgmt-topbar__actions .mgmt-header-badge {
+        order: 1;
+        align-self: flex-start;
+    }
+    .mgmt-topbar__actions .btn-primary {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+    }
+}
 .graph-line {
     stroke-dasharray: 200;
     stroke-dashoffset: 200;
@@ -582,7 +653,6 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
     <?php endif; ?>
-
     <!-- Insights Metric Bar -->
     <div class="grid grid-cols-1 md-grid-cols-3 gap-4 mb-8">
         <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid var(--primary);">
@@ -808,7 +878,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="mgmt-card">
                 <h3 class="font-bold text-lg text-main mb-3">Photos (<?= count($images) ?>/5)</h3>
                 
-                <div class="grid grid-cols-3 gap-2 mb-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
                     <?php foreach ($images as $img): ?>
                     <div class="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square" style="background: var(--bg-surface);">
                         <img src="<?= getProductImage($img['image_path']) ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">

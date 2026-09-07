@@ -170,5 +170,151 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 <script src="<?php echo BASE_URL; ?>public/js/chatbot.js?v=<?php echo $chatbotJsVer; ?>"></script>
 <?php endif; ?>
 
+<?php
+$latestWanted = getActiveWantedItemRequests($pdo, 1);
+if (!empty($latestWanted) && !$isAdminPanel):
+    $popWanted = $latestWanted[0];
+?>
+<dialog id="buyer-demand-modal" class="buyer-demand-modal" aria-label="Buyer Request">
+    <div class="buyer-demand-content">
+        <button type="button" class="buyer-demand-close" aria-label="Close" onclick="dismissBuyerDemandModal(<?php echo (int)$popWanted['id']; ?>)">&times;</button>
+        <div class="buyer-demand-badge">
+            <span>📣 Wanted on Campus</span>
+        </div>
+        <h4 class="buyer-demand-title">A student is looking for:</h4>
+        <p class="buyer-demand-term"><?php echo htmlspecialchars($popWanted['search_term']); ?></p>
+        <p class="buyer-demand-desc">Have this item available? List it now to make a quick sale.</p>
+        <div class="buyer-demand-actions">
+            <a href="<?php echo BASE_URL; ?>pages/create_listing.php?title=<?php echo urlencode($popWanted['search_term']); ?>" class="btn btn-primary" style="border-radius: var(--radius-md); font-weight: 700;" onclick="dismissBuyerDemandModal(<?php echo (int)$popWanted['id']; ?>)">
+                + Sell This Item
+            </a>
+            <button type="button" class="btn btn-secondary" style="border-radius: var(--radius-md);" onclick="dismissBuyerDemandModal(<?php echo (int)$popWanted['id']; ?>)">
+                Dismiss
+            </button>
+        </div>
+    </div>
+</dialog>
+<style>
+.buyer-demand-modal {
+    position: fixed;
+    inset: auto auto 2rem 2rem;
+    width: min(92vw, 360px);
+    margin: 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: 0;
+    background: var(--bg-surface);
+    color: var(--text-main);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+    z-index: 9998;
+    animation: slideUpDemand 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUpDemand {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.buyer-demand-content {
+    padding: 1.35rem 1.4rem;
+    position: relative;
+}
+.buyer-demand-close {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    background: transparent;
+    border: none;
+    font-size: 1.35rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    line-height: 1;
+}
+.buyer-demand-close:hover {
+    color: var(--text-main);
+}
+.buyer-demand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(217, 119, 6, 0.12);
+    color: #d97706;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 0.65rem;
+}
+.buyer-demand-title {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 0.25rem;
+    font-weight: 600;
+}
+.buyer-demand-term {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 0 0 0.4rem;
+    line-height: 1.25;
+}
+.buyer-demand-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 1.1rem;
+    line-height: 1.45;
+}
+.buyer-demand-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.buyer-demand-actions .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.82rem;
+    padding: 0.6rem 0.75rem;
+}
+@media (max-width: 640px) {
+    .buyer-demand-modal {
+        inset: auto 0.75rem calc(5.5rem + env(safe-area-inset-bottom, 12px)) 0.75rem;
+        width: auto;
+    }
+}
+</style>
+<script>
+function dismissBuyerDemandModal(id) {
+    const dialog = document.getElementById('buyer-demand-modal');
+    if (dialog) {
+        dialog.close();
+    }
+    try {
+        let dismissed = JSON.parse(localStorage.getItem('dismissed_wanted_requests') || '[]');
+        if (!dismissed.includes(id)) {
+            dismissed.push(id);
+            localStorage.setItem('dismissed_wanted_requests', JSON.stringify(dismissed));
+        }
+    } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dialog = document.getElementById('buyer-demand-modal');
+    if (!dialog) return;
+    const reqId = <?php echo (int)$popWanted['id']; ?>;
+    try {
+        const dismissed = JSON.parse(localStorage.getItem('dismissed_wanted_requests') || '[]');
+        if (!dismissed.includes(reqId)) {
+            setTimeout(function() {
+                if (typeof dialog.show === 'function') {
+                    dialog.show();
+                } else {
+                    dialog.setAttribute('open', '');
+                }
+            }, 1500);
+        }
+    } catch(e) {}
+});
+</script>
+<?php endif; ?>
+
 </body>
 </html>

@@ -144,19 +144,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ctaUrl      = trim($_POST['cta_url'] ?? (BASE_URL . 'pages/browse.php'));
     $audience    = trim($_POST['audience_type'] ?? 'all');
     $preset      = trim($_POST['template_preset'] ?? 'custom');
+    $channelEmail = !empty($_POST['channel_email']);
+    $channelInApp = !empty($_POST['channel_inapp']);
 
     if (empty($subject) || empty($headline) || empty($bodyContent)) {
         setFlash('error', 'Subject line, headline, and message body are required.');
         redirect('campaigns.php');
     }
 
+    if (!$channelEmail && !$channelInApp) {
+        setFlash('error', 'Please select at least one delivery channel (Email or In-App Notification).');
+        redirect('campaigns.php');
+    }
+
     if ($action === 'send_test') {
         $testRecipient = trim($_POST['test_email'] ?? $adminEmail);
-        if (empty($testRecipient) || !filter_var($testRecipient, FILTER_VALIDATE_EMAIL)) {
-            setFlash('error', 'Invalid test email destination.');
-            redirect('campaigns.php');
-        }
-
         $sampleName = $currentAdmin['username'] ?? 'Admin';
         $personalizedBody = str_replace(
             ['{{username}}', '{{app_name}}', '{{campus_name}}', '{{browse_url}}'],
@@ -169,14 +171,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $headline
         );
 
-        $html = buildMarketingEmailHtml($personalizedHeadline, nl2br($personalizedBody), $ctaUrl, $ctaText, generateUnsubscribeUrl($testRecipient));
-        $res = sendMarketingEmail($testRecipient, "[TEST] " . $subject, $html);
+        $testResults = [];
 
-        if ($res['ok']) {
-            setFlash('success', "Test email successfully sent to {$testRecipient} via marketing@campusmarketplace.site.");
-        } else {
-            setFlash('error', "Failed to send test email: " . ($res['error'] ?? 'Unknown mailer error'));
+        if ($channelEmail) {
+            if (empty($testRecipient) || !filter_var($testRecipient, FILTER_VALIDATE_EMAIL)) {
+                setFlash('error', 'Invalid test email destination.');
+                redirect('campaigns.php');
+            }
+            $html = buildMarketingEmailHtml($personalizedHeadline, nl2br($personalizedBody), $ctaUrl, $ctaText, generateUnsubscribeUrl($testRecipient));
+            $res = sendMarketingEmail($testRecipient, "[TEST] " . $subject, $html);
+            if ($res['ok']) {
+                $testResults[] = "Test email sent to {$testRecipient}";
+            } else {
+                $testResults[] = "Email failed: " . ($res['error'] ?? 'Unknown mailer error');
+            }
         }
+
+        if ($channelInApp && currentUserId()) {
+            createNotification(
+                $pdo,
+                currentUserId(),
+                'system',
+                "📢 [TEST] " . $subject,
+                $personalizedHeadline . " — " . mb_substr(strip_tags($personalizedBody), 0, 120),
+                null
+            );
+            $testResults[] = "Test in-app notification delivered to your bell tray";
+        }
+
+        setFlash('success', implode('. ', $testResults));
         redirect('campaigns.php');
     }
 
@@ -254,8 +277,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Dispatch loop
         $successCount = 0;
         $failCount = 0;
+        $inAppCount = 0;
 
         foreach ($recipients as $r) {
+            $uid    = (int)$r['id'];
             $uName  = $r['username'] ?: 'Student';
             $uEmail = $r['email'];
 
@@ -270,19 +295,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $headline
             );
 
-            $html = buildMarketingEmailHtml(
-                $personalizedHeadline,
-                nl2br($personalizedBody),
-                $ctaUrl,
-                $ctaText,
-                generateUnsubscribeUrl($uEmail)
-            );
+            // Channel 1: Email
+            if ($channelEmail) {
+                $html = buildMarketingEmailHtml(
+                    $personalizedHeadline,
+                    nl2br($personalizedBody),
+                    $ctaUrl,
+                    $ctaText,
+                    generateUnsubscribeUrl($uEmail)
+                );
 
-            $res = sendMarketingEmail($uEmail, $subject, $html);
-            if ($res['ok']) {
-                $successCount++;
-            } else {
-                $failCount++;
+                $res = sendMarketingEmail($uEmail, $subject, $html);
+                if ($res['ok']) {
+                    $successCount++;
+                } else {
+                    $failCount++;
+                }
+            }
+
+            // Channel 2: In-App Activity Bell + Web Push
+            if ($channelInApp) {
+                createNotification(
+                    $pdo,
+                    $uid,
+                    'system',
+                    "📢 " . $subject,
+                    $personalizedHeadline . " — " . mb_substr(strip_tags($personalizedBody), 0, 120),
+                    null
+                );
+                $inAppCount++;
             }
         }
 
@@ -296,21 +337,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE id = :id
         ");
         $upStmt->execute([
-            ':succ'   => $successCount,
+            ':succ'   => ($channelEmail ? $successCount : $inAppCount),
             ':fail'   => $failCount,
-            ':status' => ($successCount > 0 ? 'sent' : 'failed'),
+            ':status' => (($successCount > 0 || $inAppCount > 0) ? 'sent' : 'failed'),
             ':id'     => $campaignId,
         ]);
 
         logAdminAction($pdo, 'launch_email_campaign', 'campaign', $campaignId, [
-            'subject'    => $subject,
-            'audience'   => $audience,
-            'recipients' => $totalRecipients,
-            'success'    => $successCount,
-            'failed'     => $failCount,
+            'audience'      => $audience,
+            'recipients'    => $totalRecipients,
+            'channel_email' => $channelEmail,
+            'channel_inapp' => $channelInApp,
+            'email_sent'    => $successCount,
+            'inapp_sent'    => $inAppCount,
         ]);
 
-        setFlash('success', "Campaign successfully dispatched! Sent to {$successCount} recipient(s) from marketing@campusmarketplace.site (" . ($failCount ? "{$failCount} failed" : "0 errors") . ").");
+        setFlash('success', "Campaign blast complete! " . implode(' and ', $msgParts) . " to {$totalRecipients} {$audience} users.");
         redirect('campaigns.php');
     }
 }
@@ -532,6 +574,24 @@ require_once __DIR__ . '/../includes/header.php';
                     <div>
                         <label for="ctaUrl" class="form-label" style="font-weight: 700;">Button Destination URL</label>
                         <input type="text" id="ctaUrl" name="cta_url" class="form-control" value="<?php echo BASE_URL . 'pages/browse.php'; ?>" oninput="syncPreview()">
+                    </div>
+                </div>
+
+                <!-- Delivery Channels -->
+                <div class="mb-6" style="background: rgba(26, 127, 100, 0.04); border: 1px solid rgba(26, 127, 100, 0.15); border-radius: var(--radius-md); padding: 1rem 1.25rem;">
+                    <label class="form-label mb-2" style="font-weight: 700; color: var(--text-main);">5. Delivery Channels</label>
+                    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
+                            <input type="checkbox" name="channel_email" value="1" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                            <span>✉️ Email Broadcast</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
+                            <input type="checkbox" name="channel_inapp" value="1" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                            <span>🔔 In-App Bell & Web Push</span>
+                        </label>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        Select one or both channels to broadcast to your campus audience.
                     </div>
                 </div>
 

@@ -865,11 +865,10 @@ function renderHandshakeBar(deal) {
     } else if (status === 'pending') {
         borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
         const isService = deal.listing_type === 'service';
-        
+
         let promptText = isService ? __('deal.want_to_book_service', {default: 'Want to book this service?'}) : __('deal.did_deal_happen');
         let promptSub = isService ? __('deal.select_time_to_book', {default: 'Select a time to book this service.'}) : __('deal.confirm_marks_sold');
         let yesBtnText = isService ? __('deal.book_service', {default: 'Book Service'}) : __('deal.yes_done');
-        
         let extraFields = '';
         if (isService) {
             extraFields = `

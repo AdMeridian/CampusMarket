@@ -7,7 +7,7 @@ $pageDescription = __('footer.tagline');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: calc(80px + 2rem) 0 4rem;">
+<div class="donation-page-wrapper" style="position: relative; overflow: hidden; min-height: 80vh; padding: calc(70px + 1.25rem) 0 4rem;">
     <div class="container" style="max-width: 1000px; padding: 0 1.5rem;">
         <div class="text-center mb-16">
             <div class="inline-flex items-center gap-2 mb-4 font-bold" style="font-size: 0.85rem; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase;">
@@ -27,7 +27,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="payment_type" value="donation">
                     
-                    <div class="grid grid-cols-3 gap-6 mb-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                         <div class="amount-pill active" data-amount="50"><span>₺50</span></div>
                         <div class="amount-pill" data-amount="100"><span>₺100</span></div>
                         <div class="amount-pill" data-amount="200"><span>₺200</span></div>

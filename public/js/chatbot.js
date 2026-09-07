@@ -47,16 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOpen = chatbotWindow.classList.contains('open');
         if (isOpen) {
             chatbotWindow.classList.remove('open');
+            chatbotFab.classList.remove('is-hidden');
         } else {
             chatbotWindow.classList.add('open');
+            chatbotFab.classList.add('is-hidden');
             if (typeof posthog !== 'undefined') posthog.capture('chatbot_opened', { language: locale });
             chatbotInput.focus();
-            chatbotFab.className = 'cm-chatbot-fab';
         }
     });
 
     chatbotClose.addEventListener('click', () => {
         chatbotWindow.classList.remove('open');
+        chatbotFab.classList.remove('is-hidden');
     });
 
     if (chatbotClear) {

@@ -48,6 +48,28 @@ CREATE TABLE services (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- Wanted item suggestions captured from zero-result searches
+CREATE TABLE wanted_item_requests (
+    id                   INT AUTO_INCREMENT PRIMARY KEY,
+    requester_id         INT NOT NULL,
+    search_term          VARCHAR(200) NOT NULL,
+    details              TEXT NULL,
+    category_id          INT NULL,
+    location_town        VARCHAR(32) NULL,
+    budget_max           DECIMAL(10,2) NULL,
+    status               ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+    reviewed_by_admin_id INT NULL,
+    reviewed_at          DATETIME NULL,
+    expires_at           DATETIME NULL,
+    created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (reviewed_by_admin_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_wanted_requests_status (status),
+    INDEX idx_wanted_requests_category (category_id),
+    INDEX idx_wanted_requests_requester_created (requester_id, created_at)
+) ENGINE=InnoDB;
+
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 3. tags
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -57,9 +79,6 @@ CREATE TABLE tags (
     slug VARCHAR(50)  NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
--- 4. products
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE products (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     user_id     INT            NOT NULL,
@@ -92,9 +111,8 @@ CREATE TABLE products (
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 5. product_images
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ──────────────────────────────────────────
 CREATE TABLE product_images (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT          NOT NULL,
@@ -104,9 +122,9 @@ CREATE TABLE product_images (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ──────────────────────────────────────────
 -- 6. product_tags (pivot)
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ──────────────────────────────────────────
 CREATE TABLE product_tags (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT NOT NULL,
@@ -294,6 +312,22 @@ CREATE TABLE email_verifications (
 -- ─────────────────────────────────────────────────────────
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS last_seen_at DATETIME NULL DEFAULT NULL;
+
+-- PWA installation and standalone activity telemetry
+CREATE TABLE IF NOT EXISTS pwa_installations (
+    installation_id VARCHAR(36) PRIMARY KEY,
+    user_id INT NULL,
+    first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    install_event_at DATETIME NULL,
+    last_standalone_at DATETIME NULL,
+    platform VARCHAR(40) NULL,
+    display_mode VARCHAR(30) NULL,
+    user_agent TEXT NULL,
+    INDEX idx_pwa_last_seen (last_seen_at),
+    INDEX idx_pwa_user_id (user_id),
+    CONSTRAINT fk_pwa_installations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
 
 -- Promotion payments (manual verification workflow)
 CREATE TABLE IF NOT EXISTS promotion_payments (

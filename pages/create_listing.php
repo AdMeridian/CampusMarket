@@ -246,54 +246,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     notifySellerPendingListing($pdo, (int)$userId, (int)$productId, $title, $sellerNote);
                 }
 
+                // 3. Save tags — manual selection + custom created tags, then AI-generated as fallback
                 $tagsToSave = [];
                 if (!empty($selectedTagIds)) {
-                    // User explicitly picked tags from the pill UI
                     $tagsToSave = $selectedTagIds;
-                } elseif ($status === 'active' && !empty($aiResult['tags'])) {
+                }
+
+                // Process newly created custom tags
+                $rawNewTags = $_POST['new_tags'] ?? [];
+                if (!empty($rawNewTags) && is_array($rawNewTags)) {
+                    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+                    $existing = $pdo->prepare("SELECT id FROM tags WHERE slug = ? OR LOWER(name) = LOWER(?) LIMIT 1");
+                    foreach ($rawNewTags as $rawName) {
+                        $newName = trim(preg_replace('/^#+/', '', (string)$rawName));
+                        if (mb_strlen($newName) < 2 || mb_strlen($newName) > 40) {
+                            continue;
+                        }
+                        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $newName), '-'));
+                        if (empty($slug)) {
+                            $slug = 'tag-' . substr(md5($newName), 0, 8);
+                        }
+                        $existing->execute([$slug, $newName]);
+                        $newTagId = $existing->fetchColumn();
+
+                        if (!$newTagId) {
+                            $insertTagSql = ($driver === 'pgsql')
+                                ? "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?) RETURNING id"
+                                : "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?)";
+                            $tagStmt = $pdo->prepare($insertTagSql);
+                            try {
+                                $tagStmt->execute([$newName, $slug, $userId]);
+                                $newTagId = ($driver === 'pgsql') ? $tagStmt->fetchColumn() : $pdo->lastInsertId();
+                            } catch (Throwable $eT) {
+                                $existing->execute([$slug, $newName]);
+                                $newTagId = $existing->fetchColumn();
+                            }
+                        }
+
+                        if ($newTagId) {
+                            $tagsToSave[] = (int)$newTagId;
+                        }
+                    }
+                }
+
+                if (empty($tagsToSave) && $status === 'active' && !empty($aiResult['tags'])) {
                     // Auto-approved with no manual selection: resolve AI tag names → IDs
                     $placeholders = implode(',', array_fill(0, count($aiResult['tags']), '?'));
                     $nameStmt = $pdo->prepare("SELECT id FROM tags WHERE name IN ($placeholders)");
                     $nameStmt->execute($aiResult['tags']);
                     $tagsToSave = $nameStmt->fetchAll(PDO::FETCH_COLUMN);
                 }
-
-                // Process user-suggested new tags
-                $newTagNames = array_slice(array_unique(array_filter(
-                    array_map(fn($t) => mb_strtolower(trim(sanitize((string)$t))), $_POST['new_tags'] ?? [])
-                )), 0, 5);
-
-                foreach ($newTagNames as $newName) {
-                    if (mb_strlen($newName) < 2 || mb_strlen($newName) > 40) continue;
-                    $slug = strtolower(preg_replace('/[^a-z0-9\-]+/u', '-', $newName));
-                    $slug = trim($slug, '-');
-                    if ($slug === '') continue;
-
-                    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-                    $existing = $pdo->prepare("SELECT id FROM tags WHERE slug = ? OR LOWER(name) = ? LIMIT 1");
-                    $existing->execute([$slug, $newName]);
-                    $newTagId = $existing->fetchColumn();
-
-                    if (!$newTagId) {
-                        $insertTagSql = ($driver === 'pgsql')
-                            ? "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?) RETURNING id"
-                            : "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?)";
-                        $tagStmt = $pdo->prepare($insertTagSql);
-                        try {
-                            $tagStmt->execute([$newName, $slug, $userId]);
-                            $newTagId = ($driver === 'pgsql') ? $tagStmt->fetchColumn() : $pdo->lastInsertId();
-                        } catch (Throwable $eT) {
-                            $existing->execute([$slug, $newName]);
-                            $newTagId = $existing->fetchColumn();
-                        }
-                    }
-
-                    if ($newTagId) {
-                        $tagsToSave[] = (int)$newTagId;
-                    }
-                }
                 $tagsToSave = array_values(array_unique(array_map('intval', $tagsToSave)));
-
                 if (!empty($tagsToSave)) {
                     $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                     $tagSql = ($driverName === 'pgsql')
@@ -588,7 +591,7 @@ include '../includes/header.php';
 
                 <div class="form-group">
                     <label id="title-label" class="font-bold mb-2 block" style="color: var(--text-main);"><?= $isServiceMode ? __('create_listing.sell_label_service') : __('create_listing.sell_label') ?></label>
-                    <input type="text" id="title-input" name="title" value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.title_placeholder_service')) : addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <input type="text" id="title-input" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.title_placeholder_service')) : addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1337,17 +1340,20 @@ document.addEventListener('DOMContentLoaded', function () {
         pill.innerHTML = `
             <span>#${val}</span>
             <input type="hidden" name="new_tags[]" value="${val.replace(/"/g, '&quot;')}">
-            <button type="button" style="background:none; border:none; color:inherit; font-size:0.9rem; cursor:pointer; padding:0; line-height:1;" title="Remove tag">&times;</button>
+            <button type="button" style="background: none; border: none; cursor: pointer; color: var(--primary); font-size: 14px; line-height: 1; padding: 0 2px; font-weight: bold;" title="Remove tag">&times;</button>
         `;
-
-        pill.querySelector('button').addEventListener('click', () => pill.remove());
+        pill.querySelector('button').addEventListener('click', function () {
+            pill.remove();
+        });
         customTagsContainer.appendChild(pill);
         customTagInput.value = '';
     }
 
-    if (addCustomTagBtn && customTagInput) {
+    if (addCustomTagBtn) {
         addCustomTagBtn.addEventListener('click', addCustomTag);
-        customTagInput.addEventListener('keydown', (e) => {
+    }
+    if (customTagInput) {
+        customTagInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 addCustomTag();
@@ -1407,7 +1413,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
-
     const townSelect = document.querySelector('select[name="location_town"]');
     const customLocContainer = document.getElementById('custom_location_container');
     const customLocInput = document.getElementById('custom_location_input');

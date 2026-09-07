@@ -31,6 +31,19 @@ $stats = [
     'completed_deals'           => $pdo->query("SELECT COUNT(*) FROM deal_confirmations WHERE status = 'completed'")->fetchColumn(),
 ];
 
+try {
+    $pwaDriver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+    $activePwaSince = $pwaDriver === 'mysql'
+        ? "DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        : "CURRENT_TIMESTAMP - INTERVAL '30 days'";
+    $stats['pwa_installs'] = (int)$pdo->query("SELECT COUNT(*) FROM pwa_installations WHERE install_event_at IS NOT NULL")->fetchColumn();
+    $stats['pwa_active_devices'] = (int)$pdo->query("SELECT COUNT(*) FROM pwa_installations WHERE last_standalone_at >= {$activePwaSince}")->fetchColumn();
+} catch (Throwable $e) {
+    // Keep the admin dashboard usable until the telemetry migration is applied.
+    $stats['pwa_installs'] = 0;
+    $stats['pwa_active_devices'] = 0;
+}
+
 // Top sellers by completed transactions
 $sellerTxnStmt = $pdo->query("
     SELECT
@@ -55,7 +68,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 .admin-wrap {
     max-width: var(--container-max);
-    margin: 120px auto 5rem;
+    margin: calc(70px + 1.5rem) auto 5rem;
     padding: 0 1.5rem;
 }
 
@@ -466,6 +479,16 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="stat-card-num"><?php echo $stats['completed_deals']; ?></div>
             <div class="stat-card-sub">Verified transactions</div>
         </div>
+        <div class="stat-card" style="border-left-color: var(--primary);">
+            <div class="stat-card-label">PWA Installs</div>
+            <div class="stat-card-num"><?php echo $stats['pwa_installs']; ?></div>
+            <div class="stat-card-sub">Confirmed install events</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #0ea5e9;">
+            <div class="stat-card-label">Active PWA Devices</div>
+            <div class="stat-card-num"><?php echo $stats['pwa_active_devices']; ?></div>
+            <div class="stat-card-sub">Standalone activity in 30 days</div>
+        </div>
     </div>
 
     <!-- ── Bottom layout ──────────────────────────────────────── -->
@@ -541,6 +564,11 @@ require_once __DIR__ . '/../includes/header.php';
                             <div class="module-name">Moderation</div>
                             <div class="module-desc">Review flagged content</div>
                         </div>
+                        <span class="module-arrow">›</span>
+                    </a>
+                    <a href="wanted_requests.php" class="module-card" style="--module-color: #d97706; --module-bg: #fffbeb;">
+                        <div class="module-icon">📣</div>
+                        <div class="module-info"><div class="module-name">Item Suggestions</div><div class="module-desc">Review and broadcast requests</div></div>
                         <span class="module-arrow">›</span>
                     </a>
                     <a href="transactions.php" class="module-card" style="--module-color: var(--success); --module-bg: var(--success-bg);">
