@@ -87,10 +87,16 @@ include '../includes/header.php';
 
 .profile-hero {
     background: var(--primary);
-    padding: calc(75px + 2.5rem) 0 0;
+    padding: calc(70px + 1.25rem) 0 0;
     margin-bottom: 0;
     position: relative;
     overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .profile-hero {
+        padding: calc(60px + 0.85rem) 0 0;
+    }
 }
 
 .profile-hero::before {
@@ -220,7 +226,7 @@ include '../includes/header.php';
 .profile-tabs {
     display: flex;
     gap: 0;
-    margin-top: 1.5rem;
+    margin-top: 1rem;
     border-bottom: none;
 }
 
@@ -265,8 +271,15 @@ include '../includes/header.php';
 
 .profile-body {
     max-width: var(--container-max);
-    margin: 2.5rem auto 4rem;
+    margin: 1.5rem auto 3.5rem;
     padding: 0 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .profile-body {
+        margin: 1rem auto 2.5rem;
+        padding: 0 1rem;
+    }
 }
 
 .profile-tab-panel {
