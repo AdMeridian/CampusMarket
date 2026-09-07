@@ -43,9 +43,14 @@ if (!in_array($filter, ['pending', 'approved', 'rejected', 'all'], true)) $filte
 $where = $filter === 'all'
     ? "WHERE (r.status <> 'pending' OR r.expires_at IS NULL OR r.expires_at > CURRENT_TIMESTAMP)"
     : "WHERE r.status = :status AND (r.status <> 'pending' OR r.expires_at IS NULL OR r.expires_at > CURRENT_TIMESTAMP)";
-$stmt = $pdo->prepare("SELECT r.*, u.username FROM wanted_item_requests r JOIN users u ON u.id = r.requester_id {$where} ORDER BY r.created_at DESC LIMIT 100");
-$filter === 'all' ? $stmt->execute() : $stmt->execute([':status' => $filter]);
-$requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$requests = [];
+try {
+    $stmt = $pdo->prepare("SELECT r.*, u.username FROM wanted_item_requests r JOIN users u ON u.id = r.requester_id {$where} ORDER BY r.created_at DESC LIMIT 100");
+    $filter === 'all' ? $stmt->execute() : $stmt->execute([':status' => $filter]);
+    $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $requests = [];
+}
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
