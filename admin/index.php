@@ -68,7 +68,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 .admin-wrap {
     max-width: var(--container-max);
-    margin: 120px auto 5rem;
+    margin: calc(70px + 1.5rem) auto 5rem;
     padding: 0 1.5rem;
 }
 

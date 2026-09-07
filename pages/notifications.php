@@ -35,7 +35,7 @@ require_once __DIR__ . '/../includes/header.php';
 /* ── Inbox/Activity Styles ─────────────────────────────────────── */
 .inbox-wrap {
     max-width: 820px;
-    margin: 6rem auto 5rem;
+    margin: 5.25rem auto 4rem;
     padding: 0 1.25rem;
 }
 

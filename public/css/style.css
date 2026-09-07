@@ -259,7 +259,7 @@ p {
 .mt-10 { margin-top: 2.5rem; }
 .mt-12 { margin-top: 3.5rem; }
 .mt-16 { margin-top: 5rem; }
-.mt-24 { margin-top: 7rem; }
+.mt-24 { margin-top: 5.25rem; }
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-4 { margin-bottom: 1rem; }
 .mb-5 { margin-bottom: 1.25rem; }
@@ -286,7 +286,12 @@ p {
 .py-12 { padding-top: 3rem; padding-bottom: 3rem; }
 .py-20 { padding-top: 6rem; padding-bottom: 6rem; }
 
-.pt-24 { padding-top: 6rem; }
+.pt-24 { padding-top: 5.25rem; }
+
+@media (max-width: 768px) {
+  .mt-24 { margin-top: 4.5rem; }
+  .pt-24 { padding-top: 4.5rem; }
+}
 .pb-16 { padding-bottom: 4rem; }
 .min-h-screen { min-height: 100vh; }
 .relative { position: relative; }
@@ -2250,7 +2255,13 @@ body.dark-mode .input-invalid {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: calc(80px + 2rem) 1rem 2rem;
+    padding: calc(70px + 1.25rem) 1rem 2rem;
+}
+
+@media (max-width: 768px) {
+    .auth-page {
+        padding: calc(60px + 0.85rem) 1rem 2rem;
+    }
 }
 
 .auth-card {
@@ -2807,7 +2818,13 @@ body {
 }
 
 .page-content-offset {
-  padding-top: 120px;
+  padding-top: calc(70px + 1.25rem);
+}
+
+@media (max-width: 768px) {
+  .page-content-offset {
+    padding-top: calc(60px + 0.85rem);
+  }
 }
 
 .container {
