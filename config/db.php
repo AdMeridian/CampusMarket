@@ -271,6 +271,31 @@ if (!function_exists('ensureCustomLocationColumns')) {
     }
 }
 
+if (!function_exists('ensureMessageReplyColumn')) {
+    function ensureMessageReplyColumn(PDO $pdo): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $pdo->exec("ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT NULL");
+            } else {
+                $check = $pdo->prepare(
+                    "SELECT COUNT(*) FROM information_schema.columns " .
+                    "WHERE table_schema = DATABASE() AND table_name = 'messages' AND column_name = 'reply_to_message_id'"
+                );
+                $check->execute();
+                if ((int) $check->fetchColumn() === 0) {
+                    $pdo->exec("ALTER TABLE messages ADD COLUMN reply_to_message_id INT NULL");
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Message reply column bootstrap warning: ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('connectDatabase')) {
     function connectDatabase(): PDO {
         $config = resolveDatabaseConfig();
@@ -314,8 +339,9 @@ if (!function_exists('connectDatabase')) {
                 try {
                     ensureProductCategoriesTable($pdo);
                     ensureCustomLocationColumns($pdo);
+                    ensureMessageReplyColumn($pdo);
                 } catch (Throwable $ensureError) {
-                    error_log('Product categories bootstrap failed: ' . $ensureError->getMessage());
+                    error_log('Schema bootstrap failed: ' . $ensureError->getMessage());
                 }
                 return $pdo;
             } catch (PDOException $e) {

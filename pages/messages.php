@@ -190,6 +190,14 @@ $presenceText = match($otherPresence['status']) {
             </div>
         <?php endif; ?>
 
+        <div id="reply-preview" class="chat-reply-preview" hidden>
+            <div class="chat-reply-preview__copy">
+                <span class="chat-reply-preview__label">Replying to</span>
+                <span id="reply-preview-text" class="chat-reply-preview__text"></span>
+            </div>
+            <button type="button" id="cancel-reply-btn" class="chat-reply-preview__cancel" aria-label="Cancel reply">&times;</button>
+        </div>
+
         <div class="chat-input-bar">
             <form id="chat-form" class="chat-input-form m-0">
                 <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" required autocomplete="off" maxlength="250">
@@ -257,6 +265,7 @@ let pollIntervalId = null;
 let translationConfigured = <?= getTranslationService()->isConfigured() ? 'true' : 'false' ?>;
 const translatedStorageKey = `cm_translated_${productId}_${otherUserId}`;
 let translatedMessageIds = new Set();
+let selectedReply = null;
 
 try {
     const storedTranslated = sessionStorage.getItem(translatedStorageKey);
@@ -408,15 +417,24 @@ function formatMessageTime(iso) {
 function buildMessageBubbleHtml(msg, options = {}) {
     const isMine = !!msg.is_mine;
     const canDelete = !options.sending;
+    const canReply = !options.sending && msg.id;
     const timeStr = options.sending ? __('chat.sending') : formatMessageTime(msg.created_at);
     const bodyHtml = isMine
         ? `<div class="message-body-wrap"><div class="message-text-content">${msg.body}</div></div>`
         : `<div class="message-body-wrap">${buildIncomingBodyHtml(msg)}</div>`;
+    const replyHtml = msg.reply_to_message_id && msg.reply_body
+        ? `<div class="message-reply-quote"><span class="message-reply-quote__label">Replying to ${msg.reply_sender_name || 'message'}</span><span class="message-reply-quote__text">${msg.reply_body}</span></div>`
+        : '';
+    const replyButton = canReply
+        ? `<button type="button" class="btn-reply-msg" onclick="selectReplyMessage(${msg.id})" title="Reply" aria-label="Reply">↩</button>`
+        : '';
 
     return `
         ${canDelete && msg.id ? `<button type="button" class="btn-delete-msg" onclick="deleteMessage(${msg.id})" title="${__('chat.delete_msg')}" aria-label="${__('chat.delete_msg')}">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         </button>` : ''}
+        ${replyButton}
+        ${replyHtml}
         ${bodyHtml}
         <div class="message-time">${timeStr}</div>
     `;
@@ -435,10 +453,32 @@ function createMessageRow(msg, options = {}) {
     if (msg.id) {
         bubble.dataset.messageId = String(msg.id);
     }
+    bubble.dataset.replyText = msg.body || '';
     bubble.innerHTML = buildMessageBubbleHtml(msg, options);
     row.appendChild(bubble);
     return row;
 }
+
+window.selectReplyMessage = function(messageId) {
+    const bubble = chatBox.querySelector(`[data-message-id="${messageId}"]`);
+    if (!bubble) return;
+
+    selectedReply = {
+        id: Number(messageId),
+        text: bubble.dataset.replyText || ''
+    };
+    document.getElementById('reply-preview-text').textContent = selectedReply.text;
+    document.getElementById('reply-preview').hidden = false;
+    chatInput.focus();
+};
+
+function clearReplySelection() {
+    selectedReply = null;
+    document.getElementById('reply-preview').hidden = true;
+    document.getElementById('reply-preview-text').textContent = '';
+}
+
+document.getElementById('cancel-reply-btn').addEventListener('click', clearReplySelection);
 
 function renderMessages(messages) {
     if (loadingDiv) {
@@ -507,6 +547,9 @@ chatForm.addEventListener('submit', (e) => {
         id: null,
         is_mine: true,
         body: text,
+        reply_to_message_id: selectedReply ? selectedReply.id : null,
+        reply_body: selectedReply ? selectedReply.text : null,
+        reply_sender_name: selectedReply ? 'message' : null,
         created_at: new Date().toISOString()
     };
     chatBox.appendChild(createMessageRow(optimisticMsg, { sending: true }));
@@ -518,9 +561,13 @@ chatForm.addEventListener('submit', (e) => {
     formData.append('product_id', productId);
     formData.append('receiver_id', otherUserId);
     formData.append('body', text);
+    if (selectedReply) {
+        formData.append('reply_to_message_id', selectedReply.id);
+    }
     formData.append('csrf_token', window.__csrfToken || '');
     
     chatInput.value = '';
+    clearReplySelection();
     chatInput.focus();
     
     fetch('api_messages.php', {
