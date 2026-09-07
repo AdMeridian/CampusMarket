@@ -37,6 +37,17 @@ CREATE TABLE categories (
     `type`  ENUM('product', 'service') NOT NULL DEFAULT 'product'
 ) ENGINE=InnoDB;
 
+-- 2b. services
+CREATE TABLE services (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT NULL,
+    icon       VARCHAR(64) NOT NULL DEFAULT 'service',
+    is_active  TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order SMALLINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 3. tags
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

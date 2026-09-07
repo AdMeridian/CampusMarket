@@ -1752,6 +1752,50 @@ function invalidateNavCategoriesCache(): void {
 }
 
 /**
+ * Default services available in the local XAMPP marketplace.
+ */
+function getDefaultCampusServices(): array {
+    return [
+        ['Tutoring & Academic Help', 'Course tutoring, exam preparation, language lessons, assignment review', 'book-open', 1],
+        ['Tech & Device Repair', 'Laptop repair, phone screen replacement, software troubleshooting', 'laptop', 2],
+        ['Moving & Hauling Assistance', 'Help moving into dorms/apartments, heavy lifting, truck assistance', 'package', 3],
+        ['Graphic Design & Creative', 'Posters, flyers, logos, social media graphics, UI/UX', 'palette', 4],
+        ['Photography & Videography', 'Graduation photos, event coverage, portraits, video editing', 'camera', 5],
+        ['Cleaning & Organization', 'Dorm room cleaning, deep cleaning, room organizing', 'sparkles', 6],
+        ['Music & Audio Services', 'DJing events, music lessons, audio editing/mixing', 'music', 7],
+        ['Hair, Beauty & Grooming', 'Haircuts, styling, braiding, makeup, nails', 'scissors', 8],
+        ['Delivery & Errand Running', 'Campus deliveries, grocery runs, package pick-ups', 'bike', 9],
+        ['Fitness & Personal Training', 'Workout coaching, gym buddy, sports training', 'dumbbell', 10],
+    ];
+}
+
+function seedDefaultServices(PDO $pdo): int {
+    if (function_exists('ensureServicesTable')) {
+        ensureServicesTable($pdo);
+    }
+
+    $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+    $added = 0;
+    foreach (getDefaultCampusServices() as [$name, $description, $icon, $sortOrder]) {
+        if ($driver === 'pgsql') {
+            $stmt = $pdo->prepare(
+                "INSERT INTO services (name, description, icon, sort_order, is_active) " .
+                "VALUES (?, ?, ?, ?, TRUE) ON CONFLICT (name) DO NOTHING"
+            );
+        } else {
+            $stmt = $pdo->prepare(
+                "INSERT IGNORE INTO services (name, description, icon, sort_order, is_active) " .
+                "VALUES (?, ?, ?, ?, 1)"
+            );
+        }
+        $stmt->execute([$name, $description, $icon, $sortOrder]);
+        $added += $stmt->rowCount() > 0 ? 1 : 0;
+    }
+
+    return $added;
+}
+
+/**
  * Allowed North Cyprus town slugs for listing geotags.
  */
 function locationTownSlugs(): array {

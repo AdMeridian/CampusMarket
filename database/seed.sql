@@ -9,6 +9,7 @@ TRUNCATE TABLE product_images;
 TRUNCATE TABLE wishlists;
 TRUNCATE TABLE products;
 TRUNCATE TABLE tags;
+TRUNCATE TABLE services;
 TRUNCATE TABLE categories;
 TRUNCATE TABLE users;
 SET FOREIGN_KEY_CHECKS = 1;
@@ -37,6 +38,19 @@ INSERT INTO categories (id, name, slug, `type`) VALUES
 (12, 'Cleaning Services', 'cleaning', 'service'),
 (13, 'Moving & Packing', 'moving', 'service'),
 (14, 'Photography & Media', 'photography', 'service');
+
+-- Available services (local XAMPP seed data)
+INSERT INTO services (id, name, description, icon, sort_order, is_active) VALUES
+(1, 'Tutoring & Academic Help', 'Course tutoring, exam preparation, language lessons, assignment review', 'book-open', 1, 1),
+(2, 'Tech & Device Repair', 'Laptop repair, phone screen replacement, software troubleshooting', 'laptop', 2, 1),
+(3, 'Moving & Hauling Assistance', 'Help moving into dorms/apartments, heavy lifting, truck assistance', 'package', 3, 1),
+(4, 'Graphic Design & Creative', 'Posters, flyers, logos, social media graphics, UI/UX', 'palette', 4, 1),
+(5, 'Photography & Videography', 'Graduation photos, event coverage, portraits, video editing', 'camera', 5, 1),
+(6, 'Cleaning & Organization', 'Dorm room cleaning, deep cleaning, room organizing', 'sparkles', 6, 1),
+(7, 'Music & Audio Services', 'DJing events, music lessons, audio editing/mixing', 'music', 7, 1),
+(8, 'Hair, Beauty & Grooming', 'Haircuts, styling, braiding, makeup, nails', 'scissors', 8, 1),
+(9, 'Delivery & Errand Running', 'Campus deliveries, grocery runs, package pick-ups', 'bike', 9, 1),
+(10, 'Fitness & Personal Training', 'Workout coaching, gym buddy, sports training', 'dumbbell', 10, 1);
 
 -- ─── Tags ───────────────────────────────────────────────────
 INSERT INTO tags (id, name, slug) VALUES

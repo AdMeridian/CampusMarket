@@ -212,6 +212,36 @@ if (!function_exists('ensureProductCategoriesTable')) {
     }
 }
 
+if (!function_exists('ensureServicesTable')) {
+    function ensureServicesTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.tables " .
+            "WHERE table_schema = DATABASE() AND table_name = 'services'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() > 0) {
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE services (" .
+            "id INT AUTO_INCREMENT PRIMARY KEY, " .
+            "name VARCHAR(255) NOT NULL UNIQUE, " .
+            "description TEXT NULL, " .
+            "icon VARCHAR(64) NOT NULL DEFAULT 'service', " .
+            "is_active TINYINT(1) NOT NULL DEFAULT 1, " .
+            "sort_order SMALLINT NOT NULL DEFAULT 0, " .
+            "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB"
+        );
+    }
+}
+
 if (!function_exists('databaseEnvDiagnostics')) {
     /**
      * Safe summary for health checks (no secrets).
@@ -313,6 +343,7 @@ if (!function_exists('connectDatabase')) {
                 }
                 try {
                     ensureProductCategoriesTable($pdo);
+                    ensureServicesTable($pdo);
                     ensureCustomLocationColumns($pdo);
                 } catch (Throwable $ensureError) {
                     error_log('Product categories bootstrap failed: ' . $ensureError->getMessage());
