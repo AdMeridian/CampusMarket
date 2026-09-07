@@ -1695,6 +1695,21 @@ body.dark-mode .badge-not-taken { background: rgba(156, 163, 175, 0.1); color: #
     width: 100%;
 }
 
+@media (max-width: 639px) {
+    .hero-actions {
+        width: 100%;
+    }
+
+    .hero-actions-row {
+        width: 100%;
+    }
+
+    .hero-actions-row .hero-cta,
+    .hero-actions .hero-cta--services {
+        width: 100%;
+    }
+}
+
 @media (min-width: 640px) {
     .hero-actions-row {
         flex-direction: row;
