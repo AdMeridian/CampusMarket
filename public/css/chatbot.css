@@ -45,10 +45,11 @@
 
 .cm-chatbot-window {
     position: fixed;
-    bottom: 6rem;
-    right: 2rem;
-    width: 380px;
-    height: 520px;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    right: 1.5rem;
+    width: min(360px, calc(100vw - 2rem));
+    height: min(460px, calc(100dvh - 7rem));
+    max-height: calc(100dvh - 7rem);
     border-radius: var(--radius-xl);
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
@@ -74,15 +75,16 @@
 
 @media (max-width: 1023px) {
     .cm-chatbot-fab {
-        bottom: calc(7.25rem + env(safe-area-inset-bottom));
-        right: 5.25rem;
+        bottom: calc(6rem + env(safe-area-inset-bottom));
+        right: 1.25rem;
     }
 
     .cm-chatbot-window {
-        bottom: calc(7.75rem + env(safe-area-inset-bottom));
-        right: 1rem;
-        width: min(95vw, 360px);
-        max-height: calc(100vh - 8.5rem);
+        bottom: calc(5.5rem + env(safe-area-inset-bottom));
+        right: 0.75rem;
+        width: min(92vw, 345px);
+        height: min(420px, calc(100dvh - 6.5rem));
+        max-height: calc(100dvh - 6.5rem);
     }
 }
 
