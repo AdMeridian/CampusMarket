@@ -82,6 +82,9 @@ CREATE TABLE products (
     moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
     custom_location VARCHAR(100) NULL,
+    is_featured TINYINT(1)     NOT NULL DEFAULT 0,
+    featured_until DATETIME    NULL,
+    views       INT            NOT NULL DEFAULT 0,
     created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
@@ -89,7 +92,7 @@ CREATE TABLE products (
 ) ENGINE=InnoDB;
 
 -- 5. product_images
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ──────────────────────────────────────────
 CREATE TABLE product_images (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT          NOT NULL,
@@ -99,9 +102,9 @@ CREATE TABLE product_images (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ──────────────────────────────────────────
 -- 6. product_tags (pivot)
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- ──────────────────────────────────────────
 CREATE TABLE product_tags (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     product_id INT NOT NULL,
@@ -109,6 +112,7 @@ CREATE TABLE product_tags (
     UNIQUE KEY uq_product_tag (product_id, tag_id),
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id)     REFERENCES tags(id)     ON DELETE CASCADE
+) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 6b. product_categories (pivot)

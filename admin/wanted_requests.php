@@ -23,20 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['req
                 $updateStmt->execute([$status, currentUserId(), $requestId]);
                 $title = $status === 'approved' ? 'Wanted request approved' : 'Wanted request update';
                 $body = $status === 'approved'
-                    ? "Your request for '{$request['search_term']}' was approved and broadcast to relevant sellers."
-                    : "Your request for '{$request['search_term']}' was not approved for broadcast.";
+                    ? "Your request for '{$request['search_term']}' was approved and is now featured to sellers on campus."
+                    : "Your request for '{$request['search_term']}' was not approved.";
                 createNotification($pdo, (int)$request['requester_id'], 'system', $title, $body, $requestId);
-                if ($status === 'approved') {
-                    $sellerStmt = $pdo->query("SELECT DISTINCT u.id FROM users u JOIN products p ON p.user_id = u.id WHERE u.role = 'user' AND u.account_status = 'active' AND p.status = 'active' AND p.listing_type = 'product' AND u.id != " . (int)$request['requester_id']);
-                    $broadcastTitle = 'Buyer request: ' . $request['search_term'];
-                    $broadcastBody = "A buyer is looking for '{$request['search_term']}'. List one if you have it available.";
-                    foreach ($sellerStmt->fetchAll(PDO::FETCH_COLUMN) as $sellerId) {
-                        createNotification($pdo, (int)$sellerId, 'system', $broadcastTitle, $broadcastBody, $requestId);
-                    }
-                }
                 $pdo->commit();
                 logAdminAction($pdo, $status === 'approved' ? 'approve_wanted_request' : 'reject_wanted_request', 'wanted_item_request', $requestId);
-                setFlash('success', $status === 'approved' ? 'Suggestion approved and broadcast.' : 'Suggestion rejected.');
+                setFlash('success', $status === 'approved' ? 'Suggestion approved and featured.' : 'Suggestion rejected.');
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 setFlash('error', 'Could not update this suggestion.');
@@ -61,7 +53,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="admin-page-header"><div><div class="admin-breadcrumb"><a href="<?php echo BASE_URL; ?>admin/index.php">Dashboard</a> › Item Suggestions</div><h1>Item suggestions</h1><p style="margin: .35rem 0 0; color: var(--text-muted);">Review product suggestions captured from searches with no matching listings.</p></div></div>
     <div class="flex gap-2 flex-wrap mb-6"><?php foreach (['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'all' => 'All'] as $key => $label): ?><a class="btn btn-sm <?php echo $filter === $key ? 'btn-primary' : 'btn-secondary'; ?>" href="?status=<?php echo $key; ?>"><?php echo $label; ?></a><?php endforeach; ?></div>
     <?php if (empty($requests)): ?><div class="card" style="padding: 3rem; text-align: center; color: var(--text-muted);">No item suggestions in this view.</div><?php else: ?>
-        <?php foreach ($requests as $request): ?><article class="card mb-4" style="padding: 1.25rem;"><div class="flex justify-between items-start gap-4"><div><h2 style="font-size: 1.1rem; margin: 0 0 .35rem;"><?php echo htmlspecialchars($request['search_term']); ?></h2><p class="text-muted" style="font-size: .8rem; margin: 0;">Suggested by @<?php echo htmlspecialchars($request['username']); ?> · <?php echo timeAgo($request['created_at']); ?></p></div><span class="badge"><?php echo htmlspecialchars($request['status']); ?></span></div><?php if ($request['status'] === 'pending'): ?><div class="flex gap-2 flex-wrap mt-4"><form method="POST"><?php echo csrfTokenField(); ?><input type="hidden" name="request_id" value="<?php echo (int)$request['id']; ?>"><button class="btn btn-primary btn-sm" type="submit" name="action" value="approve">Approve &amp; broadcast</button></form><form method="POST"><?php echo csrfTokenField(); ?><input type="hidden" name="request_id" value="<?php echo (int)$request['id']; ?>"><button class="btn btn-secondary btn-sm" type="submit" name="action" value="reject">Reject</button></form></div><?php endif; ?></article><?php endforeach; ?>
+        <?php foreach ($requests as $request): ?><article class="card mb-4" style="padding: 1.25rem;"><div class="flex justify-between items-start gap-4"><div><h2 style="font-size: 1.1rem; margin: 0 0 .35rem;"><?php echo htmlspecialchars($request['search_term']); ?></h2><p class="text-muted" style="font-size: .8rem; margin: 0;">Suggested by @<?php echo htmlspecialchars($request['username']); ?> · <?php echo timeAgo($request['created_at']); ?></p></div><span class="badge"><?php echo htmlspecialchars($request['status']); ?></span></div><?php if ($request['status'] === 'pending'): ?><div class="flex gap-2 flex-wrap mt-4"><form method="POST"><?php echo csrfTokenField(); ?><input type="hidden" name="request_id" value="<?php echo (int)$request['id']; ?>"><button class="btn btn-primary btn-sm" type="submit" name="action" value="approve">Approve &amp; feature</button></form><form method="POST"><?php echo csrfTokenField(); ?><input type="hidden" name="request_id" value="<?php echo (int)$request['id']; ?>"><button class="btn btn-secondary btn-sm" type="submit" name="action" value="reject">Reject</button></form></div><?php endif; ?></article><?php endforeach; ?>
     <?php endif; ?>
 </div>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

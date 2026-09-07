@@ -14,7 +14,6 @@ $pageDescription = $query !== ''
 $results = [];
 $totalItems = 0;
 $paginationBase = 'search.php';
-$requestSubmitted = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit_wanted_request') {
     verifyCsrfToken();
@@ -33,21 +32,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
         if ($duplicateStmt->fetchColumn()) {
             setFlash('error', 'You already have a pending suggestion for this item.');
         } else {
-        $stmt = $pdo->prepare("INSERT INTO wanted_item_requests
-            (requester_id, search_term, details, category_id, location_town, budget_max, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([
-            currentUserId(),
-            $requestTerm,
-            null,
-            null,
-            null,
-            null,
-            date('Y-m-d H:i:s', strtotime('+30 days')),
-        ]);
-        setFlash('success', 'Your suggestion was submitted for review.');
-        $requestSubmitted = true;
+            $stmt = $pdo->prepare("INSERT INTO wanted_item_requests
+                (requester_id, search_term, details, category_id, location_town, budget_max, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                currentUserId(),
+                $requestTerm,
+                null,
+                null,
+                null,
+                null,
+                date('Y-m-d H:i:s', strtotime('+30 days')),
+            ]);
+            setFlash('success', 'Your suggestion was submitted for review.');
         }
+    }
+    redirect($_SERVER['REQUEST_URI']);
+}
+
+$hasPendingSuggestion = false;
+if ($query !== '' && isLoggedIn()) {
+    try {
+        $pendingCheck = $pdo->prepare("SELECT id FROM wanted_item_requests WHERE requester_id = ? AND LOWER(search_term) = LOWER(?) AND status = 'pending' AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) LIMIT 1");
+        $pendingCheck->execute([currentUserId(), $query]);
+        $hasPendingSuggestion = (bool)$pendingCheck->fetchColumn();
+    } catch (Throwable $e) {
+        $hasPendingSuggestion = false;
     }
 }
 
@@ -141,16 +151,18 @@ require_once __DIR__ . '/../includes/header.php';
             <h3 class="empty-state-title mb-3"><?= __('search.no_items_matched') ?></h3>
             <p class="page-subtitle max-w-lg mx-auto mb-8"><?= __('search.no_items_desc', ['query' => '<strong class="text-primary">' . sanitize($query) . '</strong>']) ?></p>
             <div class="flex justify-center gap-4 flex-wrap">
-                <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
-                <?php if ($query !== '' && !$requestSubmitted): ?>
-                    <?php if (isLoggedIn()): ?>
+                <a href="<?php echo BASE_URL; ?>pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
+                <?php if ($query !== ''): ?>
+                    <?php if ($hasPendingSuggestion): ?>
+                        <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; border-radius: var(--radius-lg); padding: 0.8rem 1.4rem; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">✓ Suggestion Under Review</span>
+                    <?php elseif (isLoggedIn()): ?>
                         <button type="button" class="btn btn-primary" style="border-radius: var(--radius-lg);" onclick="document.getElementById('suggest-item-dialog').showModal();">Suggest item</button>
                     <?php else: ?>
                         <a class="btn btn-primary" href="<?php echo BASE_URL; ?>pages/login.php?redirect=<?php echo urlencode($_SERVER['REQUEST_URI']); ?>" style="border-radius: var(--radius-lg);">Log in to suggest</a>
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
-            <?php if ($query !== '' && isLoggedIn() && !$requestSubmitted): ?>
+            <?php if ($query !== '' && isLoggedIn() && !$hasPendingSuggestion): ?>
                 <dialog id="suggest-item-dialog" class="suggest-item-dialog">
                     <form method="POST" action="<?php echo htmlspecialchars($_SERVER['REQUEST_URI']); ?>" class="grid gap-4">
                         <input type="hidden" name="action" value="submit_wanted_request">
