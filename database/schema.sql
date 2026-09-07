@@ -36,6 +36,28 @@ CREATE TABLE categories (
     slug  VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
+-- Wanted item suggestions captured from zero-result searches
+CREATE TABLE wanted_item_requests (
+    id                   INT AUTO_INCREMENT PRIMARY KEY,
+    requester_id         INT NOT NULL,
+    search_term          VARCHAR(200) NOT NULL,
+    details              TEXT NULL,
+    category_id          INT NULL,
+    location_town        VARCHAR(32) NULL,
+    budget_max           DECIMAL(10,2) NULL,
+    status               ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+    reviewed_by_admin_id INT NULL,
+    reviewed_at          DATETIME NULL,
+    expires_at           DATETIME NULL,
+    created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (reviewed_by_admin_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_wanted_requests_status (status),
+    INDEX idx_wanted_requests_category (category_id),
+    INDEX idx_wanted_requests_requester_created (requester_id, created_at)
+) ENGINE=InnoDB;
+
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 3. tags
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -45,9 +67,6 @@ CREATE TABLE tags (
     slug VARCHAR(50)  NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
--- 4. products
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE products (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     user_id     INT            NOT NULL,
@@ -63,16 +82,12 @@ CREATE TABLE products (
     moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
     custom_location VARCHAR(100) NULL,
-    is_featured TINYINT(1)     NOT NULL DEFAULT 0,
-    featured_until DATETIME    NULL,
-    views       INT            NOT NULL DEFAULT 0,
     created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 5. product_images
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE product_images (
@@ -94,7 +109,6 @@ CREATE TABLE product_tags (
     UNIQUE KEY uq_product_tag (product_id, tag_id),
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id)     REFERENCES tags(id)     ON DELETE CASCADE
-) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 6b. product_categories (pivot)

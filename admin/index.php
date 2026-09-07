@@ -566,6 +566,11 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
+                    <a href="wanted_requests.php" class="module-card" style="--module-color: #d97706; --module-bg: #fffbeb;">
+                        <div class="module-icon">📣</div>
+                        <div class="module-info"><div class="module-name">Item Suggestions</div><div class="module-desc">Review and broadcast requests</div></div>
+                        <span class="module-arrow">›</span>
+                    </a>
                     <a href="transactions.php" class="module-card" style="--module-color: var(--success); --module-bg: var(--success-bg);">
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
                         <div class="module-info">

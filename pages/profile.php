@@ -270,12 +270,27 @@ include '../includes/header.php';
     .profile-body { grid-template-columns: 1fr; }
     .profile-hero-body { flex-direction: column; align-items: flex-start; }
     .profile-hero-actions { margin-left: 0; }
+    .profile-tabs {
+        width: 100%;
+        overflow-x: visible;
+    }
+    .profile-tab {
+        flex: 1 1 0;
+        justify-content: center;
+        min-width: 0;
+        padding: 0.75rem 0.5rem;
+        white-space: nowrap;
+    }
 }
 
 @media (min-width: 901px) {
     .profile-sidebar {
         position: sticky;
         top: 100px;
+    }
+
+    .profile-body > * {
+        min-width: 0;
     }
 }
 
