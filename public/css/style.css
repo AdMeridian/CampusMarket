@@ -2860,6 +2860,9 @@ body {
 /* Active conversation — messenger-style layout */
 body.page-chat {
   overflow: hidden;
+  height: 100dvh;
+  min-height: 100dvh;
+  padding-bottom: 0 !important;
 }
 
 body.page-chat .site-footer,
@@ -2875,8 +2878,7 @@ body.page-chat .chat-page-shell {
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  height: 100dvh;
-  height: 100svh;
+  height: 100%;
   min-height: 0;
   box-sizing: border-box;
   padding: 0 0.75rem;
@@ -3430,13 +3432,11 @@ body.page-chat .chat-send-btn {
 }
 
 @media (max-width: 1023px) {
-  body.page-chat .navbar {
-    display: none !important;
-  }
-
   body.page-chat .chat-page-shell {
     max-width: none;
     padding: 0;
+    margin-top: 4.2rem;
+    height: calc(100dvh - 4.2rem - 5rem);
   }
 
   body.page-chat .chat-thread-panel {
