@@ -254,11 +254,6 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
     <?php endif; ?>
 
-    <div class="glass-panel p-5 mb-8" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); background: var(--bg-surface);">
-        <h2 class="mb-2" style="font-size: 1.05rem; color: var(--text-main);"><?= __('orders.how_it_works_title') ?></h2>
-        <p class="text-muted mb-0" style="line-height: 1.6;"><?= __('orders.how_it_works_body') ?></p>
-    </div>
-
     <div class="text-center mb-12">
         <h1 class="mb-2 page-hero-title"><?= __('orders.hub_title') ?></h1>
         <p class="page-subtitle"><?= __('orders.hub_subtitle') ?></p>

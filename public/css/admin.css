@@ -221,6 +221,7 @@
 
 @media (max-width: 768px) {
     .container.mt-24 {
+        margin-top: calc(70px + 0.65rem);
         padding-left: 1rem;
         padding-right: 1rem;
     }

@@ -289,8 +289,31 @@ p {
 .pt-24 { padding-top: 5.25rem; }
 
 @media (max-width: 768px) {
-  .mt-24 { margin-top: 4.5rem; }
-  .pt-24 { padding-top: 4.5rem; }
+  .mt-24 { margin-top: calc(70px + 0.65rem); }
+  .pt-24 { padding-top: calc(70px + 0.65rem); }
+  .mt-16 { margin-top: calc(70px + 0.5rem); }
+  
+  /* Reduce oversized heading and section bottom gaps on mobile */
+  .mb-16 { margin-bottom: 2rem !important; }
+  .mb-12 { margin-bottom: 1.5rem !important; }
+  .mb-10 { margin-bottom: 1.25rem !important; }
+  .mb-8 { margin-bottom: 1rem !important; }
+  .mb-6 { margin-bottom: 0.85rem !important; }
+  
+  .inbox-wrap {
+    margin-top: calc(70px + 0.65rem) !important;
+    margin-bottom: 2.5rem !important;
+  }
+  
+  .admin-wrap {
+    margin-top: calc(70px + 0.65rem) !important;
+    margin-bottom: 2.5rem !important;
+  }
+  
+  .donation-page-wrapper {
+    padding-top: calc(70px + 0.65rem) !important;
+    padding-bottom: 2.5rem !important;
+  }
 }
 .pb-16 { padding-bottom: 4rem; }
 .min-h-screen { min-height: 100vh; }
@@ -2260,7 +2283,7 @@ body.dark-mode .input-invalid {
 
 @media (max-width: 768px) {
     .auth-page {
-        padding: calc(60px + 0.85rem) 1rem 2rem;
+        padding: calc(70px + 0.65rem) 1rem 2rem;
     }
 }
 
@@ -2823,7 +2846,7 @@ body {
 
 @media (max-width: 768px) {
   .page-content-offset {
-    padding-top: calc(60px + 0.85rem);
+    padding-top: calc(70px + 0.65rem);
   }
 }
 

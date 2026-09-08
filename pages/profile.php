@@ -95,7 +95,7 @@ include '../includes/header.php';
 
 @media (max-width: 768px) {
     .profile-hero {
-        padding: calc(60px + 0.85rem) 0 0;
+        padding: calc(70px + 0.65rem) 0 0;
     }
 }
 
