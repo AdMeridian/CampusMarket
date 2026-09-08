@@ -253,9 +253,9 @@ require_once __DIR__ . '/../includes/header.php';
     display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .admin-wrap {
-        margin: calc(60px + 1rem) auto 4rem;
+        margin: 1rem auto 4rem;
         padding: 0 1rem;
     }
     .admin-title-row {

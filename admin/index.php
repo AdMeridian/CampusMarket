@@ -75,6 +75,14 @@ require_once __DIR__ . '/../includes/header.php';
     padding: 0 1.5rem;
 }
 
+@media (max-width: 1023px) {
+    .admin-wrap {
+        margin-top: 1rem;
+        margin-bottom: 3rem;
+        padding: 0 1rem;
+    }
+}
+
 /* Page title row */
 .admin-title-row {
     display: flex;
