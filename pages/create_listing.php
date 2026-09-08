@@ -216,16 +216,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $newTagId = $existing->fetchColumn();
 
                         if (!$newTagId) {
-                            $insertTagSql = ($driver === 'pgsql')
-                                ? "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?) RETURNING id"
-                                : "INSERT INTO tags (name, slug, status, created_by) VALUES (?, ?, 'active', ?)";
-                            $tagStmt = $pdo->prepare($insertTagSql);
-                            try {
-                                $tagStmt->execute([$newName, $slug, $userId]);
-                                $newTagId = ($driver === 'pgsql') ? $tagStmt->fetchColumn() : $pdo->lastInsertId();
-                            } catch (Throwable $eT) {
-                                $existing->execute([$slug, $newName]);
-                                $newTagId = $existing->fetchColumn();
+                            if ($driver === 'pgsql') {
+                                $tagStmt = $pdo->prepare("INSERT INTO tags (name, slug) VALUES (?, ?) ON CONFLICT (slug) DO NOTHING RETURNING id");
+                                $tagStmt->execute([$newName, $slug]);
+                                $newTagId = $tagStmt->fetchColumn();
+                                if (!$newTagId) {
+                                    $existing->execute([$slug, $newName]);
+                                    $newTagId = $existing->fetchColumn();
+                                }
+                            } else {
+                                $tagStmt = $pdo->prepare("INSERT IGNORE INTO tags (name, slug) VALUES (?, ?)");
+                                $tagStmt->execute([$newName, $slug]);
+                                $newTagId = $pdo->lastInsertId();
+                                if (!$newTagId) {
+                                    $existing->execute([$slug, $newName]);
+                                    $newTagId = $existing->fetchColumn();
+                                }
                             }
                         }
 
