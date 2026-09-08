@@ -3332,31 +3332,278 @@ body.page-chat .message-bubble--in .message-time {
   color: var(--text-muted);
 }
 
-body.page-chat .chat-deal-bar {
+body.page-chat .chat-deal-banner-wrapper {
   flex-shrink: 0;
-  padding: 0.75rem 0.85rem;
-  border-top: 1px solid var(--border-light);
+  position: relative;
+  z-index: 6;
+  border-bottom: 1px solid var(--border-light);
   background: var(--bg-surface);
 }
 
-body.page-chat .chat-deal-bar--collapsed {
-  padding: 0.45rem 0.85rem;
+body.page-chat .chat-deal-banner {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+  transition: var(--transition);
+  background: rgba(99, 102, 241, 0.05);
+  user-select: none;
 }
 
-body.page-chat .chat-deal-tab {
-  display: inline-flex;
+body.page-chat .chat-deal-banner:hover {
+  background: rgba(99, 102, 241, 0.09);
+}
+
+body.page-chat .chat-deal-banner--action {
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 3px solid var(--secondary);
+}
+
+body.page-chat .chat-deal-banner--action:hover {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+body.page-chat .chat-deal-banner--completed {
+  background: rgba(16, 185, 129, 0.06);
+}
+
+body.page-chat .chat-deal-banner--awaiting {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+body.page-chat .chat-deal-banner__info {
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  border: none;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+body.page-chat .chat-deal-banner__icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+body.page-chat .chat-deal-banner__texts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+body.page-chat .chat-deal-banner__headline {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.page-chat .chat-deal-banner__sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.page-chat .chat-deal-banner__btn {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.65rem;
   border-radius: var(--radius-full);
-  background: var(--primary);
-  color: #fff;
-  font-size: 0.78rem;
   font-weight: 600;
-  padding: 0.4rem 0.85rem;
+}
+
+body.page-chat .chat-deal-banner__badge {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-main);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+}
+
+body.page-chat .chat-deal-banner__badge--success {
+  color: var(--secondary);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Deal Handshake Bottom Sheet Modal */
+.deal-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+.deal-sheet-backdrop.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.deal-sheet-card {
+  width: 100%;
+  max-width: 540px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-bottom: none;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+  padding: 1rem 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+  max-height: 85dvh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.deal-sheet-backdrop.is-active .deal-sheet-card {
+  transform: translateY(0);
+}
+
+.deal-sheet-handle-bar {
+  width: 36px;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 999px;
+  margin: -0.25rem auto 0.75rem;
+  opacity: 0.75;
+}
+
+.deal-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 0.85rem;
+}
+
+.deal-sheet-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.deal-sheet-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.deal-sheet-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.deal-sheet-subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.deal-sheet-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
   cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
+}
+
+.deal-sheet-close-btn:hover {
+  color: var(--text-main);
+}
+
+.deal-sheet-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.25rem 0;
+}
+
+.deal-sheet-explainer {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 0.85rem;
+}
+
+.deal-sheet-prompt-card {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-main);
+  border: 1px solid var(--border-light);
+  margin-bottom: 1rem;
+}
+
+.deal-sheet-prompt-card--muted {
+  border-left: 3px solid var(--text-muted);
+}
+
+.deal-sheet-prompt-card--success {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-left: 3px solid var(--secondary);
+}
+
+.deal-sheet-prompt-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+.deal-sheet-prompt-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  line-height: 1.35;
+}
+
+.deal-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .deal-sheet-actions {
+    flex-direction: row-reverse;
+  }
 }
 
 body.page-chat .chat-action-bar {
