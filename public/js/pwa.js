@@ -29,14 +29,34 @@
     }
   }
 
+  function isStandaloneMode() {
+    try {
+      if (window.matchMedia) {
+        if (
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.matchMedia("(display-mode: fullscreen)").matches ||
+          window.matchMedia("(display-mode: minimal-ui)").matches
+        ) {
+          return true;
+        }
+      }
+      if (window.navigator && window.navigator.standalone === true) {
+        return true;
+      }
+      if (typeof document.referrer === "string" && document.referrer.indexOf("android-app://") === 0) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   function recordInstallSignal(eventName) {
     var installationId = getInstallationId();
     if (!installationId) {
       return;
     }
 
-    var standalone = window.matchMedia("(display-mode: standalone)").matches
-      || window.navigator.standalone === true;
+    var standalone = isStandaloneMode();
     if (eventName === "heartbeat" && !standalone) {
       return;
     }
@@ -46,7 +66,6 @@
       if (Date.now() - lastHeartbeat < 24 * 60 * 60 * 1000) {
         return;
       }
-      window.localStorage.setItem(heartbeatKey, String(Date.now()));
     }
 
     var body = JSON.stringify({
@@ -65,6 +84,12 @@
       body: body,
       credentials: "same-origin",
       keepalive: true
+    }).then(function (res) {
+      if (res && res.ok && eventName === "heartbeat") {
+        try {
+          window.localStorage.setItem(heartbeatKey, String(Date.now()));
+        } catch (_) {}
+      }
     }).catch(function () {
       // Telemetry must never interfere with normal page use.
     });

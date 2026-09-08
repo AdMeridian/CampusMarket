@@ -32,11 +32,14 @@ $stats = [
 ];
 
 try {
+    if (function_exists('ensurePwaInstallationsTable')) {
+        ensurePwaInstallationsTable($pdo);
+    }
     $pwaDriver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
     $activePwaSince = $pwaDriver === 'mysql'
         ? "DATE_SUB(NOW(), INTERVAL 30 DAY)"
         : "CURRENT_TIMESTAMP - INTERVAL '30 days'";
-    $stats['pwa_installs'] = (int)$pdo->query("SELECT COUNT(*) FROM pwa_installations WHERE install_event_at IS NOT NULL")->fetchColumn();
+    $stats['pwa_installs'] = (int)$pdo->query("SELECT COUNT(*) FROM pwa_installations WHERE install_event_at IS NOT NULL OR last_standalone_at IS NOT NULL")->fetchColumn();
     $stats['pwa_active_devices'] = (int)$pdo->query("SELECT COUNT(*) FROM pwa_installations WHERE last_standalone_at >= {$activePwaSince}")->fetchColumn();
 } catch (Throwable $e) {
     // Keep the admin dashboard usable until the telemetry migration is applied.
