@@ -860,13 +860,21 @@ function triggerPriceDropAlerts(PDO $pdo, int $productId, float $oldPrice, float
         $sellerId = (int)$prod['user_id'];
         $title = trim($prod['title'] ?? 'Listing');
 
-        $uStmt = $pdo->prepare("SELECT id FROM users WHERE account_status = 'active' AND id != :seller_id");
-        $uStmt->execute([':seller_id' => $sellerId]);
+        // Only alert users who have added this specific product to their wishlist
+        $uStmt = $pdo->prepare("
+            SELECT DISTINCT w.user_id as id 
+            FROM wishlists w 
+            JOIN users u ON w.user_id = u.id 
+            WHERE w.product_id = :product_id 
+              AND u.account_status = 'active' 
+              AND w.user_id != :seller_id
+        ");
+        $uStmt->execute([':product_id' => $productId, ':seller_id' => $sellerId]);
         $users = $uStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $sent = 0;
         $notifTitle = "🏷️ Price Drop: " . mb_substr($title, 0, 40);
-        $notifBody = "Price dropped by {$pctDrop}% (from " . number_format($oldPrice, 0) . " to " . number_format($newPrice, 0) . " {$currency})! Tap to view deal.";
+        $notifBody = "An item on your wishlist dropped by {$pctDrop}% (from " . number_format($oldPrice, 0) . " to " . number_format($newPrice, 0) . " {$currency})! Tap to view deal.";
 
         foreach ($users as $u) {
             $uid = (int)$u['id'];
@@ -883,42 +891,80 @@ function triggerPriceDropAlerts(PDO $pdo, int $productId, float $oldPrice, float
 }
 
 /**
- * Trigger Featured Listing Spotlight Notifications to active campus users.
+ * Trigger Featured Listing Spotlight (Silent for broadcast bell, highlighted via in-app spotlight & home section).
  */
 function triggerFeaturedListingAlert(PDO $pdo, int $productId): int {
-    try {
-        $pStmt = $pdo->prepare("SELECT title, price, price_currency, user_id FROM products WHERE id = :id LIMIT 1");
-        $pStmt->execute([':id' => $productId]);
-        $prod = $pStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$prod) {
-            return 0;
-        }
+    // Broadcast notifications to bell are disabled in favor of in-app slideshow spotlight popup.
+    return 0;
+}
 
-        $sellerId = (int)$prod['user_id'];
-        $title = trim($prod['title'] ?? 'Listing');
-        $price = (float)($prod['price'] ?? 0);
-        $curr = $prod['price_currency'] ?: 'TL';
-
-        $uStmt = $pdo->prepare("SELECT id FROM users WHERE account_status = 'active' AND id != :seller_id");
-        $uStmt->execute([':seller_id' => $sellerId]);
-        $users = $uStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $sent = 0;
-        $notifTitle = "⭐ Featured on Campus: " . mb_substr($title, 0, 40);
-        $notifBody = "Spotlight listing just featured for " . number_format($price, 0) . " {$curr}! Tap to view.";
-
-        foreach ($users as $u) {
-            $uid = (int)$u['id'];
-            if (canUserReceivePromoAlert($pdo, $uid, 'featured', $productId)) {
-                createNotification($pdo, $uid, 'system', $notifTitle, $notifBody, $productId);
-                $sent++;
-            }
-        }
-        return $sent;
-    } catch (Throwable $e) {
-        error_log("Failed to trigger featured listing alert: " . $e->getMessage());
-        return 0;
+/**
+ * Fetch top active discounted and featured products for in-app spotlight slideshow.
+ */
+function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
+    static $hasFeaturedUntil = null;
+    if ($hasFeaturedUntil === null) {
+        $colStmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'products'
+              AND column_name = 'featured_until'
+            LIMIT 1
+        ");
+        $colStmt->execute();
+        $hasFeaturedUntil = (bool) $colStmt->fetchColumn();
     }
+
+    $featuredWindowFilter = $hasFeaturedUntil
+        ? " AND (p.featured_until IS NULL OR p.featured_until > NOW())"
+        : "";
+
+    $stmt = $pdo->prepare("
+        SELECT 
+            p.id, p.title, p.price, p.discount_percent, p.price_currency, p.is_featured,
+            c.name as category_name, i.image_path, u.username as seller_name
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active' 
+          AND (
+            (p.discount_percent > 0 AND p.discount_percent IS NOT NULL)
+            OR (p.is_featured = TRUE{$featuredWindowFilter})
+          )
+        ORDER BY 
+            p.is_featured DESC, 
+            p.discount_percent DESC NULLS LAST, 
+            p.discount_set_at DESC NULLS LAST, 
+            p.created_at DESC
+        LIMIT :limit
+    ");
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $results = [];
+    foreach ($rows as $row) {
+        $discountPercent = (int)($row['discount_percent'] ?? 0);
+        $basePrice = (float)($row['price'] ?? 0);
+        $currency = productCurrencyCode($row);
+        $finalPrice = getDiscountedPrice($row);
+
+        $results[] = [
+            'id' => (int)$row['id'],
+            'title' => $row['title'],
+            'price_formatted' => formatPrice($finalPrice, $currency),
+            'original_price_formatted' => $discountPercent > 0 ? formatPrice($basePrice, $currency) : null,
+            'discount_percent' => $discountPercent,
+            'is_featured' => (bool)$row['is_featured'],
+            'image_url' => getProductImage($row['image_path'] ?? null),
+            'category_name' => $row['category_name'],
+            'seller_name' => $row['seller_name'],
+            'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$row['id']
+        ];
+    }
+    return $results;
 }
 
 /**
