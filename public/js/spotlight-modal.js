@@ -231,14 +231,9 @@
             }
         }
 
-        // Dismiss handlers
+        // Dismiss handlers (require explicit close button, 'Maybe later', or Escape key)
         modal.querySelector('#spotlight-close-btn').addEventListener('click', dismissSpotlight);
         modal.querySelector('#spotlight-ghost-btn').addEventListener('click', dismissSpotlight);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                dismissSpotlight();
-            }
-        });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && modal.classList.contains('is-active')) {
