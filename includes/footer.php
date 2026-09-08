@@ -316,5 +316,213 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <?php endif; ?>
 
+<?php
+$activeBroadcast = getActivePopupBroadcast($pdo, currentUserId());
+if (!empty($activeBroadcast) && !$isAdminPanel):
+    $bId = (int)$activeBroadcast['id'];
+    $bTheme = $activeBroadcast['popup_theme'] ?? 'announcement';
+    $themeLabels = [
+        'announcement' => '📢 Platform Announcement',
+        'deals'        => '🔥 Hot Deals & Flash Sale',
+        'campus'       => '🎓 Campus & Semester',
+        'perk'         => '🎁 Special Perk / Offer'
+    ];
+?>
+<dialog id="campus-broadcast-dialog" class="campus-broadcast-dialog" aria-label="Campus Broadcast">
+    <div class="campus-broadcast-card">
+        <button type="button" class="campus-broadcast-close" aria-label="Close" onclick="dismissBroadcastModal(<?php echo $bId; ?>)">&times;</button>
+        <?php if (!empty($activeBroadcast['image_url'])): ?>
+            <div class="campus-broadcast-hero-wrap">
+                <img src="<?php echo htmlspecialchars(getProductImage($activeBroadcast['image_url'])); ?>" alt="Broadcast Showcase" class="campus-broadcast-hero">
+            </div>
+        <?php endif; ?>
+        <div class="campus-broadcast-body">
+            <span class="campus-broadcast-badge campus-broadcast-badge-<?php echo htmlspecialchars($bTheme); ?>">
+                <?php echo $themeLabels[$bTheme] ?? '📢 Platform Announcement'; ?>
+            </span>
+            <h3 class="campus-broadcast-title">
+                <?php echo htmlspecialchars($activeBroadcast['headline'] ?: $activeBroadcast['subject']); ?>
+            </h3>
+            <div class="campus-broadcast-desc">
+                <?php echo nl2br(htmlspecialchars($activeBroadcast['body_html'])); ?>
+            </div>
+            <div class="campus-broadcast-actions">
+                <a href="<?php echo htmlspecialchars($activeBroadcast['cta_url'] ?: (BASE_URL . 'pages/browse.php')); ?>" class="btn btn-primary campus-broadcast-btn-primary" onclick="dismissBroadcastModal(<?php echo $bId; ?>)">
+                    <?php echo htmlspecialchars($activeBroadcast['cta_text'] ?: 'Explore Deals'); ?> &rarr;
+                </a>
+                <button type="button" class="btn btn-secondary campus-broadcast-btn-secondary" onclick="dismissBroadcastModal(<?php echo $bId; ?>)">
+                    Maybe later
+                </button>
+            </div>
+        </div>
+    </div>
+</dialog>
+
+<style>
+.campus-broadcast-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    padding: 0;
+    background: transparent;
+    border: none;
+    max-width: min(92vw, 420px);
+    width: 100%;
+    z-index: 10000;
+    overflow: visible;
+}
+.campus-broadcast-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(2px);
+}
+.campus-broadcast-card {
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    position: relative;
+    animation: popBroadcast 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes popBroadcast {
+    from { opacity: 0; transform: scale(0.92) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.campus-broadcast-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.5);
+    color: #ffffff;
+    border: none;
+    font-size: 1.35rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: background 0.15s;
+}
+.campus-broadcast-close:hover {
+    background: rgba(15, 23, 42, 0.8);
+}
+.campus-broadcast-hero-wrap {
+    width: 100%;
+    max-height: 185px;
+    overflow: hidden;
+    background: #0f172a;
+}
+.campus-broadcast-hero {
+    width: 100%;
+    height: 185px;
+    object-fit: cover;
+    display: block;
+}
+.campus-broadcast-body {
+    padding: 1.4rem;
+}
+.campus-broadcast-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-full);
+    margin-bottom: 0.65rem;
+}
+.campus-broadcast-badge-announcement { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+.campus-broadcast-badge-deals { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.campus-broadcast-badge-campus { background: rgba(16, 185, 129, 0.15); color: #059669; }
+.campus-broadcast-badge-perk { background: rgba(139, 92, 246, 0.15); color: #7c3aed; }
+
+.campus-broadcast-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+}
+.campus-broadcast-desc {
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin: 0 0 1.25rem 0;
+    max-height: 180px;
+    overflow-y: auto;
+}
+.campus-broadcast-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.campus-broadcast-btn-primary {
+    flex: 1;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.65rem 0.75rem;
+    text-decoration: none;
+}
+.campus-broadcast-btn-secondary {
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    padding: 0.65rem 0.85rem;
+}
+</style>
+
+<script>
+function dismissBroadcastModal(id) {
+    const dialog = document.getElementById('campus-broadcast-dialog');
+    if (dialog) {
+        dialog.close();
+    }
+    try {
+        let dismissed = JSON.parse(localStorage.getItem('dismissed_broadcast_popups') || '[]');
+        if (!dismissed.includes(id)) {
+            dismissed.push(id);
+            localStorage.setItem('dismissed_broadcast_popups', JSON.stringify(dismissed));
+        }
+    } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dialog = document.getElementById('campus-broadcast-dialog');
+    if (!dialog) return;
+    const bId = <?php echo $bId; ?>;
+    try {
+        const dismissed = JSON.parse(localStorage.getItem('dismissed_broadcast_popups') || '[]');
+        if (!dismissed.includes(bId)) {
+            setTimeout(function() {
+                if (typeof dialog.showModal === 'function') {
+                    dialog.showModal();
+                } else if (typeof dialog.show === 'function') {
+                    dialog.show();
+                } else {
+                    dialog.setAttribute('open', '');
+                }
+            }, 750);
+        }
+    } catch(e) {}
+
+    // Close when clicking outside on the backdrop
+    dialog.addEventListener('click', function(event) {
+        const rect = dialog.getBoundingClientRect();
+        const isInDialog = (rect.top <= event.clientY && event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX && event.clientX <= rect.left + rect.width);
+        if (!isInDialog) {
+            dismissBroadcastModal(bId);
+        }
+    });
+});
+</script>
+<?php endif; ?>
+
 </body>
 </html>

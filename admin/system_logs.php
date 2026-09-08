@@ -40,6 +40,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $selectedCategory = trim((string)($_GET['category'] ?? ''));
 $searchQuery = trim((string)($_GET['q'] ?? ''));
 
+// Handle Export action (before HTML output)
+if (isset($_GET['action']) && $_GET['action'] === 'export') {
+    $format = strtolower(trim((string)($_GET['format'] ?? 'csv')));
+    $scope = strtolower(trim((string)($_GET['scope'] ?? 'filtered')));
+
+    $exportWhereClauses = [];
+    $exportParams = [];
+
+    if ($scope === 'filtered') {
+        if ($selectedCategory !== '') {
+            $exportWhereClauses[] = "category = :category";
+            $exportParams[':category'] = $selectedCategory;
+        }
+        if ($searchQuery !== '') {
+            $exportWhereClauses[] = "(message ILIKE :q OR raw_trace ILIKE :q OR user_email ILIKE :q OR url ILIKE :q)";
+            $exportParams[':q'] = '%' . $searchQuery . '%';
+        }
+    }
+
+    $exportWhereSql = !empty($exportWhereClauses) ? 'WHERE ' . implode(' AND ', $exportWhereClauses) : '';
+    $exportStmt = $pdo->prepare("
+        SELECT l.id, l.created_at, l.category, l.user_id, u.username, l.user_email, l.ip_address, l.request_method, l.url, l.message, l.raw_trace
+        FROM system_logs l
+        LEFT JOIN users u ON u.id = l.user_id
+        {$exportWhereSql}
+        ORDER BY l.created_at DESC
+    ");
+    $exportStmt->execute($exportParams);
+    $exportLogs = $exportStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $timestamp = date('Y-m-d_His');
+    $safeCategorySuffix = ($scope === 'filtered' && $selectedCategory !== '') ? '_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $selectedCategory) : '';
+    $filenameBase = "campusmarket_error_logs{$safeCategorySuffix}_{$timestamp}";
+
+    if ($format === 'json') {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filenameBase . '.json"');
+        echo json_encode($exportLogs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        exit;
+    } elseif ($format === 'txt' || $format === 'log') {
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filenameBase . '.log"');
+        echo "================================================================================" . PHP_EOL;
+        echo "CampusMarket Platform System Error Logs Export" . PHP_EOL;
+        echo "Generated: " . date('Y-m-d H:i:s T') . PHP_EOL;
+        echo "Total Entries: " . count($exportLogs) . PHP_EOL;
+        echo "Scope: " . ($scope === 'filtered' ? 'Filtered (' . ($selectedCategory ?: 'All categories') . ')' : 'All Logs') . PHP_EOL;
+        echo "================================================================================" . PHP_EOL . PHP_EOL;
+        foreach ($exportLogs as $row) {
+            echo "--------------------------------------------------------------------------------" . PHP_EOL;
+            echo "LOG #" . $row['id'] . " | DATE: " . $row['created_at'] . " | CATEGORY: " . strtoupper($row['category'] ?? 'SYSTEM') . PHP_EOL;
+            echo "USER: " . (!empty($row['username']) ? "@" . $row['username'] : "Guest") . " (ID: " . ($row['user_id'] ?? 'N/A') . ", Email: " . ($row['user_email'] ?? 'N/A') . ")" . PHP_EOL;
+            echo "REQUEST: " . ($row['request_method'] ?? 'GET') . " " . ($row['url'] ?? 'N/A') . " (IP: " . ($row['ip_address'] ?? 'N/A') . ")" . PHP_EOL;
+            echo "MESSAGE: " . $row['message'] . PHP_EOL;
+            if (!empty($row['raw_trace'])) {
+                echo "STACK TRACE:" . PHP_EOL . $row['raw_trace'] . PHP_EOL;
+            }
+            echo PHP_EOL;
+        }
+        exit;
+    } else {
+        // Default: CSV
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filenameBase . '.csv"');
+        $out = fopen('php://output', 'w');
+        fputs($out, "\xEF\xBB\xBF");
+        fputcsv($out, ['ID', 'Timestamp', 'Category', 'User ID', 'Username', 'User Email', 'IP Address', 'Request Method', 'URL', 'Error Message', 'Stack Trace']);
+        foreach ($exportLogs as $row) {
+            fputcsv($out, [
+                $row['id'],
+                $row['created_at'],
+                $row['category'],
+                $row['user_id'] ?? '',
+                $row['username'] ?? '',
+                $row['user_email'] ?? '',
+                $row['ip_address'] ?? '',
+                $row['request_method'] ?? 'GET',
+                $row['url'] ?? '',
+                $row['message'] ?? '',
+                $row['raw_trace'] ?? '',
+            ]);
+        }
+        fclose($out);
+        exit;
+    }
+}
+
 // Build query
 $whereClauses = [];
 $params = [];
@@ -88,11 +175,52 @@ require_once __DIR__ . '/../includes/header.php';
     margin: calc(70px + 1.5rem) auto 5rem;
     padding: 0 1.5rem;
 }
+
+.admin-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.admin-actions-group {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.export-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.export-dropdown-menu {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    min-width: 230px;
+    max-width: min(320px, calc(100vw - 2.5rem));
+    z-index: 1000;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.25);
+    padding: 0.45rem;
+    border: 1px solid var(--border-light);
+    background: var(--bg-surface);
+}
+
+.export-menu-item:hover {
+    background: var(--bg-main);
+    color: var(--primary) !important;
+}
+
 .log-badge {
     display: inline-block;
     padding: 0.2rem 0.6rem;
     border-radius: 999px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -107,7 +235,7 @@ require_once __DIR__ . '/../includes/header.php';
     background: var(--bg-main);
     color: var(--text-main);
     font-family: monospace;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     padding: 0.75rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-light);
@@ -115,6 +243,45 @@ require_once __DIR__ . '/../includes/header.php';
     word-break: break-all;
     max-height: 250px;
     overflow-y: auto;
+}
+
+/* Responsive display switches */
+.logs-desktop-view {
+    display: block;
+}
+.logs-mobile-view {
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .admin-wrap {
+        margin: 1rem auto 4rem;
+        padding: 0 1rem;
+    }
+    .admin-title-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    .admin-actions-group {
+        width: 100%;
+    }
+    .admin-actions-group .export-dropdown,
+    .admin-actions-group form {
+        flex: 1;
+    }
+    .admin-actions-group .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .logs-desktop-view {
+        display: none;
+    }
+    .logs-mobile-view {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
 }
 </style>
 
@@ -124,13 +291,50 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="admin-breadcrumb">
                 <a href="index.php">Dashboard</a> &rsaquo; <span>System Error Logs</span>
             </div>
-            <h1 style="font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--text-main); margin-top: 0.35rem;">
+            <h1 style="font-family: 'Outfit', sans-serif; font-weight: 800; color: var(--text-main); margin-top: 0.35rem; font-size: clamp(1.5rem, 4vw, 2.25rem);">
                 Platform System Error Logs
             </h1>
         </div>
-        <div>
+        <div class="admin-actions-group">
             <?php if ($totalLogsCount > 0): ?>
-                <form method="POST" onsubmit="return confirm('Permanently delete all system error logs?');" style="margin: 0;">
+                <?php
+                    $exportQueryBase = 'action=export';
+                    if ($selectedCategory !== '') $exportQueryBase .= '&category=' . urlencode($selectedCategory);
+                    if ($searchQuery !== '') $exportQueryBase .= '&q=' . urlencode($searchQuery);
+                ?>
+                <div class="export-dropdown">
+                    <button type="button" id="exportLogsBtn" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-lg); display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 15px; height: 15px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export Logs</span>
+                        <svg viewBox="0 0 20 20" fill="currentColor" style="width: 14px; height: 14px; opacity: 0.7;"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <div id="exportMenu" class="export-dropdown-menu" style="display: none;">
+                        <div style="padding: 0.4rem 0.6rem; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Save File (<?= $totalLogsCount ?> logs)
+                        </div>
+                        <a href="system_logs.php?<?= $exportQueryBase ?>&format=csv" class="export-menu-item" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.65rem; border-radius: var(--radius-md); text-decoration: none; color: var(--text-main); font-size: 0.85rem; font-weight: 600; transition: background 0.15s;">
+                            <span style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 800; font-size: 0.72rem; padding: 0.15rem 0.4rem; border-radius: 4px;">CSV</span>
+                            <span>Spreadsheet (.csv)</span>
+                        </a>
+                        <a href="system_logs.php?<?= $exportQueryBase ?>&format=json" class="export-menu-item" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.65rem; border-radius: var(--radius-md); text-decoration: none; color: var(--text-main); font-size: 0.85rem; font-weight: 600; transition: background 0.15s;">
+                            <span style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-weight: 800; font-size: 0.72rem; padding: 0.15rem 0.4rem; border-radius: 4px;">JSON</span>
+                            <span>Raw Data (.json)</span>
+                        </a>
+                        <a href="system_logs.php?<?= $exportQueryBase ?>&format=log" class="export-menu-item" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.65rem; border-radius: var(--radius-md); text-decoration: none; color: var(--text-main); font-size: 0.85rem; font-weight: 600; transition: background 0.15s;">
+                            <span style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; font-weight: 800; font-size: 0.72rem; padding: 0.15rem 0.4rem; border-radius: 4px;">LOG</span>
+                            <span>Formatted Text (.log)</span>
+                        </a>
+                        <?php if ($selectedCategory !== '' || $searchQuery !== ''): ?>
+                            <div style="border-top: 1px solid var(--border-light); margin: 0.35rem 0; padding-top: 0.35rem;">
+                                <a href="system_logs.php?action=export&scope=all&format=csv" class="export-menu-item" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.65rem; border-radius: var(--radius-md); text-decoration: none; color: var(--text-muted); font-size: 0.8rem;">
+                                    <span>Download All (Unfiltered)</span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <form method="POST" onsubmit="return confirm('Permanently delete all system error logs? Tip: You can export a backup first.');" style="margin: 0;">
                     <?php echo csrfTokenField(); ?>
                     <button type="submit" name="action" value="clear_all" class="btn btn-danger btn-sm" style="border-radius: var(--radius-lg);">
                         Clear All Logs (<?= $totalLogsCount ?>)
@@ -143,14 +347,14 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Filter Bar -->
     <div class="glass-panel mb-6 p-4" style="border-radius: var(--radius-lg);">
         <form method="GET" action="system_logs.php" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin: 0;">
-            <div style="flex: 1; min-width: 220px;">
+            <div style="flex: 1; min-width: 200px;">
                 <input type="text" name="q" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>"
                        placeholder="Search error messages, user email, URL..." 
                        class="w-full bg-surface border-light py-2 px-3 text-main"
                        style="border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.9rem;">
             </div>
-            <div>
-                <select name="category" class="bg-surface border-light py-2 px-3 text-main" style="border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.9rem;">
+            <div style="min-width: 160px;">
+                <select name="category" class="w-full bg-surface border-light py-2 px-3 text-main" style="border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.9rem;">
                     <option value="">All Categories</option>
                     <?php foreach ($allCategories as $cat): ?>
                         <option value="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>" <?= $selectedCategory === $cat ? 'selected' : '' ?>>
@@ -159,14 +363,16 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm" style="border-radius: var(--radius-md); padding: 0.55rem 1.25rem;">
-                Filter
-            </button>
-            <?php if ($selectedCategory !== '' || $searchQuery !== ''): ?>
-                <a href="system_logs.php" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-md); text-decoration: none;">
-                    Reset
-                </a>
-            <?php endif; ?>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="submit" class="btn btn-primary btn-sm" style="border-radius: var(--radius-md); padding: 0.55rem 1.25rem;">
+                    Filter
+                </button>
+                <?php if ($selectedCategory !== '' || $searchQuery !== ''): ?>
+                    <a href="system_logs.php" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-md); text-decoration: none;">
+                        Reset
+                    </a>
+                <?php endif; ?>
+            </div>
         </form>
     </div>
 
@@ -179,7 +385,8 @@ require_once __DIR__ . '/../includes/header.php';
             <p style="font-size: 0.9rem; margin: 0;">No platform errors matched your filter parameters.</p>
         </div>
     <?php else: ?>
-        <div class="glass-panel" style="border-radius: var(--radius-lg); overflow: hidden;">
+        <!-- Desktop Table View (>768px) -->
+        <div class="glass-panel logs-desktop-view" style="border-radius: var(--radius-lg); overflow: hidden;">
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
                     <thead>
@@ -252,7 +459,91 @@ require_once __DIR__ . '/../includes/header.php';
                 </table>
             </div>
         </div>
+
+        <!-- Mobile Card View (<=768px) -->
+        <div class="logs-mobile-view">
+            <?php foreach ($logs as $log): ?>
+                <?php 
+                    $cat = (string)$log['category'];
+                    $badgeClass = 'log-badge-' . preg_replace('/[^a-z0-9_]/', '', strtolower($cat));
+                ?>
+                <div class="glass-panel p-4" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                    <!-- Header Line: ID + Category Badge + Time -->
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-2">
+                            <strong style="color: var(--text-main); font-size: 0.9rem;">#<?= (int)$log['id'] ?></strong>
+                            <span class="log-badge <?= $badgeClass ?>">
+                                <?= htmlspecialchars(str_replace('_', ' ', $cat), ENT_QUOTES, 'UTF-8') ?>
+                            </span>
+                        </div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">
+                            <?= timeAgo($log['created_at']) ?>
+                        </span>
+                    </div>
+
+                    <!-- User Information -->
+                    <div class="mb-3" style="font-size: 0.85rem;">
+                        <?php if (!empty($log['user_email']) || !empty($log['username'])): ?>
+                            <span style="font-weight: 700; color: var(--text-main);">👤 @<?= htmlspecialchars($log['username'] ?? 'User') ?></span>
+                            <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.35rem;">(<?= htmlspecialchars($log['user_email'] ?? ('ID #' . $log['user_id'])) ?>)</span>
+                        <?php else: ?>
+                            <span style="color: var(--text-muted); font-size: 0.82rem;">👤 Guest / Unauthenticated</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.88rem; line-height: 1.4; margin-bottom: 0.5rem; word-break: break-word;">
+                        <?= htmlspecialchars($log['message'], ENT_QUOTES, 'UTF-8') ?>
+                    </div>
+
+                    <!-- Technical Trace Details -->
+                    <?php if (!empty($log['raw_trace'])): ?>
+                        <details style="margin-bottom: 0.75rem;">
+                            <summary style="cursor: pointer; font-size: 0.78rem; color: var(--primary); font-weight: 600;">
+                                View Raw Technical Trace
+                            </summary>
+                            <div class="trace-box" style="margin-top: 0.4rem;">
+                                <?= htmlspecialchars($log['raw_trace'], ENT_QUOTES, 'UTF-8') ?>
+                            </div>
+                        </details>
+                    <?php endif; ?>
+
+                    <!-- Request URL & Action -->
+                    <div class="flex justify-between items-center pt-3 mt-2" style="border-top: 1px solid var(--border-light); font-size: 0.78rem;">
+                        <div style="font-family: monospace; max-width: 70%; word-break: break-all; color: var(--text-muted);">
+                            <span style="font-weight: 700; color: var(--primary);"><?= htmlspecialchars($log['request_method'] ?? 'GET') ?></span>
+                            <?= htmlspecialchars($log['url'] ?? '-', ENT_QUOTES, 'UTF-8') ?>
+                        </div>
+                        <form method="POST" style="margin: 0;" onsubmit="return confirm('Delete this log entry?');">
+                            <?php echo csrfTokenField(); ?>
+                            <input type="hidden" name="id" value="<?= (int)$log['id'] ?>">
+                            <button type="submit" name="action" value="delete" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const exportBtn = document.getElementById('exportLogsBtn');
+    const exportMenu = document.getElementById('exportMenu');
+    if (exportBtn && exportMenu) {
+        exportBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            exportMenu.style.display = (exportMenu.style.display === 'none' || !exportMenu.style.display) ? 'block' : 'none';
+        });
+        document.addEventListener('click', function(e) {
+            if (!exportMenu.contains(e.target) && e.target !== exportBtn) {
+                exportMenu.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

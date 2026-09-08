@@ -19,4 +19,12 @@ CREATE INDEX IF NOT EXISTS idx_pwa_installations_user_id
 ALTER TABLE public.pwa_installations ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.pwa_installations FROM anon, authenticated;
 
+DROP POLICY IF EXISTS pwa_installations_no_client_access ON public.pwa_installations;
+CREATE POLICY pwa_installations_no_client_access
+ON public.pwa_installations
+FOR ALL
+TO authenticated, anon
+USING (false)
+WITH CHECK (false);
+
 COMMENT ON TABLE public.pwa_installations IS 'Anonymous PWA installation and standalone activity telemetry; written by the server only.';

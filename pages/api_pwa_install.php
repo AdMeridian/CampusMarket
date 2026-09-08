@@ -32,9 +32,18 @@ if (!preg_match('/^[a-f0-9-]{36}$/i', $installationId) || !in_array($event, ['in
 }
 
 try {
+    if (function_exists('ensurePwaInstallationsTable')) {
+        ensurePwaInstallationsTable($pdo);
+    }
+} catch (Throwable $e) {
+    // Non-fatal
+}
+
+try {
     $driver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
     $userId = isLoggedIn() ? (int)currentUserId() : null;
     $userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 1000);
+    $isInstallSignal = ($event === 'install' || $isStandalone);
 
     if ($driver === 'mysql') {
         $stmt = $pdo->prepare("INSERT INTO pwa_installations
@@ -61,7 +70,7 @@ try {
     $stmt->execute([
         ':id' => $installationId,
         ':uid' => $userId,
-        ':install_at' => $event === 'install' ? date('Y-m-d H:i:s') : null,
+        ':install_at' => $isInstallSignal ? date('Y-m-d H:i:s') : null,
         ':standalone_at' => $isStandalone ? date('Y-m-d H:i:s') : null,
         ':platform' => $platform !== '' ? $platform : null,
         ':display_mode' => $displayMode !== '' ? $displayMode : null,

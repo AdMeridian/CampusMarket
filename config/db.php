@@ -220,6 +220,16 @@ if (!function_exists('ensureServicesTable')) {
         $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
 
         if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.services (" .
+                "id BIGSERIAL PRIMARY KEY, " .
+                "name VARCHAR(255) NOT NULL UNIQUE, " .
+                "description TEXT NULL, " .
+                "icon VARCHAR(64) NOT NULL DEFAULT 'service', " .
+                "is_active BOOLEAN NOT NULL DEFAULT TRUE, " .
+                "sort_order SMALLINT NOT NULL DEFAULT 0, " .
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+            );
             return;
         }
 
@@ -241,6 +251,59 @@ if (!function_exists('ensureServicesTable')) {
             "is_active TINYINT(1) NOT NULL DEFAULT 1, " .
             "sort_order SMALLINT NOT NULL DEFAULT 0, " .
             "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB"
+        );
+    }
+}
+
+if (!function_exists('ensurePwaInstallationsTable')) {
+    function ensurePwaInstallationsTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.pwa_installations (" .
+                "installation_id TEXT PRIMARY KEY, " .
+                "user_id BIGINT NULL REFERENCES public.users(id) ON DELETE SET NULL, " .
+                "first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), " .
+                "last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), " .
+                "install_event_at TIMESTAMPTZ NULL, " .
+                "last_standalone_at TIMESTAMPTZ NULL, " .
+                "platform VARCHAR(40) NULL, " .
+                "display_mode VARCHAR(30) NULL, " .
+                "user_agent TEXT NULL)"
+            );
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_pwa_installations_last_seen ON public.pwa_installations(last_seen_at DESC)");
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_pwa_installations_user_id ON public.pwa_installations(user_id)");
+            $pdo->exec("ALTER TABLE public.pwa_installations ENABLE ROW LEVEL SECURITY");
+            $pdo->exec("REVOKE ALL ON TABLE public.pwa_installations FROM anon, authenticated");
+            $pdo->exec("DROP POLICY IF EXISTS pwa_installations_no_client_access ON public.pwa_installations");
+            $pdo->exec("CREATE POLICY pwa_installations_no_client_access ON public.pwa_installations FOR ALL TO authenticated, anon USING (false) WITH CHECK (false)");
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.tables " .
+            "WHERE table_schema = DATABASE() AND table_name = 'pwa_installations'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() > 0) {
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE pwa_installations (" .
+            "installation_id VARCHAR(64) PRIMARY KEY, " .
+            "user_id INT NULL, " .
+            "first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+            "last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+            "install_event_at DATETIME NULL, " .
+            "last_standalone_at DATETIME NULL, " .
+            "platform VARCHAR(40) NULL, " .
+            "display_mode VARCHAR(30) NULL, " .
+            "user_agent TEXT NULL, " .
+            "INDEX idx_pwa_last_seen (last_seen_at), " .
+            "INDEX idx_pwa_user_id (user_id), " .
+            "CONSTRAINT fk_pwa_installations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL) ENGINE=InnoDB"
         );
     }
 }
