@@ -4115,10 +4115,10 @@ body.page-chat .chat-send-btn {
 .spotlight-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1250;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  z-index: 100000;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: none;
   align-items: center;
   justify-content: center;
@@ -4135,16 +4135,18 @@ body.page-chat .chat-send-btn {
 
 .spotlight-modal-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 420px;
   background: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xl);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transform: scale(0.92) translateY(12px);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: auto;
+  max-height: calc(100vh - 2rem);
 }
 
 .spotlight-modal-backdrop.is-active .spotlight-modal-card {
@@ -4155,7 +4157,7 @@ body.page-chat .chat-send-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.1rem 0.65rem;
+  padding: 0.8rem 1.1rem 0.65rem;
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-surface);
 }
@@ -4199,7 +4201,6 @@ body.page-chat .chat-send-btn {
 
 .spotlight-slides-viewport {
   position: relative;
-  min-height: 380px;
 }
 
 .spotlight-slide {
@@ -4223,7 +4224,7 @@ body.page-chat .chat-send-btn {
 .spotlight-slide__media {
   position: relative;
   width: 100%;
-  height: 220px;
+  height: 205px;
   background: #0f172a;
   overflow: hidden;
 }
@@ -4251,6 +4252,7 @@ body.page-chat .chat-send-btn {
   letter-spacing: 0.04em;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   color: #fff;
+  z-index: 2;
 }
 
 .spotlight-badge--discount {
@@ -4262,7 +4264,7 @@ body.page-chat .chat-send-btn {
 }
 
 .spotlight-slide__content {
-  padding: 1rem 1.15rem 0.85rem;
+  padding: 0.95rem 1.15rem 0.85rem;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -4282,7 +4284,7 @@ body.page-chat .chat-send-btn {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-main);
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.45rem;
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
@@ -4291,27 +4293,27 @@ body.page-chat .chat-send-btn {
 
 .spotlight-slide__meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.85rem;
-  flex-wrap: wrap;
 }
 
 .spotlight-slide__price-wrap {
   display: flex;
   align-items: baseline;
   gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .spotlight-slide__price {
-  font-size: 1.2rem;
+  font-size: 1.18rem;
   font-weight: 800;
   color: var(--primary);
 }
 
 .spotlight-slide__original-price {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-muted);
   text-decoration: line-through;
@@ -4321,6 +4323,11 @@ body.page-chat .chat-send-btn {
 .spotlight-slide__seller {
   font-size: 0.75rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+  text-align: right;
 }
 
 .spotlight-slide__cta {
@@ -4343,11 +4350,11 @@ body.page-chat .chat-send-btn {
 
 .spotlight-nav-btn {
   position: absolute;
-  top: 110px;
+  top: 102px;
   transform: translateY(-50%);
   z-index: 10;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: rgba(15, 23, 42, 0.65);
@@ -4380,7 +4387,7 @@ body.page-chat .chat-send-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.55rem 1.15rem 0.85rem;
+  padding: 0.6rem 1.15rem 0.8rem;
   background: var(--bg-surface);
   border-top: 1px solid var(--border-light);
 }
@@ -4426,16 +4433,47 @@ body.page-chat .chat-send-btn {
 }
 
 @media (max-width: 480px) {
-  .spotlight-modal-card {
-    max-width: 100%;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    margin-top: auto;
-    margin-bottom: 0;
+  .spotlight-modal-backdrop {
+    padding: 1rem 0.85rem;
+    align-items: center;
+    justify-content: center;
   }
 
-  .spotlight-modal-backdrop {
-    padding: 0;
-    align-items: flex-end;
+  .spotlight-modal-card {
+    max-width: 100%;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .spotlight-slide__media {
+    height: 180px;
+  }
+
+  .spotlight-nav-btn {
+    top: 90px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .spotlight-slide__content {
+    padding: 0.85rem 1rem 0.75rem;
+  }
+
+  .spotlight-slide__title {
+    font-size: 1rem;
+  }
+
+  .spotlight-slide__price {
+    font-size: 1.1rem;
+  }
+
+  .spotlight-slide__cta {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+  }
+
+  .spotlight-modal-footer {
+    padding: 0.5rem 1rem 0.7rem;
   }
 }
 
