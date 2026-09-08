@@ -2286,5 +2286,55 @@ function logSystemError(PDO $pdo, string $category, string $message, $rawTrace =
     }
 }
 
+/**
+ * Fetch the latest active in-app popup broadcast for the current user
+ *
+ * @param PDO $pdo
+ * @param int|null $userId
+ * @return array|null
+ */
+function getActivePopupBroadcast(PDO $pdo, ?int $userId = null): ?array {
+    try {
+        $stmt = $pdo->query("
+            SELECT id, subject, headline, preview_text, body_html, cta_text, cta_url,
+                   image_url, popup_theme, audience_type, created_at, expires_at
+            FROM email_campaigns
+            WHERE is_popup = TRUE
+              AND status = 'sent'
+              AND (expires_at IS NULL OR expires_at > NOW())
+            ORDER BY id DESC
+            LIMIT 5
+        ");
+        $broadcasts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($broadcasts)) {
+            return null;
+        }
 
+        foreach ($broadcasts as $b) {
+            $audience = $b['audience_type'] ?? 'all';
+            if ($audience === 'all') {
+                return $b;
+            }
 
+            if (!$userId) {
+                continue;
+            }
+
+            if ($audience === 'sellers') {
+                $chk = $pdo->prepare("SELECT 1 FROM products WHERE user_id = ? LIMIT 1");
+                $chk->execute([$userId]);
+                if ($chk->fetch()) return $b;
+            } elseif ($audience === 'buyers') {
+                $chk = $pdo->prepare("SELECT 1 FROM orders WHERE buyer_id = ? LIMIT 1");
+                $chk->execute([$userId]);
+                if ($chk->fetch()) return $b;
+            } elseif ($audience === 'inactive') {
+                return $b;
+            }
+        }
+        return null;
+    } catch (Throwable $e) {
+        // Table or columns might not exist yet before migration
+        return null;
+    }
+}

@@ -93,9 +93,9 @@ include '../includes/header.php';
     overflow: hidden;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .profile-hero {
-        padding: calc(60px + 0.85rem) 0 0;
+        padding: 1.25rem 0 0;
     }
 }
 
