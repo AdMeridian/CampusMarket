@@ -288,10 +288,9 @@ p {
 
 .pt-24 { padding-top: 5.25rem; }
 
-@media (max-width: 768px) {
-  .mt-24 { margin-top: calc(70px + 0.65rem); }
-  .pt-24 { padding-top: calc(70px + 0.65rem); }
-  .mt-16 { margin-top: calc(70px + 0.5rem); }
+@media (max-width: 1023px) {
+  .mt-24, .mt-16, .mt-12, .mt-10 { margin-top: 1rem !important; }
+  .pt-24, .pt-20, .pt-16 { padding-top: 1rem !important; }
   
   /* Reduce oversized heading and section bottom gaps on mobile */
   .mb-16 { margin-bottom: 2rem !important; }
@@ -301,18 +300,22 @@ p {
   .mb-6 { margin-bottom: 0.85rem !important; }
   
   .inbox-wrap {
-    margin-top: calc(70px + 0.65rem) !important;
+    margin-top: 1rem !important;
     margin-bottom: 2.5rem !important;
   }
   
   .admin-wrap {
-    margin-top: calc(70px + 0.65rem) !important;
+    margin-top: 1rem !important;
     margin-bottom: 2.5rem !important;
   }
   
   .donation-page-wrapper {
-    padding-top: calc(70px + 0.65rem) !important;
+    padding-top: 1rem !important;
     padding-bottom: 2.5rem !important;
+  }
+
+  .page-content-offset {
+    padding-top: 1rem !important;
   }
 }
 .pb-16 { padding-bottom: 4rem; }
@@ -2844,9 +2847,9 @@ body {
   padding-top: calc(70px + 1.25rem);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .page-content-offset {
-    padding-top: calc(70px + 0.65rem);
+    padding-top: 1rem !important;
   }
 }
 
