@@ -89,6 +89,11 @@ const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
     $searchJsVer = assetVersion($searchJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/search-suggestions.js?v=<?php echo $searchJsVer; ?>"></script>
+<?php
+    $spotlightJsPath = __DIR__ . '/../public/js/spotlight-modal.js';
+    $spotlightJsVer = assetVersion($spotlightJsPath);
+?>
+<script src="<?php echo BASE_URL; ?>public/js/spotlight-modal.js?v=<?php echo $spotlightJsVer; ?>"></script>
 
 <!-- Floating AI Chatbot Widget -->
 <?php
