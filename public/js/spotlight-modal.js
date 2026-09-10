@@ -1,21 +1,34 @@
 /**
  * CampusMarket - In-App Promotional Spotlight Slideshow Modal
  * Displays active discounted and featured listings in a multi-product carousel.
- * Silently suppresses itself for 24 hours upon dismissal.
+ * Cooldown: 3 days (72 hours), with smart new-item tracking to show when new promotions appear.
  */
 (function () {
-    const STORAGE_KEY = 'cm_spotlight_dismissed_at';
-    const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const STORAGE_KEY_TIME = 'cm_spotlight_dismissed_at';
+    const STORAGE_KEY_SEEN = 'cm_spotlight_seen_ids';
+    const COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 days (72 hours)
 
-    function isSuppressed() {
-        const last = localStorage.getItem(STORAGE_KEY);
+    function isCooldownActive() {
+        const last = localStorage.getItem(STORAGE_KEY_TIME);
         if (!last) return false;
         const diff = Date.now() - parseInt(last, 10);
         return diff < COOLDOWN_MS;
     }
 
-    function dismissSpotlight() {
-        localStorage.setItem(STORAGE_KEY, Date.now().toString());
+    function getSeenIds() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY_SEEN);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function dismissSpotlight(productIds) {
+        localStorage.setItem(STORAGE_KEY_TIME, Date.now().toString());
+        if (Array.isArray(productIds) && productIds.length > 0) {
+            localStorage.setItem(STORAGE_KEY_SEEN, JSON.stringify(productIds));
+        }
         const modal = document.getElementById('cm-spotlight-modal');
         if (!modal) return;
         modal.classList.remove('is-active');
@@ -38,10 +51,6 @@
         return;
     }
 
-    if (isSuppressed()) {
-        return;
-    }
-
     document.addEventListener('DOMContentLoaded', initSpotlight);
 
     function initSpotlight() {
@@ -52,7 +61,17 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success && Array.isArray(data.products) && data.products.length > 0) {
-                    renderModal(data.products);
+                    const currentIds = data.products.map(p => p.id);
+                    const seenIds = getSeenIds();
+                    const hasNewItems = currentIds.some(id => !seenIds.includes(id));
+                    const cooldownActive = isCooldownActive();
+
+                    // If cooldown is active AND there are no new items, do not show
+                    if (cooldownActive && !hasNewItems) {
+                        return;
+                    }
+
+                    renderModal(data.products, currentIds);
                 }
             })
             .catch(() => {
@@ -60,9 +79,10 @@
             });
     }
 
-    function renderModal(products) {
+    function renderModal(products, productIds) {
         let currentIndex = 0;
         let autoTimer = null;
+        const handleDismiss = () => dismissSpotlight(productIds);
 
         const modal = document.createElement('div');
         modal.id = 'cm-spotlight-modal';
@@ -232,12 +252,12 @@
         }
 
         // Dismiss handlers (require explicit close button, 'Maybe later', or Escape key)
-        modal.querySelector('#spotlight-close-btn').addEventListener('click', dismissSpotlight);
-        modal.querySelector('#spotlight-ghost-btn').addEventListener('click', dismissSpotlight);
+        modal.querySelector('#spotlight-close-btn').addEventListener('click', handleDismiss);
+        modal.querySelector('#spotlight-ghost-btn').addEventListener('click', handleDismiss);
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && modal.classList.contains('is-active')) {
-                dismissSpotlight();
+                handleDismiss();
             }
         });
     }
