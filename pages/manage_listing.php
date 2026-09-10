@@ -296,9 +296,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
 }
 
-// 7. Delete Image
+// 7. Replace Image
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'replace_image') {
+    verifyCsrfToken();
+    $imageId = (int)($_POST['image_id'] ?? 0);
+    $stmtGet = $pdo->prepare("SELECT id, image_path, is_primary FROM product_images WHERE id = ? AND product_id = ?");
+    $stmtGet->execute([$imageId, $productId]);
+    $img = $stmtGet->fetch();
+
+    if (!$img) {
+        setFlash('error', __('product.image_not_found'));
+        redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+    }
+
+    if (!empty($_FILES['image']['name'])) {
+        $fileData = [
+            'name'     => $_FILES['image']['name'],
+            'type'     => $_FILES['image']['type'],
+            'tmp_name' => $_FILES['image']['tmp_name'],
+            'error'    => $_FILES['image']['error'],
+            'size'     => $_FILES['image']['size']
+        ];
+        $upload = handleUpload($fileData, 'products/');
+        if ($upload['success']) {
+            $oldPath = $img['image_path'] ?? '';
+            $stmtUp = $pdo->prepare("UPDATE product_images SET image_path = :path WHERE id = :id AND product_id = :pid");
+            $stmtUp->bindValue(':path', $upload['path'], PDO::PARAM_STR);
+            $stmtUp->bindValue(':id', $imageId, PDO::PARAM_INT);
+            $stmtUp->bindValue(':pid', $productId, PDO::PARAM_INT);
+            $stmtUp->execute();
+
+            if (!empty($oldPath)) {
+                deleteStoredImageFile($oldPath);
+            }
+
+            setFlash('success', __('product.image_replaced'));
+        } else {
+            setFlash('error', $upload['error'] ?? __('product.replace_image_failed'));
+        }
+    } else {
+        setFlash('error', __('product.no_images_selected'));
+    }
+    redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+}
+
+// 8. Delete Image
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_image') {
     verifyCsrfToken();
+
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM product_images WHERE product_id = ?");
+    $stmtCount->execute([$productId]);
+    $currentCount = (int)$stmtCount->fetchColumn();
+
+    if ($currentCount <= 1) {
+        setFlash('error', __('product.min_image_required'));
+        redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+    }
+
     $imageId = (int)($_POST['image_id'] ?? 0);
     $stmtGet = $pdo->prepare("SELECT image_path, is_primary FROM product_images WHERE id = ? AND product_id = ?");
     $stmtGet->execute([$imageId, $productId]);
@@ -546,6 +600,90 @@ require_once __DIR__ . '/../includes/header.php';
         order: 3;
         width: 100%;
         justify-content: center;
+    }
+}
+.mgmt-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+}
+@media (min-width: 480px) {
+    .mgmt-photo-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+.mgmt-photo-card {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+    aspect-ratio: 1 / 1;
+    background: var(--bg-surface);
+}
+.mgmt-photo-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.mgmt-photo-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.4rem;
+    flex-wrap: wrap;
+    z-index: 2;
+}
+.mgmt-photo-card:hover .mgmt-photo-overlay,
+.mgmt-photo-card:focus-within .mgmt-photo-overlay {
+    opacity: 1;
+}
+.mgmt-photo-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    text-decoration: none;
+    line-height: 1;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    margin: 0;
+}
+.mgmt-photo-action-btn:hover {
+    transform: scale(1.05);
+}
+.mgmt-photo-action-btn--primary {
+    background: #ffffff;
+    color: var(--primary);
+}
+.mgmt-photo-action-btn--replace {
+    background: #ffffff;
+    color: var(--text-main);
+}
+.mgmt-photo-action-btn--danger {
+    background: #ef4444;
+    color: #ffffff;
+}
+@media (hover: none) {
+    .mgmt-photo-overlay {
+        opacity: 1;
+        background: linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.25) 50%, transparent 100%);
+        align-items: flex-end;
+        padding-bottom: 0.45rem;
     }
 }
 .graph-line {
@@ -804,39 +942,74 @@ require_once __DIR__ . '/../includes/header.php';
 
             <!-- 2. Photo Gallery Manager -->
             <div class="mgmt-card">
-                <h3 class="font-bold text-lg text-main mb-3">Photos (<?= count($images) ?>/5)</h3>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-lg text-main mb-0">Photos (<?= count($images) ?>/5)</h3>
+                    <span class="text-xs text-muted font-bold">Min 1, Max 5</span>
+                </div>
                 
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                <div class="mgmt-photo-grid">
                     <?php foreach ($images as $img): ?>
-                    <div class="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square" style="background: var(--bg-surface);">
-                        <img src="<?= getProductImage($img['image_path']) ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div class="mgmt-photo-card">
+                        <img src="<?= getProductImage($img['image_path']) ?>" alt="Listing Photo">
                         
-                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 p-1">
+                        <div class="mgmt-photo-overlay">
                             <?php if (!$img['is_primary']): ?>
-                            <form method="post">
+                            <form method="post" title="Make Primary" style="margin: 0;">
                                 <?php echo csrfTokenField(); ?>
                                 <input type="hidden" name="action" value="set_primary">
                                 <input type="hidden" name="image_id" value="<?= $img['id'] ?>">
-                                <button type="submit" title="Make Primary" class="btn btn-sm" style="background: white; color: var(--primary); padding: 0.3rem 0.5rem; font-size: 0.75rem;">★</button>
+                                <button type="submit" title="Make Primary" class="mgmt-photo-action-btn mgmt-photo-action-btn--primary">
+                                    ★
+                                </button>
                             </form>
                             <?php endif; ?>
 
+                            <!-- Replace Image Option -->
+                            <form method="post" enctype="multipart/form-data" title="<?= htmlspecialchars(__('product.replace_image')) ?>" style="margin: 0;">
+                                <?php echo csrfTokenField(); ?>
+                                <input type="hidden" name="action" value="replace_image">
+                                <input type="hidden" name="image_id" value="<?= $img['id'] ?>">
+                                <label class="mgmt-photo-action-btn mgmt-photo-action-btn--replace" title="<?= htmlspecialchars(__('product.replace_image')) ?>">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 13px; height: 13px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                    <input type="file" name="image" accept="image/*" class="hidden" onchange="this.form.submit()">
+                                </label>
+                            </form>
+
                             <?php if (count($images) > 1): ?>
-                            <form method="post" onsubmit="return confirm('Delete this image?')">
+                            <!-- Delete Image Option (Enabled only if >1 image) -->
+                            <form method="post" onsubmit="return confirm('Delete this image?')" title="Delete Photo" style="margin: 0;">
                                 <?php echo csrfTokenField(); ?>
                                 <input type="hidden" name="action" value="delete_image">
                                 <input type="hidden" name="image_id" value="<?= $img['id'] ?>">
-                                <button type="submit" title="Delete" class="btn btn-sm btn--danger" style="padding: 0.3rem 0.5rem; font-size: 0.75rem;">✕</button>
+                                <button type="submit" title="Delete" class="mgmt-photo-action-btn mgmt-photo-action-btn--danger">
+                                    ✕
+                                </button>
                             </form>
                             <?php endif; ?>
                         </div>
 
                         <?php if ($img['is_primary']): ?>
-                        <span style="position: absolute; bottom: 4px; left: 4px; background: var(--primary); color: white; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">MAIN</span>
+                        <span style="position: absolute; bottom: 6px; left: 6px; background: var(--primary); color: white; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; z-index: 1; pointer-events: none;">MAIN</span>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>
+
+                <?php if (count($images) === 1): ?>
+                <div class="flex items-center justify-between p-3 rounded-lg mb-3 gap-2" style="background: var(--bg-surface); border: 1px solid var(--border-light); font-size: 0.82rem;">
+                    <span class="text-muted leading-tight">Single photo listed. Replace it or add more photos.</span>
+                    <form method="post" enctype="multipart/form-data" style="margin: 0; flex-shrink: 0;">
+                        <?php echo csrfTokenField(); ?>
+                        <input type="hidden" name="action" value="replace_image">
+                        <input type="hidden" name="image_id" value="<?= $images[0]['id'] ?>">
+                        <label class="btn btn-secondary btn-sm cursor-pointer" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; margin: 0; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: var(--radius-md);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                            <?= __('product.replace_image') ?>
+                            <input type="file" name="image" accept="image/*" class="hidden" onchange="this.form.submit()">
+                        </label>
+                    </form>
+                </div>
+                <?php endif; ?>
 
                 <?php if (count($images) < 5): ?>
                 <form method="post" enctype="multipart/form-data">
