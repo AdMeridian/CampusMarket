@@ -165,26 +165,26 @@ $presenceText = match($otherPresence['status']) {
         </div>
         <?php endif; ?>
 
+        <!-- Compact Deal Banner -->
+        <div id="deal-handshake-bar" class="chat-deal-banner-wrapper" style="display:none;" hidden></div>
+
         <div id="chat-box" class="chat-messages" aria-live="polite">
             <!-- Messages loaded via JS -->
         </div>
 
-        <div id="deal-handshake-bar" class="chat-deal-bar" style="display:none;" hidden>
-            <p class="chat-deal-bar__hint text-muted small mb-3"><?= __('chat.orders_deal_explainer') ?></p>
-        </div>
         <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
             <?php $isServiceChat = ($product['listing_type'] ?? 'product') === 'service'; ?>
             <div class="chat-action-bar purchase-cta-bar" <?= $isServiceChat ? 'style="border-left: 4px solid var(--service);"' : '' ?>>
                 <div class="chat-action-bar__copy">
-                    <strong><?= $isServiceChat ? '🗓️ Book This Service' : __('chat.ready_to_buy') ?></strong>
+                    <strong><?= $isServiceChat ? '📅 Book This Service' : __('chat.ready_to_buy') ?></strong>
                     <span><?= $isServiceChat ? 'Schedule and agree on a service time' : __('chat.send_purchase_request') ?></span>
                 </div>
                 <form action="api_messages.php" method="POST" class="m-0">
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn <?= $isServiceChat ? 'btn--service' : 'btn-primary' ?> btn-sm" onclick="<?= $isServiceChat ? 'checkDealStatus()' : 'proposeOrder()' ?>">
-                        <?= $isServiceChat ? '🛠️ Book Service' : __('chat.propose_order') ?>
+                    <button type="button" class="btn <?= $isServiceChat ? 'btn--service' : 'btn-primary' ?> btn-sm" onclick="<?= $isServiceChat ? 'checkDealStatus(true)' : 'proposeOrder()' ?>">
+                        <?= $isServiceChat ? '✨ Book Service' : __('chat.propose_order') ?>
                     </button>
                 </form>
             </div>
@@ -205,6 +205,30 @@ $presenceText = match($otherPresence['status']) {
                     <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Deal Handshake Bottom Sheet Drawer Modal -->
+<div id="deal-sheet-backdrop" class="deal-sheet-backdrop" style="display:none;" hidden onclick="closeDealSheet(event)">
+    <div class="deal-sheet-card" onclick="event.stopPropagation()">
+        <div class="deal-sheet-handle-bar"></div>
+        <div class="deal-sheet-header">
+            <div class="deal-sheet-title-wrap">
+                <div class="deal-sheet-icon-wrap" id="deal-sheet-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="deal-sheet-title" id="deal-sheet-title"><?= __('deal.deal_info') ?></h3>
+                    <p class="deal-sheet-subtitle" id="deal-sheet-subtitle"><?= __('chat.orders_deal_explainer') ?></p>
+                </div>
+            </div>
+            <button type="button" class="deal-sheet-close-btn" onclick="closeDealSheet()" aria-label="Close">&times;</button>
+        </div>
+        <div class="deal-sheet-body" id="deal-sheet-body">
+            <!-- Dynamic deal sheet content populated via JS -->
         </div>
     </div>
 </div>
@@ -729,10 +753,41 @@ function clearChat() {
         .catch(err => console.error('Clear chat failed:', err));
 }
 
-// ─── Deal Handshake Logic ──────────────────────────────
+// ─── Deal Handshake Logic (Banner & Bottom Sheet) ──────────
 const handshakeBar = document.getElementById('deal-handshake-bar');
+const dealSheetBackdrop = document.getElementById('deal-sheet-backdrop');
+const dealSheetBody = document.getElementById('deal-sheet-body');
 
-function checkDealStatus() {
+window.currentDeal = null;
+
+function openDealSheet() {
+    if (!dealSheetBackdrop) return;
+    dealSheetBackdrop.hidden = false;
+    dealSheetBackdrop.style.display = 'flex';
+    requestAnimationFrame(() => {
+        dealSheetBackdrop.classList.add('is-active');
+    });
+}
+
+function closeDealSheet(event) {
+    if (event && event.target && event.target.closest && event.target.closest('.deal-sheet-card') && !event.target.classList.contains('deal-sheet-close-btn')) {
+        return;
+    }
+    if (!dealSheetBackdrop) return;
+    dealSheetBackdrop.classList.remove('is-active');
+    setTimeout(() => {
+        dealSheetBackdrop.style.display = 'none';
+        dealSheetBackdrop.hidden = true;
+    }, 220);
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && dealSheetBackdrop && dealSheetBackdrop.classList.contains('is-active')) {
+        closeDealSheet();
+    }
+});
+
+function checkDealStatus(autoOpen = false) {
     fetch(`api_messages.php?action=check_deal_status&product_id=${productId}&other_user_id=${otherUserId}&_=${Date.now()}`, {
         cache: 'no-store'
     })
@@ -742,6 +797,9 @@ function checkDealStatus() {
                 renderHandshakeBar(data.deal);
                 handshakeBar.hidden = false;
                 handshakeBar.style.display = 'block';
+                if (autoOpen) {
+                    openDealSheet();
+                }
                 return;
             }
 
@@ -758,6 +816,9 @@ function checkDealStatus() {
                 });
                 handshakeBar.hidden = false;
                 handshakeBar.style.display = 'block';
+                if (autoOpen) {
+                    openDealSheet();
+                }
                 return;
             }
 
@@ -784,148 +845,151 @@ function checkDealStatus() {
         });
 }
 
-window.currentDeal = null;
-window.handshakeCollapsed = false;
-window.handshakeTimeout = null;
-
-function collapseHandshake() {
-    window.handshakeCollapsed = true;
-    renderHandshakeBar(window.currentDeal);
-    
-    if (window.handshakeTimeout) clearTimeout(window.handshakeTimeout);
-    window.handshakeTimeout = setTimeout(() => {
-        window.handshakeCollapsed = false;
-        renderHandshakeBar(window.currentDeal);
-    }, 60000);
-}
-
-function expandHandshake() {
-    window.handshakeCollapsed = false;
-    if (window.handshakeTimeout) clearTimeout(window.handshakeTimeout);
-    renderHandshakeBar(window.currentDeal);
-}
-
 function renderHandshakeBar(deal) {
     window.currentDeal = deal;
     const status = deal.status;
     const isSeller = deal.is_seller;
     const buyerName = deal.buyer_username || 'Buyer';
     const productTitle = deal.product_title || 'this item';
+    const isService = deal.listing_type === 'service';
 
-    let html = '';
-    let borderStyle = '';
-
-    if (window.handshakeCollapsed) {
-        handshakeBar.className = 'chat-deal-bar chat-deal-bar--collapsed';
-        handshakeBar.innerHTML = `
-            <button type="button" class="chat-deal-tab" onclick="expandHandshake()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>${__('deal.deal_info')}</span>
-            </button>
-        `;
-        return;
-    }
-
-    handshakeBar.className = 'chat-deal-bar';
+    let bannerHtml = '';
+    let sheetHtml = '';
 
     if (status === 'choose_product') {
-        borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
-        html = `
-            <div id="choose-product-initial" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.did_transaction')}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.select_item')}</div>
+        bannerHtml = `
+            <div class="chat-deal-banner chat-deal-banner--choose" onclick="openDealSheet()">
+                <div class="chat-deal-banner__info">
+                    <span class="chat-deal-banner__icon">🤝</span>
+                    <div class="chat-deal-banner__texts">
+                        <span class="chat-deal-banner__headline">${__('deal.did_transaction')}</span>
+                        <span class="chat-deal-banner__sub">${__('deal.select_item')}</span>
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="openProductSelector()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.yes')}</button>
-                    <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.no')}</button>
+                <button type="button" class="btn btn-primary btn-xs chat-deal-banner__btn" onclick="event.stopPropagation(); openDealSheet(); openProductSelector();">
+                    ${__('deal.select_item_prompt')}
+                </button>
+            </div>
+        `;
+
+        sheetHtml = `
+            <div id="choose-product-initial" class="deal-sheet-flow">
+                <p class="deal-sheet-explainer">${__('chat.orders_deal_explainer')}</p>
+                <div class="deal-sheet-prompt-card">
+                    <div class="deal-sheet-prompt-title">${__('deal.did_transaction')}</div>
+                    <div class="deal-sheet-prompt-desc">${__('deal.select_item')}</div>
+                </div>
+                <div class="deal-sheet-actions">
+                    <button type="button" onclick="openProductSelector()" class="btn btn-primary btn-md w-full">${__('deal.yes')} · ${__('deal.select_item_prompt')}</button>
+                    <button type="button" onclick="closeDealSheet()" class="btn btn-secondary btn-md w-full">${__('deal.no')}</button>
                 </div>
             </div>
-            <div id="choose-product-selector" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; width: 100%;">
-                <div style="flex-grow: 1;">
-                    <select id="deal-product-select" class="premium-input" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); background: var(--bg-surface); color: var(--text-main);">
+            <div id="choose-product-selector" class="deal-sheet-flow" style="display: none;">
+                <p class="deal-sheet-explainer">${__('deal.select_item')}</p>
+                <div style="margin-bottom: 1rem;">
+                    <select id="deal-product-select" class="premium-input" style="width: 100%; padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); background: var(--bg-surface); color: var(--text-main);">
                         <option value="">${__('deal.loading_items')}</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                    <button onclick="submitChosenProduct()" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.confirm')}</button>
-                    <button onclick="cancelChooseProduct()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${__('deal.cancel')}</button>
+                <div class="deal-sheet-actions">
+                    <button type="button" onclick="submitChosenProduct()" class="btn btn-primary btn-md w-full">${__('deal.confirm')}</button>
+                    <button type="button" onclick="cancelChooseProduct()" class="btn btn-secondary btn-md w-full">${__('deal.cancel')}</button>
                 </div>
             </div>
         `;
     } else if (status === 'pending') {
-        borderStyle = 'border-left: 4px solid var(--primary); background: var(--bg-surface); opacity: 0.95;';
-        const isService = deal.listing_type === 'service';
-
         let promptText = isService ? __('deal.want_to_book_service', {default: 'Want to book this service?'}) : __('deal.did_deal_happen');
         let promptSub = isService ? __('deal.select_time_to_book', {default: 'Select a time to book this service.'}) : __('deal.confirm_marks_sold');
         let yesBtnText = isService ? __('deal.book_service', {default: 'Book Service'}) : __('deal.yes_done');
+
+        bannerHtml = `
+            <div class="chat-deal-banner chat-deal-banner--primary" onclick="openDealSheet()">
+                <div class="chat-deal-banner__info">
+                    <span class="chat-deal-banner__icon">${isService ? '📅' : '🤝'}</span>
+                    <div class="chat-deal-banner__texts">
+                        <span class="chat-deal-banner__headline">${promptText}</span>
+                        <span class="chat-deal-banner__sub">${promptSub}</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary btn-xs chat-deal-banner__btn" onclick="event.stopPropagation(); openDealSheet();">
+                    ${yesBtnText}
+                </button>
+            </div>
+        `;
         let extraFields = '';
         if (isService) {
             extraFields = `
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-light); width: 100%;">
-                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div style="margin-bottom: 1rem; padding: 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: var(--bg-main);">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 140px;">
                             <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">Start Date & Time</label>
-                            <input type="datetime-local" id="deal_sched_start" class="premium-input" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border-radius: var(--radius-md);">
+                            <input type="datetime-local" id="deal_sched_start" class="premium-input" style="width: 100%; padding: 0.45rem 0.55rem; font-size: 0.85rem; border-radius: var(--radius-md);">
                         </div>
                         <div style="flex: 1; min-width: 140px;">
                             <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">End Date & Time</label>
-                            <input type="datetime-local" id="deal_sched_end" class="premium-input" style="width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border-radius: var(--radius-md);">
+                            <input type="datetime-local" id="deal_sched_end" class="premium-input" style="width: 100%; padding: 0.45rem 0.55rem; font-size: 0.85rem; border-radius: var(--radius-md);">
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        html = `
-            <div style="display: flex; flex-direction: column; width: 100%;">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--primary); border: 1px solid var(--border-light);">
-                            <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${promptText}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${promptSub}</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                        <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">${yesBtnText}</button>
-                        <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_yet')}</button>
-                    </div>
+        sheetHtml = `
+            <div class="deal-sheet-flow">
+                <p class="deal-sheet-explainer">${__('chat.orders_deal_explainer')}</p>
+                <div class="deal-sheet-prompt-card">
+                    <div class="deal-sheet-prompt-title">${promptText}</div>
+                    <div class="deal-sheet-prompt-desc">${promptSub}</div>
                 </div>
                 ${extraFields}
+                <div class="deal-sheet-actions">
+                    <button type="button" onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-md w-full">${yesBtnText}</button>
+                    <button type="button" onclick="closeDealSheet()" class="btn btn-secondary btn-md w-full">${__('deal.not_yet')}</button>
+                </div>
             </div>
         `;
     } else if (status === 'buyer_confirmed' && !isSeller) {
-        borderStyle = 'border-left: 4px solid var(--text-light); background: var(--bg-surface);';
-        html = `
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-light);">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+        bannerHtml = `
+            <div class="chat-deal-banner chat-deal-banner--awaiting" onclick="openDealSheet()">
+                <div class="chat-deal-banner__info">
+                    <span class="chat-deal-banner__icon">⏳</span>
+                    <div class="chat-deal-banner__texts">
+                        <span class="chat-deal-banner__headline">${__('deal.awaiting_confirmation')}</span>
+                        <span class="chat-deal-banner__sub">${__('deal.you_confirmed_waiting')}</span>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.awaiting_confirmation')}</div>
-                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${__('deal.you_confirmed_waiting')}</div>
+                <span class="chat-deal-banner__badge">${__('deal.deal_info')}</span>
+            </div>
+        `;
+
+        sheetHtml = `
+            <div class="deal-sheet-flow">
+                <p class="deal-sheet-explainer">${__('chat.orders_deal_explainer')}</p>
+                <div class="deal-sheet-prompt-card deal-sheet-prompt-card--muted">
+                    <div class="deal-sheet-prompt-title">${__('deal.awaiting_confirmation')}</div>
+                    <div class="deal-sheet-prompt-desc">${__('deal.you_confirmed_waiting')}</div>
+                </div>
+                <div class="deal-sheet-actions">
+                    <button type="button" onclick="closeDealSheet()" class="btn btn-secondary btn-md w-full">${__('common.close') || 'Close'}</button>
                 </div>
             </div>
         `;
     } else if (status === 'buyer_confirmed' && isSeller) {
-        borderStyle = 'border-left: 4px solid var(--secondary); background: var(--bg-surface);';
+        bannerHtml = `
+            <div class="chat-deal-banner chat-deal-banner--action" onclick="openDealSheet()">
+                <div class="chat-deal-banner__info">
+                    <span class="chat-deal-banner__icon">🔔</span>
+                    <div class="chat-deal-banner__texts">
+                        <span class="chat-deal-banner__headline">${__('deal.says_done', {buyer: buyerName})}</span>
+                        <span class="chat-deal-banner__sub">${__('deal.confirm_to_mark', {product: productTitle})}</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-success btn-xs chat-deal-banner__btn" style="background: var(--secondary); border-color: var(--secondary); color: #fff;" onclick="event.stopPropagation(); openDealSheet();">
+                    ${__('deal.confirm_delist')}
+                </button>
+            </div>
+        `;
+
         const dealStart = deal.scheduled_start || '';
         const dealEnd = deal.scheduled_end || '';
         const serviceAdjustmentBlock = deal.listing_type === 'service' ? `
@@ -941,63 +1005,73 @@ function renderHandshakeBar(deal) {
                     </div>
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
-                    <button onclick="submitSellerBookingAmend()" class="btn btn-primary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem;">Send revised time</button>
-                    <button onclick="hideSellerBookingAmend()" class="btn btn-secondary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem; opacity:0.7;">Cancel</button>
+                    <button type="button" onclick="submitSellerBookingAmend()" class="btn btn-primary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem;">Send revised time</button>
+                    <button type="button" onclick="hideSellerBookingAmend()" class="btn btn-secondary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem; opacity:0.7;">Cancel</button>
                 </div>
             </div>
         ` : '';
-        html = `
-            <div style="display: flex; flex-direction: column; width: 100%; gap: 0.85rem;">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
-                            <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); line-height: 1.2;">${__('deal.says_done', {buyer: buyerName})}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${__('deal.confirm_to_mark', {product: productTitle})}</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0; flex-wrap: wrap;">
-                        <button onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; background: var(--secondary); border-color: var(--secondary);">${__('deal.confirm_delist')}</button>
-                        ${deal.listing_type === 'service' ? '<button onclick="showSellerBookingAmend()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem;">Amend</button>' : ''}
-                        <button onclick="collapseHandshake()" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; border-radius: var(--radius-lg); padding: 0.4rem 1rem; opacity: 0.7;">${__('deal.not_done_yet')}</button>
-                    </div>
+
+        sheetHtml = `
+            <div class="deal-sheet-flow">
+                <p class="deal-sheet-explainer">${__('chat.orders_deal_explainer')}</p>
+                <div class="deal-sheet-prompt-card deal-sheet-prompt-card--success">
+                    <div class="deal-sheet-prompt-title">${__('deal.says_done', {buyer: buyerName})}</div>
+                    <div class="deal-sheet-prompt-desc">${__('deal.confirm_to_mark', {product: productTitle})}</div>
                 </div>
                 ${serviceAdjustmentBlock}
+                <div class="deal-sheet-actions">
+                    <button type="button" onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-md w-full" style="background: var(--secondary); border-color: var(--secondary);">${__('deal.confirm_delist')}</button>
+                    ${deal.listing_type === 'service' ? '<button type="button" onclick="showSellerBookingAmend()" class="btn btn-secondary btn-md w-full">Amend Proposed Time</button>' : ''}
+                    <button type="button" onclick="closeDealSheet()" class="btn btn-secondary btn-md w-full">${__('deal.not_done_yet')}</button>
+                </div>
+            </div>
+        `;
             </div>
         `;
     } else if (status === 'completed') {
-        borderStyle = 'border-left: 4px solid var(--secondary); background: var(--bg-surface);';
-        html = `
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div class="flex items-center justify-center rounded-lg w-10 h-10 shadow-sm" style="background: var(--bg-surface); color: var(--secondary); border: 1px solid var(--border-light);">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+        bannerHtml = `
+            <div class="chat-deal-banner chat-deal-banner--completed" onclick="openDealSheet()">
+                <div class="chat-deal-banner__info">
+                    <span class="chat-deal-banner__icon">✅</span>
+                    <div class="chat-deal-banner__texts">
+                        <span class="chat-deal-banner__headline">${__('deal.deal_confirmed')}</span>
+                        <span class="chat-deal-banner__sub">${__('deal.item_marked_sold')}</span>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--secondary); line-height: 1.2;">${__('deal.deal_confirmed')}</div>
-                    <div style="font-weight: 500; font-size: 0.75rem; color: var(--text-muted);">${__('deal.item_marked_sold')}</div>
+                <span class="chat-deal-banner__badge chat-deal-banner__badge--success">✓ ${__('deal.deal_info')}</span>
+            </div>
+        `;
+
+        sheetHtml = `
+            <div class="deal-sheet-flow">
+                <div class="deal-sheet-prompt-card deal-sheet-prompt-card--success">
+                    <div class="deal-sheet-prompt-title" style="color: var(--secondary);">${__('deal.deal_confirmed')}</div>
+                    <div class="deal-sheet-prompt-desc">${__('deal.item_marked_sold')}</div>
+                </div>
+                <div class="deal-sheet-actions">
+                    <button type="button" onclick="closeDealSheet()" class="btn btn-secondary btn-md w-full">${__('common.close') || 'Close'}</button>
                 </div>
             </div>
         `;
     } else {
         handshakeBar.hidden = true;
         handshakeBar.style.display = 'none';
+        closeDealSheet();
         return;
     }
 
-    handshakeBar.innerHTML = dealExplainerHtml + html;
+    handshakeBar.innerHTML = bannerHtml;
+    dealSheetBody.innerHTML = sheetHtml;
 }
 
 function openProductSelector() {
-    document.getElementById('choose-product-initial').style.display = 'none';
-    document.getElementById('choose-product-selector').style.display = 'flex';
+    const initView = document.getElementById('choose-product-initial');
+    const selectView = document.getElementById('choose-product-selector');
+    if (initView) initView.style.display = 'none';
+    if (selectView) selectView.style.display = 'block';
     
     const select = document.getElementById('deal-product-select');
+    if (!select) return;
     
     fetch('api_messages.php?action=get_active_products&other_user_id=' + otherUserId)
         .then(res => res.json())
@@ -1018,13 +1092,15 @@ function openProductSelector() {
 }
 
 function cancelChooseProduct() {
-    document.getElementById('choose-product-selector').style.display = 'none';
-    document.getElementById('choose-product-initial').style.display = 'flex';
+    const initView = document.getElementById('choose-product-initial');
+    const selectView = document.getElementById('choose-product-selector');
+    if (selectView) selectView.style.display = 'none';
+    if (initView) initView.style.display = 'block';
 }
 
 function submitChosenProduct() {
     const select = document.getElementById('deal-product-select');
-    if (select.selectedIndex <= 0) return;
+    if (!select || select.selectedIndex <= 0) return;
     
     const option = select.options[select.selectedIndex];
     const prodId = option.value;
@@ -1118,6 +1194,7 @@ function confirmDeal(prodId = null, isSellerOverride = null) {
                         posthog.capture('deal_confirmed', { listing_id: finalProductId });
                     }
                 }
+                closeDealSheet();
                 checkDealStatus();
             } else {
                 alert('Error: ' + (data.error || 'Unknown'));
