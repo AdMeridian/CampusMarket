@@ -220,7 +220,9 @@
 
     pill.innerHTML = `
       <div class="cm-pwa-pill-media">
-        <div class="cm-pwa-pill-icon">📱</div>
+        <div class="cm-pwa-pill-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
         <div class="cm-pwa-pill-text">
           <span class="cm-pwa-pill-title">${escapeHtml(title)}</span>
           <span class="cm-pwa-pill-desc">${escapeHtml(desc)}</span>
@@ -268,7 +270,7 @@
     backdrop.innerHTML = `
       <div class="cm-pwa-ios-card">
         <div class="cm-pwa-ios-header">
-          <h3>📱 ${escapeHtml(title)}</h3>
+          <h3>${escapeHtml(title)}</h3>
           <button type="button" class="cm-pwa-pill-close-btn" id="cm-pwa-ios-close">&times;</button>
         </div>
         <div class="cm-pwa-ios-steps">
@@ -324,7 +326,7 @@
     backdrop.innerHTML = `
       <div class="cm-pwa-ios-card" style="align-self: center; margin-bottom: 0;">
         <div class="cm-pwa-ios-header">
-          <h3>💻 ${escapeHtml(title)}</h3>
+          <h3>${escapeHtml(title)}</h3>
           <button type="button" class="cm-pwa-pill-close-btn" id="cm-pwa-desktop-close">&times;</button>
         </div>
         <div class="cm-pwa-ios-steps">
