@@ -3731,10 +3731,28 @@ body.page-chat .chat-send-btn {
     border-left: none;
     border-right: none;
     box-shadow: none;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
   }
 
   body.page-chat .chat-composer-header {
     padding-top: max(0.65rem, env(safe-area-inset-top));
+    flex-shrink: 0;
+  }
+
+  /* Reduced scrollable message area height on mobile to keep header and input pinned */
+  body.page-chat .chat-messages,
+  body.page-chat #chat-box {
+    flex: 1 1 auto;
+    max-height: calc(100dvh - 19rem);
+    min-height: 120px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.page-chat .chat-input-bar {
+    flex-shrink: 0;
   }
 }
 
