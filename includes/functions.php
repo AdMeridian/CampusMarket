@@ -934,10 +934,9 @@ function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
             OR (p.is_featured = TRUE{$featuredWindowFilter})
           )
         ORDER BY 
-            p.is_featured DESC, 
-            p.discount_percent DESC NULLS LAST, 
-            p.discount_set_at DESC NULLS LAST, 
-            p.created_at DESC
+            COALESCE(p.discount_set_at, p.created_at) DESC,
+            p.discount_percent DESC,
+            p.is_featured DESC
         LIMIT :limit
     ");
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
