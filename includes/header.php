@@ -412,6 +412,9 @@ $navCategories = getNavCategories($pdo);
                         </div>
 
                         <div class="user-dropdown-footer">
+                            <button type="button" class="user-dropdown-item cm-pwa-install-btn" style="display: none;" onclick="triggerPwaInstall()">
+                                <span>📱 <?= __('nav.install_app') ?></span>
+                            </button>
                             <a href="<?php echo BASE_URL; ?>pages/messages.php?other_user_id=1&product_id=0" class="user-dropdown-item user-dropdown-item--support"><?= __('nav.contact_support') ?></a>
                             <a href="<?php echo BASE_URL; ?>pages/logout.php" class="user-dropdown-item user-dropdown-item--logout"><?= __('nav.logout') ?></a>
                         </div>
@@ -419,6 +422,9 @@ $navCategories = getNavCategories($pdo);
                 </div>
                 <?php endif; ?>
                 <?php if (!isLoggedIn()): ?>
+                    <button type="button" class="mobile-nav-link cm-pwa-install-btn" style="display: none;" onclick="triggerPwaInstall()">
+                        <span>📱 <?= __('nav.install_app') ?></span>
+                    </button>
                     <a href="<?php echo BASE_URL; ?>pages/login.php" class="mobile-nav-link"><?= __('nav.login') ?></a>
                     <a href="<?php echo BASE_URL; ?>pages/register.php" class="mobile-nav-link mobile-nav-link--cta btn btn-primary btn-sm"><?= __('nav.signup') ?></a>
                 <?php endif; ?>
