@@ -1105,13 +1105,104 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
 }
 
 /**
- * Fetch the latest active products without a recent-time window.
+ * Fetch admin-curated fallback products for recent listings section.
  */
-function getLatestActiveProducts(PDO $pdo, int $limit = 8): array {
-    $stmt = $pdo->prepare("\n        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name\n        FROM products p\n        JOIN categories c ON p.category_id = c.id\n        JOIN users u ON p.user_id = u.id\n        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE\n        WHERE p.status = 'active'\n        ORDER BY p.created_at DESC\n        LIMIT :limit\n    ");
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->execute();
+function getCuratedRecentProducts(PDO $pdo, int $limit = 8, array $excludeIds = []): array {
+    if ($limit <= 0) {
+        return [];
+    }
+
+    $excludeSql = '';
+    $params = [];
+    $cleanExclude = array_values(array_filter(array_map('intval', $excludeIds), fn($id) => $id > 0));
+    if (!empty($cleanExclude)) {
+        $placeholders = implode(',', array_fill(0, count($cleanExclude), '?'));
+        $excludeSql = " AND p.id NOT IN ($placeholders)";
+        $params = $cleanExclude;
+    }
+
+    try {
+        $sql = "
+            SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.id
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+            WHERE p.status = 'active' AND p.is_recent_fallback = TRUE{$excludeSql}
+            ORDER BY p.created_at DESC
+            LIMIT " . (int)$limit;
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    } catch (PDOException $e) {
+        // Fallback gracefully if is_recent_fallback column is not yet present
+        return [];
+    }
+}
+
+/**
+ * Fetch the latest active products without a recent-time window (with optional exclude IDs).
+ */
+function getLatestActiveProducts(PDO $pdo, int $limit = 8, array $excludeIds = []): array {
+    if ($limit <= 0) {
+        return [];
+    }
+
+    $excludeSql = '';
+    $params = [];
+    $cleanExclude = array_values(array_filter(array_map('intval', $excludeIds), fn($id) => $id > 0));
+    if (!empty($cleanExclude)) {
+        $placeholders = implode(',', array_fill(0, count($cleanExclude), '?'));
+        $excludeSql = " AND p.id NOT IN ($placeholders)";
+        $params = $cleanExclude;
+    }
+
+    $sql = "
+        SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        WHERE p.status = 'active'{$excludeSql}
+        ORDER BY p.created_at DESC
+        LIMIT " . (int)$limit;
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     return $stmt->fetchAll();
+}
+
+/**
+ * Smart backfill for homepage recent listings:
+ * 1. Fetch truly new listings from the last N days (default 7 days).
+ * 2. If below limit, backfill with active admin-curated fallback listings.
+ * 3. If still below limit, fill remaining slots with latest active platform listings.
+ */
+function getHomepageRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): array {
+    $recent = getRecentProducts($pdo, $limit, $withinDays);
+
+    if (count($recent) < $limit) {
+        $needed = $limit - count($recent);
+        $seenIds = array_map('intval', array_column($recent, 'id'));
+        $curated = getCuratedRecentProducts($pdo, $needed, $seenIds);
+
+        if (!empty($curated)) {
+            $recent = array_merge($recent, $curated);
+        }
+    }
+
+    if (count($recent) < $limit) {
+        $needed = $limit - count($recent);
+        $seenIds = array_map('intval', array_column($recent, 'id'));
+        $fallbackLatest = getLatestActiveProducts($pdo, $needed, $seenIds);
+
+        if (!empty($fallbackLatest)) {
+            $recent = array_merge($recent, $fallbackLatest);
+        }
+    }
+
+    return $recent;
 }
 
 /**

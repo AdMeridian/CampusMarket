@@ -151,6 +151,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 setFlash('error', 'Listing not found or is not active.');
             }
+        } elseif ($action === 'toggle_recent_fallback') {
+            $stmt = $pdo->prepare("SELECT id, title, is_recent_fallback FROM products WHERE id = ?");
+            $stmt->execute([$id]);
+            $prod = $stmt->fetch();
+            if ($prod) {
+                $newState = empty($prod['is_recent_fallback']) ? 1 : 0;
+                $updateStmt = $pdo->prepare("UPDATE products SET is_recent_fallback = ? WHERE id = ?");
+                $updateStmt->execute([$newState, $id]);
+                logAdminAction($pdo, 'toggle_recent_fallback', 'product', $id, [
+                    'title' => $prod['title'],
+                    'is_recent_fallback' => (bool)$newState
+                ]);
+                if ($newState) {
+                    setFlash('success', __('admin.flash_recent_fallback_added'));
+                } else {
+                    setFlash('success', __('admin.flash_recent_fallback_removed'));
+                }
+            } else {
+                setFlash('error', 'Listing not found.');
+            }
         }
     }
 
@@ -159,10 +179,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch Listings
 $statusFilter = sanitize($_GET['status'] ?? '');
-$allowedStatuses = ['pending_approval', 'active', 'flagged', 'sold', 'deleted'];
+$allowedStatuses = ['pending_approval', 'active', 'flagged', 'sold', 'deleted', 'recent_fallback'];
 $whereSql = '';
 $params = [];
-if ($statusFilter !== '' && in_array($statusFilter, $allowedStatuses, true)) {
+if ($statusFilter === 'recent_fallback') {
+    $whereSql = 'WHERE p.is_recent_fallback = TRUE AND p.status = \'active\'';
+} elseif ($statusFilter !== '' && in_array($statusFilter, $allowedStatuses, true)) {
     $whereSql = 'WHERE p.status = :status';
     $params[':status'] = $statusFilter;
 }
@@ -198,6 +220,12 @@ $stmt->execute($params);
 $listings = $stmt->fetchAll();
 
 $pendingCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE status = 'pending_approval'")->fetchColumn();
+$fallbackCount = 0;
+try {
+    $fallbackCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE is_recent_fallback = TRUE AND status = 'active'")->fetchColumn();
+} catch (PDOException $e) {
+    $fallbackCount = 0;
+}
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -220,6 +248,9 @@ require_once __DIR__ . '/../includes/header.php';
             Pending approval<?= $pendingCount > 0 ? ' (' . $pendingCount . ')' : '' ?>
         </a>
         <a href="listings.php?status=active" class="btn btn-sm <?= $statusFilter === 'active' ? 'btn-primary' : 'btn-secondary' ?>">Active</a>
+        <a href="listings.php?status=recent_fallback" class="btn btn-sm <?= $statusFilter === 'recent_fallback' ? 'btn-primary' : 'btn-secondary' ?>">
+            📌 Recent Fallback<?= $fallbackCount > 0 ? ' (' . $fallbackCount . ')' : '' ?>
+        </a>
     </nav>
 
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
@@ -248,6 +279,9 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?php endif; ?>
                                 <?php if ((int)$item['available_promo_credits'] > 0): ?>
                                     <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><?php echo (int)$item['available_promo_credits']; ?> Promo Credit</span>
+                                <?php endif; ?>
+                                <?php if (!empty($item['is_recent_fallback'])): ?>
+                                    <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);" title="Included in Recent Listings Fallback">📌 Recent Fallback</span>
                                 <?php endif; ?>
                                 <?php if ($item['status'] === 'pending_approval'): ?>
                                     <span class="badge badge-pending" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);">Pending Approval</span>
@@ -280,6 +314,19 @@ require_once __DIR__ . '/../includes/header.php';
                                         <input type="hidden" name="action" value="approve">
                                         <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
                                         <button type="submit" class="btn btn-success btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Approve Listing">Approve</button>
+                                    </form>
+                                <?php endif; ?>
+
+                                <?php if ($item['status'] === 'active'): ?>
+                                    <form method="POST" style="margin: 0; display: inline-block;">
+                                        <?php echo csrfTokenField(); ?>
+                                        <input type="hidden" name="action" value="toggle_recent_fallback">
+                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <?php if (!empty($item['is_recent_fallback'])): ?>
+                                            <button type="submit" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;" title="Remove from Recent Listings Fallback">📌 Fallback ON</button>
+                                        <?php else: ?>
+                                            <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Add to Recent Listings Fallback">📌 +Fallback</button>
+                                        <?php endif; ?>
                                     </form>
                                 <?php endif; ?>
 

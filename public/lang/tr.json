@@ -475,5 +475,8 @@
     "create_listing.custom_location_placeholder": "ör. Kampüs Kütüphanesi, Yurt 3, Girne Limanı",
     "create_listing.custom_location_required": "Lütfen 'Diğer' seçeneğini seçtiğinizde konumunuzu girin.",
     "profile.custom_home_town_label": "Belirli Konum",
-    "profile.custom_home_town_placeholder": "ör. Kampüs, Lefkoşa Merkez"
+    "profile.custom_home_town_placeholder": "ör. Kampüs, Lefkoşa Merkez",
+    "admin.recent_fallback": "Son İlanlar Yedeği",
+    "admin.flash_recent_fallback_added": "İlan Son İlanlar vitrini yedek listesine eklendi.",
+    "admin.flash_recent_fallback_removed": "İlan Son İlanlar vitrini yedek listesinden kaldırıldı."
 }
