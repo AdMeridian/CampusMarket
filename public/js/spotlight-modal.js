@@ -61,9 +61,15 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success && Array.isArray(data.products) && data.products.length > 0) {
-                    const currentIds = data.products.map(p => p.id);
                     const seenIds = getSeenIds();
-                    const hasNewItems = currentIds.some(id => !seenIds.includes(id));
+                    
+                    // Sort unseen/new products to the front so user sees fresh deals first
+                    const unseen = data.products.filter(p => !seenIds.includes(p.id));
+                    const seen = data.products.filter(p => seenIds.includes(p.id));
+                    const orderedProducts = [...unseen, ...seen];
+                    const currentIds = orderedProducts.map(p => p.id);
+
+                    const hasNewItems = unseen.length > 0;
                     const cooldownActive = isCooldownActive();
 
                     // If cooldown is active AND there are no new items, do not show
@@ -71,7 +77,7 @@
                         return;
                     }
 
-                    renderModal(data.products, currentIds);
+                    renderModal(orderedProducts, currentIds);
                 }
             })
             .catch(() => {

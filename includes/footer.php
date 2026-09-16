@@ -73,6 +73,19 @@
 
 <script>
 const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
+window.__pwaI18n = <?php echo json_encode([
+    'installTitle' => __('pwa.install_title'),
+    'installDesc' => __('pwa.install_desc'),
+    'installBtn' => __('pwa.install_btn'),
+    'maybeLater' => __('pwa.maybe_later'),
+    'iosTitle' => __('pwa.ios_instructions_title'),
+    'iosStep1' => __('pwa.ios_step_1'),
+    'iosStep2' => __('pwa.ios_step_2'),
+    'iosGotIt' => __('pwa.ios_got_it'),
+    'desktopTitle' => __('pwa.desktop_instructions_title'),
+    'desktopStep1' => __('pwa.desktop_step_1'),
+    'desktopStep2' => __('pwa.desktop_step_2'),
+], JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <?php
     $pwaJsPath = __DIR__ . '/../public/js/pwa.js';

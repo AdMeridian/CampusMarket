@@ -480,5 +480,20 @@
     "create_listing.custom_location_placeholder": "e.g., Campus Library, Dorm 3, Kyrenia Harbor",
     "create_listing.custom_location_required": "Please enter your location when choosing 'Other'.",
     "profile.custom_home_town_label": "Specific Location",
-    "profile.custom_home_town_placeholder": "e.g., Campus, Nicosia Center"
+    "profile.custom_home_town_placeholder": "e.g., Campus, Nicosia Center",
+    "admin.recent_fallback": "Recent Fallback",
+    "admin.flash_recent_fallback_added": "Listing added to Recent Listings fallback showcase.",
+    "admin.flash_recent_fallback_removed": "Listing removed from Recent Listings fallback showcase.",
+    "nav.install_app": "Install App",
+    "pwa.install_title": "Install CampusMarket",
+    "pwa.install_desc": "Faster browsing and instant alerts on your device.",
+    "pwa.install_btn": "Install",
+    "pwa.maybe_later": "Maybe later",
+    "pwa.ios_instructions_title": "Install on iPhone / iPad",
+    "pwa.ios_step_1": "Tap the Share button in Safari toolbar",
+    "pwa.ios_step_2": "Scroll down and tap 'Add to Home Screen'",
+    "pwa.ios_got_it": "Got it",
+    "pwa.desktop_instructions_title": "Install CampusMarket on Desktop",
+    "pwa.desktop_step_1": "Look at the right side of your browser's address bar",
+    "pwa.desktop_step_2": "Click the Install icon (⊕) or browser menu (⋮) → 'Install CampusMarket'"
 }

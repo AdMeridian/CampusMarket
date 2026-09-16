@@ -475,5 +475,20 @@
     "create_listing.custom_location_placeholder": "ör. Kampüs Kütüphanesi, Yurt 3, Girne Limanı",
     "create_listing.custom_location_required": "Lütfen 'Diğer' seçeneğini seçtiğinizde konumunuzu girin.",
     "profile.custom_home_town_label": "Belirli Konum",
-    "profile.custom_home_town_placeholder": "ör. Kampüs, Lefkoşa Merkez"
+    "profile.custom_home_town_placeholder": "ör. Kampüs, Lefkoşa Merkez",
+    "admin.recent_fallback": "Son İlanlar Yedeği",
+    "admin.flash_recent_fallback_added": "İlan Son İlanlar vitrini yedek listesine eklendi.",
+    "admin.flash_recent_fallback_removed": "İlan Son İlanlar vitrini yedek listesinden kaldırıldı.",
+    "nav.install_app": "Uygulamayı Yükle",
+    "pwa.install_title": "CampusMarket'i Yükle",
+    "pwa.install_desc": "Cihazınızda daha hızlı gezinme ve anlık bildirimler.",
+    "pwa.install_btn": "Yükle",
+    "pwa.maybe_later": "Daha sonra",
+    "pwa.ios_instructions_title": "iPhone / iPad'e Yükleyin",
+    "pwa.ios_step_1": "Safari alt çubuğundaki Paylaş düğmesine dokunun",
+    "pwa.ios_step_2": "Aşağı kaydırın ve 'Ana Ekrana Ekle'ye dokunun",
+    "pwa.ios_got_it": "Anladım",
+    "pwa.desktop_instructions_title": "CampusMarket'i Masaüstüne Yükleyin",
+    "pwa.desktop_step_1": "Tarayıcı adres çubuğunun sağ tarafına bakın",
+    "pwa.desktop_step_2": "Yükle simgesine (⊕) veya menüye (⋮) → 'CampusMarket'i Yükle'ye tıklayın"
 }

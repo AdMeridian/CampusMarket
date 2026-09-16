@@ -349,6 +349,31 @@ if (!function_exists('ensureMessageReplyColumn')) {
     }
 }
 
+if (!function_exists('ensureRecentFallbackColumn')) {
+    function ensureRecentFallbackColumn(PDO $pdo): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $pdo->exec("ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_recent_fallback BOOLEAN NOT NULL DEFAULT FALSE");
+            } else {
+                $check = $pdo->prepare(
+                    "SELECT COUNT(*) FROM information_schema.columns " .
+                    "WHERE table_schema = DATABASE() AND table_name = 'products' AND column_name = 'is_recent_fallback'"
+                );
+                $check->execute();
+                if ((int) $check->fetchColumn() === 0) {
+                    $pdo->exec("ALTER TABLE products ADD COLUMN is_recent_fallback TINYINT(1) NOT NULL DEFAULT 0");
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Recent fallback column bootstrap warning: ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('connectDatabase')) {
     function connectDatabase(): PDO {
         $config = resolveDatabaseConfig();
@@ -393,6 +418,7 @@ if (!function_exists('connectDatabase')) {
                     ensureProductCategoriesTable($pdo);
                     ensureCustomLocationColumns($pdo);
                     ensureMessageReplyColumn($pdo);
+                    ensureRecentFallbackColumn($pdo);
                 } catch (Throwable $ensureError) {
                     error_log('Schema bootstrap failed: ' . $ensureError->getMessage());
                 }
