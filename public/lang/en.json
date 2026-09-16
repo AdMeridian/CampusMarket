@@ -492,5 +492,8 @@
     "pwa.ios_instructions_title": "Install on iPhone / iPad",
     "pwa.ios_step_1": "Tap the Share button in Safari toolbar",
     "pwa.ios_step_2": "Scroll down and tap 'Add to Home Screen'",
-    "pwa.ios_got_it": "Got it"
+    "pwa.ios_got_it": "Got it",
+    "pwa.desktop_instructions_title": "Install CampusMarket on Desktop",
+    "pwa.desktop_step_1": "Look at the right side of your browser's address bar",
+    "pwa.desktop_step_2": "Click the Install icon (⊕) or browser menu (⋮) → 'Install CampusMarket'"
 }

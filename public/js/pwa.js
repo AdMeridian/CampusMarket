@@ -302,6 +302,62 @@
     });
   }
 
+  function showDesktopInstructions() {
+    var existing = document.getElementById("cm-pwa-desktop-modal");
+    if (existing) {
+      existing.classList.add("is-open");
+      return;
+    }
+
+    var i18n = window.__pwaI18n || {};
+    var title = i18n.desktopTitle || "Install CampusMarket on Desktop";
+    var step1 = i18n.desktopStep1 || "Look at the right side of your browser's address bar";
+    var step2 = i18n.desktopStep2 || "Click the Install icon (⊕) or browser menu (⋮) → 'Install CampusMarket'";
+    var gotIt = i18n.iosGotIt || "Got it";
+
+    var backdrop = document.createElement("div");
+    backdrop.id = "cm-pwa-desktop-modal";
+    backdrop.className = "cm-pwa-ios-backdrop";
+    backdrop.setAttribute("role", "dialog");
+    backdrop.setAttribute("aria-modal", "true");
+
+    backdrop.innerHTML = `
+      <div class="cm-pwa-ios-card" style="align-self: center; margin-bottom: 0;">
+        <div class="cm-pwa-ios-header">
+          <h3>💻 ${escapeHtml(title)}</h3>
+          <button type="button" class="cm-pwa-pill-close-btn" id="cm-pwa-desktop-close">&times;</button>
+        </div>
+        <div class="cm-pwa-ios-steps">
+          <div class="cm-pwa-ios-step">
+            <div class="cm-pwa-ios-step-num">1</div>
+            <div class="cm-pwa-ios-step-text">${escapeHtml(step1)}</div>
+          </div>
+          <div class="cm-pwa-ios-step">
+            <div class="cm-pwa-ios-step-num">2</div>
+            <div class="cm-pwa-ios-step-text">${escapeHtml(step2)}</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary w-full" id="cm-pwa-desktop-confirm" style="border-radius: var(--radius-lg); padding: 0.75rem; font-weight: 700;">${escapeHtml(gotIt)}</button>
+      </div>
+    `;
+
+    document.body.appendChild(backdrop);
+
+    function closeDesktopModal() {
+      backdrop.classList.remove("is-open");
+    }
+
+    backdrop.querySelector("#cm-pwa-desktop-close").addEventListener("click", closeDesktopModal);
+    backdrop.querySelector("#cm-pwa-desktop-confirm").addEventListener("click", closeDesktopModal);
+    backdrop.addEventListener("click", function (e) {
+      if (e.target === backdrop) closeDesktopModal();
+    });
+
+    requestAnimationFrame(function () {
+      backdrop.classList.add("is-open");
+    });
+  }
+
   function escapeHtml(str) {
     var div = document.createElement("div");
     div.textContent = str || "";
@@ -321,10 +377,7 @@
     } else if (isIosSafari()) {
       showIosInstructions();
     } else {
-      // Fallback tip for desktop or browsers without deferred prompt
-      if (window.confirm("To install CampusMarket as an app, look for the install icon (⊕) in your browser address bar or menu. Continue?")) {
-        // User acknowledged
-      }
+      showDesktopInstructions();
     }
   };
 

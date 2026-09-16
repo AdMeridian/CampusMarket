@@ -82,6 +82,9 @@ window.__pwaI18n = <?php echo json_encode([
     'iosStep1' => __('pwa.ios_step_1'),
     'iosStep2' => __('pwa.ios_step_2'),
     'iosGotIt' => __('pwa.ios_got_it'),
+    'desktopTitle' => __('pwa.desktop_instructions_title'),
+    'desktopStep1' => __('pwa.desktop_step_1'),
+    'desktopStep2' => __('pwa.desktop_step_2'),
 ], JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <?php
