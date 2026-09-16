@@ -1106,6 +1106,7 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
 
 /**
  * Fetch admin-curated fallback products for recent listings section.
+ * Samples randomly from active curated items so users see variety across visits.
  */
 function getCuratedRecentProducts(PDO $pdo, int $limit = 8, array $excludeIds = []): array {
     if ($limit <= 0) {
@@ -1122,6 +1123,7 @@ function getCuratedRecentProducts(PDO $pdo, int $limit = 8, array $excludeIds = 
     }
 
     try {
+        $poolLimit = max($limit * 3, 24);
         $sql = "
             SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
             FROM products p
@@ -1130,11 +1132,22 @@ function getCuratedRecentProducts(PDO $pdo, int $limit = 8, array $excludeIds = 
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
             WHERE p.status = 'active' AND p.is_recent_fallback = TRUE{$excludeSql}
             ORDER BY p.created_at DESC
-            LIMIT " . (int)$limit;
+            LIMIT " . (int)$poolLimit;
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll();
+        $curatedPool = $stmt->fetchAll();
+
+        if (empty($curatedPool)) {
+            return [];
+        }
+
+        // Shuffle curated items so different items rotate on each visit
+        if (count($curatedPool) > 1) {
+            shuffle($curatedPool);
+        }
+
+        return array_slice($curatedPool, 0, $limit);
     } catch (PDOException $e) {
         // Fallback gracefully if is_recent_fallback column is not yet present
         return [];
@@ -1176,10 +1189,11 @@ function getLatestActiveProducts(PDO $pdo, int $limit = 8, array $excludeIds = [
 /**
  * Smart backfill for homepage recent listings:
  * 1. Fetch truly new listings from the last N days (default 7 days).
- * 2. If below limit, backfill with active admin-curated fallback listings.
+ * 2. If below limit, backfill with active admin-curated fallback listings (randomly sampled from curated pool).
  * 3. If still below limit, fill remaining slots with latest active platform listings.
+ * 4. Shuffles arrangement so users don't see the exact same layout on every visit.
  */
-function getHomepageRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): array {
+function getHomepageRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null, bool $shuffle = true): array {
     $recent = getRecentProducts($pdo, $limit, $withinDays);
 
     if (count($recent) < $limit) {
@@ -1200,6 +1214,10 @@ function getHomepageRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = 
         if (!empty($fallbackLatest)) {
             $recent = array_merge($recent, $fallbackLatest);
         }
+    }
+
+    if ($shuffle && count($recent) > 1) {
+        shuffle($recent);
     }
 
     return $recent;
