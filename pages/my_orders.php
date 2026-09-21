@@ -269,7 +269,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($buyingOrders); ?> Orders</div>
             </div>
 
-            <div class="flex flex-col gap-5">
+            <div class="flex flex-col gap-5 order-hub-list">
                 <?php if (empty($buyingOrders)): ?>
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
                         <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
@@ -348,7 +348,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($sellingOrders) + count($manualSales); ?> Sales</div>
             </div>
 
-            <div class="flex flex-col gap-5">
+            <div class="flex flex-col gap-5 order-hub-list">
                 <?php if (empty($sellingOrders) && empty($manualSales)): ?>
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
                         <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
