@@ -692,8 +692,9 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
 /**
  * Fetch approved active wanted item requests (buyer suggestions) for site-wide display.
  */
-function getActiveWantedItemRequests(PDO $pdo, int $limit = 6): array {
+function getActiveWantedItemRequests(PDO $pdo, int $limit = 6, bool $shuffle = true): array {
     try {
+        $fetchLimit = $shuffle ? max($limit * 3, 16) : max(1, $limit);
         $stmt = $pdo->prepare("
             SELECT id, search_term, category_id, created_at, expires_at
             FROM wanted_item_requests
@@ -702,9 +703,16 @@ function getActiveWantedItemRequests(PDO $pdo, int $limit = 6): array {
             ORDER BY created_at DESC
             LIMIT :limit
         ");
-        $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $fetchLimit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($shuffle && count($requests) > 1) {
+            shuffle($requests);
+            $requests = array_slice($requests, 0, $limit);
+        }
+
+        return $requests;
     } catch (Throwable $e) {
         return [];
     }
@@ -1225,9 +1233,10 @@ function getHomepageRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = 
 /**
  * Top categories with a preview of their newest active listings for the homepage.
  */
-function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $productsPerCategory = 5): array {
+function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $productsPerCategory = 5, bool $shuffle = true): array {
     $categoryLimit = max(1, $categoryLimit);
     $productsPerCategory = max(1, $productsPerCategory);
+    $poolLimit = $shuffle ? max($productsPerCategory * 3, 15) : $productsPerCategory;
     $sections = [];
 
     foreach (getTopCategories($pdo) as $category) {
@@ -1246,13 +1255,19 @@ function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $prod
             LIMIT :limit
         ");
         $stmt->bindValue(':category_id', (int) $category['id'], PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $productsPerCategory, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $poolLimit, PDO::PARAM_INT);
         $stmt->execute();
+        $prods = $stmt->fetchAll();
+
+        if ($shuffle && count($prods) > 1) {
+            shuffle($prods);
+            $prods = array_slice($prods, 0, $productsPerCategory);
+        }
 
         $sections[] = [
             'id' => (int) $category['id'],
             'name' => $category['name'],
-            'products' => $stmt->fetchAll(),
+            'products' => $prods,
         ];
 
         if (count($sections) >= $categoryLimit) {
@@ -1266,7 +1281,7 @@ function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $prod
 /**
  * Fetch featured products for the homepage scroller
  */
-function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
+function getFeaturedProducts(PDO $pdo, int $limit = 6, bool $shuffle = true): array {
     static $hasFeaturedUntil = null;
     if ($hasFeaturedUntil === null) {
         $colStmt = $pdo->prepare("
@@ -1285,6 +1300,8 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         ? " AND (p.featured_until IS NULL OR p.featured_until > NOW())"
         : "";
 
+    $fetchLimit = $shuffle ? max($limit * 3, 24) : $limit;
+
     $stmt = $pdo->prepare("
         SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
@@ -1295,9 +1312,16 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $fetchLimit, PDO::PARAM_INT);
     $stmt->execute();
-    return $stmt->fetchAll();
+    $products = $stmt->fetchAll();
+
+    if ($shuffle && count($products) > 1) {
+        shuffle($products);
+        $products = array_slice($products, 0, $limit);
+    }
+
+    return $products;
 }
 
 /**

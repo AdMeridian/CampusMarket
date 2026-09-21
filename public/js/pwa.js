@@ -5,6 +5,7 @@
   var installIdKey = "campusmarket_pwa_installation_id";
   var heartbeatKey = "campusmarket_pwa_last_heartbeat";
   var pillDismissedKey = "campusmarket_pwa_pill_dismissed_at";
+  var installedKey = "campusmarket_pwa_is_installed";
   var PILL_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
   var deferredInstallPrompt = null;
@@ -48,6 +49,28 @@
       }
     } catch (_) {}
     return false;
+  }
+
+  function isAppInstalled() {
+    if (isStandaloneMode()) {
+      try {
+        window.localStorage.setItem(installedKey, "1");
+      } catch (_) {}
+      return true;
+    }
+    try {
+      return window.localStorage.getItem(installedKey) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function markAppInstalled() {
+    try {
+      window.localStorage.setItem(installedKey, "1");
+    } catch (_) {}
+    dismissPill();
+    hideMenuInstallButtons();
   }
 
   function isIosSafari() {
@@ -153,7 +176,10 @@
   // ─── PWA Install Prompt & UI Flow ──────────────────────
 
   function showMenuInstallButtons() {
-    if (isStandaloneMode()) return;
+    if (isAppInstalled()) {
+      hideMenuInstallButtons();
+      return;
+    }
     document.querySelectorAll(".cm-pwa-install-btn").forEach(function (btn) {
       btn.style.display = "";
     });
@@ -189,7 +215,7 @@
   }
 
   function showFloatingPill() {
-    if (isStandaloneMode() || isPillCooldownActive()) {
+    if (isAppInstalled() || isPillCooldownActive()) {
       return;
     }
 
@@ -371,8 +397,7 @@
       deferredInstallPrompt.prompt();
       deferredInstallPrompt.userChoice.then(function (choice) {
         if (choice.outcome === "accepted") {
-          dismissPill();
-          hideMenuInstallButtons();
+          markAppInstalled();
         }
         deferredInstallPrompt = null;
       });
@@ -387,11 +412,16 @@
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
     deferredInstallPrompt = e;
-    showMenuInstallButtons();
-    setTimeout(showFloatingPill, 6000);
+    try {
+      window.localStorage.removeItem(installedKey);
+    } catch (_) {}
+    if (!isAppInstalled()) {
+      showMenuInstallButtons();
+      setTimeout(showFloatingPill, 6000);
+    }
   });
 
-  if (isIosSafari() && !isStandaloneMode()) {
+  if (isIosSafari() && !isAppInstalled()) {
     showMenuInstallButtons();
     setTimeout(showFloatingPill, 6000);
   }
@@ -423,11 +453,12 @@
       recordInstallSignal("heartbeat");
       window.addEventListener("appinstalled", function () {
         recordInstallSignal("install");
-        dismissPill();
-        hideMenuInstallButtons();
+        markAppInstalled();
       }, { once: true });
 
-      showMenuInstallButtons();
+      if (isAppInstalled()) {
+        hideMenuInstallButtons();
+      }
 
       navigator.serviceWorker
         .register(window.PWA_SW_URL || "/sw.js")
