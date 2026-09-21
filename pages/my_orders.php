@@ -269,7 +269,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($buyingOrders); ?> Orders</div>
             </div>
 
-            <div class="flex flex-col gap-5">
+            <div class="flex flex-col gap-5 order-hub-list">
                 <?php if (empty($buyingOrders)): ?>
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
                         <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
@@ -278,42 +278,59 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 <?php else: ?>
                     <?php foreach ($buyingOrders as $order): ?>
-                        <div id="order-<?php echo (int)$order['id']; ?>" class="glass-panel p-5 order-hub-card hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid var(--primary); transition: all 0.3s;">
-                            <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
-                                <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="<?php echo sanitize($order['product_title']); ?>">
-                            </div>
-                            <div class="flex-grow order-hub-main">
-                                <div class="order-hub-title-row mb-1">
-                                    <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($order['product_title']); ?></h4>
-                                    <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
+                        <?php
+                        $statusClass = str_replace(' ', '-', $order['status']);
+                        $cardModifier = match($order['status']) {
+                            'pending' => 'order-hub-card--pending',
+                            'completed' => 'order-hub-card--completed',
+                            'cancelled', 'not taken' => 'order-hub-card--cancelled',
+                            default => ''
+                        };
+                        ?>
+                        <div id="order-<?php echo (int)$order['id']; ?>" class="order-hub-card <?php echo $cardModifier; ?>">
+                            <div class="order-hub-card__inner">
+                                <div class="order-hub-card__thumb">
+                                    <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" alt="<?php echo sanitize($order['product_title']); ?>">
                                 </div>
-                                <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></p>
-                                <p class="text-muted small mb-0 flex items-center gap-2">
-                                    <span style="background: rgba(0,0,0,0.03); padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid rgba(0,0,0,0.05);">@<?php echo sanitize($order['seller_name']); ?></span>
-                                    <span>&bull;</span>
-                                    <span><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
-                                </p>
-                                <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
-                                    <p class="text-muted small mb-0 mt-1"><?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></p>
-                                <?php endif; ?>
+                                <div class="order-hub-card__content">
+                                    <div class="order-hub-card__main">
+                                        <h4 class="order-hub-card__title"><?php echo sanitize($order['product_title']); ?></h4>
+                                        <div class="order-hub-card__meta-chips">
+                                            <span class="order-hub-chip">Seller: <strong class="text-main">@<?php echo sanitize($order['seller_name']); ?></strong></span>
+                                            <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
+                                            <?php if (!empty(trim((string)($order['meeting_point'] ?? '')))): ?>
+                                                <span class="order-hub-chip">📍 Meet: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></span>
+                                            <?php endif; ?>
+                                            <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
+                                                <span class="order-hub-chip" style="color: var(--warning);">⏰ <?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="order-hub-card__side">
+                                        <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
+                                        <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
+                                    </div>
+                                </div>
                             </div>
                             <?php if ($order['status'] === 'pending'): ?>
-                                <form method="post" class="ml-2 m-0 order-hub-actions">
-                                    <?php echo csrfTokenField(); ?>
-                                    <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
-                                    <button type="submit" name="action" value="cancel" class="btn btn-danger btn-sm shadow-sm hover-scale order-hub-cancel-btn" style="border-radius: var(--radius-lg); padding: 0; display: flex; align-items: center; justify-content: center;" title="Cancel Order" onclick="return confirm('Cancel this purchase request?')">X</button>
-                                </form>
+                                <div class="order-hub-card__actions">
+                                    <form method="post" class="w-full m-0">
+                                        <?php echo csrfTokenField(); ?>
+                                        <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
+                                        <button type="submit" name="action" value="cancel" class="btn btn-danger btn-sm w-full font-bold" style="border-radius: var(--radius-md); padding: 0.5rem 1rem;" onclick="return confirm('Cancel this purchase request?')">Cancel Purchase Request</button>
+                                    </form>
+                                </div>
                             <?php elseif ($order['status'] === 'completed' && isset($pendingReviewByOrder[(int)$order['id']])): ?>
-                                <div class="order-hub-actions">
-                                <button
-                                    type="button"
-                                    class="btn btn-primary btn-sm shadow-sm hover-scale open-review-btn"
-                                    data-order-id="<?php echo (int)$order['id']; ?>"
-                                    data-product-title="<?php echo htmlspecialchars($order['product_title'], ENT_QUOTES, 'UTF-8'); ?>"
-                                    data-seller-name="<?php echo htmlspecialchars($order['seller_name'], ENT_QUOTES, 'UTF-8'); ?>"
-                                    style="border-radius: var(--radius-lg);">
-                                    Review Seller
-                                </button>
+                                <div class="order-hub-card__actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary btn-sm open-review-btn w-full font-bold"
+                                        data-order-id="<?php echo (int)$order['id']; ?>"
+                                        data-product-title="<?php echo htmlspecialchars($order['product_title'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-seller-name="<?php echo htmlspecialchars($order['seller_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                        style="border-radius: var(--radius-md); padding: 0.5rem 1rem;">
+                                        Review Seller
+                                    </button>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -331,7 +348,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="ml-auto badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);"><?php echo count($sellingOrders) + count($manualSales); ?> Sales</div>
             </div>
 
-            <div class="flex flex-col gap-5">
+            <div class="flex flex-col gap-5 order-hub-list">
                 <?php if (empty($sellingOrders) && empty($manualSales)): ?>
                     <div class="glass-panel p-12 text-center" style="border: 2px dashed rgba(0,0,0,0.05); border-radius: var(--radius-lg);">
                         <div class="mb-4 opacity-50" style="display: flex; justify-content: center; align-items: center;"><svg style="width: 48px; height: 48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
@@ -340,57 +357,75 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                 <?php else: ?>
                     <?php foreach ($sellingOrders as $order): ?>
-                        <div id="order-<?php echo (int)$order['id']; ?>" class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #f59e0b; transition: all 0.3s; <?php echo $order['status'] === 'pending' ? 'background: rgba(245, 158, 11, 0.05);' : ''; ?>">
-                            <div class="flex gap-5 items-start mb-4">
-                                <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
-                                    <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="<?php echo sanitize($order['product_title']); ?>">
+                        <?php
+                        $statusClass = str_replace(' ', '-', $order['status']);
+                        $cardModifier = match($order['status']) {
+                            'pending' => 'order-hub-card--pending',
+                            'completed' => 'order-hub-card--completed',
+                            'cancelled', 'not taken' => 'order-hub-card--cancelled',
+                            default => ''
+                        };
+                        ?>
+                        <div id="order-<?php echo (int)$order['id']; ?>" class="order-hub-card <?php echo $cardModifier; ?>">
+                            <div class="order-hub-card__inner">
+                                <div class="order-hub-card__thumb">
+                                    <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" alt="<?php echo sanitize($order['product_title']); ?>">
                                 </div>
-                                <div class="flex-grow">
-                                    <div class="flex justify-between items-start mb-1">
-                                        <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($order['product_title']); ?></h4>
-                                        <span class="badge badge-<?php echo str_replace(' ', '-', $order['status']); ?> shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;"><?php echo ucfirst($order['status']); ?></span>
+                                <div class="order-hub-card__content">
+                                    <div class="order-hub-card__main">
+                                        <h4 class="order-hub-card__title"><?php echo sanitize($order['product_title']); ?></h4>
+                                        <div class="order-hub-card__meta-chips">
+                                            <span class="order-hub-chip">Buyer: <strong class="text-main">@<?php echo sanitize($order['buyer_name']); ?></strong></span>
+                                            <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
+                                            <?php if (!empty(trim((string)($order['meeting_point'] ?? '')))): ?>
+                                                <span class="order-hub-chip">📍 Meet: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></span>
+                                            <?php endif; ?>
+                                            <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
+                                                <span class="order-hub-chip" style="color: var(--warning);">⏰ <?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                    <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?> <span class="text-muted font-normal" style="font-size: 0.85rem;">payment</span></p>
-                                    <div style="background: rgba(255,255,255,0.6); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light); font-size: 0.85rem;">
-                                        <div class="mb-1 text-muted">Buyer: <span class="font-medium text-main">@<?php echo sanitize($order['buyer_name']); ?></span></div>
-                                        <div class="text-muted">Meet at: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></div>
+                                    <div class="order-hub-card__side">
+                                        <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
+                                        <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
                                     </div>
-                                    <?php if (!empty($order['expires_at'])): ?>
-                                        <p class="text-muted small mb-0 mt-2"><?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></p>
-                                    <?php endif; ?>
                                 </div>
                             </div>
 
                             <?php if ($order['status'] === 'pending'): ?>
-                                <hr style="border: none; border-top: 1px solid rgba(0,0,0,0.05); margin: 1rem 0;">
-                                <div class="flex gap-3 mt-4">
+                                <div class="order-hub-card__actions">
                                     <form method="post" class="flex-grow m-0">
                                         <?php echo csrfTokenField(); ?>
                                         <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
-                                        <button type="submit" name="action" value="confirm" class="btn btn-primary w-full py-2 hover-scale shadow-sm font-bold" style="border-radius: var(--radius-md);">Accept & Confirm Sold</button>
+                                        <button type="submit" name="action" value="confirm" class="btn btn-primary btn-sm w-full font-bold" style="border-radius: var(--radius-md); padding: 0.5rem 1rem;">Accept & Confirm Sold</button>
                                     </form>
                                     <form method="post" class="m-0">
                                         <?php echo csrfTokenField(); ?>
                                         <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
-                                        <button type="submit" name="action" value="cancel" class="btn btn-secondary py-2 hover-scale shadow-sm" style="border-radius: var(--radius-md);">Reject</button>
+                                        <button type="submit" name="action" value="cancel" class="btn btn-secondary btn-sm w-full font-bold" style="border-radius: var(--radius-md); padding: 0.5rem 1rem;" onclick="return confirm('Reject this order request?')">Reject</button>
                                     </form>
                                 </div>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                     <?php foreach ($manualSales as $sale): ?>
-                        <div class="glass-panel p-5 hover-scale" style="border-radius: var(--radius-lg); border-left: 4px solid #10b981;">
-                            <div class="flex gap-5 items-start">
-                                <div style="width: 80px; height: 80px; background: var(--bg-main); border-radius: var(--radius-md); overflow: hidden; flex-shrink: 0; box-shadow: var(--shadow-sm);">
-                                    <img src="<?php echo getProductImage($sale['image_path'] ?? null); ?>" style="width: 100%; height: 100%; object-fit: cover;" alt="<?php echo sanitize($sale['product_title']); ?>">
+                        <div class="order-hub-card order-hub-card--completed">
+                            <div class="order-hub-card__inner">
+                                <div class="order-hub-card__thumb">
+                                    <img src="<?php echo getProductImage($sale['image_path'] ?? null); ?>" alt="<?php echo sanitize($sale['product_title']); ?>">
                                 </div>
-                                <div class="flex-grow">
-                                    <div class="flex justify-between items-start mb-1">
-                                        <h4 class="mb-0 text-main font-bold" style="line-height: 1.2;"><?php echo sanitize($sale['product_title']); ?></h4>
-                                        <span class="badge badge-completed shadow-sm" style="font-size: 0.70rem; padding: 0.2rem 0.5rem;">Completed</span>
+                                <div class="order-hub-card__content">
+                                    <div class="order-hub-card__main">
+                                        <h4 class="order-hub-card__title"><?php echo sanitize($sale['product_title']); ?></h4>
+                                        <div class="order-hub-card__meta-chips">
+                                            <span class="order-hub-chip">Sold off-platform</span>
+                                            <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($sale['seller_confirmed_at'])); ?></span>
+                                        </div>
                                     </div>
-                                    <p class="text-primary font-bold mb-2" style="font-size: 1.1rem;"><?php echo formatPrice($sale['price'], productCurrencyCode($sale)); ?></p>
-                                    <p class="text-muted small mb-0">Sold off-platform · <?php echo date('M d, Y', strtotime($sale['seller_confirmed_at'])); ?></p>
+                                    <div class="order-hub-card__side">
+                                        <span class="badge badge-completed">Completed</span>
+                                        <span class="order-hub-card__price"><?php echo formatPrice($sale['price'], productCurrencyCode($sale)); ?></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
