@@ -292,23 +292,23 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="order-hub-card__thumb">
                                     <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" alt="<?php echo sanitize($order['product_title']); ?>">
                                 </div>
-                                <div class="order-hub-card__body">
-                                    <div class="order-hub-card__header">
+                                <div class="order-hub-card__content">
+                                    <div class="order-hub-card__main">
                                         <h4 class="order-hub-card__title"><?php echo sanitize($order['product_title']); ?></h4>
+                                        <div class="order-hub-card__meta-chips">
+                                            <span class="order-hub-chip">Seller: <strong class="text-main">@<?php echo sanitize($order['seller_name']); ?></strong></span>
+                                            <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
+                                            <?php if (!empty(trim((string)($order['meeting_point'] ?? '')))): ?>
+                                                <span class="order-hub-chip">📍 Meet: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></span>
+                                            <?php endif; ?>
+                                            <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
+                                                <span class="order-hub-chip" style="color: var(--warning);">⏰ <?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="order-hub-card__side">
                                         <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
-                                    </div>
-                                    <div class="order-hub-card__price-row">
                                         <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
-                                    </div>
-                                    <div class="order-hub-card__meta-chips">
-                                        <span class="order-hub-chip">Seller: <strong class="text-main">@<?php echo sanitize($order['seller_name']); ?></strong></span>
-                                        <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
-                                        <?php if (!empty(trim((string)($order['meeting_point'] ?? '')))): ?>
-                                            <span class="order-hub-chip">📍 Meet: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></span>
-                                        <?php endif; ?>
-                                        <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
-                                            <span class="order-hub-chip" style="color: var(--warning);">⏰ <?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></span>
-                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -371,23 +371,23 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="order-hub-card__thumb">
                                     <img src="<?php echo getProductImage($order['image_path'] ?? null); ?>" alt="<?php echo sanitize($order['product_title']); ?>">
                                 </div>
-                                <div class="order-hub-card__body">
-                                    <div class="order-hub-card__header">
+                                <div class="order-hub-card__content">
+                                    <div class="order-hub-card__main">
                                         <h4 class="order-hub-card__title"><?php echo sanitize($order['product_title']); ?></h4>
+                                        <div class="order-hub-card__meta-chips">
+                                            <span class="order-hub-chip">Buyer: <strong class="text-main">@<?php echo sanitize($order['buyer_name']); ?></strong></span>
+                                            <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
+                                            <?php if (!empty(trim((string)($order['meeting_point'] ?? '')))): ?>
+                                                <span class="order-hub-chip">📍 Meet: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></span>
+                                            <?php endif; ?>
+                                            <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
+                                                <span class="order-hub-chip" style="color: var(--warning);">⏰ <?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="order-hub-card__side">
                                         <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
-                                    </div>
-                                    <div class="order-hub-card__price-row">
                                         <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
-                                    </div>
-                                    <div class="order-hub-card__meta-chips">
-                                        <span class="order-hub-chip">Buyer: <strong class="text-main">@<?php echo sanitize($order['buyer_name']); ?></strong></span>
-                                        <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></span>
-                                        <?php if (!empty(trim((string)($order['meeting_point'] ?? '')))): ?>
-                                            <span class="order-hub-chip">📍 Meet: <strong class="text-main"><?php echo sanitize($order['meeting_point']); ?></strong></span>
-                                        <?php endif; ?>
-                                        <?php if ($order['status'] === 'pending' && !empty($order['expires_at'])): ?>
-                                            <span class="order-hub-chip" style="color: var(--warning);">⏰ <?= __('orders.expires_label', ['date' => date('M j, Y', strtotime($order['expires_at']))]) ?></span>
-                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -414,17 +414,17 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="order-hub-card__thumb">
                                     <img src="<?php echo getProductImage($sale['image_path'] ?? null); ?>" alt="<?php echo sanitize($sale['product_title']); ?>">
                                 </div>
-                                <div class="order-hub-card__body">
-                                    <div class="order-hub-card__header">
+                                <div class="order-hub-card__content">
+                                    <div class="order-hub-card__main">
                                         <h4 class="order-hub-card__title"><?php echo sanitize($sale['product_title']); ?></h4>
+                                        <div class="order-hub-card__meta-chips">
+                                            <span class="order-hub-chip">Sold off-platform</span>
+                                            <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($sale['seller_confirmed_at'])); ?></span>
+                                        </div>
+                                    </div>
+                                    <div class="order-hub-card__side">
                                         <span class="badge badge-completed">Completed</span>
-                                    </div>
-                                    <div class="order-hub-card__price-row">
                                         <span class="order-hub-card__price"><?php echo formatPrice($sale['price'], productCurrencyCode($sale)); ?></span>
-                                    </div>
-                                    <div class="order-hub-card__meta-chips">
-                                        <span class="order-hub-chip">Sold off-platform</span>
-                                        <span class="order-hub-chip"><?php echo date('M d, Y', strtotime($sale['seller_confirmed_at'])); ?></span>
                                     </div>
                                 </div>
                             </div>
