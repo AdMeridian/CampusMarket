@@ -139,6 +139,11 @@ window.__cmSpotlightI18n = {
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/search-suggestions.js?v=<?php echo $searchJsVer; ?>"></script>
 <?php
+    $imageCompressorJsPath = __DIR__ . '/../public/js/image-compressor.js';
+    $imageCompressorJsVer = assetVersion($imageCompressorJsPath);
+?>
+<script src="<?php echo BASE_URL; ?>public/js/image-compressor.js?v=<?php echo $imageCompressorJsVer; ?>"></script>
+<?php
     $spotlightJsPath = __DIR__ . '/../public/js/spotlight-modal.js';
     $spotlightJsVer = assetVersion($spotlightJsPath);
 ?>

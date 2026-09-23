@@ -353,8 +353,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // If they choose a file, clear selected preset active styling
-    avatarFileInput.addEventListener('change', function() {
+    // If they choose a file, compress and clear selected preset active styling
+    avatarFileInput.addEventListener('change', async function() {
         if (this.files && this.files[0]) {
             presetOptions.forEach(opt => {
                 opt.classList.remove('active');
@@ -363,13 +363,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 opt.style.boxShadow = 'none';
             });
             selectedPresetInput.value = '';
+
+            let file = this.files[0];
+            if (window.CampusMarketCompressor && typeof window.CampusMarketCompressor.compressImageFile === 'function') {
+                try {
+                    file = await window.CampusMarketCompressor.compressImageFile(file, { maxWidth: 600, maxHeight: 600, quality: 0.85 });
+                    if (window.DataTransfer) {
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        this.files = dt.files;
+                    }
+                } catch (err) {
+                    console.warn('Avatar compression failed, using original file', err);
+                }
+            }
             
             // Show local preview of uploaded file
             const reader = new FileReader();
             reader.onload = function(e) {
                 avatarPreview.src = e.target.result;
-            }
-            reader.readAsDataURL(this.files[0]);
+            };
+            reader.readAsDataURL(file);
         }
     });
 

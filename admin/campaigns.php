@@ -1096,15 +1096,28 @@ function loadPreset(key) {
     syncPreview();
 }
 
-function handleImageSelected(input) {
+async function handleImageSelected(input) {
     if (input.files && input.files[0]) {
+        let file = input.files[0];
+        if (window.CampusMarketCompressor && typeof window.CampusMarketCompressor.compressImageFile === 'function') {
+            try {
+                file = await window.CampusMarketCompressor.compressImageFile(file, { maxWidth: 1200, maxHeight: 800, quality: 0.85 });
+                if (window.DataTransfer) {
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    input.files = dt.files;
+                }
+            } catch (err) {
+                console.warn('Banner compression failed, using original file', err);
+            }
+        }
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = document.getElementById('prevPopupImage');
             img.src = e.target.result;
             img.style.display = 'block';
         };
-        reader.readAsDataURL(input.files[0]);
+        reader.readAsDataURL(file);
     }
 }
 

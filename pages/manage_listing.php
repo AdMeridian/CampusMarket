@@ -971,7 +971,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <input type="hidden" name="image_id" value="<?= $img['id'] ?>">
                                 <label class="mgmt-photo-action-btn mgmt-photo-action-btn--replace" title="<?= htmlspecialchars(__('product.replace_image')) ?>">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 13px; height: 13px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                                    <input type="file" name="image" accept="image/*" class="hidden" onchange="this.form.submit()">
+                                    <input type="file" name="image" accept="image/*" class="hidden" onchange="window.CampusMarketCompressor ? CampusMarketCompressor.compressAndSubmit(this) : this.form.submit()">
                                 </label>
                             </form>
 
@@ -1005,7 +1005,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <label class="btn btn-secondary btn-sm cursor-pointer" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; margin: 0; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: var(--radius-md);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                             <?= __('product.replace_image') ?>
-                            <input type="file" name="image" accept="image/*" class="hidden" onchange="this.form.submit()">
+                            <input type="file" name="image" accept="image/*" class="hidden" onchange="window.CampusMarketCompressor ? CampusMarketCompressor.compressAndSubmit(this) : this.form.submit()">
                         </label>
                     </form>
                 </div>
@@ -1017,7 +1017,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <input type="hidden" name="action" value="add_images">
                     <label class="btn btn-secondary btn-sm w-full cursor-pointer text-center" style="display: block; border-radius: var(--radius-md);">
                         + Add Photos
-                        <input type="file" name="images[]" multiple accept="image/*" class="hidden" onchange="this.form.submit()">
+                        <input type="file" name="images[]" multiple accept="image/*" class="hidden" onchange="window.CampusMarketCompressor ? CampusMarketCompressor.compressAndSubmit(this) : this.form.submit()">
                     </label>
                 </form>
                 <?php endif; ?>
