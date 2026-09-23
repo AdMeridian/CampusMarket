@@ -8,21 +8,43 @@
                 <p class="mt-4" style="color: var(--text-muted); font-size: 0.9rem;">
                     <?= __('footer.tagline') ?>
                 </p>
-                <?php if (defined('INSTAGRAM_URL') && INSTAGRAM_URL !== ''): ?>
+                <?php 
+                $hasInstagram = defined('INSTAGRAM_URL') && INSTAGRAM_URL !== '';
+                $hasWhatsapp = defined('WHATSAPP_CHANNEL_URL') && WHATSAPP_CHANNEL_URL !== '';
+                if ($hasInstagram || $hasWhatsapp): 
+                ?>
                 <div class="footer-social">
                     <p class="footer-social-label"><?= __('footer.follow_us') ?></p>
-                    <a href="<?php echo htmlspecialchars(INSTAGRAM_URL, ENT_QUOTES, 'UTF-8'); ?>"
-                       class="footer-social-link"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       aria-label="<?= htmlspecialchars(__('footer.instagram_aria')) ?>">
-                        <span class="footer-social-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" focusable="false">
-                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                            </svg>
-                        </span>
-                        <span class="footer-social-text"><?= __('footer.instagram') ?></span>
-                    </a>
+                    <div class="footer-social-links">
+                        <?php if ($hasInstagram): ?>
+                        <a href="<?php echo htmlspecialchars(INSTAGRAM_URL, ENT_QUOTES, 'UTF-8'); ?>"
+                           class="footer-social-link footer-social-link--instagram"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           aria-label="<?= htmlspecialchars(__('footer.instagram_aria')) ?>">
+                            <span class="footer-social-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" focusable="false">
+                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                                </svg>
+                            </span>
+                            <span class="footer-social-text"><?= __('footer.instagram') ?></span>
+                        </a>
+                        <?php endif; ?>
+                        <?php if ($hasWhatsapp): ?>
+                        <a href="<?php echo htmlspecialchars(WHATSAPP_CHANNEL_URL, ENT_QUOTES, 'UTF-8'); ?>"
+                           class="footer-social-link footer-social-link--whatsapp"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           aria-label="<?= htmlspecialchars(__('footer.whatsapp_aria')) ?>">
+                            <span class="footer-social-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" focusable="false">
+                                    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.04 14.69 2 12.04 2ZM12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19.01L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67ZM8.53 7.33C8.37 7.33 8.1 7.39 7.87 7.64C7.65 7.89 7 8.5 7 9.71C7 10.93 7.89 12.1 8.01 12.26C8.14 12.43 9.74 14.88 12.22 15.94C12.81 16.2 13.27 16.35 13.63 16.47C14.23 16.66 14.77 16.63 15.2 16.57C15.68 16.5 16.68 15.96 16.89 15.38C17.1 14.79 17.1 14.29 17.03 14.19C16.97 14.08 16.8 14.02 16.55 13.9C16.3 13.77 15.08 13.17 14.85 13.09C14.63 13.01 14.46 12.96 14.3 13.21C14.13 13.46 13.65 14.02 13.51 14.19C13.36 14.35 13.22 14.37 12.97 14.25C12.72 14.12 11.92 13.86 10.97 13.02C10.23 12.36 9.73 11.55 9.58 11.3C9.44 11.05 9.56 10.92 9.69 10.79C9.8 10.68 9.94 10.5 10.07 10.35C10.2 10.2 10.24 10.09 10.32 9.93C10.4 9.76 10.36 9.62 10.3 9.49C10.24 9.37 9.74 8.15 9.54 7.64C9.34 7.15 9.13 7.21 8.97 7.21L8.53 7.33Z"/>
+                                </svg>
+                            </span>
+                            <span class="footer-social-text"><?= __('footer.whatsapp') ?></span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
@@ -86,6 +108,20 @@ window.__pwaI18n = <?php echo json_encode([
     'desktopStep1' => __('pwa.desktop_step_1'),
     'desktopStep2' => __('pwa.desktop_step_2'),
 ], JSON_UNESCAPED_UNICODE); ?>;
+window.__cmSocials = {
+    instagram: <?php echo json_encode(defined('INSTAGRAM_URL') ? INSTAGRAM_URL : ''); ?>,
+    whatsapp: <?php echo json_encode(defined('WHATSAPP_CHANNEL_URL') ? WHATSAPP_CHANNEL_URL : ''); ?>
+};
+window.__cmSpotlightI18n = {
+    communityTag: <?php echo json_encode(__('spotlight.community_tag')); ?>,
+    communityTitle: <?php echo json_encode(__('spotlight.community_title')); ?>,
+    communityDesc: <?php echo json_encode(__('spotlight.community_desc')); ?>,
+    joinWhatsapp: <?php echo json_encode(__('spotlight.join_whatsapp')); ?>,
+    followInstagram: <?php echo json_encode(__('spotlight.follow_instagram')); ?>,
+    viewListing: <?php echo json_encode(__('product.view_details') ?: 'View Listing'); ?>,
+    seller: <?php echo json_encode(__('browse.seller') ?: 'Seller'); ?>,
+    maybeLater: <?php echo json_encode(__('pwa.maybe_later') ?: 'Maybe later'); ?>
+};
 </script>
 <?php
     $pwaJsPath = __DIR__ . '/../public/js/pwa.js';

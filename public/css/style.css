@@ -1783,28 +1783,47 @@ body.dark-mode .order-hub-chip--highlight {
   color: var(--footer-heading);
 }
 
+.footer-social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .footer-col a.footer-social-link {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
   width: auto;
   max-width: 100%;
-  min-height: 44px;
-  padding: 0.5rem 0.85rem;
+  min-height: 40px;
+  padding: 0.45rem 0.8rem;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: var(--footer-heading);
   text-decoration: none;
   font-weight: 500;
   line-height: 1.2;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .footer-col a.footer-social-link:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.22);
-  padding-left: 0.85rem;
+  transform: translateY(-1px);
+}
+
+.footer-col a.footer-social-link.footer-social-link--instagram:hover {
+  background: rgba(225, 48, 108, 0.12);
+  border-color: rgba(225, 48, 108, 0.4);
+  color: #ff6497;
+}
+
+.footer-col a.footer-social-link.footer-social-link--whatsapp:hover {
+  background: rgba(37, 211, 102, 0.12);
+  border-color: rgba(37, 211, 102, 0.4);
+  color: #25D366;
 }
 
 .footer-social-icon {
@@ -4576,6 +4595,120 @@ body.page-chat .chat-send-btn {
   transform: translateY(-1px);
 }
 
+/* ── Spotlight Community Social Slide ── */
+.spotlight-slide--social .spotlight-slide__media--social {
+  background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 50%, #064e3b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spotlight-social-hero-art {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: radial-gradient(circle at 50% 45%, rgba(99, 102, 241, 0.28), transparent 70%);
+}
+
+.spotlight-social-hero-icons {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  position: relative;
+  margin-top: 0.5rem;
+}
+
+.spotlight-social-orb {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spotlight-social-orb--ig {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
+
+.spotlight-social-orb--wa {
+  background: #25D366;
+}
+
+.spotlight-modal-card:hover .spotlight-social-orb {
+  transform: scale(1.08);
+}
+
+.spotlight-badge--community {
+  background: linear-gradient(135deg, #6366f1, #0ea5e9);
+}
+
+.spotlight-slide__title--social {
+  font-size: 1.05rem;
+  line-height: 1.35;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  margin-bottom: 0.35rem;
+}
+
+.spotlight-slide__desc--social {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0 0 0.85rem;
+}
+
+.spotlight-social-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.spotlight-social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.62rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: var(--radius-lg);
+  color: #fff !important;
+  text-decoration: none;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.spotlight-social-btn--wa {
+  background: #25D366;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.25);
+}
+
+.spotlight-social-btn--wa:hover {
+  background: #20bd5a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.4);
+}
+
+.spotlight-social-btn--ig {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  box-shadow: 0 4px 14px rgba(225, 48, 108, 0.25);
+}
+
+.spotlight-social-btn--ig:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 6px 18px rgba(225, 48, 108, 0.4);
+}
+
 .spotlight-nav-btn {
   position: absolute;
   top: 102px;
@@ -4698,6 +4831,29 @@ body.page-chat .chat-send-btn {
   .spotlight-slide__cta {
     padding: 0.6rem 0.9rem;
     font-size: 0.88rem;
+  }
+
+  .spotlight-social-hero-icons {
+    gap: 1rem;
+  }
+
+  .spotlight-social-orb {
+    width: 48px;
+    height: 48px;
+  }
+
+  .spotlight-social-orb svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .spotlight-social-btns {
+    gap: 0.45rem;
+  }
+
+  .spotlight-social-btn {
+    padding: 0.55rem 0.45rem;
+    font-size: 0.78rem;
   }
 
   .spotlight-modal-footer {
