@@ -138,6 +138,7 @@ define('CURRENCY_EXCHANGE_RATES_TO_TRY', [
 
 // Social (public profiles)
 define('INSTAGRAM_URL', 'https://www.instagram.com/campusmarketplace_nc/');
+define('WHATSAPP_CHANNEL_URL', 'https://whatsapp.com/channel/0029VbDXVeGGzzKKn3y8kS0j');
 
 // Internationalization
 define('SUPPORTED_LANGUAGES', ['en' => 'English', 'tr' => 'Türkçe']);
