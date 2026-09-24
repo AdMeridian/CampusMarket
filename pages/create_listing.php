@@ -778,7 +778,10 @@ function renderPreviews() {
     });
 }
 
-function compressImageAsync(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+function compressImageAsync(file, maxWidth = 1600, maxHeight = 1600, quality = 0.82) {
+    if (window.CampusMarketCompressor && typeof window.CampusMarketCompressor.compressImageFile === 'function') {
+        return window.CampusMarketCompressor.compressImageFile(file, { maxWidth, maxHeight, quality });
+    }
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function (e) {

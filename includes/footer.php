@@ -113,13 +113,13 @@ window.__cmSocials = {
     whatsapp: <?php echo json_encode(defined('WHATSAPP_CHANNEL_URL') ? WHATSAPP_CHANNEL_URL : ''); ?>
 };
 window.__cmSpotlightI18n = {
-    communityTag: <?php echo json_encode(__('spotlight.community_tag')); ?>,
-    communityTitle: <?php echo json_encode(__('spotlight.community_title')); ?>,
-    communityDesc: <?php echo json_encode(__('spotlight.community_desc')); ?>,
-    joinWhatsapp: <?php echo json_encode(__('spotlight.join_whatsapp')); ?>,
-    followInstagram: <?php echo json_encode(__('spotlight.follow_instagram')); ?>,
-    viewListing: <?php echo json_encode(__('product.view_details') ?: 'View Listing'); ?>,
-    seller: <?php echo json_encode(__('browse.seller') ?: 'Seller'); ?>,
+    communityTag: <?php echo json_encode(__('spotlight.community_tag') ?: 'Official Community'); ?>,
+    communityTitle: <?php echo json_encode(__('spotlight.community_title') ?: 'Join our campus community on WhatsApp & Instagram!'); ?>,
+    communityDesc: <?php echo json_encode(__('spotlight.community_desc') ?: 'Stay connected with announcements, campus drops, and engage with fellow students.'); ?>,
+    joinWhatsapp: <?php echo json_encode(__('spotlight.join_whatsapp') ?: 'Join WhatsApp'); ?>,
+    followInstagram: <?php echo json_encode(__('spotlight.follow_instagram') ?: 'Follow Instagram'); ?>,
+    viewListing: <?php echo json_encode(__('spotlight.view_listing') ?: 'View Listing'); ?>,
+    seller: <?php echo json_encode(__('spotlight.seller') ?: 'Seller'); ?>,
     maybeLater: <?php echo json_encode(__('pwa.maybe_later') ?: 'Maybe later'); ?>
 };
 </script>
@@ -138,6 +138,11 @@ window.__cmSpotlightI18n = {
     $searchJsVer = assetVersion($searchJsPath);
 ?>
 <script src="<?php echo BASE_URL; ?>public/js/search-suggestions.js?v=<?php echo $searchJsVer; ?>"></script>
+<?php
+    $imageCompressorJsPath = __DIR__ . '/../public/js/image-compressor.js';
+    $imageCompressorJsVer = assetVersion($imageCompressorJsPath);
+?>
+<script src="<?php echo BASE_URL; ?>public/js/image-compressor.js?v=<?php echo $imageCompressorJsVer; ?>"></script>
 <?php
     $spotlightJsPath = __DIR__ . '/../public/js/spotlight-modal.js';
     $spotlightJsVer = assetVersion($spotlightJsPath);

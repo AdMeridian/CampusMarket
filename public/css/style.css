@@ -4685,6 +4685,9 @@ body.page-chat .chat-send-btn {
   text-decoration: none;
   transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .spotlight-social-btn--wa {
@@ -4856,8 +4859,51 @@ body.page-chat .chat-send-btn {
     font-size: 0.78rem;
   }
 
+  .spotlight-slide__content--social {
+    padding: 0.7rem 0.9rem 0.65rem;
+    overflow: hidden;
+  }
+
+  .spotlight-slide__title--social {
+    font-size: 0.92rem;
+  }
+
+  .spotlight-slide__desc--social {
+    font-size: 0.75rem;
+    margin-bottom: 0.6rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   .spotlight-modal-footer {
     padding: 0.5rem 1rem 0.7rem;
+  }
+}
+
+/* ── Very small phones (<360px): stack social buttons vertically ── */
+@media (max-width: 360px) {
+  .spotlight-social-btns {
+    grid-template-columns: 1fr;
+  }
+
+  .spotlight-social-btn {
+    padding: 0.5rem 0.55rem;
+    font-size: 0.76rem;
+  }
+
+  .spotlight-social-orb {
+    width: 42px;
+    height: 42px;
+  }
+
+  .spotlight-social-hero-icons {
+    gap: 0.75rem;
+  }
+
+  .spotlight-slide--social .spotlight-slide__media--social {
+    height: 110px;
   }
 }
 
