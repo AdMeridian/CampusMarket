@@ -21,7 +21,9 @@ export async function callGemini(
     `## Response style\n` +
     `Answer concisely (2-4 sentences). Use markdown links [text](url) when referencing site pages.\n` +
     `Vary your phrasing and sentence structure — never open with the same line twice in a conversation.\n` +
-    `For off-topic questions completely unrelated to CampusMarket, respond with exactly: UNKNOWN\n\n` +
+    `Assume ALL questions are about CampusMarket unless they are clearly about a completely unrelated topic (e.g. cooking, weather, sports, entertainment).\n` +
+    `If a question could plausibly relate to CampusMarket (buying, selling, listings, payments, safety, accounts, rules, meeting up), always answer it in that context.\n` +
+    `Only respond with exactly UNKNOWN if the question has absolutely no connection to a campus marketplace.\n\n` +
     `## Key site pages\n` +
     `- Create listing: ${b}pages/create_listing.php\n` +
     `- Safety guidelines: ${b}pages/safety.php\n` +
