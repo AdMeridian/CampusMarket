@@ -284,7 +284,7 @@
     "create_listing.currency_usd": "US Dollar ($)",
     "create_listing.currency_eur": "Euro (€)",
     "create_listing.currency_gbp": "British Pound (£)",
-    "create_listing.currency_hint": "Choose the currency buyers should pay in for this listing.",
+    "create_listing.currency_hint": "Choose the base currency for this item. It will be converted to ₺ for buyers using daily live exchange rates.",
     "create_listing.condition_label": "Condition",
     "create_listing.cond_new": "New",
     "create_listing.cond_like_new": "Like New",

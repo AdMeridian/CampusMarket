@@ -284,7 +284,7 @@
     "create_listing.currency_usd": "ABD Dolari ($)",
     "create_listing.currency_eur": "Euro (€)",
     "create_listing.currency_gbp": "Ing. Poundu (£)",
-    "create_listing.currency_hint": "Bu ilan icin alicilarin hangi para biriminde odeyecegini secin.",
+    "create_listing.currency_hint": "Bu ilan için taban para birimini seçin. Alıcılara günlük canlı döviz kurlarıyla ₺ cinsinden gösterilecektir.",
     "create_listing.condition_label": "Durum",
     "create_listing.cond_new": "Yeni",
     "create_listing.cond_like_new": "Cok iyi",
