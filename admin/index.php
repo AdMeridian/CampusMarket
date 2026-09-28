@@ -747,7 +747,9 @@ require_once __DIR__ . '/../includes/header.php';
                                     echo implode(' · ', $rateChips);
                                 ?>
                                 <br>
-                                <span style="opacity: 0.8; font-size: 0.72rem;">Last updated: <?php echo $rateUpdatedAt ? date('M j, H:i', strtotime($rateUpdatedAt)) : 'Baseline'; ?></span>
+                                <span style="opacity: 0.8; font-size: 0.72rem;" title="<?php echo $rateUpdatedAt ? htmlspecialchars($rateUpdatedAt) : ''; ?>">
+                                    Last updated: <?php echo $rateUpdatedAt ? timeAgo($rateUpdatedAt) : 'Baseline'; ?>
+                                </span>
                             <?php else: ?>
                                 Using baseline constants
                             <?php endif; ?>
