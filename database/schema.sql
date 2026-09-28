@@ -104,6 +104,7 @@ CREATE TABLE products (
     service_expires_at DATETIME NULL DEFAULT NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
+    is_recent_fallback TINYINT(1) NOT NULL DEFAULT 0,
     views       INT            NOT NULL DEFAULT 0,
     created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

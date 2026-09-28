@@ -11,14 +11,7 @@ $seoJsonLd = seoWebsiteJsonLd();
 require_once __DIR__ . '/../includes/header.php';
 
 // Data for homepage
-$recentProducts = getRecentProducts($pdo, HOME_RECENT_LISTING_LIMIT, HOME_RECENT_LISTING_DAYS);
-$recentProductsFallback = [];
-if (count($recentProducts) < 2) {
-    $recentProductsFallback = getLatestActiveProducts($pdo, HOME_RECENT_LISTING_LIMIT);
-    if (!empty($recentProductsFallback)) {
-        $recentProducts = $recentProductsFallback;
-    }
-}
+$recentProducts = getHomepageRecentProducts($pdo, HOME_RECENT_LISTING_LIMIT, HOME_RECENT_LISTING_DAYS);
 $displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HOME_PRODUCTS_PER_CATEGORY);
 ?>
 

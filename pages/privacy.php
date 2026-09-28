@@ -76,10 +76,6 @@ require_once __DIR__ . '/../includes/header.php';
 
             <h3 style="margin-top: 1.5rem; color: var(--primary);"><?= __('policy.privacy.s11_title') ?></h3>
             <p><?= __('policy.privacy.s11_body', $p) ?></p>
-
-            <p style="margin-top: 2rem; padding: 1rem; background: var(--bg-main); border-radius: var(--radius-md); font-size: 0.9rem; color: var(--text-muted);">
-                <?= __('policy.privacy.legal_note') ?>
-            </p>
         </div>
     </div>
 </div>

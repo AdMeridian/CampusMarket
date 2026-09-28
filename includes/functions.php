@@ -694,8 +694,9 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
 /**
  * Fetch approved active wanted item requests (buyer suggestions) for site-wide display.
  */
-function getActiveWantedItemRequests(PDO $pdo, int $limit = 6): array {
+function getActiveWantedItemRequests(PDO $pdo, int $limit = 6, bool $shuffle = true): array {
     try {
+        $fetchLimit = $shuffle ? max($limit * 3, 16) : max(1, $limit);
         $stmt = $pdo->prepare("
             SELECT id, search_term, category_id, created_at, expires_at
             FROM wanted_item_requests
@@ -704,9 +705,16 @@ function getActiveWantedItemRequests(PDO $pdo, int $limit = 6): array {
             ORDER BY created_at DESC
             LIMIT :limit
         ");
-        $stmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $fetchLimit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($shuffle && count($requests) > 1) {
+            shuffle($requests);
+            $requests = array_slice($requests, 0, $limit);
+        }
+
+        return $requests;
     } catch (Throwable $e) {
         return [];
     }
@@ -936,10 +944,9 @@ function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
             OR (p.is_featured = TRUE{$featuredWindowFilter})
           )
         ORDER BY 
-            p.is_featured DESC, 
-            p.discount_percent DESC NULLS LAST, 
-            p.discount_set_at DESC NULLS LAST, 
-            p.created_at DESC
+            COALESCE(p.discount_set_at, p.created_at) DESC,
+            p.discount_percent DESC,
+            p.is_featured DESC
         LIMIT :limit
     ");
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
@@ -1107,30 +1114,131 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
 }
 
 /**
- * Fetch the latest active products without a recent-time window.
+ * Fetch admin-curated fallback products for recent listings section.
+ * Samples randomly from active curated items so users see variety across visits.
  */
-function getLatestActiveProducts(PDO $pdo, int $limit = 8): array {
-    $stmt = $pdo->prepare("
+function getCuratedRecentProducts(PDO $pdo, int $limit = 8, array $excludeIds = []): array {
+    if ($limit <= 0) {
+        return [];
+    }
+
+    $excludeSql = '';
+    $params = [];
+    $cleanExclude = array_values(array_filter(array_map('intval', $excludeIds), fn($id) => $id > 0));
+    if (!empty($cleanExclude)) {
+        $placeholders = implode(',', array_fill(0, count($cleanExclude), '?'));
+        $excludeSql = " AND p.id NOT IN ($placeholders)";
+        $params = $cleanExclude;
+    }
+
+    try {
+        $poolLimit = max($limit * 3, 24);
+        $sql = "
+            SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.id
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+            WHERE p.status = 'active' AND p.listing_type = 'product' AND p.is_recent_fallback = TRUE{$excludeSql}
+            ORDER BY p.created_at DESC
+            LIMIT " . (int)$poolLimit;
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $curatedPool = $stmt->fetchAll();
+
+        if (empty($curatedPool)) {
+            return [];
+        }
+
+        // Shuffle curated items so different items rotate on each visit
+        if (count($curatedPool) > 1) {
+            shuffle($curatedPool);
+        }
+
+        return array_slice($curatedPool, 0, $limit);
+    } catch (PDOException $e) {
+        // Fallback gracefully if is_recent_fallback column is not yet present
+        return [];
+    }
+}
+
+/**
+ * Fetch the latest active products without a recent-time window (with optional exclude IDs).
+ */
+function getLatestActiveProducts(PDO $pdo, int $limit = 8, array $excludeIds = []): array {
+    if ($limit <= 0) {
+        return [];
+    }
+
+    $excludeSql = '';
+    $params = [];
+    $cleanExclude = array_values(array_filter(array_map('intval', $excludeIds), fn($id) => $id > 0));
+    if (!empty($cleanExclude)) {
+        $placeholders = implode(',', array_fill(0, count($cleanExclude), '?'));
+        $excludeSql = " AND p.id NOT IN ($placeholders)";
+        $params = $cleanExclude;
+    }
+
+    $sql = "
         SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active' AND p.listing_type = 'product'
+        WHERE p.status = 'active' AND p.listing_type = 'product'{$excludeSql}
         ORDER BY p.created_at DESC
-        LIMIT :limit
-    ");
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->execute();
+        LIMIT " . (int)$limit;
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     return $stmt->fetchAll();
+}
+
+/**
+ * Smart backfill for homepage recent listings:
+ * 1. Fetch truly new listings from the last N days (default 7 days).
+ * 2. If below limit, backfill with active admin-curated fallback listings (randomly sampled from curated pool).
+ * 3. If still below limit, fill remaining slots with latest active platform listings.
+ * 4. Shuffles arrangement so users don't see the exact same layout on every visit.
+ */
+function getHomepageRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null, bool $shuffle = true): array {
+    $recent = getRecentProducts($pdo, $limit, $withinDays);
+
+    if (count($recent) < $limit) {
+        $needed = $limit - count($recent);
+        $seenIds = array_map('intval', array_column($recent, 'id'));
+        $curated = getCuratedRecentProducts($pdo, $needed, $seenIds);
+
+        if (!empty($curated)) {
+            $recent = array_merge($recent, $curated);
+        }
+    }
+
+    if (count($recent) < $limit) {
+        $needed = $limit - count($recent);
+        $seenIds = array_map('intval', array_column($recent, 'id'));
+        $fallbackLatest = getLatestActiveProducts($pdo, $needed, $seenIds);
+
+        if (!empty($fallbackLatest)) {
+            $recent = array_merge($recent, $fallbackLatest);
+        }
+    }
+
+    if ($shuffle && count($recent) > 1) {
+        shuffle($recent);
+    }
+
+    return $recent;
 }
 
 /**
  * Top categories with a preview of their newest active listings for the homepage.
  */
-function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $productsPerCategory = 5): array {
+function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $productsPerCategory = 5, bool $shuffle = true): array {
     $categoryLimit = max(1, $categoryLimit);
     $productsPerCategory = max(1, $productsPerCategory);
+    $poolLimit = $shuffle ? max($productsPerCategory * 3, 15) : $productsPerCategory;
     $sections = [];
 
     foreach (getTopCategories($pdo) as $category) {
@@ -1149,13 +1257,19 @@ function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $prod
             LIMIT :limit
         ");
         $stmt->bindValue(':category_id', (int) $category['id'], PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $productsPerCategory, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $poolLimit, PDO::PARAM_INT);
         $stmt->execute();
+        $prods = $stmt->fetchAll();
+
+        if ($shuffle && count($prods) > 1) {
+            shuffle($prods);
+            $prods = array_slice($prods, 0, $productsPerCategory);
+        }
 
         $sections[] = [
             'id' => (int) $category['id'],
             'name' => $category['name'],
-            'products' => $stmt->fetchAll(),
+            'products' => $prods,
         ];
 
         if (count($sections) >= $categoryLimit) {
@@ -1169,7 +1283,7 @@ function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $prod
 /**
  * Fetch featured products for the homepage scroller
  */
-function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
+function getFeaturedProducts(PDO $pdo, int $limit = 6, bool $shuffle = true): array {
     static $hasFeaturedUntil = null;
     if ($hasFeaturedUntil === null) {
         $colStmt = $pdo->prepare("
@@ -1188,6 +1302,8 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         ? " AND (p.featured_until IS NULL OR p.featured_until > NOW())"
         : "";
 
+    $fetchLimit = $shuffle ? max($limit * 3, 24) : $limit;
+
     $stmt = $pdo->prepare("
         SELECT p.*, c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
@@ -1198,9 +1314,16 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6): array {
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $fetchLimit, PDO::PARAM_INT);
     $stmt->execute();
-    return $stmt->fetchAll();
+    $products = $stmt->fetchAll();
+
+    if ($shuffle && count($products) > 1) {
+        shuffle($products);
+        $products = array_slice($products, 0, $limit);
+    }
+
+    return $products;
 }
 
 /**
