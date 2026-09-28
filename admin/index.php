@@ -19,6 +19,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     redirect(BASE_URL . 'admin/index.php');
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'refresh_rates') {
+    verifyCsrfToken();
+    require_once __DIR__ . '/../pages/api_refresh_rates.php';
+    $result = refreshExchangeRates($pdo, true);
+    if ($result['success']) {
+        setFlash('success', 'Exchange rates updated successfully from open.er-api.com.');
+        logAdminAction($pdo, 'refresh_rates', 'system', null, ['rates' => $result['rates']]);
+    } else {
+        setFlash('error', 'Failed to refresh exchange rates: ' . ($result['error'] ?? 'Unknown error'));
+    }
+    redirect(BASE_URL . 'admin/index.php');
+}
+
 // Fetch Stats
 $stats = [
     'listings'                  => $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn(),
@@ -62,6 +75,19 @@ $sellerTxnStmt = $pdo->query("
 ");
 $sellerTransactionStats = $sellerTxnStmt->fetchAll(PDO::FETCH_ASSOC);
 $donationCount = countDonationRecords($pdo);
+
+// Currency Rates Telemetry
+$currencyRatesData = [];
+$rateUpdatedAt = null;
+try {
+    $cRows = $pdo->query("SELECT code, rate_to_try, updated_at FROM currency_rates ORDER BY code ASC")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($cRows as $cr) {
+        $currencyRatesData[$cr['code']] = (float)$cr['rate_to_try'];
+        if ($cr['updated_at']) {
+            $rateUpdatedAt = $cr['updated_at'];
+        }
+    }
+} catch (Throwable $e) {}
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -696,6 +722,36 @@ require_once __DIR__ . '/../includes/header.php';
                     <div>
                         <div class="status-label">File Storage</div>
                         <div class="status-sub">Image uploads operational</div>
+                    </div>
+                </div>
+                <div class="status-item" style="align-items: flex-start;">
+                    <div class="status-dot" style="margin-top: 5px;"></div>
+                    <div style="flex-grow: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <div class="status-label">FX Exchange Rates (TRY Base)</div>
+                            <form method="POST" style="margin: 0;">
+                                <?php echo csrfTokenField(); ?>
+                                <button type="submit" name="action" value="refresh_rates" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.35); padding: 0.2rem 0.55rem; font-size: 0.72rem; border-radius: var(--radius-sm); cursor: pointer;" title="Fetch latest rates from open.er-api.com">
+                                    ⚡ Sync Now
+                                </button>
+                            </form>
+                        </div>
+                        <div class="status-sub" style="margin-top: 0.35rem; line-height: 1.4;">
+                            <?php if (!empty($currencyRatesData)): ?>
+                                <?php 
+                                    $rateChips = [];
+                                    foreach ($currencyRatesData as $cc => $rr) {
+                                        if ($cc === 'TRY') continue;
+                                        $rateChips[] = "1 {$cc} = ₺" . number_format($rr, 2);
+                                    }
+                                    echo implode(' · ', $rateChips);
+                                ?>
+                                <br>
+                                <span style="opacity: 0.8; font-size: 0.72rem;">Last updated: <?php echo $rateUpdatedAt ? date('M j, H:i', strtotime($rateUpdatedAt)) : 'Baseline'; ?></span>
+                            <?php else: ?>
+                                Using baseline constants
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -301,7 +301,16 @@ require_once __DIR__ . '/../includes/header.php';
                         </td>
                         <td class="p-4 font-medium" style="border-bottom: 1px solid var(--border-light); color: var(--primary);">@<?php echo sanitize($item['seller_name']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);"><span class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); border-radius: var(--radius-lg);"><?php echo sanitize($item['category_name']); ?></span></td>
-                        <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem;"><?php echo formatPrice($item['price'], productCurrencyCode($item)); ?></td>
+                        <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem;">
+                            <?php 
+                                $itemCurr = productCurrencyCode($item);
+                                $priceData = formatPriceInTRY((float)$item['price'], $itemCurr, $pdo);
+                                echo $priceData['display'];
+                                if ($priceData['original']):
+                            ?>
+                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                            <?php endif; ?>
+                        </td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <?php $badge = conditionBadge($item['condition']); ?>
                             <span class="badge <?php echo $badge['class']; ?> shadow-sm"><?php echo $badge['label']; ?></span>

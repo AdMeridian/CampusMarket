@@ -526,5 +526,7 @@
     "push.toast_body_browser": "Enable notifications to get message and order alerts on this device.",
     "push.enable_btn": "Enable",
     "push.not_now_btn": "Not now",
-    "push.enabling_btn": "Enabling…"
+    "push.enabling_btn": "Enabling…",
+    "product.listed_as": "Listed in {amount}",
+    "product.currency_converted_hint": "Prices converted to ₺ at today's exchange rate"
 }

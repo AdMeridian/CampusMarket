@@ -172,9 +172,74 @@ function formatPrice($amount, ?string $currencyCode = null): string {
 }
 
 /**
+ * Get live exchange rates from DB cache.
+ * Falls back to constants if DB rates are missing.
+ * Uses static cache so DB is queried only once per PHP request.
+ */
+function getLiveExchangeRates(?PDO $pdo = null): array {
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    if ($pdo === null) {
+        global $pdo;
+    }
+
+    if ($pdo instanceof PDO) {
+        try {
+            $rows = $pdo->query("SELECT code, rate_to_try FROM currency_rates")->fetchAll(PDO::FETCH_KEY_PAIR);
+            if (!empty($rows)) {
+                $cache = array_map('floatval', $rows);
+                if (!isset($cache['TRY'])) {
+                    $cache['TRY'] = 1.0;
+                }
+                return $cache;
+            }
+        } catch (Throwable $e) {
+            // DB not ready or table missing
+        }
+    }
+
+    $cache = defined('CURRENCY_EXCHANGE_RATES_TO_TRY')
+        ? CURRENCY_EXCHANGE_RATES_TO_TRY
+        : ['TRY' => 1.0, 'USD' => 34.0, 'EUR' => 37.0, 'GBP' => 44.0];
+
+    return $cache;
+}
+
+/**
+ * Check if rates need refreshing and trigger lazily if so.
+ * Called in footer.php so it runs on page loads when stale.
+ */
+function maybeRefreshRates(?PDO $pdo = null): void {
+    if ($pdo === null) {
+        global $pdo;
+    }
+    if (!($pdo instanceof PDO)) {
+        return;
+    }
+
+    try {
+        $row = $pdo->query(
+            "SELECT next_update_unix FROM currency_rates WHERE code = 'USD' LIMIT 1"
+        )->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row || time() >= (int)($row['next_update_unix'] ?? 0)) {
+            require_once __DIR__ . '/../pages/api_refresh_rates.php';
+            if (function_exists('refreshExchangeRates')) {
+                refreshExchangeRates($pdo);
+            }
+        }
+    } catch (Throwable $e) {
+        // Silently continue on errors during page rendering
+    }
+}
+
+/**
  * Convert an amount from one currency to another using exchange rates.
  */
-function convertCurrency(float $amount, string $fromCurrency, string $toCurrency = 'TRY'): float {
+function convertCurrency(float $amount, string $fromCurrency, string $toCurrency = 'TRY', ?PDO $pdo = null): float {
     $from = strtoupper(trim($fromCurrency));
     $to   = strtoupper(trim($toCurrency));
 
@@ -182,18 +247,33 @@ function convertCurrency(float $amount, string $fromCurrency, string $toCurrency
         return $amount;
     }
 
-    $rates = defined('CURRENCY_EXCHANGE_RATES_TO_TRY') ? CURRENCY_EXCHANGE_RATES_TO_TRY : [
-        'TRY' => 1.0,
-        'USD' => 34.0,
-        'EUR' => 37.0,
-        'GBP' => 44.0,
-    ];
+    $rates = getLiveExchangeRates($pdo);
 
     $fromRate = (float)($rates[$from] ?? 1.0);
     $toRate   = (float)($rates[$to] ?? 1.0);
 
     $amountInTry = $amount * $fromRate;
     return $toRate > 0 ? ($amountInTry / $toRate) : $amountInTry;
+}
+
+/**
+ * Convert a product price to TRY and return display strings.
+ *
+ * @return array{
+ *   display: string,      // "34,000 ₺" — primary display
+ *   original: string|null,// "$1,000"   — secondary label (null if already TRY)
+ *   amount_try: float     // numeric value in TRY
+ * }
+ */
+function formatPriceInTRY(float $amount, string $fromCurrency, ?PDO $pdo = null): array {
+    $from = strtoupper(trim($fromCurrency));
+    $amountInTRY = convertCurrency($amount, $from, 'TRY', $pdo);
+
+    return [
+        'display'    => formatPrice($amountInTRY, 'TRY'),
+        'original'   => $from !== 'TRY' ? formatPrice($amount, $from) : null,
+        'amount_try' => $amountInTRY,
+    ];
 }
 
 /**
@@ -220,40 +300,61 @@ function isDiscountEligible(array $product, int $minimumDays = LISTING_DISCOUNT_
     return ((time() - $created) >= ($minimumDays * 86400));
 }
 
-function renderProductPrice(array $product): string {
+function renderProductPrice(array $product, ?PDO $pdo = null): string {
     $discountPercent = (int)($product['discount_percent'] ?? 0);
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
-    if ($discountPercent <= 0 || $final >= $base) {
-        return '<span>' . formatPrice($base, $currency) . '</span>';
+
+    $finalPriceData = formatPriceInTRY($final, $currency, $pdo);
+    $basePriceData  = formatPriceInTRY($base, $currency, $pdo);
+
+    $originalNote = '';
+    if ($currency !== 'TRY') {
+        $listedText = function_exists('__') ? __('product.listed_as', ['amount' => formatPrice($final, $currency)]) : ('Listed in ' . formatPrice($final, $currency));
+        $originalNote = ' <span class="price-original-currency-inline" title="' . htmlspecialchars($listedText) . '">(' . htmlspecialchars($listedText) . ')</span>';
     }
+
+    if ($discountPercent <= 0 || $final >= $base) {
+        return '<span>' . $finalPriceData['display'] . '</span>' . $originalNote;
+    }
+
     return
-        '<span style="font-weight:800;color:var(--primary);">' . formatPrice($final, $currency) . '</span> ' .
-        '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . formatPrice($base, $currency) . '</span> ' .
-        '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">Discounted</span> ' .
-        '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>';
+        '<span style="font-weight:800;color:var(--primary);">' . $finalPriceData['display'] . '</span> ' .
+        '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . $basePriceData['display'] . '</span> ' .
+        '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">' . (function_exists('__') ? __('product.discounted') : 'Discounted') . '</span> ' .
+        '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>' .
+        $originalNote;
 }
 
 /**
  * Stacked price layout for product cards (discount details above the sale price).
  */
-function renderProductCardPrice(array $product): string {
+function renderProductCardPrice(array $product, ?PDO $pdo = null): string {
     $discountPercent = (int)($product['discount_percent'] ?? 0);
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
 
+    $finalPriceData = formatPriceInTRY($final, $currency, $pdo);
+    $basePriceData  = formatPriceInTRY($base, $currency, $pdo);
+
+    $originalSecondary = '';
+    if ($currency !== 'TRY') {
+        $originalSecondary = '<span class="price-original-currency">' . formatPrice($final, $currency) . '</span>';
+    }
+
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span class="product-card-price__now product-card-price__now--regular">' . formatPrice($base, $currency) . '</span>';
+        return '<span class="product-card-price__now product-card-price__now--regular">' . $finalPriceData['display'] . '</span>' . $originalSecondary;
     }
 
     return
         '<span class="product-card-price__was">' .
-            '<span class="product-card-price__original">' . formatPrice($base, $currency) . '</span>' .
+            '<span class="product-card-price__original">' . $basePriceData['display'] . '</span>' .
             '<span class="product-card-price__pct">-' . $discountPercent . '%</span>' .
         '</span>' .
-        '<span class="product-card-price__now">' . formatPrice($final, $currency) . '</span>';
+        '<span class="product-card-price__now">' . $finalPriceData['display'] . '</span>' .
+        $originalSecondary;
 }
 
 /**
@@ -958,11 +1059,14 @@ function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
         $currency = productCurrencyCode($row);
         $finalPrice = getDiscountedPrice($row);
 
+        $finalPriceData = formatPriceInTRY($finalPrice, $currency, $pdo);
+        $basePriceData = formatPriceInTRY($basePrice, $currency, $pdo);
+
         $results[] = [
             'id' => (int)$row['id'],
             'title' => $row['title'],
-            'price_formatted' => formatPrice($finalPrice, $currency),
-            'original_price_formatted' => $discountPercent > 0 ? formatPrice($basePrice, $currency) : null,
+            'price_formatted' => $finalPriceData['display'] . ($finalPriceData['original'] ? ' (' . $finalPriceData['original'] . ')' : ''),
+            'original_price_formatted' => $discountPercent > 0 ? $basePriceData['display'] : null,
             'discount_percent' => $discountPercent,
             'is_featured' => (bool)$row['is_featured'],
             'image_url' => getProductImage($row['image_path'] ?? null),

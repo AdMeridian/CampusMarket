@@ -2903,6 +2903,24 @@ body.dark-mode .product-card-seller-pill {
   font-weight: 700;
 }
 
+.price-original-currency {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 0.15rem;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.price-original-currency-inline {
+  display: inline-block;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-left: 0.35rem;
+}
+
 .product-card-listed-time {
   font-size: 0.75rem;
   opacity: 0.7;
