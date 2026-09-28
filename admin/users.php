@@ -2,6 +2,7 @@
 // admin/users.php
 require_once __DIR__ . '/../config/constants.php';
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/functions_member2.php';
 requireAdmin();
 require_once __DIR__ . '/../includes/admin_audit.php';
 require_once __DIR__ . '/../includes/report_moderation.php';
@@ -138,26 +139,216 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['id'
     redirect('users.php');
 }
 
+// Fetch all users
 $stmt = $pdo->query('SELECT * FROM users ORDER BY created_at DESC');
-$users = $stmt->fetchAll();
+$allUsers = $stmt->fetchAll();
+$totalUsersCount = count($allUsers);
+
+// Calculate Campus Distribution Stats
+$campusDistribution = [];
+foreach ($allUsers as $u) {
+    $uInfo = getUniversityInfoFromEmail($u['email'] ?? '');
+    $dKey = $uInfo['domain'];
+    if (!isset($campusDistribution[$dKey])) {
+        $campusDistribution[$dKey] = [
+            'code'   => $uInfo['code'],
+            'name'   => $uInfo['name'],
+            'domain' => $dKey,
+            'color'  => $uInfo['color'],
+            'bg'     => $uInfo['bg'],
+            'count'  => 0,
+        ];
+    }
+    $campusDistribution[$dKey]['count']++;
+}
+
+// Sort by student count descending
+uasort($campusDistribution, function ($a, $b) {
+    return $b['count'] <=> $a['count'];
+});
+
+$campusesCount = count($campusDistribution);
+$topCampus = !empty($campusDistribution) ? reset($campusDistribution) : null;
+$topCampusShare = ($totalUsersCount > 0 && $topCampus) ? round(($topCampus['count'] / $totalUsersCount) * 100) : 0;
+
+// Filter handling
+$selectedCampus = trim($_GET['campus'] ?? '');
+$searchQuery = trim($_GET['q'] ?? '');
+
+$users = [];
+foreach ($allUsers as $u) {
+    $uInfo = getUniversityInfoFromEmail($u['email'] ?? '');
+    
+    // Filter by Campus
+    if ($selectedCampus !== '' && $selectedCampus !== 'all') {
+        if (strtolower($uInfo['domain']) !== strtolower($selectedCampus) && strtolower($uInfo['code']) !== strtolower($selectedCampus)) {
+            continue;
+        }
+    }
+    
+    // Filter by Search Query
+    if ($searchQuery !== '') {
+        $qLower = strtolower($searchQuery);
+        $matchesUser = str_contains(strtolower((string)($u['username'] ?? '')), $qLower);
+        $matchesEmail = str_contains(strtolower((string)($u['email'] ?? '')), $qLower);
+        if (!$matchesUser && !$matchesEmail) {
+            continue;
+        }
+    }
+    
+    $users[] = $u;
+}
 
 include '../includes/header.php';
 ?>
 
 <div class="container mt-24 mb-16">
-    <div class="flex justify-between items-end mb-8">
+    <div class="flex justify-between items-end mb-8 flex-wrap gap-4">
         <div>
             <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Users</div>
             <h1 class="mb-0"><?= __('admin.manage_users') ?></h1>
         </div>
-        <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($users); ?> Registered Users</div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <div class="badge" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600; box-shadow: var(--shadow-sm);">
+                🎓 <?php echo $campusesCount; ?> Campuses Represented
+            </div>
+            <div class="badge" style="background: var(--primary-light); color: var(--primary); border: 1px solid rgba(var(--primary-rgb, 14, 165, 233), 0.25); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
+                👥 <?php echo $totalUsersCount; ?> Registered Users
+            </div>
+        </div>
     </div>
 
+    <!-- ── KPI Summary Cards ──────────────────────────────────────── -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <!-- Card 1: Represented Campuses -->
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: var(--radius-lg); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                🏛️
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Campuses Represented</div>
+                <div style="font-size: 1.65rem; font-weight: 800; color: var(--text-main); line-height: 1.2;"><?php echo $campusesCount; ?></div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Active universities across students</div>
+            </div>
+        </div>
+
+        <!-- Card 2: Total Registered Community -->
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--success); display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: var(--radius-lg); background: var(--success-bg, rgba(16, 185, 129, 0.1)); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                👥
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Student Accounts</div>
+                <div style="font-size: 1.65rem; font-weight: 800; color: var(--text-main); line-height: 1.2;"><?php echo $totalUsersCount; ?></div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Total verified user accounts</div>
+            </div>
+        </div>
+
+        <!-- Card 3: Leading Community -->
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #f59e0b; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: var(--radius-lg); background: rgba(245, 158, 11, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                ⭐
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Leading Campus</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-main); line-height: 1.2;">
+                    <?php echo $topCampus ? htmlspecialchars($topCampus['code']) : 'None'; ?>
+                    <?php if ($topCampus): ?>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: #d97706; margin-left: 4px;">(<?php echo $topCampus['count']; ?> · <?php echo $topCampusShare; ?>%)</span>
+                    <?php endif; ?>
+                </div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
+                    <?php echo $topCampus ? htmlspecialchars($topCampus['name']) : 'No student registrations yet'; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Campus Breakdown & Filter Bar ──────────────────────────── -->
+    <div class="card mb-6" style="padding: 1.25rem; border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.05rem;">Campus Representation Breakdown</h3>
+                <p class="text-muted small" style="margin: 0.2rem 0 0 0;">Click on any campus badge to filter the student list below.</p>
+            </div>
+            <?php if ($selectedCampus !== '' || $searchQuery !== ''): ?>
+                <a href="users.php" class="btn btn-sm btn-secondary" style="font-size: 0.78rem; padding: 0.3rem 0.75rem; border-radius: var(--radius-full);">
+                    ✕ Clear Filters
+                </a>
+            <?php endif; ?>
+        </div>
+
+        <!-- Campus Pills List -->
+        <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;">
+            <a href="users.php<?php echo $searchQuery !== '' ? '?q=' . urlencode($searchQuery) : ''; ?>"
+               style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; border-radius: var(--radius-full); font-size: 0.82rem; font-weight: 600; transition: transform 0.15s ease, background 0.15s ease; <?php echo ($selectedCampus === '' || $selectedCampus === 'all') ? 'background: var(--primary); color: #fff; box-shadow: var(--shadow-sm);' : 'background: var(--bg-surface-2, #f1f5f9); color: var(--text-muted); border: 1px solid var(--border-light);'; ?>">
+                All Campuses <span style="opacity: 0.85; font-size: 0.75rem; padding: 0.1rem 0.4rem; background: rgba(0,0,0,0.12); border-radius: var(--radius-full);"><?php echo $totalUsersCount; ?></span>
+            </a>
+
+            <?php foreach ($campusDistribution as $dKey => $cStat): ?>
+                <?php 
+                    $isActive = strtolower($selectedCampus) === strtolower($dKey) || strtolower($selectedCampus) === strtolower($cStat['code']);
+                    $pct = $totalUsersCount > 0 ? round(($cStat['count'] / $totalUsersCount) * 100) : 0;
+                ?>
+                <a href="users.php?campus=<?php echo urlencode($dKey); ?><?php echo $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : ''; ?>"
+                   title="<?php echo htmlspecialchars($cStat['name']); ?> (<?php echo $pct; ?>% of student base)"
+                   style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0.85rem; border-radius: var(--radius-full); font-size: 0.82rem; font-weight: 600; transition: transform 0.15s ease, box-shadow 0.15s ease; <?php echo $isActive ? 'background: ' . $cStat['color'] . '; color: #ffffff; box-shadow: 0 4px 12px ' . $cStat['bg'] . ';' : 'background: ' . $cStat['bg'] . '; color: ' . $cStat['color'] . '; border: 1px solid ' . $cStat['color'] . '33;'; ?>">
+                    <span><?php echo htmlspecialchars($cStat['code']); ?></span>
+                    <span style="font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: var(--radius-full); <?php echo $isActive ? 'background: rgba(255,255,255,0.25); color: #fff;' : 'background: ' . $cStat['color'] . '; color: #fff;'; ?>">
+                        <?php echo $cStat['count']; ?>
+                    </span>
+                    <span style="font-size: 0.72rem; opacity: 0.85; font-weight: 500;">(<?php echo $pct; ?>%)</span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Search input & Filters -->
+        <form method="GET" action="users.php" style="display: flex; gap: 0.6rem; margin-top: 1.25rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 220px; position: relative;">
+                <input type="text" name="q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Search by username or email..." class="premium-input" style="width: 100%; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
+            </div>
+            <select name="campus" class="premium-input" style="min-width: 180px; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
+                <option value="">All Campuses (<?php echo $totalUsersCount; ?>)</option>
+                <?php foreach ($campusDistribution as $dKey => $cStat): ?>
+                    <option value="<?php echo htmlspecialchars($dKey); ?>" <?php echo (strtolower($selectedCampus) === strtolower($dKey) || strtolower($selectedCampus) === strtolower($cStat['code'])) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($cStat['code']); ?> — <?php echo htmlspecialchars($cStat['name']); ?> (<?php echo $cStat['count']; ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <button type="submit" class="btn btn-primary" style="padding: 0.55rem 1.1rem; font-size: 0.88rem; border-radius: var(--radius-md);">
+                Filter
+            </button>
+            <?php if ($selectedCampus !== '' || $searchQuery !== ''): ?>
+                <a href="users.php" class="btn btn-secondary" style="padding: 0.55rem 1rem; font-size: 0.88rem; border-radius: var(--radius-md);">
+                    Reset
+                </a>
+            <?php endif; ?>
+        </form>
+    </div>
+
+    <!-- Active Filter Feedback -->
+    <?php if ($selectedCampus !== '' || $searchQuery !== ''): ?>
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface); padding: 0.6rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-bottom: 1rem; font-size: 0.85rem;">
+            <div>
+                Showing <strong><?php echo count($users); ?></strong> of <strong><?php echo $totalUsersCount; ?></strong> user<?php echo $totalUsersCount != 1 ? 's' : ''; ?>
+                <?php if ($selectedCampus !== ''): ?>
+                    matching campus <strong><?php echo htmlspecialchars($selectedCampus); ?></strong>
+                <?php endif; ?>
+                <?php if ($searchQuery !== ''): ?>
+                    matching "<strong><?php echo htmlspecialchars($searchQuery); ?></strong>"
+                <?php endif; ?>
+            </div>
+            <a href="users.php" style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.8rem;">View All Users →</a>
+        </div>
+    <?php endif; ?>
+
+    <!-- ── Users Table ───────────────────────────────────────────── -->
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
         <table class="table w-full text-left" style="border-collapse: collapse; margin: 0;">
             <thead>
                 <tr style="background: rgba(248, 250, 252, 0.8);">
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">User Identity</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Campus / University</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Email Address</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Role</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Join Date</th>
@@ -166,10 +357,13 @@ include '../includes/header.php';
             </thead>
             <tbody>
                 <?php foreach ($users as $u): ?>
+                    <?php 
+                        $uCampus = getUniversityInfoFromEmail($u['email'] ?? '');
+                    ?>
                     <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <div class="flex items-center gap-4">
-                                <div style="width: 44px; height: 44px; background: var(--primary-light); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); flex-shrink: 0;">
+                                <div style="width: 42px; height: 42px; background: var(--primary-light); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); flex-shrink: 0;">
                                     <?php echo strtoupper(substr($u['username'], 0, 1)); ?>
                                 </div>
                                 <div style="display: flex; flex-direction: column; justify-content: center;">
@@ -178,7 +372,18 @@ include '../includes/header.php';
                                 </div>
                             </div>
                         </td>
-                        <td class="p-4" style="border-bottom: 1px solid var(--border-light); font-weight: 500;"><?php echo sanitize($u['email']); ?></td>
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
+                            <a href="users.php?campus=<?php echo urlencode($uCampus['domain']); ?>" 
+                               style="text-decoration: none; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                                <span class="badge" style="background: <?php echo $uCampus['bg']; ?>; color: <?php echo $uCampus['color']; ?>; border: 1px solid <?php echo $uCampus['color']; ?>33; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.55rem; border-radius: var(--radius-sm);">
+                                    <?php echo htmlspecialchars($uCampus['code']); ?>
+                                </span>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($uCampus['name']); ?>">
+                                    <?php echo htmlspecialchars($uCampus['name']); ?>
+                                </span>
+                            </a>
+                        </td>
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light); font-weight: 500; font-size: 0.88rem;"><?php echo sanitize($u['email']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <?php if ($u['role'] === 'admin'): ?>
                                 <span class="badge badge-primary shadow-sm">Admin</span>
@@ -234,7 +439,7 @@ include '../includes/header.php';
 
         <?php if (empty($users)): ?>
             <div class="text-center p-8 text-muted">
-                No users found.
+                No students found matching the selected criteria.
             </div>
         <?php endif; ?>
     </div>

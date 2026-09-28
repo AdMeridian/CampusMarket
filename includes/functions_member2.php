@@ -27,6 +27,121 @@ if (!function_exists('allowedUniversityDomains')) {
             'gau.edu.tr'         => 'Girne American University',
             'metu.edu.tr'        => 'Middle East Technical University NCC',
             'kyrenia.edu.tr'     => 'University of Kyrenia',
+            'final.edu.tr'       => 'Final International University',
+            'kstu.edu.tr'        => 'Cyprus Health & Social Sciences University',
+            'arucad.edu.tr'      => 'Arkın University of Creative Arts & Design',
+        ];
+    }
+}
+
+if (!function_exists('universityRegistry')) {
+    function universityRegistry(): array {
+        return [
+            'ciu.edu.tr' => [
+                'code'  => 'CIU',
+                'name'  => 'Cyprus International University',
+                'color' => '#0284c7',
+                'bg'    => 'rgba(2, 132, 199, 0.12)',
+            ],
+            'emu.edu.tr' => [
+                'code'  => 'EMU',
+                'name'  => 'Eastern Mediterranean University',
+                'color' => '#d97706',
+                'bg'    => 'rgba(217, 119, 6, 0.12)',
+            ],
+            'neu.edu.tr' => [
+                'code'  => 'NEU',
+                'name'  => 'Near East University',
+                'color' => '#059669',
+                'bg'    => 'rgba(5, 150, 105, 0.12)',
+            ],
+            'metu.edu.tr' => [
+                'code'  => 'METU NCC',
+                'name'  => 'Middle East Technical University NCC',
+                'color' => '#dc2626',
+                'bg'    => 'rgba(220, 38, 38, 0.12)',
+            ],
+            'gau.edu.tr' => [
+                'code'  => 'GAU',
+                'name'  => 'Girne American University',
+                'color' => '#7c3aed',
+                'bg'    => 'rgba(124, 58, 237, 0.12)',
+            ],
+            'eul.edu.tr' => [
+                'code'  => 'EUL',
+                'name'  => 'European University of Lefke',
+                'color' => '#0891b2',
+                'bg'    => 'rgba(8, 145, 178, 0.12)',
+            ],
+            'baucyprus.edu.tr' => [
+                'code'  => 'BAU',
+                'name'  => 'Bahçeşehir Cyprus University',
+                'color' => '#db2777',
+                'bg'    => 'rgba(219, 39, 119, 0.12)',
+            ],
+            'kyrenia.edu.tr' => [
+                'code'  => 'UoK',
+                'name'  => 'University of Kyrenia',
+                'color' => '#2563eb',
+                'bg'    => 'rgba(37, 99, 235, 0.12)',
+            ],
+            'final.edu.tr' => [
+                'code'  => 'FIU',
+                'name'  => 'Final International University',
+                'color' => '#0d9488',
+                'bg'    => 'rgba(13, 148, 136, 0.12)',
+            ],
+            'kstu.edu.tr' => [
+                'code'  => 'KSTU',
+                'name'  => 'Cyprus Health and Social Sciences University',
+                'color' => '#ea580c',
+                'bg'    => 'rgba(234, 88, 12, 0.12)',
+            ],
+            'arucad.edu.tr' => [
+                'code'  => 'ARUCAD',
+                'name'  => 'Arkın University of Creative Arts & Design',
+                'color' => '#4f46e5',
+                'bg'    => 'rgba(79, 70, 229, 0.12)',
+            ],
+            'campusmarketplace.site' => [
+                'code'  => 'Staff / Demo',
+                'name'  => 'CampusMarket Internal',
+                'color' => '#475569',
+                'bg'    => 'rgba(71, 85, 105, 0.12)',
+            ],
+        ];
+    }
+}
+
+if (!function_exists('getUniversityInfoFromEmail')) {
+    function getUniversityInfoFromEmail(string $email): array {
+        $email = strtolower(trim($email));
+        $atPos = strrpos($email, '@');
+        if ($atPos === false) {
+            return [
+                'code'   => 'Unknown',
+                'name'   => 'Unknown Campus',
+                'domain' => 'unknown',
+                'color'  => '#64748b',
+                'bg'     => 'rgba(100, 116, 139, 0.12)',
+            ];
+        }
+        $domain = substr($email, $atPos + 1);
+        $registry = universityRegistry();
+
+        foreach ($registry as $regDomain => $info) {
+            if ($domain === $regDomain || str_ends_with($domain, '.' . $regDomain)) {
+                return array_merge(['domain' => $regDomain], $info);
+            }
+        }
+
+        $cleanName = strtoupper(explode('.', $domain)[0] ?? 'CAMPUS');
+        return [
+            'code'   => $cleanName,
+            'name'   => $cleanName . ' Campus',
+            'domain' => $domain,
+            'color'  => '#64748b',
+            'bg'     => 'rgba(100, 116, 139, 0.12)',
         ];
     }
 }
