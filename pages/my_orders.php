@@ -308,7 +308,13 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                     <div class="order-hub-card__side">
                                         <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
-                                        <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
+                                        <?php $priceData = formatPriceInTRY((float)$order['price'], productCurrencyCode($order), $pdo); ?>
+                                        <span class="order-hub-card__price">
+                                            <?php echo $priceData['display']; ?>
+                                            <?php if ($priceData['original']): ?>
+                                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -387,7 +393,13 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                     <div class="order-hub-card__side">
                                         <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
-                                        <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
+                                        <?php $priceData = formatPriceInTRY((float)$order['price'], productCurrencyCode($order), $pdo); ?>
+                                        <span class="order-hub-card__price">
+                                            <?php echo $priceData['display']; ?>
+                                            <?php if ($priceData['original']): ?>
+                                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -424,7 +436,13 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                     <div class="order-hub-card__side">
                                         <span class="badge badge-completed">Completed</span>
-                                        <span class="order-hub-card__price"><?php echo formatPrice($sale['price'], productCurrencyCode($sale)); ?></span>
+                                        <?php $priceData = formatPriceInTRY((float)$sale['price'], productCurrencyCode($sale), $pdo); ?>
+                                        <span class="order-hub-card__price">
+                                            <?php echo $priceData['display']; ?>
+                                            <?php if ($priceData['original']): ?>
+                                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>

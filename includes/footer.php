@@ -93,6 +93,12 @@
     </div>
 </footer>
 
+<?php 
+if (isset($pdo) && function_exists('maybeRefreshRates')) {
+    maybeRefreshRates($pdo);
+}
+?>
+
 <script>
 const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 window.__pwaI18n = <?php echo json_encode([

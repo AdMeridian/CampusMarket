@@ -1150,7 +1150,15 @@ body.dark-mode .scc-badge {
                 </div>
                 <?php endif; ?>
                 <div class="product-meta-row">
-                    <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                    <div>
+                        <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                        <?php if (productCurrencyCode($product) !== 'TRY'): ?>
+                        <div class="mt-1 flex items-center gap-1 text-muted small" style="font-size: 0.8rem;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; flex-shrink: 0; color: var(--primary);" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            <span><?= __('product.currency_converted_hint') ?></span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                     
                     <form action="../actions/toggle_wishlist.php" method="POST" style="display: inline-block;">
                         <?php echo csrfTokenField(); ?>
