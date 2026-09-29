@@ -1,6 +1,6 @@
 <?php
 /**
- * Auto-scrolling Hall of Fame donor marquee.
+ * Hall of Fame donor display — continuous marquee or centered row if < 5 donors.
  *
  * Expects: $donors (array)
  */
@@ -8,7 +8,9 @@ if (empty($donors)) {
     return;
 }
 
-$hallDuration = max(28, min(60, count($donors) * 3));
+$donorCount = count($donors);
+$isMarquee = $donorCount >= 5;
+$hallDuration = max(24, min(60, $donorCount * 3));
 
 static $hallCarouselCssLoaded = false;
 if (!$hallCarouselCssLoaded) {
@@ -18,6 +20,8 @@ if (!$hallCarouselCssLoaded) {
     echo '<link rel="stylesheet" href="' . BASE_URL . 'public/css/hall-carousel.css?v=' . $hallCssVer . '">' . "\n";
 }
 ?>
+
+<?php if ($isMarquee): ?>
 <div class="hall-marquee"
      aria-label="Community Hall of Fame supporters"
      style="--hall-duration: <?php echo (int)$hallDuration; ?>s;">
@@ -41,3 +45,20 @@ if (!$hallCarouselCssLoaded) {
         <?php endfor; ?>
     </div>
 </div>
+<?php else: ?>
+<div class="hall-static-row" aria-label="Community Hall of Fame supporters">
+    <?php foreach ($donors as $donor): ?>
+    <div class="hall-marquee-card">
+        <div class="hall-marquee-avatar-wrap">
+            <img src="<?php echo avatarUrl($donor['avatar']); ?>"
+                 alt="<?php echo sanitize($donor['username']); ?>"
+                 class="hall-marquee-avatar"
+                 loading="lazy"
+                 decoding="async">
+            <div class="hall-marquee-star" aria-hidden="true">★</div>
+        </div>
+        <p class="hall-marquee-name">@<?php echo sanitize($donor['username']); ?></p>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>

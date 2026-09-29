@@ -237,6 +237,86 @@ function maybeRefreshRates(?PDO $pdo = null): void {
 }
 
 /**
+ * Check for stale active listings (> 30 days old) and notify sellers to update, discount, or mark as sold.
+ */
+function checkAndSendStaleListingReminders(PDO $pdo, int $limit = 10): int {
+    try {
+        $staleCutoff = date('Y-m-d H:i:s', time() - (30 * 86400));
+        $recentNotifCutoff = date('Y-m-d H:i:s', time() - (30 * 86400));
+
+        // Find active listings older than 30 days that have not been reminded in the last 30 days
+        $stmt = $pdo->prepare("
+            SELECT p.id, p.title, p.user_id, p.price, p.price_currency
+            FROM products p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.status = 'active'
+              AND (p.updated_at <= :stale_cutoff_1 OR (p.updated_at IS NULL AND p.created_at <= :stale_cutoff_2))
+              AND u.account_status = 'active'
+              AND NOT EXISTS (
+                  SELECT 1 FROM notifications n
+                  WHERE n.user_id = p.user_id
+                    AND n.reference_id = p.id
+                    AND (n.type = 'stale_listing' OR n.title LIKE '%still available%')
+                    AND n.created_at >= :notif_cutoff
+              )
+            ORDER BY p.created_at ASC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':stale_cutoff_1', $staleCutoff, PDO::PARAM_STR);
+        $stmt->bindValue(':stale_cutoff_2', $staleCutoff, PDO::PARAM_STR);
+        $stmt->bindValue(':notif_cutoff', $recentNotifCutoff, PDO::PARAM_STR);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $staleProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $sentCount = 0;
+        foreach ($staleProducts as $prod) {
+            $sellerId = (int)$prod['user_id'];
+            $productId = (int)$prod['id'];
+            $title = trim((string)($prod['title'] ?? 'your item'));
+            $titleTrunc = mb_substr($title, 0, 35);
+
+            $notifTitle = "📦 Is your \"{$titleTrunc}\" still available?";
+            $notifBody = "It's been over 30 days since this was listed. If it has sold, please mark it as sold. Still available? Consider offering a discount or refreshing it!";
+
+            createNotification($pdo, $sellerId, 'stale_listing', $notifTitle, $notifBody, $productId);
+            $sentCount++;
+        }
+
+        return $sentCount;
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+/**
+ * Check if stale listing checks should run lazily.
+ * Called in footer.php so it runs in the background.
+ */
+function maybeSendStaleListingReminders(?PDO $pdo = null): void {
+    if ($pdo === null) {
+        global $pdo;
+    }
+    if (!($pdo instanceof PDO)) {
+        return;
+    }
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $lastCheck = $_SESSION['_last_stale_listing_check'] ?? 0;
+        if (time() - $lastCheck < 21600) {
+            return;
+        }
+        $_SESSION['_last_stale_listing_check'] = time();
+    }
+
+    try {
+        checkAndSendStaleListingReminders($pdo, 10);
+    } catch (Throwable $e) {
+        // Silently continue on background check errors
+    }
+}
+
+/**
  * Convert an amount from one currency to another using exchange rates.
  */
 function convertCurrency(float $amount, string $fromCurrency, string $toCurrency = 'TRY', ?PDO $pdo = null): float {
@@ -748,6 +828,12 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
     if (str_contains($title, 'Price Drop') || str_contains($title, 'Featured') || str_contains($title, 'Promo') || str_starts_with($title, '🏷️') || str_starts_with($title, '⭐')) {
         if ($refId > 0) {
             return $base . 'pages/product.php?id=' . $refId;
+        }
+    }
+
+    if ($type === 'stale_listing' || str_contains($title, 'still available') || str_contains($title, 'Still available')) {
+        if ($refId > 0) {
+            return $base . 'pages/manage_listing.php?id=' . $refId . '&stale_check=1';
         }
     }
 

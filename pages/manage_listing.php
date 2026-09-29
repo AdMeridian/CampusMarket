@@ -407,6 +407,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// 10. Confirm Still Available (Keep Active / Bump updated_at)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm_available') {
+    verifyCsrfToken();
+    $stmtUp = $pdo->prepare("UPDATE products SET updated_at = NOW() WHERE id = :id AND (user_id = :uid OR :is_admin = 1)");
+    $stmtUp->execute([':id' => $productId, ':uid' => $viewerId, ':is_admin' => $viewerIsAdmin ? 1 : 0]);
+    setFlash('success', '✓ Great! Your listing has been confirmed as active and its activity date refreshed.');
+    redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+}
+
 // ==========================================
 // DATA COMPUTATION FOR ANALYTICS GRAPHS
 // ==========================================
@@ -719,6 +728,53 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
+<?php
+$isListingStale = false;
+$daysSinceCreated = 0;
+if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
+    $createdAtTs = strtotime($product['created_at']);
+    $daysSinceCreated = (int)max(1, floor((time() - $createdAtTs) / 86400));
+    if ($daysSinceCreated >= 30 || isset($_GET['stale_check'])) {
+        $isListingStale = true;
+    }
+}
+?>
+
+    <?php if ($isListingStale && ($product['status'] ?? '') === 'active'): ?>
+    <div class="card mb-6" style="border: 1px solid rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.04) 100%); border-radius: var(--radius-lg); padding: 1.25rem; box-shadow: var(--shadow-sm);">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div style="flex: 1 1 320px;">
+                <div class="flex items-center gap-2 mb-1" style="font-weight: 800; font-size: 1.05rem; color: #d97706;">
+                    <span>📦</span>
+                    <span>Listing Check-in (<?= $daysSinceCreated ?> days active)</span>
+                </div>
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted); line-height: 1.45;">
+                    Is this item still available? If sold, please mark it as sold. If still available, confirm to refresh its timestamp or offer a discount to catch buyers' eyes!
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <form method="POST" style="margin: 0;">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="action" value="confirm_available">
+                    <button type="submit" class="btn btn-sm" style="background: #d97706; color: #ffffff; font-weight: 700; border-radius: var(--radius-md); border: none; padding: 0.5rem 0.9rem;">
+                        ✓ Still on Sale (Refresh)
+                    </button>
+                </form>
+                <a href="#pricing-card" onclick="document.getElementById('discount_percent')?.focus();" class="btn btn-sm btn-secondary" style="border-radius: var(--radius-md); font-weight: 700; padding: 0.5rem 0.9rem;">
+                    🏷️ Offer Discount
+                </a>
+                <form method="POST" style="margin: 0;" onsubmit="return confirm('<?= htmlspecialchars(__('product.confirm_mark_sold', [], 'Are you sure you want to mark this item as sold?')) ?>');">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="action" value="mark_sold">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: var(--radius-md); font-weight: 700; padding: 0.5rem 0.9rem;">
+                        Mark as Sold
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Insights Metric Bar -->
     <div class="grid grid-cols-1 md-grid-cols-3 gap-4 mb-8">
         <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid var(--primary);">
@@ -902,7 +958,7 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- Sidebar Column (Pricing, Gallery & Danger Zone) -->
         <div class="flex flex-col gap-6">
             <!-- 1. Pricing Strategy -->
-            <div class="mgmt-card">
+            <div class="mgmt-card" id="pricing-card">
                 <h3 class="font-bold text-lg text-main mb-4">Pricing Strategy</h3>
                 <form method="post" class="flex flex-col gap-3">
                     <?php echo csrfTokenField(); ?>
@@ -924,8 +980,8 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
 
                     <div>
-                        <label class="font-bold mb-1 block small text-muted">Promotional Discount</label>
-                        <select name="discount_percent" class="premium-input w-full" style="padding: 0.65rem 0.85rem;">
+                        <label class="font-bold mb-1 block small text-muted" for="discount_percent">Promotional Discount</label>
+                        <select name="discount_percent" id="discount_percent" class="premium-input w-full" style="padding: 0.65rem 0.85rem;">
                             <?php foreach ([0, 5, 10, 15, 20, 25, 30, 40, 50] as $d): ?>
                                 <option value="<?= $d ?>" <?= ((int)($product['discount_percent'] ?? 0) === $d) ? 'selected' : '' ?>>
                                     <?= $d === 0 ? 'No discount' : ('-' . $d . '% OFF') ?>
