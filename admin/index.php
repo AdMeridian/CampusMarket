@@ -566,19 +566,6 @@ require_once __DIR__ . '/../includes/header.php';
             </a>
             <?php endif; ?>
 
-            <?php if ($donationCount > 0): ?>
-            <div class="reports-alert" style="background: #fef2f2; border-color: #fecaca; border-left-color: #ef4444; margin-bottom: 1.5rem;">
-                <div>
-                    <div class="reports-alert-text" style="color: #991b1b;">Go-Live: Test Donation Data</div>
-                    <div class="reports-alert-sub" style="color: #b91c1c;"><?php echo (int)$donationCount; ?> donation record(s) from test checkout are still stored. Clear them before launch.</div>
-                </div>
-                <form method="POST" style="margin: 0; flex-shrink: 0;" onsubmit="return confirm('Permanently delete all <?php echo (int)$donationCount; ?> donation record(s)? This clears the Hall of Fame and payment history. Promotion payments are not affected.');">
-                    <?php echo csrfTokenField(); ?>
-                    <button type="submit" name="action" value="clear_donations" class="btn btn-danger btn-sm">Clear Donation Data</button>
-                </form>
-            </div>
-            <?php endif; ?>
-
             <div class="card" style="padding: 1.5rem;">
                 <h3 style="margin-bottom: 1.25rem; font-size: 1.1rem;">Management Modules</h3>
 
