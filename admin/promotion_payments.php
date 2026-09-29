@@ -114,10 +114,9 @@ require_once __DIR__ . '/../includes/header.php';
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($rows); ?> Requests</div>
             <?php if ($donationCount > 0): ?>
-            <form method="post" style="margin: 0;">
-                <?php echo csrfTokenField(); ?>
-                <button type="submit" name="action" value="clear_donations" class="btn btn-danger btn-sm" onclick="return confirm('This will permanently delete all <?php echo (int)$donationCount; ?> donation record(s) — including test checkout data and the Hall of Fame. Promotion payments will not be affected. Continue?');">Clear Donation Data (<?php echo (int)$donationCount; ?>)</button>
-            </form>
+            <div class="badge" style="background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg); font-weight: 600;">
+                🎁 <?php echo (int)$donationCount; ?> Community Donation<?php echo $donationCount > 1 ? 's' : ''; ?>
+            </div>
             <?php endif; ?>
         </div>
     </div>

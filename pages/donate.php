@@ -93,7 +93,7 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <?php
-$donors = getDonors($pdo, 12);
+$donors = getDonors($pdo, 250);
 $hallShowCta = false;
 $hallSectionClass = 'hall-of-fame-section--below-form';
 if (!empty($donors)) {

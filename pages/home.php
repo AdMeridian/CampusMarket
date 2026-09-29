@@ -244,11 +244,11 @@ if (!empty($wantedRequests)):
     </div>
 </section>
 
-<!-- Donation Hall of Fame -->
+<!-- Donation Hall of Fame (Requires at least 10 donors to display on homepage) -->
 <?php
-$donors = getDonors($pdo, 12);
+$donors = getDonors($pdo, 20);
 $hallShowCta = true;
-if (!empty($donors)) {
+if (!empty($donors) && count($donors) >= 10) {
     include __DIR__ . '/../includes/partials/hall_of_fame_section.php';
 }
 ?>

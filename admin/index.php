@@ -44,6 +44,19 @@ $stats = [
     'completed_deals'           => $pdo->query("SELECT COUNT(*) FROM deal_confirmations WHERE status = 'completed'")->fetchColumn(),
 ];
 
+require_once __DIR__ . '/../includes/functions_member2.php';
+$userEmails = $pdo->query("SELECT email FROM users")->fetchAll(PDO::FETCH_COLUMN);
+$uniqueCampuses = [];
+foreach ($userEmails as $ue) {
+    if (function_exists('getUniversityInfoFromEmail')) {
+        $cinfo = getUniversityInfoFromEmail((string)$ue);
+        if ($cinfo['code'] !== 'Unknown' && $cinfo['domain'] !== 'unknown') {
+            $uniqueCampuses[$cinfo['domain']] = true;
+        }
+    }
+}
+$stats['campuses'] = count($uniqueCampuses);
+
 try {
     if (function_exists('ensurePwaInstallationsTable')) {
         ensurePwaInstallationsTable($pdo);
@@ -499,7 +512,7 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="stat-card" style="border-left-color: var(--success);">
             <div class="stat-card-label">Registered Users</div>
             <div class="stat-card-num"><?php echo $stats['users']; ?></div>
-            <div class="stat-card-sub">Students on platform</div>
+            <div class="stat-card-sub"><a href="users.php" style="color: inherit; text-decoration: underline; font-weight: 600;"><?php echo $stats['campuses']; ?> campus<?php echo $stats['campuses'] != 1 ? 'es' : ''; ?> represented ›</a></div>
         </div>
         <div class="stat-card" style="border-left-color: var(--warning);">
             <div class="stat-card-label">Total Orders</div>
@@ -551,19 +564,6 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="reports-alert-num" style="color: #2563eb;"><?php echo $stats['pending_approval_listings']; ?></div>
             </a>
-            <?php endif; ?>
-
-            <?php if ($donationCount > 0): ?>
-            <div class="reports-alert" style="background: #fef2f2; border-color: #fecaca; border-left-color: #ef4444; margin-bottom: 1.5rem;">
-                <div>
-                    <div class="reports-alert-text" style="color: #991b1b;">Go-Live: Test Donation Data</div>
-                    <div class="reports-alert-sub" style="color: #b91c1c;"><?php echo (int)$donationCount; ?> donation record(s) from test checkout are still stored. Clear them before launch.</div>
-                </div>
-                <form method="POST" style="margin: 0; flex-shrink: 0;" onsubmit="return confirm('Permanently delete all <?php echo (int)$donationCount; ?> donation record(s)? This clears the Hall of Fame and payment history. Promotion payments are not affected.');">
-                    <?php echo csrfTokenField(); ?>
-                    <button type="submit" name="action" value="clear_donations" class="btn btn-danger btn-sm">Clear Donation Data</button>
-                </form>
-            </div>
             <?php endif; ?>
 
             <div class="card" style="padding: 1.5rem;">

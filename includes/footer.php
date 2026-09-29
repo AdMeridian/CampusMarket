@@ -97,6 +97,9 @@
 if (isset($pdo) && function_exists('maybeRefreshRates')) {
     maybeRefreshRates($pdo);
 }
+if (isset($pdo) && function_exists('maybeSendStaleListingReminders')) {
+    maybeSendStaleListingReminders($pdo);
+}
 ?>
 
 <script>
