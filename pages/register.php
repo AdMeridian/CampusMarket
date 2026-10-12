@@ -175,10 +175,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             $_SESSION['pending_verify_email'] = $email;
-            $_SESSION['posthog_event'] = [
-                'name' => 'user_signed_up',
-                'properties' => ['university' => $emailDomain]
-            ];
+            queuePostHogEvent('signup_completed', [
+                'method' => 'email',
+                'university' => $emailDomain
+            ]);
+            queuePostHogEvent('user_signed_up', ['university' => $emailDomain]);
             redirect(BASE_URL . 'pages/check_email.php');
         } catch (Throwable $e) {
             $pdo->rollBack();

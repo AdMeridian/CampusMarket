@@ -17,9 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($orderId > 0) {
         $stmt = $pdo->prepare("
-            SELECT o.*, p.user_id AS seller_id, p.title AS product_title
+            SELECT o.*, p.user_id AS seller_id, p.title AS product_title, p.category_id, c.name AS category_name
             FROM orders o
             JOIN products p ON o.product_id = p.id
+            LEFT JOIN categories c ON p.category_id = c.id
             WHERE o.id = :id
         ");
         $stmt->execute([':id' => $orderId]);
@@ -85,6 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if (!$saleResult['success']) {
                         throw new RuntimeException(__('orders.flash_update_failed'));
                     }
+                    queuePostHogEvent('order_completed', [
+                        'listing_id' => (int)$order['product_id'],
+                        'category' => (string)($order['category_name'] ?? '')
+                    ]);
                     createNotification(
                         $pdo,
                         (int)$order['buyer_id'],

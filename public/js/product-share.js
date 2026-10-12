@@ -44,7 +44,7 @@
       credentials: 'same-origin',
     }).catch(function () {});
 
-    if (typeof global.posthog !== 'undefined') {
+    if (typeof global.posthog !== 'undefined' && global.posthog.capture) {
       global.posthog.capture('listing_shared', {
         listing_id: Number(productId),
         channel: channel,

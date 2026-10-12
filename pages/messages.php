@@ -18,7 +18,14 @@ if (!$otherUserId) {
 
 if ($productId > 0) {
     // Fetch context info
-    $stmt = $pdo->prepare("SELECT p.title, p.price, p.discount_percent, p.price_currency, p.listing_type, p.pricing_model, i.image_path FROM products p LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE WHERE p.id = :id");
+    $stmt = $pdo->prepare("
+        SELECT p.title, p.price, p.discount_percent, p.price_currency, p.listing_type, p.pricing_model,
+               p.category_id, c.name AS category_name, i.image_path 
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE 
+        WHERE p.id = :id
+    ");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
 
@@ -255,6 +262,7 @@ function goBackOrInbox() {
 
 const productId = <?= $productId ?>;
 const otherUserId = <?= $otherUserId ?>;
+const currentProductCategory = <?= json_encode((string)($product['category_name'] ?? '')) ?>;
 const dealExplainerHtml = <?= json_encode('<p class="chat-deal-bar__hint text-muted small mb-3">' . htmlspecialchars(__('chat.orders_deal_explainer'), ENT_QUOTES, 'UTF-8') . '</p>') ?>;
 const isAdmin = <?= isAdmin() ? 'true' : 'false' ?>;
 const chatBox = document.getElementById('chat-box');
@@ -671,7 +679,12 @@ chatForm.addEventListener('submit', (e) => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            if (typeof posthog !== 'undefined') posthog.capture('message_sent');
+            if (typeof posthog !== 'undefined' && posthog.capture) {
+                posthog.capture('message_sent', {
+                    listing_id: productId > 0 ? Number(productId) : null,
+                    category: currentProductCategory || null
+                });
+            }
             if (realtimeChannel) {
                 realtimeChannel.send({
                     type: 'broadcast',
@@ -1080,11 +1093,15 @@ function confirmDeal(prodId = null, isSellerOverride = null) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                if (typeof posthog !== 'undefined') {
+                if (typeof posthog !== 'undefined' && posthog.capture) {
                     if (data.action === 'awaiting_seller') {
                         posthog.capture('deal_initiated', { listing_id: finalProductId });
                     } else if (data.action === 'delisted') {
                         posthog.capture('deal_confirmed', { listing_id: finalProductId });
+                        posthog.capture('order_completed', {
+                            listing_id: Number(finalProductId),
+                            category: data.category || currentProductCategory || ''
+                        });
                     }
                 }
                 closeDealSheet();

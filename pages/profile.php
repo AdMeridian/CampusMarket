@@ -693,7 +693,7 @@ body.dark-mode .btn-white-solid:hover {
                     <a href="<?php echo BASE_URL; ?>pages/edit_profile.php" class="btn btn-white"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Edit Profile</a>
                     <a href="logout.php" class="btn btn-white" style="background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
                 <?php elseif (isLoggedIn()): ?>
-                    <a href="messages.php?other_user_id=<?php echo $user['id']; ?>&product_id=0" class="btn btn-white-solid"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
+                    <a href="messages.php?other_user_id=<?php echo $user['id']; ?>&product_id=0" class="btn btn-white-solid js-contact-seller" data-listing-id="0" data-category="" data-contact-method="direct_message"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
                     <a href="<?php echo BASE_URL; ?>pages/report.php?user_id=<?php echo (int)$user['id']; ?>" class="btn btn-white" style="background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35);"><?= __('report.report_user') ?></a>
                 <?php endif; ?>
             </div>
@@ -1065,6 +1065,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (newHash === 'about' || newHash === 'listings') {
             switchTab(newHash, false);
         }
+    });
+
+    document.querySelectorAll('.js-contact-seller').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (typeof posthog !== 'undefined' && posthog.capture) {
+                posthog.capture('seller_contact_clicked', {
+                    listing_id: Number(this.dataset.listingId || 0),
+                    category: this.dataset.category || '',
+                    contact_method: this.dataset.contactMethod || 'direct_message'
+                });
+            }
+        });
     });
 });
 </script>
