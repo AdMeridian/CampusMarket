@@ -200,6 +200,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     verifyCsrfToken();
     $result = completeProductSale($pdo, $productId, (int)$product['user_id'], null, 'manual');
     if ($result['success']) {
+        queuePostHogEvent('order_completed', [
+            'listing_id' => (int)$productId,
+            'category' => (string)($product['category_name'] ?? '')
+        ]);
         setFlash('success', __('product.marked_sold_success'));
         redirect(BASE_URL . 'pages/profile.php?id=' . (int)$product['user_id']);
     } else {
@@ -521,16 +525,14 @@ $shareText = seoProductShareDescription($product);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<?php if (!IS_LOCALHOST): ?>
 <script>
     if (typeof posthog !== 'undefined') {
         posthog.capture('listing_viewed', {
-            listing_id: <?php echo json_encode($productId); ?>,
-            category: <?php echo json_encode($product['category_name']); ?>
+            listing_id: <?php echo json_encode((int)$productId); ?>,
+            category: <?php echo json_encode((string)($product['category_name'] ?? 'Uncategorized')); ?>
         });
     }
 </script>
-<?php endif; ?>
 
 <style>
 /* Graph line draw animation */
@@ -1253,7 +1255,11 @@ body.dark-mode .scc-badge {
             <?php elseif (isLoggedIn()): ?>
             <!-- Action Buttons for Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
-                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale">
+                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" 
+                   class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                   data-listing-id="<?php echo (int)$product['id']; ?>"
+                   data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                   data-contact-method="message">
                     <?= __('product.message_seller') ?>
                 </a>
                 <button
@@ -1269,6 +1275,27 @@ body.dark-mode .scc-badge {
                 <a href="<?php echo BASE_URL; ?>pages/report.php?product_id=<?php echo (int)$product['id']; ?>" class="btn btn-secondary flex-grow justify-center py-3 text-sm hover-scale" style="border-radius: var(--radius-lg);">
                     <?= __('report.report_listing') ?>
                 </a>
+            </div>
+            <?php else: ?>
+            <!-- Action Buttons for Guest Buyer -->
+            <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
+                <a href="<?php echo BASE_URL; ?>pages/login.php?redirect=<?php echo urlencode('pages/messages.php?other_user_id=' . (int)$product['seller_id'] . '&product_id=' . (int)$product['id']); ?>" 
+                   class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                   data-listing-id="<?php echo (int)$product['id']; ?>"
+                   data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                   data-contact-method="message">
+                    <?= __('product.message_seller') ?>
+                </a>
+                <button
+                    type="button"
+                    class="product-share-btn w-full justify-center py-3 text-lg"
+                    onclick="document.getElementById('product-share-btn').click()"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/>
+                    </svg>
+                    <span><?= __('product.share_listing') ?></span>
+                </button>
             </div>
             <?php endif; ?>
         </div>
@@ -1525,6 +1552,20 @@ if (mgmtImgInput) {
         uploadHelp.style.color = "";
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.js-contact-seller').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (typeof posthog !== 'undefined' && posthog.capture) {
+                posthog.capture('seller_contact_clicked', {
+                    listing_id: Number(this.dataset.listingId || 0),
+                    category: this.dataset.category || '',
+                    contact_method: this.dataset.contactMethod || 'message'
+                });
+            }
+        });
+    });
+});
 </script>
 
 <?php

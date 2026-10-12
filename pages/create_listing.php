@@ -359,16 +359,15 @@ include '../includes/header.php';
         }
     }
 ?>
-<?php if (!IS_LOCALHOST): ?>
 <script>
     if (typeof posthog !== 'undefined') {
         posthog.capture('listing_created', {
+            listing_id: <?php echo json_encode((int)$createdProductId); ?>,
             category: <?php echo json_encode($createdCategoryName); ?>,
             price: <?php echo json_encode((float)($createdListingMeta['price'] ?? 0)); ?>
         });
     }
 </script>
-<?php endif; ?>
 <div class="container mt-24 mb-20">
     <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2rem; border-radius: var(--radius-xl); text-align: center;">
         <h1 class="page-hero-title mb-2"><?= __('create_listing.success_msg') ?></h1>

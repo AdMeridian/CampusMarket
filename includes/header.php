@@ -258,7 +258,10 @@ $navCategories = getNavCategories($pdo);
     </script>
     <script defer src="/_vercel/speed-insights/script.js"></script>
     
-    <?php if (!IS_LOCALHOST): ?>
+    <?php 
+    $posthogActive = (!IS_LOCALHOST || !empty($_GET['enable_posthog']) || !empty($_SESSION['enable_posthog']));
+    ?>
+    <?php if ($posthogActive): ?>
     <!-- PostHog Product Analytics (EU) -->
     <script>
         !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageviewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -275,15 +278,51 @@ $navCategories = getNavCategories($pdo);
         );
     </script>
     <?php endif; ?>
-    <?php if (!empty($_SESSION['posthog_event'])): ?>
+    <?php else: ?>
+    <!-- PostHog Local Dev Mock (logs events to console for testing) -->
     <script>
-        posthog.capture(
-            <?php echo json_encode($_SESSION['posthog_event']['name']); ?>,
-            <?php echo json_encode($_SESSION['posthog_event']['properties'] ?? new stdClass()); ?>
-        );
+        window.posthog = window.posthog || {
+            capture: function(name, properties) {
+                console.log('%c[PostHog Dev Mock] ' + name, 'color: #3b82f6; font-weight: bold;', properties || {});
+            },
+            identify: function(id, properties) {
+                console.log('%c[PostHog Dev Mock] identify: ' + id, 'color: #10b981; font-weight: bold;', properties || {});
+            }
+        };
     </script>
-    <?php unset($_SESSION['posthog_event']); ?>
     <?php endif; ?>
+
+    <?php
+    $queuedPosthogEvents = [];
+    if (!empty($_SESSION['posthog_events']) && is_array($_SESSION['posthog_events'])) {
+        $queuedPosthogEvents = array_merge($queuedPosthogEvents, $_SESSION['posthog_events']);
+    }
+    if (!empty($_SESSION['posthog_event']) && is_array($_SESSION['posthog_event'])) {
+        // If not already included in list
+        $alreadyInList = false;
+        foreach ($queuedPosthogEvents as $qEvt) {
+            if ($qEvt['name'] === $_SESSION['posthog_event']['name']) {
+                $alreadyInList = true;
+                break;
+            }
+        }
+        if (!$alreadyInList) {
+            $queuedPosthogEvents[] = $_SESSION['posthog_event'];
+        }
+    }
+    unset($_SESSION['posthog_event'], $_SESSION['posthog_events']);
+    ?>
+    <?php if (!empty($queuedPosthogEvents)): ?>
+    <script>
+        (function() {
+            var events = <?php echo json_encode($queuedPosthogEvents); ?>;
+            events.forEach(function(evt) {
+                if (typeof posthog !== 'undefined' && posthog.capture) {
+                    posthog.capture(evt.name, evt.properties || {});
+                }
+            });
+        })();
+    </script>
     <?php endif; ?>
     
 </head>

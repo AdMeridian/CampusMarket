@@ -53,6 +53,27 @@ function getFlash(): ?array {
     return null;
 }
 
+/**
+ * Queue a PostHog event in session to be fired on the next HTML page load.
+ */
+function queuePostHogEvent(string $name, array $properties = []): void {
+    if (session_status() === PHP_SESSION_NONE) {
+        return;
+    }
+    if (!isset($_SESSION['posthog_events']) || !is_array($_SESSION['posthog_events'])) {
+        $_SESSION['posthog_events'] = [];
+    }
+    $_SESSION['posthog_events'][] = [
+        'name' => $name,
+        'properties' => $properties,
+    ];
+    // Keep single $_SESSION['posthog_event'] for legacy compatibility
+    $_SESSION['posthog_event'] = [
+        'name' => $name,
+        'properties' => $properties,
+    ];
+}
+
 // ─── Auth Helpers ────────────────────────────────────────
 
 /**

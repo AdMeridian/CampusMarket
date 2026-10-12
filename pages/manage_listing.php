@@ -389,6 +389,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     verifyCsrfToken();
     $result = completeProductSale($pdo, $productId, (int)$product['user_id'], null, 'manual');
     if ($result['success']) {
+        queuePostHogEvent('order_completed', [
+            'listing_id' => (int)$productId,
+            'category' => (string)($product['category_name'] ?? '')
+        ]);
         setFlash('success', $isService ? 'Service marked as completed.' : __('product.marked_sold_success'));
         redirect(BASE_URL . 'pages/profile.php');
     } else {
