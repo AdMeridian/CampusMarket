@@ -168,8 +168,36 @@ if (!function_exists('isEduTrEmailDomain')) {
 }
 
 /**
- * True if the email is well-formed AND uses an allowed campus domain.
- * Any *@*.edu.tr address is accepted (students and staff).
+ * List of known disposable/temporary email provider domains to reject.
+ */
+if (!function_exists('isDisposableEmailDomain')) {
+    function isDisposableEmailDomain(string $domain): bool {
+        $domain = strtolower(trim($domain));
+        static $blocked = [
+            '10minutemail.com', '10minutemail.net', 'tempmail.com', 'temp-mail.org',
+            'guerrillamail.com', 'guerrillamail.net', 'guerrillamail.org', 'sharklasers.com',
+            'mailinator.com', 'dispostable.com', 'yopmail.com', 'yopmail.net',
+            'throwawaymail.com', 'trashmail.com', 'mytemp.email', 'getairmail.com',
+            'mohmal.com', 'crazymailing.com', 'burnermail.io', 'fakemailgenerator.com',
+            'emailondeck.com', 'tempail.com', 'inboxkitten.com', 'dropmail.me',
+            'generator.email', 'mintemail.com', 'trashmail.net', 'trashmail.me'
+        ];
+        if (in_array($domain, $blocked, true)) {
+            return true;
+        }
+        foreach ($blocked as $b) {
+            if (str_ends_with($domain, '.' . $b)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+/**
+ * True if the email is well-formed AND is either a university email,
+ * an allowed personal email (e.g. gmail.com, outlook.com, icloud.com),
+ * and NOT a disposable/burner domain.
  */
 if (!function_exists('isAllowedUniversityEmail')) {
     function isAllowedUniversityEmail(string $email): bool {
@@ -183,12 +211,41 @@ if (!function_exists('isAllowedUniversityEmail')) {
         }
         $domain = substr($email, $atIdx + 1);
 
-        $hiddenDomains = ['campusmarketplace.site'];
-        if (in_array($domain, $hiddenDomains, true)) {
+        // Reject disposable burner emails immediately
+        if (isDisposableEmailDomain($domain)) {
+            return false;
+        }
+
+        // Allow any university domain (*.edu.tr, *.edu, *.ac.uk, etc.)
+        if (isEduTrEmailDomain($domain) || str_ends_with($domain, '.edu') || str_ends_with($domain, '.ac.uk')) {
             return true;
         }
 
-        return isEduTrEmailDomain($domain);
+        // Allowed major consumer & campus domains
+        $allowedDomains = [
+            'gmail.com',
+            'googlemail.com',
+            'outlook.com',
+            'hotmail.com',
+            'live.com',
+            'icloud.com',
+            'yahoo.com',
+            'proton.me',
+            'protonmail.com',
+            'campusmarketplace.site',
+        ];
+
+        if (in_array($domain, $allowedDomains, true)) {
+            return true;
+        }
+
+        // Allow any domain that is registered in universityRegistry()
+        $registry = universityRegistry();
+        if (array_key_exists($domain, $registry)) {
+            return true;
+        }
+
+        return false;
     }
 }
 

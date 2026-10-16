@@ -32,6 +32,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $customLocation   = trim(sanitize($_POST['custom_location'] ?? ''));
     $userId         = currentUserId();
+
+    // Just-in-Time Seller Verification check
+    $userStmt = $pdo->prepare('SELECT id, student_id, university_id FROM users WHERE id = :uid LIMIT 1');
+    $userStmt->execute([':uid' => $userId]);
+    $currentUserProfile = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+    $sellerStudentId = trim((string)($_POST['seller_student_id'] ?? ($currentUserProfile['student_id'] ?? '')));
+    $sellerCountry   = strtoupper(trim((string)($_POST['seller_country'] ?? '')));
+    $sellerUniversity = trim((string)($_POST['seller_university'] ?? ''));
+
+    if (empty($currentUserProfile['student_id']) && empty($sellerStudentId)) {
+        $error = 'Please provide your Student ID to verify seller accountability.';
+    } elseif (empty($currentUserProfile['university_id']) && empty($sellerUniversity)) {
+        $error = 'Please select or enter your University / Campus.';
+    }
+
+    if (!$error && (!empty($sellerStudentId) || !empty($sellerUniversity))) {
+        // Update user profile with verification details
+        $updateFields = [];
+        $updateParams = [':uid' => $userId];
+        if (!empty($sellerStudentId) && empty($currentUserProfile['student_id'])) {
+            $updateFields[] = 'student_id = :sid';
+            $updateParams[':sid'] = substr($sellerStudentId, 0, 20);
+        }
+        if (!empty($updateFields)) {
+            $updUser = $pdo->prepare('UPDATE users SET ' . implode(', ', $updateFields) . ' WHERE id = :uid');
+            $updUser->execute($updateParams);
+        }
+    }
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
@@ -297,6 +326,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
 $userHomeTownDetails = isLoggedIn() ? getUserHomeTownDetails((int)currentUserId()) : null;
+
+// Fetch current user seller verification status
+$sellerProfileStmt = $pdo->prepare('SELECT id, student_id, university_id FROM users WHERE id = :uid LIMIT 1');
+$sellerProfileStmt->execute([':uid' => currentUserId()]);
+$currentSellerProfile = $sellerProfileStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$needsSellerVerification = empty($currentSellerProfile['student_id']) || empty($currentSellerProfile['university_id']);
+
+$activeCountries = [];
+$activeUniversities = [];
+try {
+    $activeCountries = $pdo->query("SELECT code, name FROM countries WHERE is_active = TRUE ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $activeUniversities = $pdo->query("SELECT id, name, country_code FROM universities WHERE is_active = TRUE ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $dbIgnore) {}
 $defaultTown = $userHomeTownDetails['town'] ?? '';
 $defaultCustomLocation = $userHomeTownDetails['custom'] ?? '';
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
@@ -420,6 +462,29 @@ include '../includes/header.php';
         <div class="glass-panel create-listing-card" style="border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); z-index: 10; width: 100%; box-sizing: border-box;">
             <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 js-form-loading" data-loading-text="<?= htmlspecialchars(__('create_listing.submitting_review'), ENT_QUOTES, 'UTF-8') ?>">
                 <?php echo csrfTokenField(); ?>
+
+                <?php if ($needsSellerVerification): ?>
+                <div class="seller-verification-banner" style="background: color-mix(in srgb, var(--primary) 8%, var(--bg-surface)); border: 1.5px solid var(--primary); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span style="font-size: 1.3rem;">🎓</span>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">One-Time Seller Verification</h3>
+                            <p class="text-muted small mb-0" style="font-size: 0.85rem;">To keep our campus marketplace safe and prevent scams, verify your student standing once before publishing.</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="font-bold mb-1.5 block text-sm" style="color: var(--text-main);">Student ID / Matric Number <span style="color: #ef4444;">*</span></label>
+                            <input type="text" name="seller_student_id" value="<?= htmlspecialchars($_POST['seller_student_id'] ?? ($currentSellerProfile['student_id'] ?? '')) ?>" placeholder="e.g. 20227014" class="w-full premium-input" style="padding: 0.75rem 1rem;" required>
+                        </div>
+                        <div>
+                            <label class="font-bold mb-1.5 block text-sm" style="color: var(--text-main);">University / Campus <span style="color: #ef4444;">*</span></label>
+                            <input type="text" name="seller_university" value="<?= htmlspecialchars($_POST['seller_university'] ?? '') ?>" placeholder="e.g. Cyprus International University" class="w-full premium-input" style="padding: 0.75rem 1rem;" required>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
                     <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
@@ -1077,6 +1142,52 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         townSelect.addEventListener('change', updateCustomLocVisibility);
         updateCustomLocVisibility();
+    }
+
+    // Client-side submit validation to prevent silent failures and rage-clicks
+    const listingForm = document.querySelector('form.js-form-loading');
+    if (listingForm) {
+        listingForm.addEventListener('submit', function (e) {
+            const checkedCategories = document.querySelectorAll('input[name="category_ids[]"]:checked');
+            if (checkedCategories.length === 0) {
+                e.preventDefault();
+                const catGroup = document.querySelector('input[name="category_ids[]"]')?.closest('.form-group');
+                if (catGroup) {
+                    catGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    catGroup.style.outline = '2px solid #ef4444';
+                    catGroup.style.padding = '0.5rem';
+                    catGroup.style.borderRadius = 'var(--radius-md)';
+                }
+                alert('Please select at least one category for your listing.');
+                const btn = document.getElementById('submitBtn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = createListingI18n.publishLabel;
+                }
+                delete listingForm.dataset.submitting;
+                return false;
+            }
+
+            if (uploadedFiles.length === 0) {
+                const imgIn = document.getElementById('imgInput');
+                if (!imgIn || !imgIn.files || imgIn.files.length === 0) {
+                    e.preventDefault();
+                    const dropzone = document.getElementById('uploadDropzone');
+                    if (dropzone) {
+                        dropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        dropzone.style.borderColor = '#ef4444';
+                    }
+                    alert('Please upload at least one photo of your item.');
+                    const btn = document.getElementById('submitBtn');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = createListingI18n.publishLabel;
+                    }
+                    delete listingForm.dataset.submitting;
+                    return false;
+                }
+            }
+        });
     }
 });
 </script>
