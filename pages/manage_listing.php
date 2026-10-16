@@ -850,7 +850,7 @@ require_once __DIR__ . '/../includes/header.php';
     <section class="listing-checkin" aria-labelledby="listing-checkin-title">
         <div class="listing-checkin__actions">
             <form method="POST">
-                <?= csrfField() ?>
+                <?= csrfTokenField() ?>
                 <input type="hidden" name="action" value="confirm_available">
                 <button type="submit" class="btn listing-checkin__button listing-checkin__button--confirm">
                     Confirm still available
@@ -858,7 +858,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </button>
             </form>
             <form method="POST">
-                <?= csrfField() ?>
+                <?= csrfTokenField() ?>
                 <input type="hidden" name="action" value="confirm_available">
                 <input type="hidden" name="focus_pricing" value="1">
                 <button type="submit" class="btn listing-checkin__button listing-checkin__button--discount">
@@ -866,7 +866,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </button>
             </form>
             <form method="POST" onsubmit="return confirm('<?= htmlspecialchars(__('product.confirm_mark_sold', [], 'Are you sure you want to mark this item as sold?')) ?>');">
-                <?= csrfField() ?>
+                <?= csrfTokenField() ?>
                 <input type="hidden" name="action" value="mark_sold">
                 <button type="submit" class="btn listing-checkin__button listing-checkin__button--sold">
                     <?= $isService ? 'Mark as Completed' : 'Mark as Sold' ?>
