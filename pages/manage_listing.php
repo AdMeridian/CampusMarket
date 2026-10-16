@@ -411,13 +411,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// 10. Confirm Still Available (Keep Active / Bump updated_at)
+// 10. Confirm Still Available (refresh the explicit check-in timestamp)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm_available') {
     verifyCsrfToken();
-    $stmtUp = $pdo->prepare("UPDATE products SET updated_at = NOW() WHERE id = :id AND (user_id = :uid OR :is_admin = 1)");
+    $stmtUp = $pdo->prepare("
+        UPDATE products
+        SET availability_confirmed_at = NOW(), updated_at = NOW()
+        WHERE id = :id AND status = 'active' AND (user_id = :uid OR :is_admin = 1)
+    ");
     $stmtUp->execute([':id' => $productId, ':uid' => $viewerId, ':is_admin' => $viewerIsAdmin ? 1 : 0]);
+    if ($stmtUp->rowCount() !== 1) {
+        $stmtCheck = $pdo->prepare("
+            SELECT status, availability_confirmed_at
+            FROM products
+            WHERE id = :id AND (user_id = :uid OR :is_admin = 1)
+        ");
+        $stmtCheck->execute([':id' => $productId, ':uid' => $viewerId, ':is_admin' => $viewerIsAdmin ? 1 : 0]);
+        $confirmedProduct = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+        if (!$confirmedProduct || $confirmedProduct['status'] !== 'active' || empty($confirmedProduct['availability_confirmed_at'])) {
+            setFlash('error', 'This listing could not be confirmed. Please try again.');
+            redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+        }
+    }
     setFlash('success', '✓ Great! Your listing has been confirmed as active and its activity date refreshed.');
-    redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+    $manageUrl = BASE_URL . 'pages/manage_listing.php?id=' . $productId;
+    if (($_POST['focus_pricing'] ?? '') === '1') {
+        $manageUrl .= '#discount_percent';
+    }
+    redirect($manageUrl);
 }
 
 // ==========================================
@@ -523,6 +544,25 @@ $sPath = buildSvgPath($xPos, $shareY);
 $vFill = $vPath . " L 100,39 L 0,39 Z";
 $wFill = $wPath . " L 100,39 L 0,39 Z";
 $sFill = $sPath . " L 100,39 L 0,39 Z";
+
+$isListingStale = false;
+$daysSinceCreated = 0;
+$lastCheckInAt = !empty($product['availability_confirmed_at'])
+    ? $product['availability_confirmed_at']
+    : ($product['created_at'] ?? null);
+if (($product['status'] ?? '') === 'active' && $lastCheckInAt !== null) {
+    $lastCheckInTimestamp = strtotime((string)$lastCheckInAt);
+    if ($lastCheckInTimestamp !== false) {
+        $daysSinceLastCheckIn = (int)max(1, floor((time() - $lastCheckInTimestamp) / 86400));
+        $createdAtTimestamp = strtotime((string)($product['created_at'] ?? ''));
+        if ($createdAtTimestamp !== false) {
+            $daysSinceCreated = (int)max(1, floor((time() - $createdAtTimestamp) / 86400));
+        }
+        if ($daysSinceLastCheckIn >= 30 || (isset($_GET['stale_check']) && empty($product['availability_confirmed_at']))) {
+            $isListingStale = true;
+        }
+    }
+}
 
 $pageTitle = 'Manage: ' . sanitize($product['title']);
 require_once __DIR__ . '/../includes/header.php';
@@ -796,7 +836,8 @@ require_once __DIR__ . '/../includes/header.php';
                 <?= ucfirst(str_replace('_', ' ', $product['status'])) ?>
             </span>
             <div class="mgmt-topbar__title" style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
-                Editing: <span style="color: var(--primary);"><?= sanitize($product['title']) ?></span>
+                <?= $isListingStale ? 'Availability check:' : 'Editing:' ?>
+                <span style="color: var(--primary);"><?= sanitize($product['title']) ?></span>
             </div>
             <a href="<?= BASE_URL ?>pages/product.php?id=<?= $productId ?>" class="btn btn-primary btn-sm flex items-center gap-2" style="border-radius: var(--radius-md); font-weight: 700;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -804,20 +845,6 @@ require_once __DIR__ . '/../includes/header.php';
             </a>
         </div>
     </div>
-
-<?php
-$isListingStale = false;
-$daysSinceCreated = 0;
-if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
-    $createdAtTimestamp = strtotime((string)$product['created_at']);
-    if ($createdAtTimestamp !== false) {
-        $daysSinceCreated = (int)max(1, floor((time() - $createdAtTimestamp) / 86400));
-    }
-    if ($daysSinceCreated >= 30 || isset($_GET['stale_check'])) {
-        $isListingStale = true;
-    }
-}
-?>
 
     <?php if ($isListingStale && ($product['status'] ?? '') === 'active'): ?>
     <section class="listing-checkin" aria-labelledby="listing-checkin-title">
@@ -830,9 +857,14 @@ if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
                     <span aria-hidden="true">↻</span>
                 </button>
             </form>
-            <a href="#pricing-card" class="btn listing-checkin__button listing-checkin__button--discount" onclick="document.getElementById('discount_percent')?.focus();">
-                Offer a discount
-            </a>
+            <form method="POST">
+                <?= csrfField() ?>
+                <input type="hidden" name="action" value="confirm_available">
+                <input type="hidden" name="focus_pricing" value="1">
+                <button type="submit" class="btn listing-checkin__button listing-checkin__button--discount">
+                    Confirm &amp; offer a discount
+                </button>
+            </form>
             <form method="POST" onsubmit="return confirm('<?= htmlspecialchars(__('product.confirm_mark_sold', [], 'Are you sure you want to mark this item as sold?')) ?>');">
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="mark_sold">
@@ -853,6 +885,7 @@ if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
     </section>
     <?php endif; ?>
 
+    <?php if (!$isListingStale): ?>
     <!-- Main Editor Grid -->
     <div class="mgmt-grid">
         <div class="flex flex-col gap-6">
@@ -1180,6 +1213,7 @@ if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
             </svg>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <script>

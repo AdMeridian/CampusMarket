@@ -29,6 +29,8 @@ Optional: `SESSION_STATELESS_SECRET` (if unset, `INTERNAL_PUSH_KEY` is used).
 
 ## Database migrations
 
+Apply pending migrations before deploying application code that depends on their schema changes.
+
 From the project root with Supabase CLI linked:
 
 ```bash
