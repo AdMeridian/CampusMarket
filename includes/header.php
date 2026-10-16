@@ -417,6 +417,12 @@ $navCategories = getNavCategories($pdo);
                             <span class="badge badge-primary"><?= $totalInboxUnread ?></span>
                         <?php endif; ?>
                     </a>
+                    <a href="<?php echo BASE_URL; ?>pages/wishlist.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" aria-label="<?= htmlspecialchars(__('nav.wishlist')) ?>" title="<?= htmlspecialchars(__('nav.wishlist')) ?>">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                        <span><?= __('nav.wishlist') ?></span>
+                    </a>
                 <?php endif; ?>
                 <?php if (isLoggedIn() && isAdmin()): ?>
                     <a href="<?php echo BASE_URL; ?>admin/index.php" class="mobile-nav-link mobile-nav-link--admin"><?= __('nav.admin_panel') ?></a>
