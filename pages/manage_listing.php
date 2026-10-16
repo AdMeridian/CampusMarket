@@ -807,14 +807,13 @@ require_once __DIR__ . '/../includes/header.php';
 
 <?php
 $isListingStale = false;
-$daysSinceActivity = 0;
-$listingActivityAt = !empty($product['updated_at']) ? $product['updated_at'] : ($product['created_at'] ?? null);
-if (($product['status'] ?? '') === 'active' && $listingActivityAt !== null) {
-    $activityTimestamp = strtotime((string)$listingActivityAt);
-    if ($activityTimestamp !== false) {
-        $daysSinceActivity = (int)max(1, floor((time() - $activityTimestamp) / 86400));
+$daysSinceCreated = 0;
+if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
+    $createdAtTimestamp = strtotime((string)$product['created_at']);
+    if ($createdAtTimestamp !== false) {
+        $daysSinceCreated = (int)max(1, floor((time() - $createdAtTimestamp) / 86400));
     }
-    if ($daysSinceActivity >= 30 || isset($_GET['stale_check'])) {
+    if ($daysSinceCreated >= 30 || isset($_GET['stale_check'])) {
         $isListingStale = true;
     }
 }
@@ -845,10 +844,10 @@ if (($product['status'] ?? '') === 'active' && $listingActivityAt !== null) {
         <div class="listing-checkin__copy">
             <h2 id="listing-checkin-title">
                 Listing check-in
-                <span><?= $daysSinceActivity ?> days since last update</span>
+                <span><?= $daysSinceCreated ?> days active</span>
             </h2>
             <p>
-                Is this <?= $isService ? 'service' : 'item' ?> still available? Confirm to refresh its activity date, mark it as <?= $isService ? 'completed' : 'sold' ?>, or update the price to attract buyers.
+                Is this <?= $isService ? 'service' : 'item' ?> still available? Confirm its availability, mark it as <?= $isService ? 'completed' : 'sold' ?>, or offer a discount to attract buyers.
             </p>
         </div>
     </section>
