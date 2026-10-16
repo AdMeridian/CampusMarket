@@ -411,13 +411,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// 10. Confirm Still Available (Keep Active / Bump updated_at)
+// 10. Confirm Still Available (refresh the explicit check-in timestamp)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm_available') {
     verifyCsrfToken();
-    $stmtUp = $pdo->prepare("UPDATE products SET updated_at = NOW() WHERE id = :id AND (user_id = :uid OR :is_admin = 1)");
+    $stmtUp = $pdo->prepare("
+        UPDATE products
+        SET availability_confirmed_at = NOW(), updated_at = NOW()
+        WHERE id = :id AND status = 'active' AND (user_id = :uid OR :is_admin = 1)
+    ");
     $stmtUp->execute([':id' => $productId, ':uid' => $viewerId, ':is_admin' => $viewerIsAdmin ? 1 : 0]);
+    if ($stmtUp->rowCount() !== 1) {
+        $stmtCheck = $pdo->prepare("
+            SELECT status, availability_confirmed_at
+            FROM products
+            WHERE id = :id AND (user_id = :uid OR :is_admin = 1)
+        ");
+        $stmtCheck->execute([':id' => $productId, ':uid' => $viewerId, ':is_admin' => $viewerIsAdmin ? 1 : 0]);
+        $confirmedProduct = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+        if (!$confirmedProduct || $confirmedProduct['status'] !== 'active' || empty($confirmedProduct['availability_confirmed_at'])) {
+            setFlash('error', 'This listing could not be confirmed. Please try again.');
+            redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+        }
+    }
     setFlash('success', '✓ Great! Your listing has been confirmed as active and its activity date refreshed.');
-    redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+    $manageUrl = BASE_URL . 'pages/manage_listing.php?id=' . $productId;
+    if (($_POST['focus_pricing'] ?? '') === '1') {
+        $manageUrl .= '#discount_percent';
+    }
+    redirect($manageUrl);
 }
 
 // ==========================================
@@ -524,6 +545,25 @@ $vFill = $vPath . " L 100,39 L 0,39 Z";
 $wFill = $wPath . " L 100,39 L 0,39 Z";
 $sFill = $sPath . " L 100,39 L 0,39 Z";
 
+$isListingStale = false;
+$daysSinceCreated = 0;
+$lastCheckInAt = !empty($product['availability_confirmed_at'])
+    ? $product['availability_confirmed_at']
+    : ($product['created_at'] ?? null);
+if (($product['status'] ?? '') === 'active' && $lastCheckInAt !== null) {
+    $lastCheckInTimestamp = strtotime((string)$lastCheckInAt);
+    if ($lastCheckInTimestamp !== false) {
+        $daysSinceLastCheckIn = (int)max(1, floor((time() - $lastCheckInTimestamp) / 86400));
+        $createdAtTimestamp = strtotime((string)($product['created_at'] ?? ''));
+        if ($createdAtTimestamp !== false) {
+            $daysSinceCreated = (int)max(1, floor((time() - $createdAtTimestamp) / 86400));
+        }
+        if ($daysSinceLastCheckIn >= 30 || (isset($_GET['stale_check']) && empty($product['availability_confirmed_at']))) {
+            $isListingStale = true;
+        }
+    }
+}
+
 $pageTitle = 'Manage: ' . sanitize($product['title']);
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -545,6 +585,76 @@ require_once __DIR__ . '/../includes/header.php';
     border-radius: var(--radius-xl);
     padding: 1.75rem;
     box-shadow: var(--shadow-sm);
+}
+.listing-checkin {
+    margin-top: 1.5rem;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid rgba(217, 119, 6, 0.35);
+    border-left: 5px solid #d97706;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, #fff8eb, #fffdf8);
+    box-shadow: var(--shadow-sm);
+}
+.listing-checkin__actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+.listing-checkin__actions form {
+    display: flex;
+    min-width: 0;
+    margin: 0;
+}
+.listing-checkin__button {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.7rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    text-align: center;
+    text-wrap: balance;
+}
+.listing-checkin__button--confirm {
+    background: #d97706;
+    color: #fff;
+}
+.listing-checkin__button--confirm:hover {
+    background: #b45309;
+    color: #fff;
+}
+.listing-checkin__button--discount {
+    border-color: var(--border-light);
+    background: var(--bg-surface);
+    color: var(--text-main);
+}
+.listing-checkin__button--sold {
+    border-color: #fecaca;
+    background: #fff5f5;
+    color: #b91c1c;
+}
+.listing-checkin__copy {
+    margin-top: 1.1rem;
+}
+.listing-checkin__copy h2 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.75rem;
+    margin: 0 0 0.35rem;
+    color: #92400e;
+    font-size: 1.15rem;
+}
+.listing-checkin__copy h2 span {
+    color: #b45309;
+    font-size: 0.9rem;
+}
+.listing-checkin__copy p {
+    margin: 0;
+    line-height: 1.5;
 }
 .mgmt-header-badge {
     padding: 0.35rem 0.85rem;
@@ -578,6 +688,9 @@ require_once __DIR__ . '/../includes/header.php';
     .mgmt-topbar__actions .btn-primary { order: 3; }
 }
 @media (max-width: 640px) {
+    .listing-checkin__actions {
+        grid-template-columns: 1fr;
+    }
     .mgmt-topbar {
         align-items: stretch !important;
         flex-direction: column !important;
@@ -723,7 +836,8 @@ require_once __DIR__ . '/../includes/header.php';
                 <?= ucfirst(str_replace('_', ' ', $product['status'])) ?>
             </span>
             <div class="mgmt-topbar__title" style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
-                Editing: <span style="color: var(--primary);"><?= sanitize($product['title']) ?></span>
+                <?= $isListingStale ? 'Availability check:' : 'Editing:' ?>
+                <span style="color: var(--primary);"><?= sanitize($product['title']) ?></span>
             </div>
             <a href="<?= BASE_URL ?>pages/product.php?id=<?= $productId ?>" class="btn btn-primary btn-sm flex items-center gap-2" style="border-radius: var(--radius-md); font-weight: 700;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -732,107 +846,46 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-<?php
-$isListingStale = false;
-$daysSinceCreated = 0;
-if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
-    $createdAtTs = strtotime($product['created_at']);
-    $daysSinceCreated = (int)max(1, floor((time() - $createdAtTs) / 86400));
-    if ($daysSinceCreated >= 30 || isset($_GET['stale_check'])) {
-        $isListingStale = true;
-    }
-}
-?>
-
     <?php if ($isListingStale && ($product['status'] ?? '') === 'active'): ?>
-    <div class="card mb-6" style="border: 1px solid rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.04) 100%); border-radius: var(--radius-lg); padding: 1.25rem; box-shadow: var(--shadow-sm);">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div style="flex: 1 1 320px;">
-                <div class="flex items-center gap-2 mb-1" style="font-weight: 800; font-size: 1.05rem; color: #d97706;">
-                    <span>📦</span>
-                    <span>Listing Check-in (<?= $daysSinceCreated ?> days active)</span>
-                </div>
-                <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted); line-height: 1.45;">
-                    Is this item still available? If sold, please mark it as sold. If still available, confirm to refresh its timestamp or offer a discount to catch buyers' eyes!
-                </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <form method="POST" style="margin: 0;">
-                    <?= csrfField() ?>
-                    <input type="hidden" name="action" value="confirm_available">
-                    <button type="submit" class="btn btn-sm" style="background: #d97706; color: #ffffff; font-weight: 700; border-radius: var(--radius-md); border: none; padding: 0.5rem 0.9rem;">
-                        ✓ Still on Sale (Refresh)
-                    </button>
-                </form>
-                <a href="#pricing-card" onclick="document.getElementById('discount_percent')?.focus();" class="btn btn-sm btn-secondary" style="border-radius: var(--radius-md); font-weight: 700; padding: 0.5rem 0.9rem;">
-                    🏷️ Offer Discount
-                </a>
-                <form method="POST" style="margin: 0;" onsubmit="return confirm('<?= htmlspecialchars(__('product.confirm_mark_sold', [], 'Are you sure you want to mark this item as sold?')) ?>');">
-                    <?= csrfField() ?>
-                    <input type="hidden" name="action" value="mark_sold">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: var(--radius-md); font-weight: 700; padding: 0.5rem 0.9rem;">
-                        Mark as Sold
-                    </button>
-                </form>
-            </div>
+    <section class="listing-checkin" aria-labelledby="listing-checkin-title">
+        <div class="listing-checkin__actions">
+            <form method="POST">
+                <?= csrfTokenField() ?>
+                <input type="hidden" name="action" value="confirm_available">
+                <button type="submit" class="btn listing-checkin__button listing-checkin__button--confirm">
+                    Confirm still available
+                    <span aria-hidden="true">↻</span>
+                </button>
+            </form>
+            <form method="POST">
+                <?= csrfTokenField() ?>
+                <input type="hidden" name="action" value="confirm_available">
+                <input type="hidden" name="focus_pricing" value="1">
+                <button type="submit" class="btn listing-checkin__button listing-checkin__button--discount">
+                    Confirm &amp; offer a discount
+                </button>
+            </form>
+            <form method="POST" onsubmit="return confirm('<?= htmlspecialchars(__('product.confirm_mark_sold', [], 'Are you sure you want to mark this item as sold?')) ?>');">
+                <?= csrfTokenField() ?>
+                <input type="hidden" name="action" value="mark_sold">
+                <button type="submit" class="btn listing-checkin__button listing-checkin__button--sold">
+                    <?= $isService ? 'Mark as Completed' : 'Mark as Sold' ?>
+                </button>
+            </form>
         </div>
-    </div>
+        <div class="listing-checkin__copy">
+            <h2 id="listing-checkin-title">
+                Listing check-in
+                <span><?= $daysSinceCreated ?> days active</span>
+            </h2>
+            <p>
+                Is this <?= $isService ? 'service' : 'item' ?> still available? Confirm its availability, mark it as <?= $isService ? 'completed' : 'sold' ?>, or offer a discount to attract buyers.
+            </p>
+        </div>
+    </section>
     <?php endif; ?>
 
-    <!-- Insights Metric Bar -->
-    <div class="grid grid-cols-1 md-grid-cols-3 gap-4 mb-8">
-        <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid var(--primary);">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-muted font-bold text-sm">TOTAL VIEWS</span>
-                <span class="font-black text-2xl text-main"><?= $uniqueViewCount ?></span>
-            </div>
-            <svg viewBox="0 0 100 40" class="w-full h-10" preserveAspectRatio="none">
-                <defs>
-                    <linearGradient id="vFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.25"/>
-                        <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
-                    </linearGradient>
-                </defs>
-                <path d="<?= $vFill ?>" fill="url(#vFill)"/>
-                <path d="<?= $vPath ?>" class="graph-line" stroke="var(--primary)" stroke-width="1.5" fill="none"/>
-            </svg>
-        </div>
-
-        <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid #ec4899;">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-muted font-bold text-sm">WISHLIST SAVES</span>
-                <span class="font-black text-2xl text-main"><?= $wishlistCount ?></span>
-            </div>
-            <svg viewBox="0 0 100 40" class="w-full h-10" preserveAspectRatio="none">
-                <defs>
-                    <linearGradient id="wFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#ec4899" stop-opacity="0.25"/>
-                        <stop offset="100%" stop-color="#ec4899" stop-opacity="0.02"/>
-                    </linearGradient>
-                </defs>
-                <path d="<?= $wFill ?>" fill="url(#wFill)"/>
-                <path d="<?= $wPath ?>" class="graph-line" stroke="#ec4899" stroke-width="1.5" fill="none"/>
-            </svg>
-        </div>
-
-        <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid #10b981;">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-muted font-bold text-sm">SHARES</span>
-                <span class="font-black text-2xl text-main"><?= $shareCount ?></span>
-            </div>
-            <svg viewBox="0 0 100 40" class="w-full h-10" preserveAspectRatio="none">
-                <defs>
-                    <linearGradient id="sFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
-                        <stop offset="100%" stop-color="#10b981" stop-opacity="0.02"/>
-                    </linearGradient>
-                </defs>
-                <path d="<?= $sFill ?>" fill="url(#sFill)"/>
-                <path d="<?= $sPath ?>" class="graph-line" stroke="#10b981" stroke-width="1.5" fill="none"/>
-            </svg>
-        </div>
-    </div>
-
+    <?php if (!$isListingStale): ?>
     <!-- Main Editor Grid -->
     <div class="mgmt-grid">
         <div class="flex flex-col gap-6">
@@ -1104,8 +1157,63 @@ if (($product['status'] ?? '') === 'active' && !empty($product['created_at'])) {
                     </form>
                 </div>
             </div>
+
         </div>
     </div>
+    <!-- Insights Metric Bar -->
+    <div class="grid grid-cols-1 md-grid-cols-3 gap-4 mt-8">
+        <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid var(--primary);">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-muted font-bold text-sm">TOTAL VIEWS</span>
+                <span class="font-black text-2xl text-main"><?= $uniqueViewCount ?></span>
+            </div>
+            <svg viewBox="0 0 100 40" class="w-full h-10" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="vFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="var(--primary)" stop-opacity="0.25"/>
+                        <stop offset="100%" stop-color="var(--primary)" stop-opacity="0.02"/>
+                    </linearGradient>
+                </defs>
+                <path d="<?= $vFill ?>" fill="url(#vFill)"/>
+                <path d="<?= $vPath ?>" class="graph-line" stroke="var(--primary)" stroke-width="1.5" fill="none"/>
+            </svg>
+        </div>
+
+        <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid #ec4899;">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-muted font-bold text-sm">WISHLIST SAVES</span>
+                <span class="font-black text-2xl text-main"><?= $wishlistCount ?></span>
+            </div>
+            <svg viewBox="0 0 100 40" class="w-full h-10" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="wFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#ec4899" stop-opacity="0.25"/>
+                        <stop offset="100%" stop-color="#ec4899" stop-opacity="0.02"/>
+                    </linearGradient>
+                </defs>
+                <path d="<?= $wFill ?>" fill="url(#wFill)"/>
+                <path d="<?= $wPath ?>" class="graph-line" stroke="#ec4899" stroke-width="1.5" fill="none"/>
+            </svg>
+        </div>
+
+        <div class="mgmt-card p-4 relative overflow-hidden" style="border-left: 4px solid #10b981;">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-muted font-bold text-sm">SHARES</span>
+                <span class="font-black text-2xl text-main"><?= $shareCount ?></span>
+            </div>
+            <svg viewBox="0 0 100 40" class="w-full h-10" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="sFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+                        <stop offset="100%" stop-color="#10b981" stop-opacity="0.02"/>
+                    </linearGradient>
+                </defs>
+                <path d="<?= $sFill ?>" fill="url(#sFill)"/>
+                <path d="<?= $sPath ?>" class="graph-line" stroke="#10b981" stroke-width="1.5" fill="none"/>
+            </svg>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <script>
