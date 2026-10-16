@@ -904,6 +904,52 @@ async function handleIncomingFiles(newFiles) {
     });
 })();
 
+document.addEventListener('DOMContentLoaded', function () {
+    const listingForm = document.querySelector('form.js-form-loading');
+    if (!listingForm) return;
+
+    function resetSubmitState() {
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('is-loading');
+            submitBtn.removeAttribute('aria-busy');
+            submitBtn.innerText = submitBtn.dataset.originalLabel || createListingI18n.publishLabel;
+            delete submitBtn.dataset.originalLabel;
+        }
+        delete listingForm.dataset.submitting;
+    }
+
+    listingForm.addEventListener('submit', function (event) {
+        const checkedCategories = document.querySelectorAll('input[name="category_ids[]"]:checked');
+        if (checkedCategories.length === 0) {
+            event.preventDefault();
+            const categoryGroup = document.querySelector('input[name="category_ids[]"]')?.closest('.form-group');
+            if (categoryGroup) {
+                categoryGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                categoryGroup.style.outline = '2px solid #ef4444';
+                categoryGroup.style.padding = '0.5rem';
+                categoryGroup.style.borderRadius = 'var(--radius-md)';
+            }
+            alert('Please select at least one category for your listing.');
+            resetSubmitState();
+            return;
+        }
+
+        const imgInput = document.getElementById('imgInput');
+        if (uploadedFiles.length === 0 && (!imgInput || imgInput.files.length === 0)) {
+            event.preventDefault();
+            const dropzone = document.getElementById('uploadDropzone');
+            if (dropzone) {
+                dropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                dropzone.style.borderColor = '#ef4444';
+            }
+            alert('Please upload at least one photo of your item.');
+            resetSubmitState();
+        }
+    });
+});
+
 // ── Suggest Tags ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
     const suggestBtn  = document.getElementById('suggestTagsBtn');
