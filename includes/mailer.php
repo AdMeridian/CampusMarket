@@ -303,3 +303,44 @@ if (!function_exists('sendMarketingEmail')) {
         return ['ok' => false, 'status' => $status, 'error' => $err ?: $body];
     }
 }
+
+if (!function_exists('sendStudentVerificationOtpEmail')) {
+    /**
+     * Send a 6-digit verification code to a seller's university email.
+     */
+    function sendStudentVerificationOtpEmail(string $studentEmail, string $username, string $otpCode): array {
+        $appName = defined('APP_NAME') ? APP_NAME : 'CampusMarket';
+        $safeName = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+        $safeOtp = htmlspecialchars($otpCode, ENT_QUOTES, 'UTF-8');
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html>
+<body style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:#f8fafc; padding:24px; color:#0f172a; margin:0;">
+  <div style="max-width:480px; margin:0 auto; background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:32px;">
+    <div style="text-align:center; margin-bottom: 20px;">
+      <span style="font-size: 36px;">🎓</span>
+    </div>
+    <h2 style="margin:0 0 12px 0; font-size:20px; text-align:center; color:#0f172a;">Seller Student Verification</h2>
+    <p style="margin:0 0 20px 0; color:#475569; line-height:1.5; text-align:center;">
+      Hi {$safeName}, enter this 6-digit verification code on CampusMarket to verify your student status:
+    </p>
+    <div style="text-align:center; margin:28px 0;">
+      <span style="display:inline-block; letter-spacing:6px; font-size:32px; font-weight:800; color:#4f46e5; background:#eef2ff; border:1.5px dashed #6366f1; border-radius:10px; padding:12px 28px;">
+        {$safeOtp}
+      </span>
+    </div>
+    <p style="margin:20px 0 0 0; color:#64748b; font-size:13px; line-height:1.5; text-align:center;">
+      This code is valid for <strong>10 minutes</strong>. Do not share this code with anyone.
+    </p>
+    <p style="margin:24px 0 0 0; color:#94a3b8; font-size:12px; line-height:1.5; text-align:center;">
+      CampusMarket verifies student status to keep peer-to-peer campus trades honest and safe.
+    </p>
+  </div>
+</body>
+</html>
+HTML;
+
+        return sendEmail($studentEmail, "{$appName} Seller Verification Code: {$otpCode}", $html);
+    }
+}

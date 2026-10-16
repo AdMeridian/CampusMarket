@@ -457,3 +457,181 @@ if (!function_exists('getAvailableUniversities')) {
     }
 }
 
+/* ─────────────────────────────────────────────────────────────
+ * Student Email OTP Verification Helpers
+ * ───────────────────────────────────────────────────────────── */
+
+if (!function_exists('ensureStudentVerificationsTableExists')) {
+    function ensureStudentVerificationsTableExists(PDO $pdo): void {
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS student_email_verifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    student_email VARCHAR(120) NOT NULL,
+                    otp_code VARCHAR(6) NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    attempts INT NOT NULL DEFAULT 0,
+                    verified_at DATETIME NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX (user_id),
+                    INDEX (student_email)
+                ) ENGINE=InnoDB;
+            ");
+        } catch (Throwable $e) {
+            // PostgreSQL fallback
+            try {
+                $pdo->exec("
+                    CREATE TABLE IF NOT EXISTS public.student_email_verifications (
+                        id BIGSERIAL PRIMARY KEY,
+                        user_id BIGINT NOT NULL,
+                        student_email VARCHAR(120) NOT NULL,
+                        otp_code VARCHAR(6) NOT NULL,
+                        expires_at TIMESTAMPTZ NOT NULL,
+                        attempts INT NOT NULL DEFAULT 0,
+                        verified_at TIMESTAMPTZ NULL,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
+                ");
+            } catch (Throwable $pe) {}
+        }
+    }
+}
+
+if (!function_exists('createAndSendStudentEmailOtp')) {
+    function createAndSendStudentEmailOtp(PDO $pdo, int $userId, string $studentEmail, string $username): array {
+        $studentEmail = strtolower(trim($studentEmail));
+        if (!filter_var($studentEmail, FILTER_VALIDATE_EMAIL)) {
+            return ['ok' => false, 'error' => 'Please enter a valid student email address.'];
+        }
+
+        // Must be a university domain (.edu, .edu.tr, .ac.uk, etc.)
+        $atIdx = strrpos($studentEmail, '@');
+        $domain = $atIdx !== false ? substr($studentEmail, $atIdx + 1) : '';
+        if (function_exists('isDisposableEmailDomain') && isDisposableEmailDomain($domain)) {
+            return ['ok' => false, 'error' => 'Disposable or temporary email addresses cannot be used.'];
+        }
+
+        $isUni = false;
+        if (function_exists('isEduTrEmailDomain') && isEduTrEmailDomain($domain)) $isUni = true;
+        if (str_ends_with($domain, '.edu') || str_ends_with($domain, '.ac.uk')) $isUni = true;
+        $registry = function_exists('universityRegistry') ? universityRegistry() : [];
+        if (array_key_exists($domain, $registry)) $isUni = true;
+
+        if (!$isUni) {
+            return ['ok' => false, 'error' => 'Please provide an official university student email address (e.g. @ciu.edu.tr, @neu.edu.tr).'];
+        }
+
+        ensureStudentVerificationsTableExists($pdo);
+
+        // Generate cryptographically secure 6-digit OTP
+        $otp = sprintf('%06d', random_int(100000, 999999));
+        $expiresAt = date('Y-m-d H:i:s', time() + 600); // 10 minutes
+
+        $ins = $pdo->prepare('
+            INSERT INTO student_email_verifications (user_id, student_email, otp_code, expires_at, attempts)
+            VALUES (:uid, :email, :otp, :exp, 0)
+        ');
+        $ins->execute([
+            ':uid'   => $userId,
+            ':email' => $studentEmail,
+            ':otp'   => $otp,
+            ':exp'   => $expiresAt
+        ]);
+
+        if (function_exists('sendStudentVerificationOtpEmail')) {
+            $mailRes = sendStudentVerificationOtpEmail($studentEmail, $username, $otp);
+            if (!$mailRes['ok']) {
+                error_log('[createAndSendStudentEmailOtp] Mailer warning: ' . ($mailRes['error'] ?? 'unknown'));
+            }
+        }
+
+        return ['ok' => true, 'email' => $studentEmail];
+    }
+}
+
+if (!function_exists('verifyStudentEmailOtp')) {
+    function verifyStudentEmailOtp(PDO $pdo, int $userId, string $studentEmail, string $otpCode): array {
+        $studentEmail = strtolower(trim($studentEmail));
+        $otpCode = trim($otpCode);
+
+        ensureStudentVerificationsTableExists($pdo);
+
+        $stmt = $pdo->prepare('
+            SELECT id, otp_code, expires_at, attempts, verified_at
+            FROM student_email_verifications
+            WHERE user_id = :uid AND LOWER(student_email) = :email
+            ORDER BY id DESC
+            LIMIT 1
+        ');
+        $stmt->execute([':uid' => $userId, ':email' => $studentEmail]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return ['ok' => false, 'error' => 'No active verification code found for this student email. Please request a new code.'];
+        }
+
+        if (!empty($row['verified_at'])) {
+            return ['ok' => true, 'already_verified' => true];
+        }
+
+        if (strtotime($row['expires_at']) < time()) {
+            return ['ok' => false, 'error' => 'Verification code has expired. Please request a new one.'];
+        }
+
+        if ((int)$row['attempts'] >= 5) {
+            return ['ok' => false, 'error' => 'Too many incorrect attempts. Please request a new verification code.'];
+        }
+
+        if ($row['otp_code'] !== $otpCode) {
+            $upd = $pdo->prepare('UPDATE student_email_verifications SET attempts = attempts + 1 WHERE id = :id');
+            $upd->execute([':id' => $row['id']]);
+            $remaining = 4 - (int)$row['attempts'];
+            return ['ok' => false, 'error' => 'Incorrect 6-digit code.' . ($remaining > 0 ? " ({$remaining} attempts remaining)" : '')];
+        }
+
+        // Code correct! Mark verified
+        $upd = $pdo->prepare('UPDATE student_email_verifications SET verified_at = CURRENT_TIMESTAMP WHERE id = :id');
+        $upd->execute([':id' => $row['id']]);
+
+        // Extract student ID from email
+        $studentId = function_exists('studentIdFromUniversityEmail') ? studentIdFromUniversityEmail($studentEmail) : null;
+        if (!$studentId) {
+            $local = explode('@', $studentEmail)[0];
+            $digits = preg_replace('/\D/', '', $local);
+            $studentId = $digits !== '' ? substr($digits, 0, 20) : substr($local, 0, 20);
+        }
+
+        // Try to match university ID
+        $universityId = null;
+        try {
+            $domain = substr($studentEmail, strrpos($studentEmail, '@') + 1);
+            $uniStmt = $pdo->prepare('SELECT id FROM universities WHERE LOWER(domain_pattern) = :d OR :d LIKE CONCAT("%", LOWER(domain_pattern)) LIMIT 1');
+            $uniStmt->execute([':d' => $domain]);
+            $universityId = $uniStmt->fetchColumn() ?: null;
+        } catch (Throwable $e) {}
+
+        // Update user
+        $userUpdates = ['is_verified = TRUE'];
+        $userParams = [':uid' => $userId];
+        if (!empty($studentId)) {
+            $userUpdates[] = 'student_id = :sid';
+            $userParams[':sid'] = $studentId;
+        }
+        if (!empty($universityId)) {
+            $userUpdates[] = 'university_id = :unid';
+            $userParams[':unid'] = $universityId;
+        }
+
+        $userSql = 'UPDATE users SET ' . implode(', ', $userUpdates) . ' WHERE id = :uid';
+        $updUser = $pdo->prepare($userSql);
+        $updUser->execute($userParams);
+
+        return [
+            'ok' => true,
+            'student_id' => $studentId,
+            'university_id' => $universityId
+        ];
+    }
+}
+
