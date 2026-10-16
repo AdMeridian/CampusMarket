@@ -558,7 +558,12 @@ if ($action === 'confirm_deal') {
     }
 
     // Determine seller and product info
-    $stmt = $pdo->prepare("SELECT user_id, title, listing_type FROM products WHERE id = :pid");
+    $stmt = $pdo->prepare("
+        SELECT p.user_id, p.title, p.category_id, p.listing_type, c.name AS category_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.id = :pid
+    ");
     $stmt->execute([':pid' => $productId]);
     $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -591,7 +596,12 @@ if ($action === 'confirm_deal') {
                 "$myUsername confirmed the deal for '$productTitle'. It has been marked as sold.", $productId);
 
             $pdo->commit();
-            echo json_encode(['success' => true, 'action' => 'delisted']);
+            echo json_encode([
+                'success' => true,
+                'action' => 'delisted',
+                'listing_id' => $productId,
+                'category' => $product['category_name'] ?? ''
+            ]);
         } else {
             // Check if deal confirmation exists, if not create it
             $stmtCheck = $pdo->prepare("SELECT id FROM deal_confirmations WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid");

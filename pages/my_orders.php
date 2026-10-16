@@ -17,9 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($orderId > 0) {
         $stmt = $pdo->prepare("
-            SELECT o.*, p.user_id AS seller_id, p.title AS product_title
+            SELECT o.*, p.user_id AS seller_id, p.title AS product_title, p.category_id, c.name AS category_name
             FROM orders o
             JOIN products p ON o.product_id = p.id
+            LEFT JOIN categories c ON p.category_id = c.id
             WHERE o.id = :id
         ");
         $stmt->execute([':id' => $orderId]);
@@ -85,6 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if (!$saleResult['success']) {
                         throw new RuntimeException(__('orders.flash_update_failed'));
                     }
+                    queuePostHogEvent('order_completed', [
+                        'listing_id' => (int)$order['product_id'],
+                        'category' => (string)($order['category_name'] ?? '')
+                    ]);
                     createNotification(
                         $pdo,
                         (int)$order['buyer_id'],
@@ -308,7 +313,13 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                     <div class="order-hub-card__side">
                                         <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
-                                        <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
+                                        <?php $priceData = formatPriceInTRY((float)$order['price'], productCurrencyCode($order), $pdo); ?>
+                                        <span class="order-hub-card__price">
+                                            <?php echo $priceData['display']; ?>
+                                            <?php if ($priceData['original']): ?>
+                                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -387,7 +398,13 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                     <div class="order-hub-card__side">
                                         <span class="badge badge-<?php echo $statusClass; ?>"><?php echo ucfirst($order['status']); ?></span>
-                                        <span class="order-hub-card__price"><?php echo formatPrice($order['price'], productCurrencyCode($order)); ?></span>
+                                        <?php $priceData = formatPriceInTRY((float)$order['price'], productCurrencyCode($order), $pdo); ?>
+                                        <span class="order-hub-card__price">
+                                            <?php echo $priceData['display']; ?>
+                                            <?php if ($priceData['original']): ?>
+                                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -424,7 +441,13 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                     <div class="order-hub-card__side">
                                         <span class="badge badge-completed">Completed</span>
-                                        <span class="order-hub-card__price"><?php echo formatPrice($sale['price'], productCurrencyCode($sale)); ?></span>
+                                        <?php $priceData = formatPriceInTRY((float)$sale['price'], productCurrencyCode($sale), $pdo); ?>
+                                        <span class="order-hub-card__price">
+                                            <?php echo $priceData['display']; ?>
+                                            <?php if ($priceData['original']): ?>
+                                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>

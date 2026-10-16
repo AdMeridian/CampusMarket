@@ -131,6 +131,15 @@ function supabaseSignupRedirectUrl(): string {
 }
 
 /**
+ * Build Supabase OAuth authorize URL for social providers (Google, Apple).
+ */
+function supabaseOAuthUrl(string $provider, ?string $redirectTo = null): string {
+    $base = rtrim(supabaseUrl(), '/') . '/auth/v1/authorize';
+    $redirect = $redirectTo ?: supabaseSignupRedirectUrl();
+    return $base . '?provider=' . urlencode($provider) . '&redirect_to=' . urlencode($redirect);
+}
+
+/**
  * Ask Supabase to resend the signup confirmation email.
  */
 function resendSignupVerificationEmail(string $email): array {

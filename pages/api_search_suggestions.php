@@ -34,7 +34,8 @@ try {
         
         // calculate final price since discount could be applied
         $final_price = getDiscountedPrice($row);
-        $row['formatted_price'] = formatPrice($final_price, productCurrencyCode($row));
+        $priceData = formatPriceInTRY($final_price, productCurrencyCode($row), $pdo);
+        $row['formatted_price'] = $priceData['display'] . ($priceData['original'] ? ' · ' . $priceData['original'] : '');
     }
     
     echo json_encode(['success' => true, 'results' => $results]);

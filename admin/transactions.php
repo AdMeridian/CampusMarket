@@ -303,7 +303,16 @@ require_once __DIR__ . '/../includes/header.php';
                             <span class="text-muted small">Off-platform</span>
                             <?php endif; ?>
                         </td>
-                        <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #059669;"><?php echo formatPrice($deal['product_price'], productCurrencyCode(['price_currency' => $deal['product_price_currency'] ?? DEFAULT_PRODUCT_CURRENCY])); ?></td>
+                        <td class="p-4 font-bold" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem; color: #059669;">
+                            <?php 
+                                $dealCurr = productCurrencyCode(['price_currency' => $deal['product_price_currency'] ?? DEFAULT_PRODUCT_CURRENCY]);
+                                $priceData = formatPriceInTRY((float)$deal['product_price'], $dealCurr, $pdo);
+                                echo $priceData['display'];
+                                if ($priceData['original']):
+                            ?>
+                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
+                            <?php endif; ?>
+                        </td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <span class="badge-completed shadow-sm">Completed</span>
                         </td>

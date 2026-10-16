@@ -42,8 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['email'] = __('auth.register_error_email_required');
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100) {
         $errors['email'] = __('auth.register_error_email_invalid');
+    } elseif (function_exists('isDisposableEmailDomain') && isDisposableEmailDomain(substr($email, strrpos($email, '@') + 1))) {
+        $errors['email'] = 'Disposable/temporary email addresses are not allowed. Please use your campus email or personal email (e.g. Gmail).';
     } elseif (!isAllowedUniversityEmail($email)) {
-        $errors['email'] = __('auth.register_error_email_edutr');
+        $errors['email'] = 'Please enter a valid university email or trusted email provider (such as Gmail, Outlook).';
     } elseif (($studentEmailError = validateUniversityStudentEmail($email)) !== null) {
         $errors['email'] = $studentEmailError;
     }
@@ -178,10 +180,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             $_SESSION['pending_verify_email'] = $email;
-            $_SESSION['posthog_event'] = [
-                'name' => 'user_signed_up',
-                'properties' => ['university' => $emailDomain]
-            ];
+            queuePostHogEvent('signup_completed', [
+                'method' => 'email',
+                'university' => $emailDomain
+            ]);
+            queuePostHogEvent('user_signed_up', ['university' => $emailDomain]);
             redirect(BASE_URL . 'pages/check_email.php');
         } catch (Throwable $e) {
             $pdo->rollBack();
@@ -208,6 +211,32 @@ require_once '../includes/header.php';
     <h1><?= __('auth.register_title') ?></h1>
     <p><?= __('auth.register_subtitle_email') ?></p>
   </div>
+
+  <?php if (isSupabaseConfigured()): ?>
+    <div class="social-auth-stack mb-6" style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <a href="<?php echo htmlspecialchars(supabaseOAuthUrl('google')); ?>" class="btn w-full flex items-center justify-center gap-3 py-3" style="background: #ffffff; color: #1f2937; border: 1.5px solid var(--border-light, #e5e7eb); border-radius: var(--radius-md); font-weight: 600; font-size: 0.95rem; text-decoration: none; box-shadow: var(--shadow-sm); transition: transform 0.15s, box-shadow 0.15s;">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+            </svg>
+            Continue with Google
+        </a>
+        <a href="<?php echo htmlspecialchars(supabaseOAuthUrl('apple')); ?>" class="btn w-full flex items-center justify-center gap-3 py-3" style="background: #000000; color: #ffffff; border-radius: var(--radius-md); font-weight: 600; font-size: 0.95rem; text-decoration: none; box-shadow: var(--shadow-sm); transition: transform 0.15s, box-shadow 0.15s;">
+            <svg width="18" height="18" viewBox="0 0 170 170" fill="currentColor">
+                <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.69-7.79-11.97-14.24-6.74-10.12-12.04-21.46-15.89-34.02-3.85-12.56-5.78-24.32-5.78-35.29 0-14.68 3.64-26.79 10.92-36.32 7.28-9.53 16.48-14.45 27.6-14.75 4.9.11 10.1 1.25 15.61 3.42 5.51 2.18 9.38 3.33 11.62 3.46 1.85-.23 5.86-1.48 12.04-3.76 6.18-2.28 11.51-3.23 16-2.85 13.92 1.19 24.81 6.55 32.68 16.07-12.18 7.39-18.15 17.51-17.9 30.34.25 10.23 4.11 18.79 11.58 25.68 7.47 6.89 16.29 10.74 26.46 11.55-2.28 6.86-4.89 13.78-7.82 20.76zM119.22 33.02c0-7.39 2.66-14.47 7.98-21.24 5.32-6.77 11.93-11.08 19.83-12.93.98 7.82-1.39 15.22-7.1 22.2-5.72 6.98-12.63 11.23-20.71 12.76v-.79z"/>
+            </svg>
+            Sign in with Apple
+        </a>
+    </div>
+
+    <div class="auth-divider flex items-center gap-3 my-6" style="color: var(--text-muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase;">
+        <span style="flex: 1; height: 1px; background: var(--border-light, #e5e7eb);"></span>
+        <span>or register with email</span>
+        <span style="flex: 1; height: 1px; background: var(--border-light, #e5e7eb);"></span>
+    </div>
+  <?php endif; ?>
 
   <?php if (!empty($errors['form'])): ?>
     <div class="flash flash-error"><?php echo sanitize($errors['form']); ?></div>

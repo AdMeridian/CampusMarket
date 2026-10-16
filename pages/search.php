@@ -192,7 +192,6 @@ require_once __DIR__ . '/../includes/header.php';
                     .suggest-item-dialog .btn { width: 100%; justify-content: center; }
                 </style>
             <?php endif; ?>
->>>>>>> staging
         </div>
     <?php else: ?>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

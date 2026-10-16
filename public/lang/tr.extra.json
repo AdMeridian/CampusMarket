@@ -526,5 +526,7 @@
     "push.toast_body_browser": "Mesaj ve sipariş uyarıları almak için bildirimleri etkinleştir.",
     "push.enable_btn": "Etkinleştir",
     "push.not_now_btn": "Şimdi değil",
-    "push.enabling_btn": "Etkinleştiriliyor…"
+    "push.enabling_btn": "Etkinleştiriliyor…",
+    "product.listed_as": "Listelenen fiyat: {amount}",
+    "product.currency_converted_hint": "Fiyatlar bugünün kuruyla ₺ cinsine çevrilmiştir"
 }

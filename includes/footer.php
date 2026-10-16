@@ -105,6 +105,15 @@
     </div>
 </footer>
 
+<?php 
+if (isset($pdo) && function_exists('maybeRefreshRates')) {
+    maybeRefreshRates($pdo);
+}
+if (isset($pdo) && function_exists('maybeSendStaleListingReminders')) {
+    maybeSendStaleListingReminders($pdo);
+}
+?>
+
 <script>
 const PWA_SW_URL = "<?php echo BASE_URL; ?>sw.js";
 window.__pwaI18n = <?php echo json_encode([

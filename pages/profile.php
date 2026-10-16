@@ -720,7 +720,7 @@ body.dark-mode .btn-white-solid:hover {
                     <a href="<?php echo BASE_URL; ?>pages/edit_profile.php" class="btn btn-white"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Edit Profile</a>
                     <a href="logout.php" class="btn btn-white" style="background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">Logout</a>
                 <?php elseif (isLoggedIn()): ?>
-                    <a href="messages.php?other_user_id=<?php echo $user['id']; ?>&product_id=0" class="btn btn-white-solid"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
+                    <a href="messages.php?other_user_id=<?php echo $user['id']; ?>&product_id=0" class="btn btn-white-solid js-contact-seller" data-listing-id="0" data-category="" data-contact-method="direct_message"><svg style="width: 16px; height: 16px; display: inline-block; margin-right: 6px; vertical-align: text-bottom;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Message</a>
                     <a href="<?php echo BASE_URL; ?>pages/report.php?user_id=<?php echo (int)$user['id']; ?>" class="btn btn-white" style="background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35);"><?= __('report.report_user') ?></a>
                 <?php endif; ?>
             </div>
@@ -954,7 +954,13 @@ body.dark-mode .btn-white-solid:hover {
                             <div class="listing-card-body">
                                 <div class="listing-card-meta">
                                     <span class="listing-card-cat"><?php echo sanitize($prod['category_name']); ?></span>
-                                    <span class="listing-card-price"><?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?></span>
+                                    <?php $priceData = formatPriceInTRY((float)$prod['price'], productCurrencyCode($prod), $pdo); ?>
+                                    <span class="listing-card-price">
+                                        <?php echo $priceData['display']; ?>
+                                        <?php if ($priceData['original']): ?>
+                                            <small class="price-original-currency-inline"><?php echo $priceData['original']; ?></small>
+                                        <?php endif; ?>
+                                    </span>
                                 </div>
                                 <?php if ($isSelf && $isPendingApproval): ?>
                                     <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
@@ -1014,8 +1020,14 @@ body.dark-mode .btn-white-solid:hover {
                                 <p style="font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                                     <?php echo sanitize($sold['title']); ?>
                                 </p>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem;"><?php echo formatPrice($sold['price'], productCurrencyCode($sold)); ?></span>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <?php $priceData = formatPriceInTRY((float)$sold['price'], productCurrencyCode($sold), $pdo); ?>
+                                    <span style="text-decoration: line-through; color: var(--text-muted); font-size: 0.9rem;">
+                                        <?php echo $priceData['display']; ?>
+                                        <?php if ($priceData['original']): ?>
+                                            (<?php echo $priceData['original']; ?>)
+                                        <?php endif; ?>
+                                    </span>
                                     <span class="sold-badge">SOLD</span>
                                 </div>
                                 <div class="sold-date">
@@ -1160,6 +1172,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (validTabs.includes(newHash) && panels[newHash]) {
             switchTab(newHash, false);
         }
+    });
+
+    document.querySelectorAll('.js-contact-seller').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (typeof posthog !== 'undefined' && posthog.capture) {
+                posthog.capture('seller_contact_clicked', {
+                    listing_id: Number(this.dataset.listingId || 0),
+                    category: this.dataset.category || '',
+                    contact_method: this.dataset.contactMethod || 'direct_message'
+                });
+            }
+        });
     });
 });
 </script>
