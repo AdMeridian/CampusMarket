@@ -400,7 +400,7 @@
     "auth.register_username_hint": "3–50 characters. Letters, numbers, underscores.",
     "auth.register_email_label": "Email address",
     "auth.register_email_placeholder": "you@university.edu.tr or you@gmail.com",
-    "auth.register_email_hint": "Campus or personal email. Disposable or fake emails are not allowed.",
+    "auth.register_email_hint": "Campus or personal email.",
     "auth.register_phone_label": "Phone",
     "auth.register_phone_optional": "(optional)",
     "auth.register_password_label": "Password",

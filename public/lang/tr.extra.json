@@ -400,7 +400,7 @@
     "auth.register_username_hint": "3–50 karakter. Harf, rakam ve alt çizgi.",
     "auth.register_email_label": "E-posta adresi",
     "auth.register_email_placeholder": "ad@universite.edu.tr veya ad@gmail.com",
-    "auth.register_email_hint": "Üniversite veya kişisel e-posta. Geçici ve tek kullanımlık e-postalar kabul edilmez.",
+    "auth.register_email_hint": "Üniversite veya kişisel e-posta.",
     "auth.register_phone_label": "Telefon",
     "auth.register_phone_optional": "(isteğe bağlı)",
     "auth.register_password_label": "Şifre",
