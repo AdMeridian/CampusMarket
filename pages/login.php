@@ -223,7 +223,7 @@ require_once '../includes/header.php';
                 <label for="identity" class="form-label"><?= __('auth.email_or_username') ?></label>
                 <input type="text" id="identity" name="identity"
                        value="<?php echo sanitize($identity); ?>"
-                       placeholder="<?= addslashes(__('auth.login_identity_placeholder', 'you@email.com or username')) ?>"
+                       placeholder="<?= addslashes(__('auth.login_identity_placeholder')) ?>"
                        class="premium-input w-full"
                        required autofocus autocomplete="username">
             </div>
