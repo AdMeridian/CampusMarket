@@ -40,12 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($email === '') {
         $errors['email'] = __('auth.register_error_email_required');
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100) {
-        $errors['email'] = __('auth.register_error_email_invalid');
-    } elseif (!isAllowedUniversityEmail($email)) {
-        $errors['email'] = __('auth.register_error_email_edutr');
-    } elseif (($studentEmailError = validateUniversityStudentEmail($email)) !== null) {
-        $errors['email'] = $studentEmailError;
+    } else {
+        $emailValidationErr = null;
+        if (!validateSignupEmail($email, $emailValidationErr)) {
+            $errors['email'] = $emailValidationErr ?: __('auth.register_error_email_invalid');
+        }
     }
 
     if ($phone !== '' && !preg_match('/^[\d\s\-\+\(\)]{7,20}$/', $phone)) {
@@ -206,6 +205,8 @@ require_once '../includes/header.php';
     <h1><?= __('auth.register_title') ?></h1>
     <p><?= __('auth.register_subtitle_email') ?></p>
   </div>
+
+
 
   <?php if (!empty($errors['form'])): ?>
     <div class="flash flash-error"><?php echo sanitize($errors['form']); ?></div>

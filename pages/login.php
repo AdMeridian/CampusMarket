@@ -189,6 +189,8 @@ require_once '../includes/header.php';
             <p><?= __('auth.login_subtitle') ?></p>
         </div>
 
+
+
         <?php if (!empty($errors['form'])): ?>
             <div class="flash <?php echo $unverified ? 'flash-warning' : 'flash-error'; ?> mb-8">
                 <?php echo sanitize($errors['form']); ?>
@@ -221,7 +223,7 @@ require_once '../includes/header.php';
                 <label for="identity" class="form-label"><?= __('auth.email_or_username') ?></label>
                 <input type="text" id="identity" name="identity"
                        value="<?php echo sanitize($identity); ?>"
-                       placeholder="20227014@ciu.edu.tr"
+                       placeholder="<?= addslashes(__('auth.login_identity_placeholder')) ?>"
                        class="premium-input w-full"
                        required autofocus autocomplete="username">
             </div>

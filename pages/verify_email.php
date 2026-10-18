@@ -104,8 +104,76 @@ if (($_GET['source'] ?? '') === 'supabase') {
     }
 
     if ($verifiedEmail !== '') {
-        $upd = $pdo->prepare('UPDATE users SET is_verified = TRUE WHERE LOWER(email) = LOWER(:e)');
-        $upd->execute([':e' => $verifiedEmail]);
+        // Fetch or create user in local users table
+        $stmt = $pdo->prepare('SELECT id, username, email, role, is_verified, phone FROM users WHERE LOWER(email) = LOWER(:e) LIMIT 1');
+        $stmt->execute([':e' => $verifiedEmail]);
+        $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$existingUser) {
+            // Social sign-in (Google / Apple) first time: auto-provision user
+            $preferredName = '';
+            if (!empty($userDecoded['user_metadata']['full_name'])) {
+                $preferredName = (string)$userDecoded['user_metadata']['full_name'];
+            } elseif (!empty($userDecoded['user_metadata']['name'])) {
+                $preferredName = (string)$userDecoded['user_metadata']['name'];
+            }
+            $baseUsername = preg_replace('/[^A-Za-z0-9_]/', '', str_replace([' ', '.'], '_', $preferredName ?: explode('@', $verifiedEmail)[0]));
+            if (strlen($baseUsername) < 3) {
+                $baseUsername = 'user_' . substr(bin2hex(random_bytes(4)), 0, 6);
+            }
+            $baseUsername = substr($baseUsername, 0, 40);
+
+            // Ensure unique username
+            $candidateUsername = $baseUsername;
+            $counter = 1;
+            while (true) {
+                $chk = $pdo->prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(:u) LIMIT 1');
+                $chk->execute([':u' => $candidateUsername]);
+                if (!$chk->fetchColumn()) {
+                    break;
+                }
+                $candidateUsername = substr($baseUsername, 0, 34) . '_' . $counter;
+                $counter++;
+            }
+
+            $dummyHash = password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT);
+            $ins = $pdo->prepare('
+                INSERT INTO users (username, email, password_hash, role, is_verified)
+                VALUES (:u, :e, :h, "user", TRUE)
+            ');
+            $ins->execute([
+                ':u' => $candidateUsername,
+                ':e' => $verifiedEmail,
+                ':h' => $dummyHash,
+            ]);
+            $newUserId = (int)$pdo->lastInsertId();
+
+            $existingUser = [
+                'id' => $newUserId,
+                'username' => $candidateUsername,
+                'email' => $verifiedEmail,
+                'role' => 'user',
+                'is_verified' => 1,
+                'phone' => null
+            ];
+        } else {
+            $upd = $pdo->prepare('UPDATE users SET is_verified = TRUE WHERE id = :id');
+            $upd->execute([':id' => $existingUser['id']]);
+            $existingUser['is_verified'] = 1;
+        }
+
+        // If this verification has an active access_token (e.g. Google / Apple OAuth flow), log the user in immediately!
+        if ($accessToken !== '' && !empty($existingUser['id'])) {
+            session_regenerate_id(true);
+            $_SESSION['user_id'] = (int)$existingUser['id'];
+            $_SESSION['role'] = $existingUser['role'];
+            $_SESSION['username'] = $existingUser['username'];
+            $_SESSION['user_email'] = $existingUser['email'];
+            $_SESSION['supabase_access_token'] = $accessToken;
+            $_SESSION['posthog_event'] = ['name' => 'user_logged_in', 'properties' => ['method' => 'oauth']];
+            setFlash('success', 'Welcome, ' . sanitize($existingUser['username']) . '!');
+            redirect(BASE_URL);
+        }
     } else {
         setFlash('error', 'Could not retrieve user email. Verification failed.');
         redirect(BASE_URL . 'pages/login');
