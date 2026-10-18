@@ -32,33 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $customLocation   = trim(sanitize($_POST['custom_location'] ?? ''));
     $userId         = currentUserId();
-
-    // Just-in-Time Seller Verification check
-    $userStmt = $pdo->prepare('SELECT id, student_id, university_id, email FROM users WHERE id = :uid LIMIT 1');
-    $userStmt->execute([':uid' => $userId]);
-    $currentUserProfile = $userStmt->fetch(PDO::FETCH_ASSOC);
-
-    $isStudentEmailVerified = false;
-    if (!empty($currentUserProfile['student_id']) && !empty($currentUserProfile['university_id'])) {
-        $isStudentEmailVerified = true;
-    } else {
-        // Check if user email is already an edu domain or recently verified via OTP
-        $userEmail = strtolower((string)($currentUserProfile['email'] ?? ''));
-        if (function_exists('isEduTrEmailDomain') && isEduTrEmailDomain(substr($userEmail, strrpos($userEmail, '@') + 1))) {
-            $isStudentEmailVerified = true;
-        } else {
-            // Check student_email_verifications table for verified OTP
-            $chkOtp = $pdo->prepare('SELECT id FROM student_email_verifications WHERE user_id = :uid AND verified_at IS NOT NULL LIMIT 1');
-            $chkOtp->execute([':uid' => $userId]);
-            if ($chkOtp->fetchColumn()) {
-                $isStudentEmailVerified = true;
-            }
-        }
-    }
-
-    if (!$isStudentEmailVerified && (int)($_POST['seller_otp_verified'] ?? 0) !== 1) {
-        $error = 'Please verify your university student email with the 6-digit code before publishing your listing.';
-    }
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
@@ -325,12 +298,6 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
 $userHomeTownDetails = isLoggedIn() ? getUserHomeTownDetails((int)currentUserId()) : null;
 
-// Fetch current user seller verification status
-$sellerProfileStmt = $pdo->prepare('SELECT id, student_id, university_id FROM users WHERE id = :uid LIMIT 1');
-$sellerProfileStmt->execute([':uid' => currentUserId()]);
-$currentSellerProfile = $sellerProfileStmt->fetch(PDO::FETCH_ASSOC) ?: [];
-$needsSellerVerification = empty($currentSellerProfile['student_id']) || empty($currentSellerProfile['university_id']);
-
 $activeCountries = [];
 $activeUniversities = [];
 try {
@@ -461,48 +428,7 @@ include '../includes/header.php';
             <form action="create_listing.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 gap-6 js-form-loading" data-loading-text="<?= htmlspecialchars(__('create_listing.submitting_review'), ENT_QUOTES, 'UTF-8') ?>">
                 <?php echo csrfTokenField(); ?>
 
-                <?php if ($needsSellerVerification): ?>
-                <div id="sellerVerificationCard" class="seller-verification-banner" style="background: color-mix(in srgb, var(--primary) 8%, var(--bg-surface)); border: 1.5px solid var(--primary); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;">
-                    <div class="flex items-center gap-3 mb-2">
-                        <span style="font-size: 1.4rem;">🎓</span>
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">One-Time Student Seller Verification</h3>
-                            <p class="text-muted small mb-0" style="font-size: 0.85rem;">To maintain marketplace trust and prevent scams, link your official university email before publishing.</p>
-                        </div>
-                    </div>
 
-                    <div id="otpStep1" class="mt-4">
-                        <label class="font-bold mb-1.5 block text-sm" style="color: var(--text-main);">Official University Email (.edu / .edu.tr) <span style="color: #ef4444;">*</span></label>
-                        <div class="flex gap-2" style="flex-wrap: wrap;">
-                            <input type="email" id="verifStudentEmail" name="seller_student_email" placeholder="e.g. 20227014@ciu.edu.tr" class="premium-input" style="flex: 1; min-width: 240px; padding: 0.75rem 1rem;" required>
-                            <button type="button" id="btnSendOtp" class="btn btn-primary" style="padding: 0.75rem 1.4rem; font-weight: 600; white-space: nowrap; border-radius: var(--radius-md);">
-                                Send Code
-                            </button>
-                        </div>
-                        <div id="otpSendStatus" class="mt-2 text-sm" style="min-height: 1.2em;"></div>
-                    </div>
-
-                    <div id="otpStep2" class="mt-4" style="display: none; padding-top: 1rem; border-top: 1px dashed var(--border-light);">
-                        <p class="text-sm font-semibold mb-2" style="color: var(--text-main);">We sent a 6-digit code to <span id="displayTargetEmail" style="color: var(--primary); font-weight: 700;"></span></p>
-                        <div class="flex gap-2 items-center" style="flex-wrap: wrap;">
-                            <input type="text" id="verifOtpCode" maxlength="6" placeholder="123456" class="premium-input text-center" style="width: 140px; letter-spacing: 4px; font-weight: 800; font-size: 1.2rem; padding: 0.6rem 0.8rem;">
-                            <button type="button" id="btnVerifyOtp" class="btn btn-primary" style="padding: 0.75rem 1.4rem; font-weight: 600; border-radius: var(--radius-md);">
-                                Verify & Continue
-                            </button>
-                            <button type="button" id="btnResendOtp" class="btn btn-secondary text-sm" style="padding: 0.75rem 1rem;">
-                                Resend
-                            </button>
-                        </div>
-                        <div id="otpVerifyStatus" class="mt-2 text-sm" style="min-height: 1.2em;"></div>
-                    </div>
-
-                    <div id="otpSuccessBadge" class="mt-3 py-2 px-3 rounded-lg flex items-center gap-2" style="display: none; background: #ecfdf5; border: 1px solid #10b981; color: #047857; font-weight: 600; font-size: 0.9rem;">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                        Student status verified! Your listings will feature a "Verified Student" badge.
-                    </div>
-                    <input type="hidden" id="isSellerOtpVerified" name="seller_otp_verified" value="0">
-                </div>
-                <?php endif; ?>
 
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
@@ -1213,24 +1139,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const listingForm = document.querySelector('form.js-form-loading');
     if (listingForm) {
         listingForm.addEventListener('submit', function (e) {
-            // Check seller verification status if card is present
-            const isVerifiedInput = document.getElementById('isSellerOtpVerified');
-            const verifCard = document.getElementById('sellerVerificationCard');
-            if (isVerifiedInput && isVerifiedInput.value !== '1' && verifCard && verifCard.style.display !== 'none') {
-                e.preventDefault();
-                verifCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                verifCard.style.outline = '2px solid #ef4444';
-                setTimeout(() => verifCard.style.outline = '', 3000);
-                alert('Please verify your official university student email with the 6-digit code first.');
-                const btn = document.getElementById('submitBtn');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerText = createListingI18n.publishLabel;
-                }
-                delete listingForm.dataset.submitting;
-                return false;
-            }
-
             const checkedCategories = document.querySelectorAll('input[name="category_ids[]"]:checked');
             if (checkedCategories.length === 0) {
                 e.preventDefault();
@@ -1269,100 +1177,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     delete listingForm.dataset.submitting;
                     return false;
                 }
-            }
-        });
-    }
-
-    // Student Email OTP Verification handler
-    const btnSendOtp = document.getElementById('btnSendOtp');
-    const btnVerifyOtp = document.getElementById('btnVerifyOtp');
-    const btnResendOtp = document.getElementById('btnResendOtp');
-    const verifEmailInput = document.getElementById('verifStudentEmail');
-    const verifCodeInput = document.getElementById('verifOtpCode');
-    const otpSendStatus = document.getElementById('otpSendStatus');
-    const otpVerifyStatus = document.getElementById('otpVerifyStatus');
-    const otpStep1 = document.getElementById('otpStep1');
-    const otpStep2 = document.getElementById('otpStep2');
-    const otpSuccessBadge = document.getElementById('otpSuccessBadge');
-    const isSellerOtpVerified = document.getElementById('isSellerOtpVerified');
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || window.__csrfToken || '';
-
-    async function handleSendOtp() {
-        const email = (verifEmailInput?.value || '').trim();
-        if (!email || !email.includes('@')) {
-            otpSendStatus.innerHTML = '<span style="color:#ef4444;">Please enter a valid student email address.</span>';
-            return;
-        }
-
-        btnSendOtp.disabled = true;
-        btnSendOtp.innerText = 'Sending…';
-        otpSendStatus.innerHTML = '<span style="color:var(--primary);">Sending 6-digit verification code…</span>';
-
-        try {
-            const fd = new FormData();
-            fd.append('action', 'send_otp');
-            fd.append('student_email', email);
-            fd.append('csrf_token', csrfToken);
-
-            const res = await fetch('api_seller_verification.php', { method: 'POST', body: fd });
-            const data = await res.json();
-
-            if (data.ok) {
-                document.getElementById('displayTargetEmail').textContent = email;
-                otpSendStatus.innerHTML = '';
-                otpStep2.style.display = 'block';
-                verifCodeInput.focus();
-            } else {
-                otpSendStatus.innerHTML = '<span style="color:#ef4444;">' + (data.error || 'Failed to send verification email.') + '</span>';
-            }
-        } catch (err) {
-            otpSendStatus.innerHTML = '<span style="color:#ef4444;">Network error. Please try again.</span>';
-        } finally {
-            btnSendOtp.disabled = false;
-            btnSendOtp.innerText = 'Send Code';
-        }
-    }
-
-    if (btnSendOtp) btnSendOtp.addEventListener('click', handleSendOtp);
-    if (btnResendOtp) btnResendOtp.addEventListener('click', handleSendOtp);
-
-    if (btnVerifyOtp) {
-        btnVerifyOtp.addEventListener('click', async function () {
-            const email = (verifEmailInput?.value || '').trim();
-            const code = (verifCodeInput?.value || '').trim();
-
-            if (code.length < 6) {
-                otpVerifyStatus.innerHTML = '<span style="color:#ef4444;">Please enter the full 6-digit code.</span>';
-                return;
-            }
-
-            btnVerifyOtp.disabled = true;
-            btnVerifyOtp.innerText = 'Verifying…';
-            otpVerifyStatus.innerHTML = '<span style="color:var(--primary);">Verifying code…</span>';
-
-            try {
-                const fd = new FormData();
-                fd.append('action', 'verify_otp');
-                fd.append('student_email', email);
-                fd.append('otp_code', code);
-                fd.append('csrf_token', csrfToken);
-
-                const res = await fetch('api_seller_verification.php', { method: 'POST', body: fd });
-                const data = await res.json();
-
-                if (data.ok) {
-                    otpStep1.style.display = 'none';
-                    otpStep2.style.display = 'none';
-                    otpSuccessBadge.style.display = 'flex';
-                    if (isSellerOtpVerified) isSellerOtpVerified.value = '1';
-                } else {
-                    otpVerifyStatus.innerHTML = '<span style="color:#ef4444;">' + (data.error || 'Incorrect code.') + '</span>';
-                }
-            } catch (err) {
-                otpVerifyStatus.innerHTML = '<span style="color:#ef4444;">Network error. Please try again.</span>';
-            } finally {
-                btnVerifyOtp.disabled = false;
-                btnVerifyOtp.innerText = 'Verify & Continue';
             }
         });
     }
