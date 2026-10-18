@@ -38,6 +38,7 @@ $stats = [
     'active_listings'           => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 'active'")->fetchColumn(),
     'pending_approval_listings' => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 'pending_approval'")->fetchColumn(),
     'users'                     => $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user'")->fetchColumn(),
+    'verified_users'            => $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user' AND is_verified = TRUE")->fetchColumn(),
     'orders'                    => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
     'pending_orders'            => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
     'reports'                   => $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'")->fetchColumn(),
@@ -763,7 +764,12 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="stat-card" style="border-left-color: var(--success);">
             <div class="stat-card-label">Registered Users</div>
             <div class="stat-card-num"><?php echo $stats['users']; ?></div>
-            <div class="stat-card-sub"><a href="users.php" style="color: inherit; text-decoration: underline; font-weight: 600;"><?php echo $stats['campuses']; ?> campus<?php echo $stats['campuses'] != 1 ? 'es' : ''; ?> represented ›</a></div>
+            <div class="stat-card-sub">
+                <span style="color: var(--success); font-weight: 700;"><?php echo $stats['verified_users']; ?> verified active</span>
+                <?php $unverified = (int)$stats['users'] - (int)$stats['verified_users']; ?>
+                <?php if ($unverified > 0): ?> · <span style="color: var(--warning);"><?php echo $unverified; ?> unverified</span><?php endif; ?>
+                <br><a href="users.php" style="color: inherit; text-decoration: underline; font-weight: 600;"><?php echo $stats['campuses']; ?> campus<?php echo $stats['campuses'] != 1 ? 'es' : ''; ?> represented ›</a>
+            </div>
         </div>
         <div class="stat-card" style="border-left-color: var(--warning);">
             <div class="stat-card-label">Total Orders</div>
@@ -1107,7 +1113,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <div style="margin-top: auto; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.15);">
                 <div style="font-size: 0.78rem; color: rgba(255,255,255,0.55);">
-                    Platform stats as of <?php echo date('H:i, M j'); ?> · <?php echo $stats['users']; ?> users · <?php echo $stats['listings']; ?> listings
+                    Platform stats as of <?php echo date('H:i, M j'); ?> · <?php echo $stats['users']; ?> registered (<?php echo $stats['verified_users']; ?> verified) · <?php echo $stats['listings']; ?> listings
                 </div>
             </div>
         </div>

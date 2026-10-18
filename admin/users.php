@@ -143,6 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['id'
 $stmt = $pdo->query('SELECT * FROM users ORDER BY created_at DESC');
 $allUsers = $stmt->fetchAll();
 $totalUsersCount = count($allUsers);
+$verifiedUsersCount = count(array_filter($allUsers, fn($u) => !empty($u['is_verified'])));
+$unverifiedUsersCount = $totalUsersCount - $verifiedUsersCount;
 
 // Calculate Campus Distribution Stats
 $campusDistribution = [];
@@ -215,6 +217,9 @@ include '../includes/header.php';
             <div class="badge" style="background: var(--primary-light); color: var(--primary); border: 1px solid rgba(var(--primary-rgb, 14, 165, 233), 0.25); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
                 👥 <?php echo $totalUsersCount; ?> Registered Users
             </div>
+            <div class="badge" style="background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.25); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
+                ✅ <?php echo $verifiedUsersCount; ?> Verified Active
+            </div>
         </div>
     </div>
 
@@ -240,7 +245,12 @@ include '../includes/header.php';
             <div>
                 <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Student Accounts</div>
                 <div style="font-size: 1.65rem; font-weight: 800; color: var(--text-main); line-height: 1.2;"><?php echo $totalUsersCount; ?></div>
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Total verified user accounts</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted); display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 2px;">
+                    <span style="color: var(--success); font-weight: 700;"><?php echo $verifiedUsersCount; ?> verified</span>
+                    <?php if ($unverifiedUsersCount > 0): ?>
+                    <span style="color: var(--warning); font-weight: 600;">&middot; <?php echo $unverifiedUsersCount; ?> unverified</span>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
@@ -389,6 +399,11 @@ include '../includes/header.php';
                                 <span class="badge badge-primary shadow-sm">Admin</span>
                             <?php else: ?>
                                 <span class="badge" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted);">Member</span>
+                            <?php endif; ?>
+                            <?php if (!empty($u['is_verified'])): ?>
+                                <span class="badge" title="Email verified – account is active" style="margin-left: 0.3rem; background: rgba(16,185,129,0.12); color: var(--success); border: 1px solid rgba(16,185,129,0.3); font-size: 0.72rem;">✓ Verified</span>
+                            <?php else: ?>
+                                <span class="badge" title="Email not yet verified – cannot log in" style="margin-left: 0.3rem; background: rgba(245,158,11,0.12); color: #d97706; border: 1px solid rgba(245,158,11,0.3); font-size: 0.72rem;">⚠ Unverified</span>
                             <?php endif; ?>
                             <?php if (reportsAccountStatusSupported($pdo) && ($u['account_status'] ?? 'active') === 'suspended'): ?>
                                 <span class="badge badge-danger shadow-sm" style="margin-left: 0.35rem;"><?= __('admin.user_status_suspended') ?></span>
