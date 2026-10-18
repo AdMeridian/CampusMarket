@@ -254,8 +254,33 @@ if (!function_exists('isLegitimateEmailDomain')) {
             return false;
         }
 
+        // University domain checks for .edu.tr / .edu domains
+        $isVerifiedEdu = false;
+        if (str_ends_with($domain, '.edu.tr') || str_ends_with($domain, '.edu')) {
+            $baseName = preg_replace('/\.(edu\.tr|edu)$/i', '', $domain);
+            $subParts = explode('.', $baseName);
+            $instSlug = end($subParts);
+            $dummyEduSlugs = ['university', 'campus', 'college', 'school', 'student', 'test', 'demo', 'example', 'faculty', 'uni', 'mail'];
+            if (in_array($instSlug, $dummyEduSlugs, true)) {
+                $reason = 'The specified university domain is not a recognized or genuine academic institution.';
+                return false;
+            }
+
+            // Real DNS check for the university (checks subdomain or root institution)
+            if (function_exists('checkdnsrr')) {
+                $rootDomain = $instSlug . (str_ends_with($domain, '.edu.tr') ? '.edu.tr' : '.edu');
+                $hasMx = @checkdnsrr($domain, 'MX') || @checkdnsrr($rootDomain, 'MX');
+                $hasA  = @checkdnsrr($domain, 'A') || @checkdnsrr($rootDomain, 'A');
+                if (!$hasMx && !$hasA) {
+                    $reason = 'This university domain does not exist or cannot receive email.';
+                    return false;
+                }
+                $isVerifiedEdu = true;
+            }
+        }
+
         // Real DNS verification check (MX record or fallback A/AAAA record)
-        if (function_exists('checkdnsrr')) {
+        if (!$isVerifiedEdu && function_exists('checkdnsrr')) {
             $hasMx = @checkdnsrr($domain, 'MX');
             if (!$hasMx) {
                 $hasA = @checkdnsrr($domain, 'A') || @checkdnsrr($domain, 'AAAA');

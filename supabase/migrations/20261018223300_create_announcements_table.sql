@@ -17,3 +17,18 @@ CREATE TABLE IF NOT EXISTS public.announcements (
 
 CREATE INDEX IF NOT EXISTS idx_announcements_active ON public.announcements(is_active, target_role);
 CREATE INDEX IF NOT EXISTS idx_announcements_dates ON public.announcements(starts_at, ends_at);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+
+-- Allow anon and authenticated roles to read active announcements
+DROP POLICY IF EXISTS announcements_read_active ON public.announcements;
+CREATE POLICY announcements_read_active
+    ON public.announcements
+    FOR SELECT
+    TO anon, authenticated
+    USING (
+        is_active = TRUE
+        AND (starts_at IS NULL OR starts_at <= NOW())
+        AND (ends_at IS NULL OR ends_at >= NOW())
+    );

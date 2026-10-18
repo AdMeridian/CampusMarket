@@ -51,6 +51,25 @@ if (!function_exists('ensureAnnouncementsTable')) {
                     );
                     CREATE INDEX IF NOT EXISTS idx_announcements_active ON public.announcements(is_active, target_role);
                     CREATE INDEX IF NOT EXISTS idx_announcements_dates ON public.announcements(starts_at, ends_at);
+                    ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM pg_policies 
+                            WHERE tablename = 'announcements' AND policyname = 'announcements_read_active'
+                        ) THEN
+                            CREATE POLICY announcements_read_active
+                                ON public.announcements
+                                FOR SELECT
+                                TO anon, authenticated
+                                USING (
+                                    is_active = TRUE
+                                    AND (starts_at IS NULL OR starts_at <= NOW())
+                                    AND (ends_at IS NULL OR ends_at >= NOW())
+                                );
+                        END IF;
+                    END
+                    $$;
                 ");
             }
         } catch (Throwable $e) {
