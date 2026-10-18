@@ -173,79 +173,160 @@ if (!function_exists('isEduTrEmailDomain')) {
 if (!function_exists('isDisposableEmailDomain')) {
     function isDisposableEmailDomain(string $domain): bool {
         $domain = strtolower(trim($domain));
+        if ($domain === '') {
+            return false;
+        }
+
         static $blocked = [
-            '10minutemail.com', '10minutemail.net', 'tempmail.com', 'temp-mail.org',
-            'guerrillamail.com', 'guerrillamail.net', 'guerrillamail.org', 'sharklasers.com',
-            'mailinator.com', 'dispostable.com', 'yopmail.com', 'yopmail.net',
-            'throwawaymail.com', 'trashmail.com', 'mytemp.email', 'getairmail.com',
-            'mohmal.com', 'crazymailing.com', 'burnermail.io', 'fakemailgenerator.com',
-            'emailondeck.com', 'tempail.com', 'inboxkitten.com', 'dropmail.me',
-            'generator.email', 'mintemail.com', 'trashmail.net', 'trashmail.me'
+            '10minutemail.com', '10minutemail.net', '10minutemail.co.uk', '10minmail.com',
+            'tempmail.com', 'temp-mail.org', 'temp-mail.io', 'tempmailo.com', 'tempr.email',
+            'guerrillamail.com', 'guerrillamail.net', 'guerrillamail.org', 'guerrillamail.biz',
+            'guerrillamail.de', 'guerrillamailblock.com', 'sharklasers.com', 'grr.la', 'pokemail.net',
+            'mailinator.com', 'mailinator.net', 'mailinater.com', 'suremail.info', 'spamherelots.com',
+            'dispostable.com', 'yopmail.com', 'yopmail.net', 'yopmail.fr', 'cool.fr.nf', 'jetable.fr.nf',
+            'throwawaymail.com', 'trashmail.com', 'trashmail.net', 'trashmail.me', 'trashmail.org',
+            'mytemp.email', 'mytempmail.com', 'getairmail.com', 'airmail.ne.tz',
+            'mohmal.com', 'mohmal.im', 'mohmal.in', 'crazymailing.com', 'crazymailing.org',
+            'burnermail.io', 'fakemailgenerator.com', 'emailfake.com', 'generator.email',
+            'emailondeck.com', 'tempail.com', 'inboxkitten.com', 'dropmail.me', 'dropmail.info',
+            'mintemail.com', 'nada.ltd', 'getnada.com', 'inboxbear.com', 'maildrop.cc', 'mailnesia.com',
+            'discard.email', 'spambox.us', 'disposablemail.com', 'anonbox.net', 'boximail.com',
+            'chacuo.net', 'disposable.com', 'easytrashmail.com', 'harakirimail.com', 'incognitomail.org',
+            'jetable.org', 'kasmail.com', 'mailcatch.com', 'mailnull.com', 'mytrashmail.com',
+            'nobulk.com', 'noclickemail.com', 'pookmail.com', 'safetymail.info', 'sneakemail.com',
+            'sofort-mail.de', 'spamfree24.org', 'spamgourmet.com', 'spaml.de', 'superrito.com',
+            'armyspy.com', 'cuvox.de', 'dayrep.com', 'fleckens.hu', 'gustr.com', 'jourrapide.com',
+            'rhyta.com', 'teleworm.us', 'tinypm.com', 'byom.de', 'trashymail.com', 'mailforspam.com',
+            'bouncr.com', 'deadaddress.com', 'e4ward.com', 'gishpuppy.com', 'meltmail.com',
+            'spambog.com', 'spambob.com', 'spamevader.com', 'trbvm.com', 'zillamail.com',
+            'fastmail.fm', 'owlpic.com', 'mytempemail.com', 'tempinbox.com', 'yomail.info'
         ];
+
         if (in_array($domain, $blocked, true)) {
             return true;
         }
+
         foreach ($blocked as $b) {
             if (str_ends_with($domain, '.' . $b)) {
                 return true;
             }
         }
+
+        // Catch common burner keywords in custom domains
+        if (str_contains($domain, 'tempmail') || str_contains($domain, 'disposable') || str_contains($domain, 'throwaway') || str_contains($domain, 'fake-email') || str_contains($domain, 'fakemail') || str_contains($domain, 'trashmail') || str_contains($domain, '10minute')) {
+            return true;
+        }
+
         return false;
     }
 }
 
 /**
- * True if the email is well-formed AND is either a university email,
- * an allowed personal email (e.g. gmail.com, outlook.com, icloud.com),
- * and NOT a disposable/burner domain.
+ * Checks if domain has valid format, is not a disposable provider,
+ * and possesses active mail routing (MX or A DNS records).
+ */
+if (!function_exists('isLegitimateEmailDomain')) {
+    function isLegitimateEmailDomain(string $domain, ?string &$reason = null): bool {
+        $domain = strtolower(trim($domain));
+        if ($domain === '' || !str_contains($domain, '.')) {
+            $reason = 'Domain name is missing or invalid.';
+            return false;
+        }
+
+        // Disallow reserved or local development domains
+        $reserved = ['localhost', 'test', 'example', 'invalid', 'local', 'internal', 'lan'];
+        $parts = explode('.', $domain);
+        $tld = end($parts);
+        if (in_array($tld, $reserved, true) || in_array($domain, $reserved, true)) {
+            $reason = 'Testing or local domains cannot be used.';
+            return false;
+        }
+
+        // TLD must be valid characters and at least 2 chars
+        if (!preg_match('/^[a-z]{2,24}$/i', $tld)) {
+            $reason = 'Email top-level domain is invalid.';
+            return false;
+        }
+
+        // Check against disposable / burner domain list
+        if (isDisposableEmailDomain($domain)) {
+            $reason = 'Disposable and temporary email addresses are not allowed. Please use a permanent email.';
+            return false;
+        }
+
+        // Real DNS verification check (MX record or fallback A/AAAA record)
+        if (function_exists('checkdnsrr')) {
+            $hasMx = @checkdnsrr($domain, 'MX');
+            if (!$hasMx) {
+                $hasA = @checkdnsrr($domain, 'A') || @checkdnsrr($domain, 'AAAA');
+                if (!$hasA) {
+                    $reason = 'The domain of this email does not exist or cannot receive mail.';
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+}
+
+/**
+ * Comprehensive email validator for registration:
+ * Allows any university or personal email, while strictly enforcing
+ * protection against burner, disposable, and non-existent fake domains.
+ */
+if (!function_exists('validateSignupEmail')) {
+    function validateSignupEmail(string $email, ?string &$error = null): bool {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            $error = function_exists('__') ? __('auth.register_error_email_required') : 'Email address is required.';
+            return false;
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100) {
+            $error = function_exists('__') ? __('auth.register_error_email_invalid') : 'Please enter a valid email address.';
+            return false;
+        }
+
+        $atPos = strrpos($email, '@');
+        if ($atPos === false) {
+            $error = function_exists('__') ? __('auth.register_error_email_invalid') : 'Please enter a valid email address.';
+            return false;
+        }
+
+        $local = substr($email, 0, $atPos);
+        $domain = substr($email, $atPos + 1);
+
+        // Block obvious dummy / troll patterns
+        $blockedLocals = ['test', 'asdf', 'fake', 'dummy', 'spam', 'root', 'noreply', 'no-reply'];
+        if (in_array($local, $blockedLocals, true) && !isEduTrEmailDomain($domain)) {
+            $error = 'Please enter a genuine personal or university email address.';
+            return false;
+        }
+
+        $domainReason = null;
+        if (!isLegitimateEmailDomain($domain, $domainReason)) {
+            $error = $domainReason ?: (function_exists('__') ? __('auth.register_error_email_invalid') : 'Please enter a valid email address.');
+            return false;
+        }
+
+        // If it is a .edu.tr student address, apply student formatting rules
+        $studentError = validateUniversityStudentEmail($email);
+        if ($studentError !== null) {
+            $error = $studentError;
+            return false;
+        }
+
+        return true;
+    }
+}
+
+/**
+ * Alias for backward compatibility across the codebase.
  */
 if (!function_exists('isAllowedUniversityEmail')) {
     function isAllowedUniversityEmail(string $email): bool {
-        $email = strtolower(trim($email));
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
-        $atIdx = strrpos($email, '@');
-        if ($atIdx === false) {
-            return false;
-        }
-        $domain = substr($email, $atIdx + 1);
-
-        // Reject disposable burner emails immediately
-        if (isDisposableEmailDomain($domain)) {
-            return false;
-        }
-
-        // Allow any university domain (*.edu.tr, *.edu, *.ac.uk, etc.)
-        if (isEduTrEmailDomain($domain) || str_ends_with($domain, '.edu') || str_ends_with($domain, '.ac.uk')) {
-            return true;
-        }
-
-        // Allowed major consumer & campus domains
-        $allowedDomains = [
-            'gmail.com',
-            'googlemail.com',
-            'outlook.com',
-            'hotmail.com',
-            'live.com',
-            'icloud.com',
-            'yahoo.com',
-            'proton.me',
-            'protonmail.com',
-            'campusmarketplace.site',
-        ];
-
-        if (in_array($domain, $allowedDomains, true)) {
-            return true;
-        }
-
-        // Allow any domain that is registered in universityRegistry()
-        $registry = universityRegistry();
-        if (array_key_exists($domain, $registry)) {
-            return true;
-        }
-
-        return false;
+        $err = null;
+        return validateSignupEmail($email, $err);
     }
 }
 
