@@ -51,7 +51,7 @@ $uniqueCampuses = [];
 foreach ($userEmails as $ue) {
     if (function_exists('getUniversityInfoFromEmail')) {
         $cinfo = getUniversityInfoFromEmail((string)$ue);
-        if ($cinfo['code'] !== 'Unknown' && $cinfo['domain'] !== 'unknown') {
+        if (!empty($cinfo['is_campus']) && $cinfo['code'] !== 'Unknown' && $cinfo['domain'] !== 'unknown') {
             $uniqueCampuses[$cinfo['domain']] = true;
         }
     }

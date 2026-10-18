@@ -146,22 +146,27 @@ $totalUsersCount = count($allUsers);
 $verifiedUsersCount = count(array_filter($allUsers, fn($u) => !empty($u['is_verified'])));
 $unverifiedUsersCount = $totalUsersCount - $verifiedUsersCount;
 
-// Calculate Campus Distribution Stats
+// Calculate Campus Distribution Stats (academic domains only)
 $campusDistribution = [];
+$personalEmailCount = 0;
 foreach ($allUsers as $u) {
     $uInfo = getUniversityInfoFromEmail($u['email'] ?? '');
-    $dKey = $uInfo['domain'];
-    if (!isset($campusDistribution[$dKey])) {
-        $campusDistribution[$dKey] = [
-            'code'   => $uInfo['code'],
-            'name'   => $uInfo['name'],
-            'domain' => $dKey,
-            'color'  => $uInfo['color'],
-            'bg'     => $uInfo['bg'],
-            'count'  => 0,
-        ];
+    if (!empty($uInfo['is_campus'])) {
+        $dKey = $uInfo['domain'];
+        if (!isset($campusDistribution[$dKey])) {
+            $campusDistribution[$dKey] = [
+                'code'   => $uInfo['code'],
+                'name'   => $uInfo['name'],
+                'domain' => $dKey,
+                'color'  => $uInfo['color'],
+                'bg'     => $uInfo['bg'],
+                'count'  => 0,
+            ];
+        }
+        $campusDistribution[$dKey]['count']++;
+    } else {
+        $personalEmailCount++;
     }
-    $campusDistribution[$dKey]['count']++;
 }
 
 // Sort by student count descending
@@ -170,8 +175,9 @@ uasort($campusDistribution, function ($a, $b) {
 });
 
 $campusesCount = count($campusDistribution);
+$academicUsersCount = $totalUsersCount - $personalEmailCount;
 $topCampus = !empty($campusDistribution) ? reset($campusDistribution) : null;
-$topCampusShare = ($totalUsersCount > 0 && $topCampus) ? round(($topCampus['count'] / $totalUsersCount) * 100) : 0;
+$topCampusShare = ($academicUsersCount > 0 && $topCampus) ? round(($topCampus['count'] / $academicUsersCount) * 100) : 0;
 
 // Filter handling
 $selectedCampus = trim($_GET['campus'] ?? '');
@@ -183,7 +189,11 @@ foreach ($allUsers as $u) {
     
     // Filter by Campus
     if ($selectedCampus !== '' && $selectedCampus !== 'all') {
-        if (strtolower($uInfo['domain']) !== strtolower($selectedCampus) && strtolower($uInfo['code']) !== strtolower($selectedCampus)) {
+        if ($selectedCampus === 'non_campus') {
+            if (!empty($uInfo['is_campus'])) {
+                continue;
+            }
+        } elseif (strtolower($uInfo['domain']) !== strtolower($selectedCampus) && strtolower($uInfo['code']) !== strtolower($selectedCampus)) {
             continue;
         }
     }
@@ -212,10 +222,15 @@ include '../includes/header.php';
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <div class="badge" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600; box-shadow: var(--shadow-sm);">
-                🎓 <?php echo $campusesCount; ?> Campuses Represented
+                🎓 <?php echo $campusesCount; ?> Campuses (<?php echo $academicUsersCount; ?> students)
             </div>
+            <?php if ($personalEmailCount > 0): ?>
+            <div class="badge" style="background: var(--bg-surface-2, #f1f5f9); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
+                ✉️ <?php echo $personalEmailCount; ?> Non-Campus
+            </div>
+            <?php endif; ?>
             <div class="badge" style="background: var(--primary-light); color: var(--primary); border: 1px solid rgba(var(--primary-rgb, 14, 165, 233), 0.25); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
-                👥 <?php echo $totalUsersCount; ?> Registered Users
+                👥 <?php echo $totalUsersCount; ?> Total Users
             </div>
             <div class="badge" style="background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.25); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
                 ✅ <?php echo $verifiedUsersCount; ?> Verified Active
@@ -233,7 +248,7 @@ include '../includes/header.php';
             <div>
                 <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Campuses Represented</div>
                 <div style="font-size: 1.65rem; font-weight: 800; color: var(--text-main); line-height: 1.2;"><?php echo $campusesCount; ?></div>
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Active universities across students</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);"><?php echo $academicUsersCount; ?> students across verified universities</div>
             </div>
         </div>
 
@@ -310,6 +325,22 @@ include '../includes/header.php';
                     <span style="font-size: 0.72rem; opacity: 0.85; font-weight: 500;">(<?php echo $pct; ?>%)</span>
                 </a>
             <?php endforeach; ?>
+
+            <?php if ($personalEmailCount > 0): ?>
+                <?php 
+                    $isNonCampusActive = $selectedCampus === 'non_campus';
+                    $ncPct = $totalUsersCount > 0 ? round(($personalEmailCount / $totalUsersCount) * 100) : 0;
+                ?>
+                <a href="users.php?campus=non_campus<?php echo $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : ''; ?>"
+                   title="Users registered with personal / non-campus email domains (<?= $personalEmailCount ?> accounts)"
+                   style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0.85rem; border-radius: var(--radius-full); font-size: 0.82rem; font-weight: 600; transition: transform 0.15s ease; <?php echo $isNonCampusActive ? 'background: #475569; color: #ffffff; box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3);' : 'background: var(--bg-surface-2, #f1f5f9); color: var(--text-muted); border: 1px solid var(--border-light);'; ?>">
+                    <span>✉️ Non-Campus</span>
+                    <span style="font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: var(--radius-full); <?php echo $isNonCampusActive ? 'background: rgba(255,255,255,0.25); color: #fff;' : 'background: #cbd5e1; color: #334155;'; ?>">
+                        <?php echo $personalEmailCount; ?>
+                    </span>
+                    <span style="font-size: 0.72rem; opacity: 0.85; font-weight: 500;">(<?php echo $ncPct; ?>%)</span>
+                </a>
+            <?php endif; ?>
         </div>
 
         <!-- Search input & Filters -->
@@ -324,6 +355,11 @@ include '../includes/header.php';
                         <?php echo htmlspecialchars($cStat['code']); ?> — <?php echo htmlspecialchars($cStat['name']); ?> (<?php echo $cStat['count']; ?>)
                     </option>
                 <?php endforeach; ?>
+                <?php if ($personalEmailCount > 0): ?>
+                    <option value="non_campus" <?php echo $selectedCampus === 'non_campus' ? 'selected' : ''; ?>>
+                        ✉️ Non-Campus (Personal Emails) (<?php echo $personalEmailCount; ?>)
+                    </option>
+                <?php endif; ?>
             </select>
             <button type="submit" class="btn btn-primary" style="padding: 0.55rem 1.1rem; font-size: 0.88rem; border-radius: var(--radius-md);">
                 Filter
@@ -342,7 +378,7 @@ include '../includes/header.php';
             <div>
                 Showing <strong><?php echo count($users); ?></strong> of <strong><?php echo $totalUsersCount; ?></strong> user<?php echo $totalUsersCount != 1 ? 's' : ''; ?>
                 <?php if ($selectedCampus !== ''): ?>
-                    matching campus <strong><?php echo htmlspecialchars($selectedCampus); ?></strong>
+                    matching <?php echo $selectedCampus === 'non_campus' ? '<strong>Non-Campus (Personal Emails)</strong>' : 'campus <strong>' . htmlspecialchars($selectedCampus) . '</strong>'; ?>
                 <?php endif; ?>
                 <?php if ($searchQuery !== ''): ?>
                     matching "<strong><?php echo htmlspecialchars($searchQuery); ?></strong>"
@@ -383,15 +419,26 @@ include '../includes/header.php';
                             </div>
                         </td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                            <a href="users.php?campus=<?php echo urlencode($uCampus['domain']); ?>" 
-                               style="text-decoration: none; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;">
-                                <span class="badge" style="background: <?php echo $uCampus['bg']; ?>; color: <?php echo $uCampus['color']; ?>; border: 1px solid <?php echo $uCampus['color']; ?>33; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.55rem; border-radius: var(--radius-sm);">
-                                    <?php echo htmlspecialchars($uCampus['code']); ?>
-                                </span>
-                                <span style="font-size: 0.72rem; color: var(--text-muted); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($uCampus['name']); ?>">
-                                    <?php echo htmlspecialchars($uCampus['name']); ?>
-                                </span>
-                            </a>
+                            <?php if (!empty($uCampus['is_campus'])): ?>
+                                <a href="users.php?campus=<?php echo urlencode($uCampus['domain']); ?>" 
+                                   style="text-decoration: none; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                                    <span class="badge" style="background: <?php echo $uCampus['bg']; ?>; color: <?php echo $uCampus['color']; ?>; border: 1px solid <?php echo $uCampus['color']; ?>33; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.55rem; border-radius: var(--radius-sm);">
+                                        <?php echo htmlspecialchars($uCampus['code']); ?>
+                                    </span>
+                                    <span style="font-size: 0.72rem; color: var(--text-muted); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($uCampus['name']); ?>">
+                                        <?php echo htmlspecialchars($uCampus['name']); ?>
+                                    </span>
+                                </a>
+                            <?php else: ?>
+                                <div style="display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                                    <span class="badge" style="background: var(--bg-surface-2, #f1f5f9); color: var(--text-muted); border: 1px solid var(--border-light); font-weight: 600; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm);">
+                                        ✉️ Non-Campus (<?= htmlspecialchars($uCampus['code'] ?? 'Personal') ?>)
+                                    </span>
+                                    <span style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.85;">
+                                        <?= htmlspecialchars($uCampus['domain'] ?? '') ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                         </td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light); font-weight: 500; font-size: 0.88rem;"><?php echo sanitize($u['email']); ?></td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">

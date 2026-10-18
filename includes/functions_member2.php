@@ -119,11 +119,12 @@ if (!function_exists('getUniversityInfoFromEmail')) {
         $atPos = strrpos($email, '@');
         if ($atPos === false) {
             return [
-                'code'   => 'Unknown',
-                'name'   => 'Unknown Campus',
-                'domain' => 'unknown',
-                'color'  => '#64748b',
-                'bg'     => 'rgba(100, 116, 139, 0.12)',
+                'code'      => 'Unknown',
+                'name'      => 'Unknown',
+                'domain'    => 'unknown',
+                'color'     => '#64748b',
+                'bg'        => 'rgba(100, 116, 139, 0.12)',
+                'is_campus' => false,
             ];
         }
         $domain = substr($email, $atPos + 1);
@@ -131,17 +132,35 @@ if (!function_exists('getUniversityInfoFromEmail')) {
 
         foreach ($registry as $regDomain => $info) {
             if ($domain === $regDomain || str_ends_with($domain, '.' . $regDomain)) {
-                return array_merge(['domain' => $regDomain], $info);
+                return array_merge(['domain' => $regDomain, 'is_campus' => true], $info);
             }
         }
 
-        $cleanName = strtoupper(explode('.', $domain)[0] ?? 'CAMPUS');
+        // Check if it's an unlisted academic domain (.edu.tr or .edu)
+        if (str_ends_with($domain, '.edu.tr') || str_ends_with($domain, '.edu')) {
+            $baseName = preg_replace('/\.(edu\.tr|edu)$/i', '', $domain);
+            $subParts = explode('.', $baseName);
+            $instSlug = end($subParts);
+            $cleanCode = strtoupper($instSlug);
+            return [
+                'code'      => $cleanCode,
+                'name'      => $cleanCode . ' Campus',
+                'domain'    => $domain,
+                'color'     => '#0284c7',
+                'bg'        => 'rgba(2, 132, 199, 0.12)',
+                'is_campus' => true,
+            ];
+        }
+
+        // Personal or general email domain (e.g. gmail.com, outlook.com, icloud.com, yahoo.com)
+        $cleanProvider = ucfirst(explode('.', $domain)[0] ?? 'Personal');
         return [
-            'code'   => $cleanName,
-            'name'   => $cleanName . ' Campus',
-            'domain' => $domain,
-            'color'  => '#64748b',
-            'bg'     => 'rgba(100, 116, 139, 0.12)',
+            'code'      => $cleanProvider,
+            'name'      => $cleanProvider . ' (' . $domain . ')',
+            'domain'    => $domain,
+            'color'     => '#64748b',
+            'bg'        => 'rgba(100, 116, 139, 0.12)',
+            'is_campus' => false,
         ];
     }
 }
