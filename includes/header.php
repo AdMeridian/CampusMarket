@@ -434,11 +434,10 @@ $navCategories = getNavCategories($pdo);
                             <span class="badge badge-primary"><?= $totalInboxUnread ?></span>
                         <?php endif; ?>
                     </a>
-                    <a href="<?php echo BASE_URL; ?>pages/wishlist.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" aria-label="<?= htmlspecialchars(__('nav.wishlist')) ?>" title="<?= htmlspecialchars(__('nav.wishlist')) ?>">
+                    <a href="<?php echo BASE_URL; ?>pages/wishlist.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none; display: inline-flex; align-items: center;" aria-label="<?= htmlspecialchars(__('nav.wishlist')) ?>" title="<?= htmlspecialchars(__('nav.wishlist')) ?>">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                         </svg>
-                        <span><?= __('nav.wishlist') ?></span>
                     </a>
                 <?php endif; ?>
                 <?php if (isLoggedIn() && isAdmin()): ?>
@@ -494,6 +493,97 @@ $navCategories = getNavCategories($pdo);
         </div>
     </div>
 </nav>
+
+<?php
+// Platform Announcements Banner
+require_once __DIR__ . '/announcements.php';
+$headerAnnouncements = [];
+try {
+    $currentRole = isLoggedIn() ? (isAdmin() ? 'admin' : 'user') : 'guest';
+    $headerAnnouncements = getActiveAnnouncements($pdo, $currentRole);
+} catch (Throwable $e) {}
+?>
+<?php if (!empty($headerAnnouncements)): ?>
+<div class="platform-announcements-wrapper" id="platformAnnouncements">
+    <div class="container">
+        <?php foreach ($headerAnnouncements as $ann): ?>
+            <?php
+                $annId = (int)$ann['id'];
+                $annType = htmlspecialchars($ann['type'] ?? 'info', ENT_QUOTES, 'UTF-8');
+                if ($annType === 'alert') $annType = 'urgent';
+                $annTitle = htmlspecialchars($ann['title'] ?? '', ENT_QUOTES, 'UTF-8');
+                $annMessage = htmlspecialchars($ann['message'] ?? '', ENT_QUOTES, 'UTF-8');
+                $annCtaText = !empty($ann['cta_text']) ? htmlspecialchars($ann['cta_text'], ENT_QUOTES, 'UTF-8') : '';
+                $annCtaUrl = !empty($ann['cta_url']) ? htmlspecialchars($ann['cta_url'], ENT_QUOTES, 'UTF-8') : '';
+            ?>
+            <div class="platform-announcement platform-announcement--<?php echo $annType; ?>" data-announcement-id="<?php echo $annId; ?>" id="announcement-item-<?php echo $annId; ?>" role="alert">
+                <div class="platform-announcement__icon">
+                    <?php if ($annType === 'warning'): ?>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <?php elseif ($annType === 'urgent'): ?>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <?php elseif ($annType === 'success'): ?>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <?php else: ?>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <?php endif; ?>
+                </div>
+                <div class="platform-announcement__body">
+                    <span class="platform-announcement__title"><?php echo $annTitle; ?></span>
+                    <span class="platform-announcement__message"><?php echo $annMessage; ?></span>
+                </div>
+                <?php if ($annCtaUrl !== '' && $annCtaText !== ''): ?>
+                    <a href="<?php echo $annCtaUrl; ?>" class="platform-announcement__cta">
+                        <?php echo $annCtaText; ?> ›
+                    </a>
+                <?php endif; ?>
+                <button type="button" class="platform-announcement__dismiss" onclick="dismissPlatformAnnouncement(<?php echo $annId; ?>)" aria-label="Dismiss announcement">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<script>
+(function() {
+    try {
+        var items = document.querySelectorAll('.platform-announcement[data-announcement-id]');
+        var visible = 0;
+        items.forEach(function(el) {
+            var aid = el.getAttribute('data-announcement-id');
+            if (localStorage.getItem('cm_announcement_dismissed_' + aid) === '1') {
+                el.style.display = 'none';
+            } else {
+                visible++;
+            }
+        });
+        var wrap = document.getElementById('platformAnnouncements');
+        if (wrap && visible === 0) {
+            wrap.style.display = 'none';
+        }
+    } catch(e) {}
+})();
+function dismissPlatformAnnouncement(id) {
+    try {
+        localStorage.setItem('cm_announcement_dismissed_' + id, '1');
+    } catch(e) {}
+    var el = document.getElementById('announcement-item-' + id);
+    if (el) {
+        el.style.transition = 'all 0.25s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-6px)';
+        setTimeout(function() {
+            el.remove();
+            var remaining = document.querySelectorAll('.platform-announcement:not([style*="display: none"])');
+            if (remaining.length === 0) {
+                var wrap = document.getElementById('platformAnnouncements');
+                if (wrap) wrap.style.display = 'none';
+            }
+        }, 250);
+    }
+}
+</script>
+<?php endif; ?>
 
 <!-- Mobile Search Row (Visible only on mobile, pushed below the fixed navbar) -->
 <div class="lg-hidden mobile-search-row">

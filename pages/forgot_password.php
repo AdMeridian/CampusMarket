@@ -73,7 +73,7 @@ require_once '../includes/header.php';
             <div class="form-row mb-6">
                 <label for="email" class="form-label">Email address</label>
                 <input type="email" id="email" name="email" value="<?php echo sanitize($email); ?>"
-                       placeholder="20227014@ciu.edu.tr" class="premium-input w-full" required autocomplete="email">
+                       placeholder="<?= addslashes(__('auth.register_email_placeholder')) ?>" class="premium-input w-full" required autocomplete="email">
                 <?php if (!empty($errors['email'])): ?>
                     <div class="text-sm text-red-500 mt-1"><?php echo sanitize($errors['email']); ?></div>
                 <?php endif; ?>

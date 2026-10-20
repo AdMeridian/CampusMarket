@@ -38,6 +38,7 @@ $stats = [
     'active_listings'           => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 'active'")->fetchColumn(),
     'pending_approval_listings' => $pdo->query("SELECT COUNT(*) FROM products WHERE status = 'pending_approval'")->fetchColumn(),
     'users'                     => $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user'")->fetchColumn(),
+    'verified_users'            => $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user' AND is_verified = TRUE")->fetchColumn(),
     'orders'                    => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
     'pending_orders'            => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
     'reports'                   => $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'")->fetchColumn(),
@@ -50,7 +51,7 @@ $uniqueCampuses = [];
 foreach ($userEmails as $ue) {
     if (function_exists('getUniversityInfoFromEmail')) {
         $cinfo = getUniversityInfoFromEmail((string)$ue);
-        if ($cinfo['code'] !== 'Unknown' && $cinfo['domain'] !== 'unknown') {
+        if (!empty($cinfo['is_campus']) && $cinfo['code'] !== 'Unknown' && $cinfo['domain'] !== 'unknown') {
             $uniqueCampuses[$cinfo['domain']] = true;
         }
     }
@@ -101,6 +102,114 @@ try {
         }
     }
 } catch (Throwable $e) {}
+
+// Announcements Metric
+require_once __DIR__ . '/../includes/announcements.php';
+$activeAnnouncementsCount = 0;
+try {
+    ensureAnnouncementsTable($pdo);
+    $activeAnnouncementsCount = (int)$pdo->query("SELECT COUNT(*) FROM announcements WHERE is_active = 1 OR is_active = TRUE")->fetchColumn();
+} catch (Throwable $e) {}
+
+// Live System Pulse Telemetry
+$pulseDriver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+$pulseDbStart = microtime(true);
+$pulseDbVersion = '';
+try {
+    $dbVerRaw = (string)$pdo->query("SELECT version()")->fetchColumn();
+    if (stripos($dbVerRaw, 'PostgreSQL') !== false) {
+        preg_match('/PostgreSQL ([\d\.]+)/', $dbVerRaw, $m);
+        $pulseDbVersion = 'PostgreSQL ' . ($m[1] ?? '15+');
+    } elseif (stripos($dbVerRaw, 'MySQL') !== false || stripos($dbVerRaw, 'MariaDB') !== false) {
+        $pulseDbVersion = 'MySQL ' . explode('-', $dbVerRaw)[0];
+    } else {
+        $pulseDbVersion = ucfirst($pulseDriver);
+    }
+} catch (Throwable $e) {
+    $pulseDbVersion = ucfirst($pulseDriver);
+}
+$pulseDbLatencyMs = round((microtime(true) - $pulseDbStart) * 1000, 1);
+$pulseDbHealthy = $pulseDbLatencyMs < 150;
+
+// Storage Health Check
+$uploadDir = __DIR__ . '/../public/uploads';
+$storageWritable = is_dir($uploadDir) && is_writable($uploadDir);
+$imageIndexedCount = 0;
+try {
+    $imageIndexedCount = (int)$pdo->query("SELECT COUNT(*) FROM product_images")->fetchColumn();
+} catch (Throwable $e) {}
+
+// Runtime Memory & Environment
+$pulseMemUsage = round(memory_get_usage(true) / 1024 / 1024, 1) . ' MB';
+$pulsePhpVer = 'PHP ' . PHP_VERSION;
+
+// User Activity & Engagement Telemetry (Past 14 Days)
+$dateExpr = $pulseDriver === 'mysql' ? "DATE(created_at)" : "TO_CHAR(created_at, 'YYYY-MM-DD')";
+$fourteenDaysAgo = (new DateTime())->sub(new DateInterval('P14D'))->format('Y-m-d 00:00:00');
+
+$telemetryBuckets = [];
+$telemetryNow = new DateTime();
+for ($i = 13; $i >= 0; $i--) {
+    $d = (clone $telemetryNow)->sub(new DateInterval("P{$i}D"));
+    $key = $d->format('Y-m-d');
+    $telemetryBuckets[$key] = [
+        'date' => $key,
+        'label' => $d->format('M j'),
+        'day' => $d->format('D'),
+        'signups' => 0,
+        'listings' => 0,
+    ];
+}
+
+try {
+    $signupStmt = $pdo->prepare("
+        SELECT {$dateExpr} as day_str, COUNT(*) as cnt
+        FROM users
+        WHERE created_at >= ?
+        GROUP BY {$dateExpr}
+    ");
+    $signupStmt->execute([$fourteenDaysAgo]);
+    foreach ($signupStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $k = substr((string)$row['day_str'], 0, 10);
+        if (isset($telemetryBuckets[$k])) {
+            $telemetryBuckets[$k]['signups'] = (int)$row['cnt'];
+        }
+    }
+} catch (Throwable $e) {}
+
+try {
+    $listingStmt = $pdo->prepare("
+        SELECT {$dateExpr} as day_str, COUNT(*) as cnt
+        FROM products
+        WHERE created_at >= ?
+        GROUP BY {$dateExpr}
+    ");
+    $listingStmt->execute([$fourteenDaysAgo]);
+    foreach ($listingStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $k = substr((string)$row['day_str'], 0, 10);
+        if (isset($telemetryBuckets[$k])) {
+            $telemetryBuckets[$k]['listings'] = (int)$row['cnt'];
+        }
+    }
+} catch (Throwable $e) {}
+
+$totalSignups14d = array_sum(array_column($telemetryBuckets, 'signups'));
+$totalListings14d = array_sum(array_column($telemetryBuckets, 'listings'));
+$maxSignups = max(1, ...array_column($telemetryBuckets, 'signups'));
+$maxListings = max(1, ...array_column($telemetryBuckets, 'listings'));
+$maxChartVal = max($maxSignups, $maxListings, 1);
+
+// Engagement KPIs
+$totalUsersCount = max(1, (int)$stats['users']);
+$activeSellersCount = 0;
+try {
+    $activeSellersCount = (int)$pdo->query("SELECT COUNT(DISTINCT user_id) FROM products")->fetchColumn();
+} catch (Throwable $e) {}
+$sellerParticipationPct = round(($activeSellersCount / $totalUsersCount) * 100, 1);
+
+$conversionRate = $stats['listings'] > 0
+    ? round(((int)$stats['completed_deals'] / (int)$stats['listings']) * 100, 1)
+    : 0.0;
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -421,6 +530,149 @@ require_once __DIR__ . '/../includes/header.php';
     margin-top: 0.25rem;
 }
 
+/* ── Activity & Telemetry Styles ───────────────────────── */
+.telemetry-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .telemetry-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .telemetry-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.telemetry-kpi-card {
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.telemetry-kpi-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.telemetry-kpi-val {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.telemetry-kpi-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.telemetry-chart-container {
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1rem 0.75rem;
+    overflow-x: auto;
+}
+
+.telemetry-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 160px;
+    gap: 0.5rem;
+    min-width: 580px;
+}
+
+.telemetry-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    position: relative;
+    cursor: default;
+}
+
+.telemetry-col:hover .telemetry-bar-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+.telemetry-col-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 125px;
+    width: 100%;
+    justify-content: center;
+}
+
+.telemetry-bar {
+    width: 13px;
+    border-radius: 3px 3px 0 0;
+    position: relative;
+    transition: height 0.3s ease, filter 0.15s ease;
+    min-height: 4px;
+}
+
+.telemetry-bar--users {
+    background: var(--primary);
+}
+
+.telemetry-bar--listings {
+    background: #10b981;
+}
+
+.telemetry-col:hover .telemetry-bar {
+    filter: brightness(1.2);
+}
+
+.telemetry-bar-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    background: #0f172a;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: var(--shadow-sm);
+}
+
+.telemetry-col-label {
+    margin-top: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    text-align: center;
+}
+
+
 /* ── Transaction Insight Card ─────────────────────────── */
 .txn-insight-card {
     margin-top: 1.5rem;
@@ -512,7 +764,12 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="stat-card" style="border-left-color: var(--success);">
             <div class="stat-card-label">Registered Users</div>
             <div class="stat-card-num"><?php echo $stats['users']; ?></div>
-            <div class="stat-card-sub"><a href="users.php" style="color: inherit; text-decoration: underline; font-weight: 600;"><?php echo $stats['campuses']; ?> campus<?php echo $stats['campuses'] != 1 ? 'es' : ''; ?> represented ›</a></div>
+            <div class="stat-card-sub">
+                <span style="color: var(--success); font-weight: 700;"><?php echo $stats['verified_users']; ?> verified active</span>
+                <?php $unverified = (int)$stats['users'] - (int)$stats['verified_users']; ?>
+                <?php if ($unverified > 0): ?> · <span style="color: var(--warning);"><?php echo $unverified; ?> unverified</span><?php endif; ?>
+                <br><a href="users.php" style="color: inherit; text-decoration: underline; font-weight: 600;"><?php echo $stats['campuses']; ?> campus<?php echo $stats['campuses'] != 1 ? 'es' : ''; ?> represented ›</a>
+            </div>
         </div>
         <div class="stat-card" style="border-left-color: var(--warning);">
             <div class="stat-card-label">Total Orders</div>
@@ -538,6 +795,82 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="stat-card-label">Active PWA Devices</div>
             <div class="stat-card-num"><?php echo $stats['pwa_active_devices']; ?></div>
             <div class="stat-card-sub">Standalone activity in 30 days</div>
+        </div>
+    </div>
+
+    <!-- ── User Activity & Engagement Analytics ───────────────── -->
+    <div class="card" style="padding: 1.5rem; margin-bottom: 2.5rem; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-light);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+            <div>
+                <h3 style="margin: 0 0 0.25rem; font-size: 1.15rem; font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--text-main);">
+                    User Activity & Engagement Analytics
+                </h3>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">
+                    14-day velocity telemetry across student registrations and marketplace listing inflow.
+                </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.8rem; font-weight: 600; flex-wrap: wrap;">
+                <span style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-main);">
+                    <span style="width: 10px; height: 10px; border-radius: 2px; background: var(--primary);"></span>
+                    New Users (+<?php echo $totalSignups14d; ?> in 14d)
+                </span>
+                <span style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-main);">
+                    <span style="width: 10px; height: 10px; border-radius: 2px; background: #10b981;"></span>
+                    New Listings (+<?php echo $totalListings14d; ?> in 14d)
+                </span>
+            </div>
+        </div>
+
+        <!-- 4 KPI Badges -->
+        <div class="telemetry-kpi-grid">
+            <div class="telemetry-kpi-card">
+                <span class="telemetry-kpi-label">14-Day Signup Velocity</span>
+                <span class="telemetry-kpi-val" style="color: var(--primary);"><?php echo $totalSignups14d; ?></span>
+                <span class="telemetry-kpi-sub"><?php echo round($totalSignups14d / 14, 1); ?> new registrations / day</span>
+            </div>
+            <div class="telemetry-kpi-card">
+                <span class="telemetry-kpi-label">14-Day Supply Growth</span>
+                <span class="telemetry-kpi-val" style="color: #10b981;"><?php echo $totalListings14d; ?></span>
+                <span class="telemetry-kpi-sub"><?php echo round($totalListings14d / 14, 1); ?> items listed / day</span>
+            </div>
+            <div class="telemetry-kpi-card">
+                <span class="telemetry-kpi-label">Seller Participation</span>
+                <span class="telemetry-kpi-val" style="color: #f59e0b;"><?php echo $sellerParticipationPct; ?>%</span>
+                <span class="telemetry-kpi-sub"><?php echo $activeSellersCount; ?> of <?php echo $totalUsersCount; ?> students listed items</span>
+            </div>
+            <div class="telemetry-kpi-card">
+                <span class="telemetry-kpi-label">Deal Conversion</span>
+                <span class="telemetry-kpi-val" style="color: #8b5cf6;"><?php echo $conversionRate; ?>%</span>
+                <span class="telemetry-kpi-sub"><?php echo (int)$stats['completed_deals']; ?> verified transactions</span>
+            </div>
+        </div>
+
+        <!-- 14-Day Bar Visualization -->
+        <div class="telemetry-chart-container">
+            <div class="telemetry-bars">
+                <?php foreach ($telemetryBuckets as $dayData): 
+                    $signupH = max(4, round(($dayData['signups'] / $maxChartVal) * 100));
+                    $listingH = max(4, round(($dayData['listings'] / $maxChartVal) * 100));
+                ?>
+                <div class="telemetry-col" title="<?php echo $dayData['label']; ?> (<?php echo $dayData['day']; ?>): <?php echo $dayData['signups']; ?> users, <?php echo $dayData['listings']; ?> listings">
+                    <div class="telemetry-col-bars">
+                        <!-- Signups Bar -->
+                        <div class="telemetry-bar telemetry-bar--users" style="height: <?php echo $signupH; ?>%;">
+                            <?php if ($dayData['signups'] > 0): ?>
+                                <span class="telemetry-bar-tooltip"><?php echo $dayData['signups']; ?> users</span>
+                            <?php endif; ?>
+                        </div>
+                        <!-- Listings Bar -->
+                        <div class="telemetry-bar telemetry-bar--listings" style="height: <?php echo $listingH; ?>%;">
+                            <?php if ($dayData['listings'] > 0): ?>
+                                <span class="telemetry-bar-tooltip"><?php echo $dayData['listings']; ?> listings</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <span class="telemetry-col-label"><?php echo $dayData['label']; ?></span>
+                </div>
+                <?php endforeach; ?>
+            </div>
         </div>
     </div>
 
@@ -656,6 +989,19 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
+                    <a href="announcements.php" class="module-card" style="--module-color: #8b5cf6; --module-bg: rgba(139, 92, 246, 0.1);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>
+                        <div class="module-info">
+                            <div class="module-name" style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+                                <span>Announcements</span>
+                                <?php if ($activeAnnouncementsCount > 0): ?>
+                                    <span style="background: #8b5cf6; color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px;"><?php echo $activeAnnouncementsCount; ?> active</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="module-desc">Broadcast site-wide banners & alerts</div>
+                        </div>
+                        <span class="module-arrow">›</span>
+                    </a>
                 </div>
 
                 <div class="section-label">Taxonomy &amp; Templates</div>
@@ -720,24 +1066,31 @@ require_once __DIR__ . '/../includes/header.php';
 
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <div class="status-item">
-                    <div class="status-dot"></div>
+                    <div class="status-dot" style="background: <?php echo $pulseDbHealthy ? 'var(--success)' : 'var(--warning)'; ?>;"></div>
                     <div>
-                        <div class="status-label">Database Server</div>
-                        <div class="status-sub">Connected · Latency &lt; 15ms</div>
+                        <div class="status-label">Database Server (<?php echo htmlspecialchars($pulseDbVersion); ?>)</div>
+                        <div class="status-sub">Connected · Real Latency: <?php echo $pulseDbLatencyMs; ?>ms (<?php echo $pulseDbHealthy ? 'Optimal' : 'Elevated'; ?>)</div>
                     </div>
                 </div>
                 <div class="status-item">
-                    <div class="status-dot"></div>
+                    <div class="status-dot" style="background: <?php echo $stats['reports'] == 0 ? 'var(--success)' : '#f97316'; ?>;"></div>
                     <div>
-                        <div class="status-label">Safety Engine</div>
-                        <div class="status-sub">Active monitoring · <?php echo $stats['reports']; ?> report<?php echo $stats['reports'] != 1 ? 's' : ''; ?> pending</div>
+                        <div class="status-label">Safety & Moderation Engine</div>
+                        <div class="status-sub"><?php echo $stats['reports'] == 0 ? 'Queue clean · 0 open reports' : 'Attention required · ' . $stats['reports'] . ' report' . ($stats['reports'] != 1 ? 's' : '') . ' pending'; ?></div>
                     </div>
                 </div>
                 <div class="status-item">
-                    <div class="status-dot"></div>
+                    <div class="status-dot" style="background: <?php echo $storageWritable ? 'var(--success)' : 'var(--warning)'; ?>;"></div>
                     <div>
-                        <div class="status-label">File Storage</div>
-                        <div class="status-sub">Image uploads operational</div>
+                        <div class="status-label">File & Upload Storage</div>
+                        <div class="status-sub"><?php echo $storageWritable ? 'Operational & Writable' : 'Restricted Permissions'; ?> · <?php echo $imageIndexedCount; ?> media assets indexed</div>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" style="background: var(--success);"></div>
+                    <div>
+                        <div class="status-label">Application Runtime</div>
+                        <div class="status-sub"><?php echo htmlspecialchars($pulsePhpVer); ?> · Memory: <?php echo $pulseMemUsage; ?> allocated</div>
                     </div>
                 </div>
                 <div class="status-item" style="align-items: flex-start;">
@@ -776,7 +1129,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <div style="margin-top: auto; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.15);">
                 <div style="font-size: 0.78rem; color: rgba(255,255,255,0.55);">
-                    Platform stats as of <?php echo date('H:i, M j'); ?> · <?php echo $stats['users']; ?> users · <?php echo $stats['listings']; ?> listings
+                    Platform stats as of <?php echo date('H:i, M j'); ?> · <?php echo $stats['users']; ?> registered (<?php echo $stats['verified_users']; ?> verified) · <?php echo $stats['listings']; ?> listings
                 </div>
             </div>
         </div>
