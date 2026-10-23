@@ -195,14 +195,19 @@ include '../includes/header.php';
 
                 <?php if (!empty($existingListing)): ?>
                     <!-- Optional Draft Loader for Returning Providers -->
-                    <div class="mb-4 p-3.5 rounded-xl flex items-center justify-between gap-3 flex-wrap" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25);">
+                    <div id="existingDraftBanner" class="mb-4 p-3.5 rounded-xl flex items-center justify-between gap-3 flex-wrap" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25);">
                         <div class="flex items-center gap-2 text-sm text-main">
                             <span>ℹ️</span>
                             <span>You have an existing service listing: <strong><?= sanitize($existingListing['title']) ?></strong>.</span>
                         </div>
-                        <button type="button" id="btnLoadExistingDraft" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.85rem; border-radius: var(--radius-md); font-weight: 600;">
-                            Load Previous Details
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="btnLoadExistingDraft" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.85rem; border-radius: var(--radius-md); font-weight: 600;">
+                                Load Previous Details
+                            </button>
+                            <button type="button" id="btnDismissDraft" class="btn btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);" title="Dismiss and start fresh">
+                                ✕ Dismiss
+                            </button>
+                        </div>
                     </div>
                 <?php endif; ?>
 
@@ -318,11 +323,11 @@ include '../includes/header.php';
                     </div>
 
                     <!-- Pricing, Location & Turnaround -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 mb-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
                         <div>
-                            <label for="location_town" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Campus Location / Town <span class="text-danger">*</span></label>
+                            <label for="location_town" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Location / Town <span class="text-danger">*</span></label>
                             <select id="location_town" name="location_town" class="premium-input w-full" style="padding: 0.75rem 1rem; cursor: pointer;" required>
-                                <option value="" disabled selected>Select your campus town / location...</option>
+                                <option value="" disabled selected>Select your campus town...</option>
                                 <?php
                                 $allowedTowns = ['remote', 'lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele'];
                                 foreach ($allowedTowns as $tSlug):
@@ -346,10 +351,12 @@ include '../includes/header.php';
                             <input type="number" id="service_price" name="price" step="5" min="0" max="10000" class="premium-input w-full" style="padding: 0.75rem 1rem;" required placeholder="e.g. 150" value="">
                             <small id="aiPriceHint" class="text-muted" style="font-size: 0.78rem; display: none;">AI suggested — adjust to match your own rate</small>
                         </div>
-                        <div id="delivery_days_wrap" style="display: none;">
-                            <label for="delivery_days" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Delivery / Turnaround (Days)</label>
-                            <input type="number" id="delivery_days" name="delivery_days" min="1" max="30" class="premium-input w-full" style="padding: 0.75rem 1rem;" placeholder="e.g. 2" value="">
-                        </div>
+                    </div>
+
+                    <!-- Delivery Days (hidden row, shown only for flat pricing) -->
+                    <div id="delivery_days_wrap" class="mb-5" style="display: none; max-width: 200px;">
+                        <label for="delivery_days" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Delivery / Turnaround (Days)</label>
+                        <input type="number" id="delivery_days" name="delivery_days" min="1" max="30" class="premium-input w-full" style="padding: 0.75rem 1rem;" placeholder="e.g. 2" value="">
                     </div>
 
                     <!-- Availability & Cover Image -->
@@ -357,13 +364,15 @@ include '../includes/header.php';
                         <div>
                             <label for="availability_status" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Current Availability</label>
                             <select id="availability_status" name="availability_status" class="premium-input w-full" style="padding: 0.75rem 1rem; cursor: pointer;">
-                                <option value="available" selected>🟢 Available for new clients</option>
+                                <option value="" disabled selected>Select availability...</option>
+                                <option value="available">🟢 Available for new clients</option>
                                 <option value="busy">🟡 Busy (Accepting with delay)</option>
                             </select>
                         </div>
                         <div>
                             <label for="cover_image" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Cover Photo / Sample Work <span class="text-muted font-normal">(Optional)</span></label>
                             <input type="file" id="cover_image" name="cover_image" accept="image/jpeg,image/png,image/webp" class="premium-input w-full" style="padding: 0.6rem 0.85rem;">
+                            <small id="coverImageHint" class="text-muted" style="font-size: 0.78rem; display: none; margin-top: 0.3rem;"></small>
                         </div>
                     </div>
 
@@ -394,10 +403,10 @@ window.existingDraftData = <?= json_encode([
     'service_title'       => $existingListing['title'] ?? '',
     'service_description' => $existingListing['description'] ?? '',
     'location_town'       => $existingListing['location_town'] ?? '',
-    'pricing_model'       => $existingListing['pricing_model'] ?? 'hourly',
+    'pricing_model'       => $existingListing['pricing_model'] ?? '',
     'price'               => $existingListing['price'] ?? '',
     'delivery_days'       => $existingListing['delivery_days'] ?? '',
-    'availability_status' => $existingListing['availability_status'] ?? 'available',
+    'availability_status' => $existingListing['availability_status'] ?? '',
     'skills'              => is_array(json_decode($existingProfile['parsed_skills'] ?? '', true)) ? json_decode($existingProfile['parsed_skills'], true) : [],
     'product_id'          => (int)$existingListing['id']
 ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
@@ -409,8 +418,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const csrfToken = <?= json_encode($csrfToken ?? ($_COOKIE['csrf_token'] ?? '')) ?>;
 
-    // ── Optional: Load Previous Draft Details ────────────────────────────
-    const btnLoadDraft = document.getElementById('btnLoadExistingDraft');
+    const btnLoadDraft    = document.getElementById('btnLoadExistingDraft');
+    const btnDismissDraft = document.getElementById('btnDismissDraft');
+    const draftBanner     = document.getElementById('existingDraftBanner');
+
+    if (btnDismissDraft && draftBanner) {
+        btnDismissDraft.addEventListener('click', () => {
+            draftBanner.style.transition = 'opacity 0.2s ease';
+            draftBanner.style.opacity = '0';
+            setTimeout(() => { draftBanner.style.display = 'none'; }, 200);
+        });
+    }
+
     if (btnLoadDraft && window.existingDraftData) {
         btnLoadDraft.addEventListener('click', () => {
             const d = window.existingDraftData;
@@ -440,6 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnLoadDraft.textContent = '✓ Details Loaded';
             btnLoadDraft.disabled = true;
             btnLoadDraft.style.opacity = '0.7';
+            if (btnDismissDraft) btnDismissDraft.style.display = 'none';
         });
     }
 
@@ -828,6 +848,77 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    // ── Cover Photo Client-Side Compression ──────────────────────────────
+    function compressCoverImage(file, maxWidth = 1600, maxHeight = 1600, quality = 0.82) {
+        if (window.CampusMarketCompressor && typeof window.CampusMarketCompressor.compressImageFile === 'function') {
+            return window.CampusMarketCompressor.compressImageFile(file, { maxWidth, maxHeight, quality });
+        }
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height) {
+                        if (width > maxWidth)  { height *= maxWidth / width;  width = maxWidth; }
+                    } else {
+                        if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+                    }
+                    canvas.width  = Math.round(width);
+                    canvas.height = Math.round(height);
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(function (blob) {
+                        if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+                        const compressed = new File(
+                            [blob],
+                            file.name.replace(/\.[^.]+$/, '') + '.jpg',
+                            { type: 'image/jpeg', lastModified: Date.now() }
+                        );
+                        resolve(compressed);
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const coverInput  = document.getElementById('cover_image');
+    const coverHint   = document.getElementById('coverImageHint');
+    const submitBtn   = document.getElementById('btnSubmitListing');
+
+    coverInput?.addEventListener('change', async function () {
+        const file = coverInput.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+
+        coverHint.style.display = 'block';
+        coverHint.style.color   = 'var(--primary)';
+        coverHint.textContent   = '⏳ Compressing image…';
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const compressed = await compressCoverImage(file);
+            const dt = new DataTransfer();
+            dt.items.add(compressed);
+            coverInput.files = dt.files;
+            const kb = Math.round(compressed.size / 1024);
+            coverHint.style.color = 'var(--success, #16a34a)';
+            coverHint.textContent = `✓ Ready (${kb} KB)`;
+        } catch (err) {
+            console.warn('[cover_image] Compression failed, using original:', err);
+            coverHint.style.color = 'var(--text-muted)';
+            coverHint.textContent = 'Using original image.';
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
+
 });
 </script>
 
