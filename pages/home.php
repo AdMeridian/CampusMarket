@@ -113,8 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <?php echo $catDef['icon']; ?>
                     </div>
                     <strong class="home-category-card__name"><?php echo translateCategory($catName); ?></strong>
-                    <?php if ($count >= 45): ?>
-                        <span class="text-muted small"><?= __('home.items_available', ['count' => $count > 100 ? '100+' : $count]) ?></span>
+                    <?php if ($count >= 50): ?>
+                        <span class="text-muted small"><?= __('home.items_available', ['count' => $count >= 100 ? '100+' : '50+']) ?></span>
                     <?php endif; ?>
                 </a>
             <?php endforeach; ?>
