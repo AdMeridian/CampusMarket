@@ -11,6 +11,11 @@ if (isAdmin()) {
     redirect(BASE_URL . 'admin/index.php');
 }
 
+// Redirect service requests to the dedicated Campus Services Pilot onboarding
+if ((isset($_GET['type']) && $_GET['type'] === 'service') || (isset($_POST['listing_type']) && $_POST['listing_type'] === 'service')) {
+    redirect(BASE_URL . 'pages/provider_onboard.php');
+}
+
 $success = false;
 $error = '';
 $createdProductId = 0;
@@ -154,14 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
                 $conditionValue = ($listingType === 'service') ? null : $condition;
                 
-                $serviceExpiresAt = null;
-                $statusValue = 'pending_approval';
-
-                if ($listingType === 'service') {
-                    // Every service requires approval before it can be paid for or published.
-                } else {
-                    $statusValue = 'active';
-                }
+                $serviceExpiresAt = ($listingType === 'service') ? date('Y-m-d H:i:s', strtotime('+90 days')) : null;
+                $statusValue = 'active';
 
                 $sellerMarketplace = function_exists('getUserUniversityAndCountry') ? getUserUniversityAndCountry($pdo, $userId) : null;
                 $sellerCountry = $sellerMarketplace['country_code'] ?? 'TR';
@@ -226,15 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                if ($listingType === 'service') {
-                    $status = 'pending_approval';
-                    $sellerNote = listingModerationSellerFacingReason($aiResult);
-                    $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
-                    $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
-                    listingModerationSaveNote($pdo, (int)$productId, $sellerNote);
-                    notifyAdminsPendingListing($pdo, (int)$productId, $title, $sellerNote);
-                    notifySellerPendingListing($pdo, (int)$userId, (int)$productId, $title, $sellerNote);
-                } elseif (aiModeratorShouldAutoApprove($aiResult)) {
+                if (aiModeratorShouldAutoApprove($aiResult)) {
                     $status = 'active';
                 } else {
                     $status = 'pending_approval';
@@ -563,61 +554,36 @@ include '../includes/header.php';
 
 
 
-                <!-- Listing Type Selector (Product vs Service) -->
-                <div class="form-group">
-                    <label class="font-bold mb-3 block" style="color: var(--text-main);">What are you listing?</label>
-                    <div class="flex gap-6" id="listing-type-selector">
-                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo !$isServiceMode ? 'var(--primary)' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo !$isServiceMode ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
-                            <input type="radio" name="listing_type" value="product" <?php echo !$isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-product">
-                            <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📦</div>
-                            <div class="font-bold text-main" style="font-size: 0.95rem;">Physical Item</div>
-                            <div class="text-muted" style="font-size: 0.78rem;">Something you can hand over</div>
-                        </label>
-                        <label class="listing-type-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid <?php echo $isServiceMode ? 'var(--service)' : 'var(--border-light)'; ?>; padding: 1rem; text-align: center; background: <?php echo $isServiceMode ? 'var(--service-light)' : 'var(--bg-surface)'; ?>; transition: all 0.2s;">
-                            <input type="radio" name="listing_type" value="service" <?php echo $isServiceMode ? 'checked' : ''; ?> class="hidden-radio" id="type-service">
-                            <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">🛠️</div>
-                            <div class="font-bold text-main" style="font-size: 0.95rem;">Service</div>
-                            <div class="text-muted" style="font-size: 0.78rem;">Tutoring, cleaning, photography...</div>
-                        </label>
+                <!-- Campus Services Pilot Discovery Banner -->
+                <div class="mb-2 p-4 rounded-xl flex items-center justify-between gap-4 flex-wrap" style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25);">
+                    <div class="flex items-center gap-3">
+                        <span style="font-size: 1.6rem;">🛠️</span>
+                        <div>
+                            <strong style="color: var(--text-main); font-size: 0.95rem;">Offering a skill, tutoring, or campus service?</strong>
+                            <p class="text-muted mb-0" style="font-size: 0.83rem;">Join our Campus Services Pilot to set up your provider profile and receive bookings.</p>
+                        </div>
                     </div>
+                    <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-sm btn--service" style="padding: 0.5rem 1.1rem; font-weight: 700; white-space: nowrap; border-radius: var(--radius-lg);">
+                        Enroll in Pilot &rarr;
+                    </a>
                 </div>
-
-                <!-- Service Pricing Notice -->
-                <div class="js-service-only mb-2 p-4 rounded-xl border" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?> style="background: rgba(14, 165, 233, 0.08); border-color: rgba(14, 165, 233, 0.25);">
-                    <?php if ($userFreeServiceAvailable): ?>
-                        <div class="flex items-center gap-3">
-                            <span style="font-size: 1.5rem;">🎉</span>
-                            <div>
-                                <strong style="color: var(--text-main); font-size: 0.95rem;">First Service Free Trial (<?= (int)$svcPricing['listing_days'] ?> Days)</strong>
-                                <p class="text-muted mb-0" style="font-size: 0.83rem; line-height: 1.45;">As a student perk, your 1st service listing is completely free for <?= (int)$svcPricing['listing_days'] ?> days! Additional concurrent listings or renewals are ₺<?= number_format($svcPricing['listing_fee'], 0) ?>.</p>
-                            </div>
-                        </div>
-                    <?php else: ?>
-                        <div class="flex items-center gap-3">
-                            <span style="font-size: 1.5rem;">💳</span>
-                            <div>
-                                <strong style="color: var(--text-main); font-size: 0.95rem;">Service Listing Plan: ₺<?= number_format($svcPricing['listing_fee'], 0) ?> / <?= (int)$svcPricing['listing_days'] ?> Days</strong>
-                                <p class="text-muted mb-0" style="font-size: 0.83rem; line-height: 1.45;">Service listings are ₺<?= number_format($svcPricing['listing_fee'], 0) ?> for <?= (int)$svcPricing['listing_days'] ?> days (or ₺<?= number_format($svcPricing['total_boosted_fee'], 0) ?> with <?= (int)$svcPricing['boost_days'] ?>-Day Homepage Boost). You will review and complete payment after submitting.</p>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                </div>
+                <input type="hidden" name="listing_type" value="product">
 
                 <div class="form-group">
-                    <label id="title-label" class="font-bold mb-2 block" style="color: var(--text-main);"><?= $isServiceMode ? __('create_listing.sell_label_service') : __('create_listing.sell_label') ?></label>
-                    <input type="text" id="title-input" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.title_placeholder_service')) : addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <label id="title-label" class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
+                    <input type="text" id="title-input" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Category Selector (product only) -->
-                    <div class="form-group js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?> style="grid-column: 1 / -1;">
+                    <!-- Category Selector -->
+                    <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.category_label') ?></label>
                         <p class="text-muted small mb-3">Choose every category that fits. One will be used as the primary category.</p>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <?php foreach ($categories as $cat): ?>
                                 <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
-                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) && !$isServiceMode ? 'checked' : ''; ?>>
+                                    <input type="checkbox" name="category_ids[]" value="<?php echo (int)$cat['id']; ?>" <?php echo in_array((int)$cat['id'], $prevCategoryIds, true) ? 'checked' : ''; ?>>
                                     <span><?php echo sanitize(translateCategory($cat['name'])); ?></span>
                                 </label>
                             <?php endforeach; ?>
@@ -625,20 +591,14 @@ include '../includes/header.php';
                     </div>
                     <div class="form-group">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);">
-                            <span class="js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.town_label') ?></span>
-                            <span class="js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>📍 Availability / Location</span>
+                            <?= __('create_listing.town_label') ?>
                         </label>
                         <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;">
                             <?php
                             $townSlugs = locationTownSlugs();
-                            // For services, pre-select 'remote' when no prior selection
                             $resolvedTown = $selectedTown;
-                            if ($resolvedTown === '' && $isServiceMode) {
-                                $resolvedTown = 'remote';
-                            }
                             foreach ($townSlugs as $townSlug):
-                                // Show 'Remote' option only for services; show towns first for products
-                                if ($townSlug === 'remote' && !$isServiceMode) continue;
+                                if ($townSlug === 'remote') continue;
                             ?>
                                 <option value="<?php echo $townSlug; ?>" <?php echo $resolvedTown === $townSlug ? 'selected' : ''; ?>>
                                     <?php echo formatLocationTown($townSlug); ?>
@@ -649,8 +609,7 @@ include '../includes/header.php';
                             <label class="font-bold mb-1 block text-sm" style="color: var(--text-main);"><?= __('create_listing.custom_location_label') ?></label>
                             <input type="text" name="custom_location" id="custom_location_input" value="<?= htmlspecialchars($selectedCustomLocation) ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="w-full premium-input" style="padding: 0.8rem 1rem;">
                         </div>
-                        <p class="text-muted small mt-2 mb-0 js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.town_hint') ?></p>
-                        <p class="text-muted small mt-2 mb-0 js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>Choose <strong>Remote / Online</strong> if your service can be done virtually, or pick the campus town where you'll be available in person.</p>
+                        <p class="text-muted small mt-2 mb-0"><?= __('create_listing.town_hint') ?></p>
                     </div>
                 </div>
 
@@ -678,7 +637,8 @@ include '../includes/header.php';
                 </div>
 
                 <!-- Condition (product only) -->
-                <div class="form-group js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>>
+                <!-- Condition (product) -->
+                <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.condition_label') ?></label>
                     <div class="flex flex-wrap gap-3" style="gap: 0.5rem;">
                         <?php
@@ -699,117 +659,9 @@ include '../includes/header.php';
                     </div>
                 </div>
 
-                <!-- Pricing Model (service only) -->
-                <div class="form-group js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);">Pricing Model</label>
-                    <div class="flex gap-3">
-                        <label class="pricing-model-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
-                            <input type="radio" name="pricing_model" value="flat" <?php echo (($_POST['pricing_model'] ?? 'flat') === 'flat') ? 'checked' : ''; ?> class="hidden-radio">
-                            <div class="font-bold text-main">Flat Rate</div>
-                            <div class="text-muted" style="font-size: 0.78rem;">One price for the job</div>
-                        </label>
-                        <label class="pricing-model-btn flex-1 cursor-pointer" style="border-radius: var(--radius-lg); border: 2px solid var(--border-light); padding: 0.75rem 1rem; text-align: center; background: var(--bg-surface); transition: all 0.2s;">
-                            <input type="radio" name="pricing_model" value="hourly" <?php echo (($_POST['pricing_model'] ?? '') === 'hourly') ? 'checked' : ''; ?> class="hidden-radio">
-                            <div class="font-bold text-main">Hourly Rate</div>
-                            <div class="text-muted" style="font-size: 0.78rem;">Price per hour</div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- ── Service Details Block (service only) ─────────────────── -->
-                <div class="js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>
-                    <div style="border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; background: color-mix(in srgb, var(--service) 4%, var(--bg-surface)); display: grid; gap: 1.5rem;">
-                        <div style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--service); margin-bottom: -0.5rem;">Service Details</div>
-
-                        <!-- Delivery Days -->
-                        <div class="form-group mb-0">
-                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">How long to deliver?</label>
-                            <p class="text-muted small mb-3" style="font-size: 0.82rem;">Set an honest estimate — buyers will count on this.</p>
-                            <div class="flex flex-wrap gap-2" id="delivery-days-pills">
-                                <?php
-                                $deliveryOptions = [1 => 'Same day', 2 => '2 days', 3 => '3 days', 5 => '5 days', 7 => '1 week', 14 => '2 weeks', 30 => '1 month'];
-                                $prevDelivery = (int)($_POST['delivery_days'] ?? 0);
-                                foreach ($deliveryOptions as $days => $label): ?>
-                                <label style="cursor:pointer;">
-                                    <input type="radio" name="delivery_days" value="<?= $days ?>" class="hidden-radio" <?= $prevDelivery === $days ? 'checked' : '' ?>>
-                                    <span class="tag-pill-label js-delivery-pill" style="padding: 0.4rem 1rem; font-size: 0.85rem;"><?= $label ?></span>
-                                </label>
-                                <?php endforeach; ?>
-                                <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
-                                    <input type="radio" name="delivery_days" value="0" class="hidden-radio" <?= $prevDelivery === 0 ? 'checked' : '' ?>>
-                                    <span class="tag-pill-label js-delivery-pill" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Varies / Let's discuss</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Revisions -->
-                        <div class="form-group mb-0">
-                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">Revisions included</label>
-                            <div class="flex flex-wrap gap-2">
-                                <?php
-                                $revisionOptions = ['0' => 'None', '1' => '1', '2' => '2', '3' => '3', '5' => '5', 'unlimited' => 'Unlimited'];
-                                $prevRevisions = isset($_POST['revision_count']) ? (string)$_POST['revision_count'] : '';
-                                foreach ($revisionOptions as $val => $label): ?>
-                                <label style="cursor:pointer;">
-                                    <input type="radio" name="revision_count" value="<?= $val ?>" class="hidden-radio" <?= $prevRevisions === (string)$val ? 'checked' : '' ?>>
-                                    <span class="tag-pill-label" style="padding: 0.4rem 1rem; font-size: 0.85rem;"><?= $label ?></span>
-                                </label>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-
-                        <!-- Availability Status -->
-                        <div class="form-group mb-0">
-                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">Your current availability</label>
-                            <div class="flex flex-col gap-2" id="availability-radios">
-                                <?php
-                                $availOptions = [
-                                    'available'   => ['label' => 'Available — taking new clients', 'color' => '#22c55e'],
-                                    'busy'        => ['label' => 'Busy — open but might be slow',  'color' => '#f59e0b'],
-                                    'unavailable' => ['label' => 'Unavailable — on a break',        'color' => '#ef4444'],
-                                ];
-                                $prevAvail = $_POST['availability_status'] ?? 'available';
-                                foreach ($availOptions as $val => $meta): ?>
-                                <label style="cursor:pointer; display:flex; align-items:center; gap:0.75rem; padding:0.65rem 1rem; border-radius:var(--radius-lg); border:2px solid var(--border-light); background:var(--bg-surface); transition:all 0.2s;" class="avail-label">
-                                    <input type="radio" name="availability_status" value="<?= $val ?>" class="hidden-radio avail-radio" <?= $prevAvail === $val ? 'checked' : '' ?>>
-                                    <span style="width:10px;height:10px;border-radius:50%;background:<?= $meta['color'] ?>;flex-shrink:0;"></span>
-                                    <span style="font-weight:600;color:var(--text-main);font-size:0.9rem;"><?= $meta['label'] ?></span>
-                                </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <!-- Auto-reset option -->
-                            <div id="avail-reset-block" style="margin-top:1rem; padding:0.85rem 1rem; border-radius:var(--radius-md); background:color-mix(in srgb, var(--bg-surface) 80%, var(--bg-main)); border:1px dashed var(--border-light);">
-                                <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-weight:600; color:var(--text-main); font-size:0.88rem;">
-                                    <input type="checkbox" id="avail-reset-toggle" style="width:16px;height:16px;" <?= !empty($_POST['availability_reset_days']) ? 'checked' : '' ?>>
-                                    Auto-reset to Available after:
-                                </label>
-                                <div id="avail-reset-days-wrapper" style="margin-top:0.6rem; display:<?= !empty($_POST['availability_reset_days']) ? 'flex' : 'none' ?>; align-items:center; gap:0.75rem;">
-                                    <select name="availability_reset_days" class="premium-input" style="padding:0.5rem 0.8rem; font-size:0.88rem; width:auto;">
-                                        <?php foreach ([3 => '3 days', 7 => '1 week', 14 => '2 weeks', 30 => '1 month'] as $d => $l): ?>
-                                        <option value="<?= $d ?>" <?= (int)($_POST['availability_reset_days'] ?? 0) === $d ? 'selected' : '' ?>><?= $l ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <span class="text-muted" style="font-size:0.82rem;">Your status will automatically go back to Available after this time.</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Portfolio / Social Link -->
-                        <div class="form-group mb-0">
-                            <label class="font-bold mb-2 block" style="color: var(--text-main); font-size: 0.95rem;">Portfolio or Social Link <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
-                            <input type="url" name="portfolio_link" value="<?= htmlspecialchars($_POST['portfolio_link'] ?? '') ?>" placeholder="https://instagram.com/yourhandle" class="w-full premium-input" style="padding: 0.8rem 1rem;" maxlength="500">
-                            <p class="text-muted small mt-2 mb-0" style="font-size:0.8rem;">Paste any link — Instagram, TikTok, Behance, LinkedIn, your personal site, etc.</p>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="form-group">
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);">
-                        <span class="js-product-only" <?php echo $isServiceMode ? 'style="display:none"' : ''; ?>><?= __('create_listing.description_label') ?></span>
-                        <span class="js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?>>Tell people about this skill</span>
-                    </label>
-                    <p class="text-muted small mb-2 js-service-only" <?php echo !$isServiceMode ? 'style="display:none"' : ''; ?> style="font-size:0.83rem;">How long have you been doing this? What makes your work stand out? Write like you're talking to a friend.</p>
-                    <textarea id="description-textarea" name="description" rows="5" placeholder="<?= $isServiceMode ? addslashes(__('create_listing.desc_placeholder_service')) : addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
+                    <textarea id="description-textarea" name="description" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
 
                 <?php if (isAgent()): ?>
@@ -1543,88 +1395,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
-<script>
-// Dynamic listing type toggle
-(function() {
-    const typeRadios = document.querySelectorAll('input[name="listing_type"]');
-    const productOnlyEls = document.querySelectorAll('.js-product-only');
-    const serviceOnlyEls = document.querySelectorAll('.js-service-only');
-    const typeBtns = document.querySelectorAll('.listing-type-btn');
 
-    function applyType(type) {
-        productOnlyEls.forEach(el => el.style.display = type === 'product' ? '' : 'none');
-        serviceOnlyEls.forEach(el => el.style.display = type === 'service' ? '' : 'none');
-
-        // Dynamically update labels & placeholders
-        const titleLabel = document.getElementById('title-label');
-        const titleInput = document.getElementById('title-input');
-        const descTextarea = document.getElementById('description-textarea');
-        
-        if (titleLabel && titleInput && descTextarea) {
-            if (type === 'service') {
-                titleLabel.textContent = createListingI18n.offerLabel;
-                titleInput.placeholder = createListingI18n.titlePlaceholderService;
-                descTextarea.placeholder = createListingI18n.descPlaceholderService;
-            } else {
-                titleLabel.textContent = createListingI18n.sellLabel;
-                titleInput.placeholder = createListingI18n.titlePlaceholder;
-                descTextarea.placeholder = createListingI18n.descPlaceholder;
-            }
-        }
-
-        typeBtns.forEach(btn => {
-            const radio = btn.querySelector('input[name="listing_type"]');
-            const isSelected = radio && radio.value === type;
-            const color = radio && radio.value === 'service' ? '#ef4444' : 'var(--primary)';
-            btn.style.border = isSelected ? `2px solid ${color}` : '2px solid var(--border-light)';
-            if (isSelected && radio.value === 'service') {
-                btn.style.background = 'rgba(239,68,68,0.08)';
-            } else if (isSelected) {
-                btn.style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)';
-            } else {
-                btn.style.background = 'var(--bg-surface)';
-            }
-        });
-    }
-
-    typeRadios.forEach(radio => {
-        radio.addEventListener('change', () => applyType(radio.value));
-    });
-
-    // Run once on load to initialize state
-    const activeType = document.querySelector('input[name="listing_type"]:checked');
-    if (activeType) {
-        applyType(activeType.value);
-    }
-})();
-
-// Dynamic pricing model toggle
-(function() {
-    const modelRadios = document.querySelectorAll('input[name="pricing_model"]');
-    const modelBtns = document.querySelectorAll('.pricing-model-btn');
-
-    function applyModel(model) {
-        modelBtns.forEach(btn => {
-            const radio = btn.querySelector('input[name="pricing_model"]');
-            const isSelected = radio && radio.value === model;
-            if (isSelected) {
-                btn.style.border = '2px solid #ef4444';
-                btn.style.background = 'rgba(239,68,68,0.08)';
-            } else {
-                btn.style.border = '2px solid var(--border-light)';
-                btn.style.background = 'var(--bg-surface)';
-            }
-        });
-    }
-
-    modelRadios.forEach(radio => {
-        radio.addEventListener('change', () => applyModel(radio.value));
-    });
-
-    // Run once on load to initialize styling
-    const activeModel = document.querySelector('input[name="pricing_model"]:checked');
-    if (activeModel) {
-        applyModel(activeModel.value);
-    }
-})();
-</script>

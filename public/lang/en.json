@@ -533,7 +533,7 @@
     "product.request_service": "Request This Service",
     "product.service_badge": "Service",
     "product.hourly_badge": "Hourly Rate",
-    "product.service_contact_hint": "Message the provider to arrange details & confirm availability",
+    "product.service_contact_hint": "Contact this provider to discuss your needs. We recommend meeting in a public campus space for your first session.",
     "admin.recent_fallback": "Recent Fallback",
     "admin.flash_recent_fallback_added": "Listing added to Recent Listings fallback showcase.",
     "admin.flash_recent_fallback_removed": "Listing removed from Recent Listings fallback showcase.",

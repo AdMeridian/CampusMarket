@@ -97,19 +97,21 @@ include '../includes/header.php';
 <div class="min-h-screen pt-24 pb-16 relative">
 
     <div class="container">
-        <!-- Services Header -->
-        <div class="mb-10 flex justify-between items-end gap-6 flex-wrap">
-            <div class="text-left">
+        <!-- Unified Services Header -->
+        <div class="mb-10 flex justify-between items-end gap-6 flex-wrap pb-6 border-b" style="border-color: var(--border-light);">
+            <div class="text-left" style="max-width: 680px;">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="badge" style="background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.76rem; letter-spacing: 0.5px; border: 1px solid rgba(26, 127, 100, 0.25);">
+                        CAMPUS SERVICES
+                    </span>
+                </div>
                 <h1 class="page-hero-title mb-2 text-main"><?= __('services.hero_title') ?></h1>
-                <p class="page-subtitle"><?= __('services.hero_subtitle') ?></p>
+                <p class="page-subtitle mb-0"><?= __('services.hero_subtitle') ?></p>
             </div>
             
-            <?php if (isLoggedIn()): ?>
-            <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn btn--service" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <?= __('services.offer_service') ?>
+            <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn--service" style="padding: 0.8rem 1.6rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+                <span><?= __('services.offer_service') ?></span>
             </a>
-            <?php endif; ?>
         </div>
 
         <?php if ($sellerInfo): ?>
@@ -234,17 +236,17 @@ include '../includes/header.php';
                 </div>
 
                             <?php if (empty($services)): ?>
-                    <div class="glass-panel p-16 text-center shadow-sm" style="border-radius: var(--radius-lg); border: 2px dashed var(--border-light); background: var(--bg-card);">
-                        <div class="mb-4 flex justify-center" style="color: var(--text-muted); opacity: 0.5;">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                    <div class="glass-panel p-12 text-center shadow-sm" style="border-radius: var(--radius-xl); border: 2px dashed var(--border-light); background: var(--bg-surface);">
+                        <div class="mb-4 flex justify-center" style="font-size: 3rem;">
+                            🚀
                         </div>
-                        <h3 class="empty-state-title mb-2"><?= __('services.no_services') ?></h3>
-                        <p class="page-subtitle max-w-md mx-auto"><?= __('services.no_services_desc') ?></p>
-                        <?php if (isLoggedIn()): ?>
-                        <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn btn--service mt-6 shadow-sm" style="padding: 0.75rem 1.5rem;">
-                            <?= __('services.offer_service') ?>
+                        <h3 class="empty-state-title mb-2" style="font-size: 1.4rem;">Campus Services Pilot is Live!</h3>
+                        <p class="page-subtitle max-w-md mx-auto mb-6" style="font-size: 0.95rem; line-height: 1.5;">
+                            We are curating authentic student services across campus. Be among the first providers in this category during the pilot and start receiving bookings.
+                        </p>
+                        <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-primary shadow-sm" style="padding: 0.8rem 2rem; font-weight: 700;">
+                            ✨ Join the Campus Pilot
                         </a>
-                        <?php endif; ?>
                     </div>
                 <?php else: ?>
                     <!-- Category pills strip -->
@@ -262,8 +264,10 @@ include '../includes/header.php';
                         $sAvail  = $prod['availability_status'] ?? 'available';
                         $sAvailColors = ['available'=>'#22c55e','busy'=>'#f59e0b','unavailable'=>'#ef4444'];
                         $sAvailColor = $sAvailColors[$sAvail] ?? '#22c55e';
+                        $isHourly = ($prod['pricing_model'] ?? 'flat') === 'hourly';
                         $sDays   = (int)($prod['delivery_days'] ?? 0);
                         $sDayLabel = match(true) {
+                            $isHourly => null,
                             $sDays === 1 => 'Same day',
                             $sDays > 1 && $sDays < 7 => $sDays . 'd',
                             $sDays === 7 => '1 wk',

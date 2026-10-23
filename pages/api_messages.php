@@ -278,6 +278,30 @@ if ($action === 'send') {
                     $stmtOrder->execute([$productId, $buyerId, $prod['price'], 'Auto-created from direct message inquiry.']);
                 }
             }
+
+            // Track service inquiry events
+            if ($prod && ($prod['listing_type'] ?? 'product') === 'service' && $currentUserId !== (int)$prod['user_id']) {
+                $priorInqStmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE product_id = ? AND sender_id = ?");
+                $priorInqStmt->execute([$productId, $currentUserId]);
+                $countInquiries = (int)$priorInqStmt->fetchColumn();
+                $isFirst = ($countInquiries <= 1);
+
+                if (function_exists('queuePostHogEvent')) {
+                    if ($isFirst) {
+                        queuePostHogEvent('service_first_inquiry', [
+                            'product_id' => $productId,
+                            'provider_id' => (int)$prod['user_id'],
+                            'buyer_id' => $currentUserId
+                        ]);
+                    }
+                    queuePostHogEvent('service_inquiry_sent', [
+                        'product_id' => $productId,
+                        'provider_id' => (int)$prod['user_id'],
+                        'buyer_id' => $currentUserId,
+                        'is_first' => $isFirst
+                    ]);
+                }
+            }
         }
         
         // Notify receiver

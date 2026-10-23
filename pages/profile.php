@@ -1057,7 +1057,7 @@ body.dark-mode .btn-white-solid:hover {
                     <?php echo $isSelf ? 'Your Services' : 'Services Offered'; ?> (<?php echo $serviceCount; ?>)
                 </h2>
                 <?php if ($isSelf): ?>
-                    <a href="<?php echo BASE_URL; ?>pages/create_listing.php?type=service" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; background: var(--service); color: white; border: none;">
+                    <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; background: var(--service); color: white; border: none;">
                         + Offer a Service
                     </a>
                 <?php endif; ?>

@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'approve') {
             // Fetch listing details to notify the owner
-            $stmt = $pdo->prepare("SELECT user_id, title, listing_type FROM products WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT user_id, title, listing_type, category_id FROM products WHERE id = ?");
             $stmt->execute([$id]);
             $prod = $stmt->fetch();
             if ($prod) {
@@ -79,6 +79,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 // Notify the seller
                 createNotification($pdo, (int)$prod['user_id'], 'system', 'Listing Approved', $approvalMessage, $id);
+
+                if (($prod['listing_type'] ?? 'product') === 'service' && function_exists('queuePostHogEvent')) {
+                    queuePostHogEvent('service_listing_approved', [
+                        'product_id' => $id,
+                        'user_id' => (int)$prod['user_id'],
+                        'approval_status' => $approvalStatus,
+                        'category_id' => (int)($prod['category_id'] ?? 0)
+                    ]);
+                }
+
                 setFlash('success', __('admin.flash_listing_approved'));
                 logAdminAction($pdo, 'approve_listing', 'product', $id, ['title' => $prod['title']]);
             } else {
@@ -130,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlash('success', 'Listing unfeatured.');
             logAdminAction($pdo, 'unfeature_listing', 'product', $id);
         } elseif ($action === 'admin_boost') {
-            // Admin-initiated feature boost — no payment required
+            // Admin-initiated feature boost — database driver agnostic
             $rawDays = (int)($_POST['boost_days'] ?? 7);
             $noExpiry = ($rawDays === 0);
             $durationDays = $noExpiry ? 0 : max(1, min(90, $rawDays));
@@ -146,13 +156,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         WHERE id = :id
                     ")->execute([':id' => $id]);
                 } else {
+                    $featuredUntil = date('Y-m-d H:i:s', strtotime("+{$durationDays} days"));
                     $pdo->prepare("
                         UPDATE products
                         SET is_featured = TRUE,
-                            featured_until = DATE_ADD(NOW(), INTERVAL :days DAY),
+                            featured_until = :until,
                             updated_at = NOW()
                         WHERE id = :id
-                    ")->execute([':days' => $durationDays, ':id' => $id]);
+                    ")->execute([':until' => $featuredUntil, ':id' => $id]);
                 }
                 createNotification(
                     $pdo,
@@ -194,51 +205,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    redirect(BASE_URL . 'admin/listings.php');
+    $redirectUrl = BASE_URL . 'admin/listings.php';
+    $params = [];
+    if (!empty($_GET['status'])) $params['status'] = $_GET['status'];
+    if (!empty($_GET['type']))   $params['type']   = $_GET['type'];
+    if (!empty($_GET['q']))      $params['q']      = $_GET['q'];
+    if (!empty($_GET['page']))   $params['page']   = (int)$_GET['page'];
+    if (!empty($params)) {
+        $redirectUrl .= '?' . http_build_query($params);
+    }
+    redirect($redirectUrl);
 }
 
-// Fetch Listings
+// Helper for building filter URLs preserving other query parameters
+function adminListingsUrl(array $overrides = []): string {
+    $current = [
+        'status' => $_GET['status'] ?? '',
+        'type'   => $_GET['type'] ?? '',
+        'q'      => $_GET['q'] ?? '',
+        'page'   => 1,
+    ];
+    $merged = array_merge($current, $overrides);
+    $filtered = array_filter($merged, function ($val, $key) {
+        if ($key === 'page' && (int)$val <= 1) return false;
+        return $val !== '' && $val !== null;
+    }, ARRAY_FILTER_USE_BOTH);
+
+    $qs = http_build_query($filtered);
+    return 'listings.php' . ($qs !== '' ? '?' . $qs : '');
+}
+
+// Filter handling
 $statusFilter = sanitize($_GET['status'] ?? '');
+$typeFilter   = sanitize($_GET['type'] ?? '');
+$searchQuery  = trim($_GET['q'] ?? '');
+$page         = max(1, (int)($_GET['page'] ?? 1));
+$perPage      = 25;
+
 $allowedStatuses = ['pending_approval', 'active', 'flagged', 'sold', 'deleted', 'recent_fallback'];
-$whereSql = '';
+$whereConditions = [];
 $params = [];
+
+// Status condition
 if ($statusFilter === 'recent_fallback') {
-    $whereSql = 'WHERE p.is_recent_fallback = TRUE AND p.status = \'active\'';
+    $whereConditions[] = "p.is_recent_fallback = TRUE AND p.status = 'active'";
 } elseif ($statusFilter !== '' && in_array($statusFilter, $allowedStatuses, true)) {
-    $whereSql = 'WHERE p.status = :status';
+    $whereConditions[] = "p.status = :status";
     $params[':status'] = $statusFilter;
 }
 
-if ($promoPaymentsTableExists) {
-    $stmt = $pdo->prepare("
-        SELECT p.*, c.name as category_name, u.username as seller_name,
-            (
-                SELECT COUNT(*)
-                FROM promotion_payments pp
-                WHERE pp.product_id = p.id
-                  AND pp.payment_type = 'promotion'
-                  AND pp.status = 'approved'
-                  AND pp.consumed_at IS NULL
-            ) AS available_promo_credits
-        FROM products p
-        JOIN categories c ON p.category_id = c.id
-        JOIN users u ON p.user_id = u.id
-        {$whereSql}
-        ORDER BY p.created_at DESC
-    ");
-} else {
-    $stmt = $pdo->prepare("
-        SELECT p.*, c.name as category_name, u.username as seller_name, 0 as available_promo_credits
-        FROM products p
-        JOIN categories c ON p.category_id = c.id
-        JOIN users u ON p.user_id = u.id
-        {$whereSql}
-        ORDER BY p.created_at DESC
-    ");
+// Type condition (product vs service)
+if ($typeFilter === 'product' || $typeFilter === 'service') {
+    $whereConditions[] = "p.listing_type = :listing_type";
+    $params[':listing_type'] = $typeFilter;
 }
+
+// Search condition (title, seller username, or listing ID)
+if ($searchQuery !== '') {
+    if (ctype_digit($searchQuery)) {
+        $whereConditions[] = "(p.title LIKE :search_title OR u.username LIKE :search_user OR p.id = :search_id)";
+        $params[':search_title'] = '%' . $searchQuery . '%';
+        $params[':search_user']  = '%' . $searchQuery . '%';
+        $params[':search_id']    = (int)$searchQuery;
+    } else {
+        $whereConditions[] = "(p.title LIKE :search_title OR u.username LIKE :search_user)";
+        $params[':search_title'] = '%' . $searchQuery . '%';
+        $params[':search_user']  = '%' . $searchQuery . '%';
+    }
+}
+
+$whereSql = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+
+// Count total listings matching current filters for pagination
+$countSql = "
+    SELECT COUNT(*)
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    JOIN users u ON p.user_id = u.id
+    {$whereSql}
+";
+$countStmt = $pdo->prepare($countSql);
+$countStmt->execute($params);
+$totalMatching = (int)$countStmt->fetchColumn();
+
+$totalPages = max(1, (int)ceil($totalMatching / $perPage));
+if ($page > $totalPages && $totalMatching > 0) {
+    $page = $totalPages;
+}
+$offset = ($page - 1) * $perPage;
+
+// Main Query with primary image thumbnail & promo credits
+$promoCreditSelect = $promoPaymentsTableExists ? "
+    (
+        SELECT COUNT(*)
+        FROM promotion_payments pp
+        WHERE pp.product_id = p.id
+          AND pp.payment_type = 'promotion'
+          AND pp.status = 'approved'
+          AND pp.consumed_at IS NULL
+    ) AS available_promo_credits
+" : "0 AS available_promo_credits";
+
+$sql = "
+    SELECT p.*, c.name as category_name, u.username as seller_name, pi.image_path as primary_image,
+           {$promoCreditSelect}
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    JOIN users u ON p.user_id = u.id
+    LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = TRUE
+    {$whereSql}
+    ORDER BY p.created_at DESC
+    LIMIT {$perPage} OFFSET {$offset}
+";
+
+$stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $listings = $stmt->fetchAll();
 
+// Global Counters for Top Navigation Badges
 $pendingCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE status = 'pending_approval'")->fetchColumn();
 $fallbackCount = 0;
 try {
@@ -246,149 +330,382 @@ try {
 } catch (PDOException $e) {
     $fallbackCount = 0;
 }
+$flaggedCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE status = 'flagged'")->fetchColumn();
+
+// Type breakdown counts
+$productCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE (listing_type = 'product' OR listing_type IS NULL) AND status != 'deleted'")->fetchColumn();
+$serviceCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE listing_type = 'service' AND status != 'deleted'")->fetchColumn();
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="container mt-24 mb-16 admin-listings-page">
-    <div class="flex justify-between items-end mb-4 admin-page-toolbar">
+    <!-- Header & Action Bar -->
+    <div class="flex justify-between items-end mb-6 admin-page-toolbar flex-wrap gap-4">
         <div>
-            <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> > Listings</div>
-            <h1 class="mb-0">Listing Management</h1>
+            <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> &gt; Listings</div>
+            <h1 class="mb-1 text-main font-bold">Listing Management</h1>
+            <p class="text-muted small mb-0">Review physical goods and campus student services, approve submissions, and feature listings.</p>
         </div>
-        <div class="flex items-center gap-2">
-            <a href="promotion_payments.php" class="btn btn-secondary btn-sm">Review Payments</a>
-            <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($listings); ?> listings</div>
+        <div class="flex items-center gap-3 flex-wrap">
+            <a href="promotion_payments.php" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-lg);">
+                💳 Review Payments
+            </a>
+            <div class="badge" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg); font-weight: 600;">
+                Showing <?= number_format($totalMatching) ?> matching
+            </div>
         </div>
     </div>
 
-    <nav class="flex gap-2 mb-6 flex-wrap">
-        <a href="listings.php" class="btn btn-sm <?= $statusFilter === '' ? 'btn-primary' : 'btn-secondary' ?>">All</a>
-        <a href="listings.php?status=pending_approval" class="btn btn-sm <?= $statusFilter === 'pending_approval' ? 'btn-primary' : 'btn-secondary' ?>">
-            Pending approval<?= $pendingCount > 0 ? ' (' . $pendingCount . ')' : '' ?>
-        </a>
-        <a href="listings.php?status=active" class="btn btn-sm <?= $statusFilter === 'active' ? 'btn-primary' : 'btn-secondary' ?>">Active</a>
-        <a href="listings.php?status=recent_fallback" class="btn btn-sm <?= $statusFilter === 'recent_fallback' ? 'btn-primary' : 'btn-secondary' ?>">
-            📌 Recent Fallback<?= $fallbackCount > 0 ? ' (' . $fallbackCount . ')' : '' ?>
-        </a>
-    </nav>
+    <!-- Quick Stats Metric Strip -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1rem 1.25rem; border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 0.85rem; background: var(--bg-surface);">
+            <div style="width: 42px; height: 42px; border-radius: var(--radius-lg); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                📦
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Physical Products</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); line-height: 1.2;"><?= number_format($productCount) ?></div>
+            </div>
+        </div>
 
+        <div class="card" style="padding: 1rem 1.25rem; border-left: 4px solid #0284c7; display: flex; align-items: center; gap: 0.85rem; background: var(--bg-surface);">
+            <div style="width: 42px; height: 42px; border-radius: var(--radius-lg); background: rgba(14, 165, 233, 0.12); color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                🛠️
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Campus Services</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); line-height: 1.2;"><?= number_format($serviceCount) ?></div>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1rem 1.25rem; border-left: 4px solid #f59e0b; display: flex; align-items: center; gap: 0.85rem; background: var(--bg-surface);">
+            <div style="width: 42px; height: 42px; border-radius: var(--radius-lg); background: rgba(245, 158, 11, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                ⏳
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Pending Moderation</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: <?= $pendingCount > 0 ? '#d97706' : 'var(--text-main)' ?>; line-height: 1.2;"><?= number_format($pendingCount) ?></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters & Search Toolbar -->
+    <div class="glass-panel p-4 mb-6" style="border-radius: var(--radius-xl); border: 1px solid var(--border-light); background: var(--bg-surface);">
+        <div class="flex flex-col md-flex-row justify-between items-center gap-4 flex-wrap">
+            <!-- Type Selector Pills -->
+            <div class="flex items-center gap-1 p-1 bg-main rounded-lg" style="border: 1px solid var(--border-light); background: var(--bg-main); border-radius: var(--radius-lg);">
+                <a href="<?= adminListingsUrl(['type' => '']) ?>"
+                   class="btn btn-sm <?= $typeFilter === '' ? 'btn-primary' : 'text-muted' ?>"
+                   style="border-radius: var(--radius-md); padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 600; text-decoration: none;">
+                    All Types
+                </a>
+                <a href="<?= adminListingsUrl(['type' => 'product']) ?>"
+                   class="btn btn-sm <?= $typeFilter === 'product' ? 'btn-primary' : 'text-muted' ?>"
+                   style="border-radius: var(--radius-md); padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 600; text-decoration: none;">
+                    📦 Products
+                </a>
+                <a href="<?= adminListingsUrl(['type' => 'service']) ?>"
+                   class="btn btn-sm <?= $typeFilter === 'service' ? 'btn-primary' : 'text-muted' ?>"
+                   style="border-radius: var(--radius-md); padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 600; text-decoration: none;">
+                    🛠️ Services
+                </a>
+            </div>
+
+            <!-- Search Bar -->
+            <form method="GET" action="listings.php" class="flex items-center gap-2 m-0" style="flex: 1; max-width: 480px; width: 100%;">
+                <?php if ($statusFilter !== ''): ?>
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
+                <?php endif; ?>
+                <?php if ($typeFilter !== ''): ?>
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($typeFilter) ?>">
+                <?php endif; ?>
+                <div style="position: relative; flex: 1;">
+                    <input type="text"
+                           name="q"
+                           value="<?= htmlspecialchars($searchQuery) ?>"
+                           placeholder="Search title, seller @username, or #ID..."
+                           class="premium-input w-full"
+                           style="padding: 0.5rem 0.85rem 0.5rem 2.2rem; font-size: 0.88rem; border-radius: var(--radius-lg);">
+                    <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; color: var(--text-muted); pointer-events: none;">
+                        🔍
+                    </span>
+                    <?php if ($searchQuery !== ''): ?>
+                        <a href="<?= adminListingsUrl(['q' => '']) ?>"
+                           style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); text-decoration: none; font-size: 0.9rem;"
+                           title="Clear search">
+                            ✕
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 0.9rem; font-weight: 600;">
+                    Search
+                </button>
+            </form>
+        </div>
+
+        <!-- Status Filter Tabs -->
+        <div class="flex gap-2 mt-4 pt-3 border-t flex-wrap" style="border-color: var(--border-light);">
+            <a href="<?= adminListingsUrl(['status' => '']) ?>"
+               class="btn btn-sm <?= $statusFilter === '' ? 'btn-primary' : 'btn-secondary' ?>"
+               style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+                All Statuses
+            </a>
+            <a href="<?= adminListingsUrl(['status' => 'pending_approval']) ?>"
+               class="btn btn-sm <?= $statusFilter === 'pending_approval' ? 'btn-primary' : 'btn-secondary' ?>"
+               style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+                Pending Approval<?= $pendingCount > 0 ? ' (' . $pendingCount . ')' : '' ?>
+            </a>
+            <a href="<?= adminListingsUrl(['status' => 'active']) ?>"
+               class="btn btn-sm <?= $statusFilter === 'active' ? 'btn-primary' : 'btn-secondary' ?>"
+               style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+                Active
+            </a>
+            <a href="<?= adminListingsUrl(['status' => 'recent_fallback']) ?>"
+               class="btn btn-sm <?= $statusFilter === 'recent_fallback' ? 'btn-primary' : 'btn-secondary' ?>"
+               style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+                📌 Recent Fallback<?= $fallbackCount > 0 ? ' (' . $fallbackCount . ')' : '' ?>
+            </a>
+            <?php if ($flaggedCount > 0): ?>
+            <a href="<?= adminListingsUrl(['status' => 'flagged']) ?>"
+               class="btn btn-sm <?= $statusFilter === 'flagged' ? 'btn-danger' : 'btn-secondary' ?>"
+               style="border-radius: var(--radius-full); font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+                ⚠️ Flagged (<?= $flaggedCount ?>)
+            </a>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Listings Table Container -->
     <div class="glass-panel table-responsive" style="border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-md);">
-        <table class="table w-full text-left admin-listings-table" style="border-collapse: collapse; margin: 0; min-width: 920px;">
+        <table class="table w-full text-left admin-listings-table" style="border-collapse: collapse; margin: 0; min-width: 980px;">
             <thead>
-                <tr style="background: rgba(248, 250, 252, 0.8);">
-                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Item Name</th>
-                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Seller</th>
-                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Category</th>
-                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Price</th>
-                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Condition</th>
-                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider text-right" style="border-bottom: 2px solid var(--border-light);">Actions</th>
+                <tr style="background: rgba(248, 250, 252, 0.9);">
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light); width: 34%;">Item / Service</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light); width: 12%;">Seller</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light); width: 13%;">Category</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light); width: 11%;">Price</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light); width: 14%;">Details / Loc</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light); width: 10%;">Submitted</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider text-right" style="border-bottom: 2px solid var(--border-light); width: 16%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($listings as $item): ?>
+                    <?php 
+                        $isService = (($item['listing_type'] ?? 'product') === 'service');
+                        $isHourly  = $isService && (($item['pricing_model'] ?? 'flat') === 'hourly');
+                        $itemCurr  = productCurrencyCode($item);
+                        $priceData = formatPriceInTRY((float)$item['price'], $itemCurr, $pdo);
+                        $thumbUrl  = getProductImage($item['primary_image'] ?? null);
+                    ?>
                     <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
+                        <!-- Item / Service Column with Thumbnail -->
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                            <div class="listing-title-cell">
-                                <div class="font-bold flex items-center gap-2" style="line-height: 1.35;">
-                                    <?php echo sanitize($item['title']); ?>
-                                </div>
-                                <div class="listing-badge-row">
-                                <?php if ($item['is_featured']): ?>
-                                    <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><span>Featured</span></span>
-                                <?php endif; ?>
-                                <?php if ((int)$item['available_promo_credits'] > 0): ?>
-                                    <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);"><?php echo (int)$item['available_promo_credits']; ?> Promo Credit</span>
-                                <?php endif; ?>
-                                <?php if (!empty($item['is_recent_fallback'])): ?>
-                                    <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);" title="Included in Recent Listings Fallback">📌 Recent Fallback</span>
-                                <?php endif; ?>
-                                <?php if ($item['status'] === 'pending_approval'): ?>
-                                    <span class="badge badge-pending" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);">Pending Approval</span>
-                                <?php elseif ($item['status'] === 'flagged'): ?>
-                                    <span class="badge badge-poor" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);">Flagged</span>
-                                <?php elseif ($item['status'] === 'sold'): ?>
-                                    <span class="badge badge-dismissed" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-lg);">Sold</span>
-                                <?php endif; ?>
+                            <div class="flex items-start gap-3">
+                                <a href="../pages/product.php?id=<?= $item['id'] ?>" target="_blank" style="flex-shrink: 0; text-decoration: none;">
+                                    <img src="<?= htmlspecialchars($thumbUrl) ?>"
+                                         alt="<?= htmlspecialchars($item['title']) ?>"
+                                         style="width: 48px; height: 48px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-light); background: var(--bg-main);">
+                                </a>
+                                <div class="listing-title-cell" style="flex: 1; min-width: 0;">
+                                    <div class="font-bold flex items-center gap-2" style="line-height: 1.35; word-break: break-word;">
+                                        <a href="../pages/product.php?id=<?= $item['id'] ?>" target="_blank" style="color: var(--text-main); text-decoration: none;">
+                                            <?= sanitize($item['title']) ?>
+                                        </a>
+                                    </div>
+                                    <div class="listing-badge-row mt-1">
+                                        <!-- Type Badge -->
+                                        <?php if ($isService): ?>
+                                            <span class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0284c7; border: 1px solid rgba(14, 165, 233, 0.3); font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 700;">
+                                                🛠️ Service
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge" style="background: rgba(100, 116, 139, 0.12); color: #475569; border: 1px solid rgba(100, 116, 139, 0.25); font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 600;">
+                                                📦 Product
+                                            </span>
+                                        <?php endif; ?>
+
+                                        <!-- Status Badges -->
+                                        <?php if ($item['status'] === 'pending_approval'): ?>
+                                            <span class="badge badge-pending" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">Pending Approval</span>
+                                        <?php elseif ($item['status'] === 'pending_payment'): ?>
+                                            <span class="badge" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">Pending Payment</span>
+                                        <?php elseif ($item['status'] === 'flagged'): ?>
+                                            <span class="badge badge-poor" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">Flagged</span>
+                                        <?php elseif ($item['status'] === 'sold'): ?>
+                                            <span class="badge badge-dismissed" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">Sold</span>
+                                        <?php endif; ?>
+
+                                        <!-- Feature / Fallback Badges -->
+                                        <?php if ($item['is_featured']): ?>
+                                            <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 700;">⚡ Featured</span>
+                                        <?php endif; ?>
+                                        <?php if ((int)$item['available_promo_credits'] > 0): ?>
+                                            <span class="badge" style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);"><?= (int)$item['available_promo_credits'] ?> Promo Credit</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($item['is_recent_fallback'])): ?>
+                                            <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);" title="Included in Recent Listings Fallback">📌 Recent Fallback</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">ID #<?= $item['id'] ?></div>
+                                    <?php if ($item['status'] === 'pending_approval' && !empty($item['moderation_note'])): ?>
+                                        <div style="font-size: 0.76rem; color: #1d4ed8; margin-top: 0.35rem; line-height: 1.4; background: rgba(29, 78, 216, 0.06); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); border-left: 2px solid #1d4ed8;">
+                                            <?= sanitize($item['moderation_note']) ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <div style="font-size: 0.78rem; color: var(--text-muted);">ID #<?php echo $item['id']; ?></div>
-                            <?php if ($item['status'] === 'pending_approval' && !empty($item['moderation_note'])): ?>
-                                <div style="font-size: 0.78rem; color: #1d4ed8; margin-top: 0.35rem; line-height: 1.45; max-width: 28rem;">
-                                    <?php echo sanitize($item['moderation_note']); ?>
+                        </td>
+
+                        <!-- Seller Column -->
+                        <td class="p-4 font-medium" style="border-bottom: 1px solid var(--border-light);">
+                            <a href="../pages/profile.php?id=<?= (int)$item['user_id'] ?>" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.9rem;">
+                                @<?= sanitize($item['seller_name']) ?>
+                            </a>
+                        </td>
+
+                        <!-- Category Column -->
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
+                            <span class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.78rem; font-weight: 600;">
+                                <?= sanitize(translateCategory($item['category_name'])) ?>
+                            </span>
+                        </td>
+
+                        <!-- Price Column -->
+                        <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.05rem;">
+                            <?= $priceData['display'] ?>
+                            <?php if ($isHourly): ?>
+                                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">/hr</span>
+                            <?php endif; ?>
+                            <?php if ($priceData['original']): ?>
+                                <small style="display:block; font-size:0.72rem; color:var(--text-muted); font-weight:500;">
+                                    <?= $priceData['original'] ?>
+                                </small>
+                            <?php endif; ?>
+                        </td>
+
+                        <!-- Type & Details / Location Column -->
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
+                            <?php if ($isService): ?>
+                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                    <div>
+                                        <?php if ($isHourly): ?>
+                                            <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 600;">
+                                                ⏱️ Hourly Rate
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 600;">
+                                                💼 Fixed Price
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if (!empty($item['location_town'])): ?>
+                                        <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem;">
+                                            <span>📍</span>
+                                            <span><?= sanitize(formatLocationTown($item['location_town'], $item['custom_location'] ?? null)) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!$isHourly && !empty($item['delivery_days'])): ?>
+                                        <div style="font-size: 0.74rem; color: var(--text-muted);">
+                                            ⚡ <?= (int)$item['delivery_days'] ?>d turnaround
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <?php $badge = conditionBadge($item['condition'] ?? ''); ?>
+                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                    <div>
+                                        <span class="badge <?= $badge['class'] ?>" style="font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 600;">
+                                            <?= $badge['label'] ?>
+                                        </span>
+                                    </div>
+                                    <?php if (!empty($item['location_town'])): ?>
+                                        <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem;">
+                                            <span>📍</span>
+                                            <span><?= sanitize(formatLocationTown($item['location_town'], $item['custom_location'] ?? null)) ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <td class="p-4 font-medium" style="border-bottom: 1px solid var(--border-light); color: var(--primary);">@<?php echo sanitize($item['seller_name']); ?></td>
-                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);"><span class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); border-radius: var(--radius-lg);"><?php echo sanitize($item['category_name']); ?></span></td>
-                        <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.1rem;">
-                            <?php 
-                                $itemCurr = productCurrencyCode($item);
-                                $priceData = formatPriceInTRY((float)$item['price'], $itemCurr, $pdo);
-                                echo $priceData['display'];
-                                if ($priceData['original']):
-                            ?>
-                                <small style="display:block; font-size:0.75rem; color:var(--text-muted); font-weight:500;"><?php echo $priceData['original']; ?></small>
-                            <?php endif; ?>
+
+                        <!-- Submitted Timestamp Column -->
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light); font-size: 0.82rem; color: var(--text-muted);" title="<?= date('M j, Y g:i A', strtotime($item['created_at'])) ?>">
+                            <?= timeAgo($item['created_at']) ?>
                         </td>
-                        <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
-                            <?php $badge = conditionBadge($item['condition']); ?>
-                            <span class="badge <?php echo $badge['class']; ?> shadow-sm"><?php echo $badge['label']; ?></span>
-                        </td>
+
+                        <!-- Actions Column -->
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light);">
-                            <div class="admin-action-row">
+                            <div class="admin-action-row" style="display: flex; gap: 0.35rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                                 <?php if ($item['status'] === 'pending_approval'): ?>
                                     <form method="POST" style="margin: 0; display: inline-block;">
-                                        <?php echo csrfTokenField(); ?>
+                                        <?= csrfTokenField() ?>
                                         <input type="hidden" name="action" value="approve">
-                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                        <button type="submit" class="btn btn-success btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Approve Listing">Approve</button>
+                                        <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                                        <button type="submit" class="btn btn-success btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-md); padding: 0.3rem 0.65rem; font-size: 0.78rem;" title="Approve Listing">
+                                            ✓ Approve
+                                        </button>
                                     </form>
                                 <?php endif; ?>
 
                                 <?php if ($item['status'] === 'active'): ?>
                                     <form method="POST" style="margin: 0; display: inline-block;">
-                                        <?php echo csrfTokenField(); ?>
+                                        <?= csrfTokenField() ?>
                                         <input type="hidden" name="action" value="toggle_recent_fallback">
-                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                        <input type="hidden" name="id" value="<?= $item['id'] ?>">
                                         <?php if (!empty($item['is_recent_fallback'])): ?>
-                                            <button type="submit" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;" title="Remove from Recent Listings Fallback">📌 Fallback ON</button>
+                                            <button type="submit" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-md); padding: 0.3rem 0.6rem; font-size: 0.78rem; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;" title="Remove from Recent Listings Fallback">
+                                                📌 ON
+                                            </button>
                                         <?php else: ?>
-                                            <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Add to Recent Listings Fallback">📌 +Fallback</button>
+                                            <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-md); padding: 0.3rem 0.6rem; font-size: 0.78rem;" title="Add to Recent Listings Fallback">
+                                                📌 +Fallback
+                                            </button>
                                         <?php endif; ?>
                                     </form>
                                 <?php endif; ?>
 
                                 <?php if ($item['is_featured']): ?>
                                     <form method="POST" style="margin: 0; display: inline-block;">
-                                        <?php echo csrfTokenField(); ?>
+                                        <?= csrfTokenField() ?>
                                         <input type="hidden" name="action" value="unfeature">
-                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                        <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Unfeature">UNFEAT</button>
+                                        <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                                        <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-md); padding: 0.3rem 0.6rem; font-size: 0.78rem;" title="Unfeature">
+                                            UNFEAT
+                                        </button>
                                     </form>
                                 <?php elseif ((int)$item['available_promo_credits'] > 0): ?>
                                     <form method="POST" style="margin: 0; display: inline-block;">
-                                        <?php echo csrfTokenField(); ?>
+                                        <?= csrfTokenField() ?>
                                         <input type="hidden" name="action" value="feature">
-                                        <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                        <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Feature">FEAT</button>
+                                        <input type="hidden" name="id" value="<?= $item['id'] ?>">
+                                        <button type="submit" class="btn btn-secondary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-md); padding: 0.3rem 0.6rem; font-size: 0.78rem;" title="Feature using approved credit">
+                                            FEAT
+                                        </button>
                                     </form>
-                                <?php else: ?>
+                                <?php elseif ($item['status'] === 'active'): ?>
                                     <button type="button"
                                         class="btn btn-sm hover-scale shadow-sm"
-                                        style="border-radius: var(--radius-lg); background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd;"
-                                        onclick="openBoostModal(<?php echo $item['id']; ?>, '<?php echo addslashes(sanitize($item['title'])); ?>')"
+                                        style="border-radius: var(--radius-md); padding: 0.3rem 0.6rem; font-size: 0.78rem; background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd;"
+                                        onclick="openBoostModal(<?= $item['id'] ?>, '<?= addslashes(sanitize($item['title'])) ?>')"
                                         title="Feature this listing for free (Admin Boost)">
                                         🚀 Boost
                                     </button>
                                 <?php endif; ?>
-                                <a href="../pages/product.php?id=<?php echo $item['id']; ?>" target="_blank" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);">View</a>
+
+                                <a href="../pages/product.php?id=<?= $item['id'] ?>" target="_blank" class="btn btn-primary btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-md); padding: 0.3rem 0.65rem; font-size: 0.78rem;">
+                                    View
+                                </a>
+
                                 <form method="POST" style="margin: 0; display: inline-block;" onsubmit="return handleListingDelete(this);">
-                                    <?php echo csrfTokenField(); ?>
+                                    <?= csrfTokenField() ?>
                                     <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
+                                    <input type="hidden" name="id" value="<?= $item['id'] ?>">
                                     <input type="hidden" name="reason" value="">
-                                    <button type="submit" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg);" title="Delete permanently">Delete</button>
+                                    <button type="submit" class="btn btn-danger btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-md); padding: 0.3rem 0.65rem; font-size: 0.78rem;" title="Delete permanently">
+                                        Delete
+                                    </button>
                                 </form>
                             </div>
                         </td>
@@ -398,11 +715,58 @@ require_once __DIR__ . '/../includes/header.php';
         </table>
 
         <?php if (empty($listings)): ?>
-            <div class="text-center p-8 text-muted">
-                No listings available on the platform.
+            <div class="text-center p-12 text-muted">
+                <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔍</div>
+                <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 0.25rem;">No listings found matching criteria</div>
+                <p class="small text-muted mb-4">Try clearing filters or searching with different keywords.</p>
+                <a href="listings.php" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-lg);">Reset All Filters</a>
             </div>
         <?php endif; ?>
     </div>
+
+    <!-- Pagination Footer -->
+    <?php if ($totalPages > 1): ?>
+        <div class="flex justify-between items-center mt-6 flex-wrap gap-4">
+            <div class="text-muted small">
+                Showing <?= number_format($offset + 1) ?> to <?= number_format(min($offset + $perPage, $totalMatching)) ?> of <?= number_format($totalMatching) ?> listings
+            </div>
+            <div class="pagination flex items-center gap-1">
+                <?php if ($page > 1): ?>
+                    <a href="<?= adminListingsUrl(['page' => $page - 1]) ?>" class="btn-page" style="text-decoration: none; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.85rem; font-weight: 600; background: var(--bg-surface); color: var(--text-main);">
+                        &larr; Prev
+                    </a>
+                <?php endif; ?>
+
+                <?php 
+                    $rangeStart = max(1, $page - 2);
+                    $rangeEnd   = min($totalPages, $page + 2);
+                    if ($rangeStart > 1) {
+                        echo '<a href="' . adminListingsUrl(['page' => 1]) . '" class="btn-page" style="text-decoration: none; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.85rem; background: var(--bg-surface); color: var(--text-main);">1</a>';
+                        if ($rangeStart > 2) echo '<span class="px-2 text-muted">…</span>';
+                    }
+                    for ($p = $rangeStart; $p <= $rangeEnd; $p++):
+                        $isActive = ($p === $page);
+                ?>
+                    <a href="<?= adminListingsUrl(['page' => $p]) ?>"
+                       class="btn-page <?= $isActive ? 'active' : '' ?>"
+                       style="text-decoration: none; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; <?= $isActive ? 'background: var(--primary); color: #fff; border: 1px solid var(--primary);' : 'background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light);' ?>">
+                        <?= $p ?>
+                    </a>
+                <?php endfor; ?>
+
+                <?php if ($rangeEnd < $totalPages): ?>
+                    <?php if ($rangeEnd < $totalPages - 1) echo '<span class="px-2 text-muted">…</span>'; ?>
+                    <a href="<?= adminListingsUrl(['page' => $totalPages]) ?>" class="btn-page" style="text-decoration: none; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.85rem; background: var(--bg-surface); color: var(--text-main);"><?= $totalPages ?></a>
+                <?php endif; ?>
+
+                <?php if ($page < $totalPages): ?>
+                    <a href="<?= adminListingsUrl(['page' => $page + 1]) ?>" class="btn-page" style="text-decoration: none; padding: 0.4rem 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.85rem; font-weight: 600; background: var(--bg-surface); color: var(--text-main);">
+                        Next &rarr;
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
 <style>
@@ -412,13 +776,12 @@ require_once __DIR__ . '/../includes/header.php';
 }
 .listing-title-cell {
     display: grid;
-    gap: 0.45rem;
-    max-width: 320px;
+    gap: 0.25rem;
 }
 .listing-badge-row {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
 }
 .admin-boost-overlay {
@@ -469,7 +832,7 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
 
         <form method="POST" id="adminBoostForm">
-            <?php echo csrfTokenField(); ?>
+            <?= csrfTokenField() ?>
             <input type="hidden" name="action" value="admin_boost">
             <input type="hidden" name="id" id="boostProductId" value="">
 
@@ -478,10 +841,10 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="flex gap-2 flex-wrap">
                     <?php foreach ([7 => '7 days', 14 => '14 days', 30 => '30 days', 0 => 'No expiry'] as $days => $label): ?>
                         <button type="button"
-                            class="boost-duration-btn <?php echo $days === 7 ? 'active' : ''; ?>"
-                            data-days="<?php echo $days; ?>"
+                            class="boost-duration-btn <?= $days === 7 ? 'active' : '' ?>"
+                            data-days="<?= $days ?>"
                             onclick="selectBoostDuration(this)">
-                            <?php echo $label; ?>
+                            <?= $label ?>
                         </button>
                     <?php endforeach; ?>
                 </div>

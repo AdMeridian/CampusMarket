@@ -255,6 +255,59 @@ if (!function_exists('ensureServicesTable')) {
     }
 }
 
+if (!function_exists('ensureProviderProfilesTable')) {
+    function ensureProviderProfilesTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.provider_profiles (" .
+                "id BIGSERIAL PRIMARY KEY, " .
+                "user_id BIGINT NOT NULL UNIQUE REFERENCES public.users(id) ON DELETE CASCADE, " .
+                "bio TEXT NULL, " .
+                "raw_skills_input TEXT NULL, " .
+                "parsed_skills JSONB NULL DEFAULT '[]'::jsonb, " .
+                "primary_category_id BIGINT NULL REFERENCES public.categories(id) ON DELETE SET NULL, " .
+                "portfolio_link VARCHAR(500) NULL, " .
+                "enrollment_status VARCHAR(30) NOT NULL DEFAULT 'active', " .
+                "is_verified BOOLEAN NOT NULL DEFAULT FALSE, " .
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), " .
+                "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+            );
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_provider_profiles_user ON public.provider_profiles(user_id)");
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_provider_profiles_status ON public.provider_profiles(enrollment_status)");
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.tables " .
+            "WHERE table_schema = DATABASE() AND table_name = 'provider_profiles'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() > 0) {
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE provider_profiles (" .
+            "id INT AUTO_INCREMENT PRIMARY KEY, " .
+            "user_id INT NOT NULL UNIQUE, " .
+            "bio TEXT NULL, " .
+            "raw_skills_input TEXT NULL, " .
+            "parsed_skills JSON NULL, " .
+            "primary_category_id INT NULL, " .
+            "portfolio_link VARCHAR(500) NULL, " .
+            "enrollment_status VARCHAR(30) NOT NULL DEFAULT 'active', " .
+            "is_verified TINYINT(1) NOT NULL DEFAULT 0, " .
+            "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+            "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " .
+            "INDEX idx_provider_profiles_user (user_id), " .
+            "INDEX idx_provider_profiles_status (enrollment_status)) ENGINE=InnoDB"
+        );
+    }
+}
+
+
 if (!function_exists('ensurePwaInstallationsTable')) {
     function ensurePwaInstallationsTable(PDO $pdo): void {
         $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
@@ -538,6 +591,7 @@ if (!function_exists('connectDatabase')) {
                 try {
                     ensureProductCategoriesTable($pdo);
                     ensureServicesTable($pdo);
+                    ensureProviderProfilesTable($pdo);
                     ensureMessageTranslationsTable($pdo);
                     ensureMessageReplyColumn($pdo);
                     ensureOrderExpiryColumns($pdo);

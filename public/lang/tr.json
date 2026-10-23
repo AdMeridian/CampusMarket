@@ -528,7 +528,7 @@
     "product.request_service": "Hizmeti Talep Et",
     "product.service_badge": "Hizmet",
     "product.hourly_badge": "Saatlik Ücret",
-    "product.service_contact_hint": "Detayları görüşmek ve uygunluğu teyit etmek için sağlayıcıya mesaj gönderin",
+    "product.service_contact_hint": "İhtiyaçlarınızı görüşmek için bu sağlayıcıya mesaj gönderin. İlk seans için kampüste herkese açık bir alanda buluşmanızı öneririz.",
     "admin.recent_fallback": "Son İlanlar Yedeği",
     "admin.flash_recent_fallback_added": "İlan Son İlanlar vitrini yedek listesine eklendi.",
     "admin.flash_recent_fallback_removed": "İlan Son İlanlar vitrini yedek listesinden kaldırıldı.",
