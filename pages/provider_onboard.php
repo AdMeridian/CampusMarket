@@ -93,6 +93,15 @@ include '../includes/header.php';
     box-shadow: var(--shadow-sm);
     margin-bottom: 2rem;
 }
+.provider-submit-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 1rem 0 max(1rem, env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+}
 .inferred-badge {
     font-size: 0.65rem;
     font-weight: 700;
@@ -248,10 +257,16 @@ include '../includes/header.php';
 
                     <!-- AI Trigger Button -->
                     <div class="flex items-center justify-between gap-4 flex-wrap pt-3 border-t" style="border-color: var(--border-light);">
-                        <button type="button" id="btnAnalyzeAi" class="btn btn-primary" style="padding: 0.75rem 1.6rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg);">
-                            <span id="aiBtnText">Analyze & Auto-Categorize with AI</span>
-                        </button>
-                        <span id="aiStatus" class="text-muted small font-medium" style="display: none;">Analyzing skills and structuring listing...</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" id="btnAnalyzeAi" class="btn btn-primary" style="padding: 0.75rem 1.2rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg);">
+                                <span id="aiIcon" aria-hidden="true">✨</span>
+                                <span id="aiBtnText">Get AI suggestions</span>
+                            </button>
+                            <button type="button" id="btnManualEntry" class="btn btn-secondary" style="padding: 0.75rem 1.2rem; font-weight: 700; border-radius: var(--radius-lg);">
+                                Enter details myself
+                            </button>
+                        </div>
+                        <span id="aiStatus" class="text-muted small font-medium" role="status" aria-live="polite" style="display: none;"></span>
                     </div>
                 </div>
 
@@ -259,7 +274,7 @@ include '../includes/header.php';
                 <input type="hidden" id="existing_product_id" name="existing_product_id" value="">
 
                 <!-- Step 2: Review & Customization -->
-                <div id="aiResultsCard" class="onboard-card">
+                <div id="aiResultsCard" class="onboard-card" hidden>
                     <div class="flex items-center justify-between gap-4 flex-wrap mb-6 pb-4 border-b" style="border-color: var(--border-light);">
                         <div class="flex items-center gap-3">
                             <span class="step-number-badge">2</span>
@@ -348,7 +363,7 @@ include '../includes/header.php';
                         </div>
                         <div>
                             <label for="service_price" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Rate (₺ TRY) <span class="text-danger">*</span> <span id="badge_inferred_price" class="inferred-badge" style="display:none;">AI</span></label>
-                            <input type="number" id="service_price" name="price" step="5" min="0" max="10000" class="premium-input w-full" style="padding: 0.75rem 1rem;" required placeholder="e.g. 150" value="">
+                            <input type="number" id="service_price" name="price" step="0.01" min="1" max="10000" class="premium-input w-full" style="padding: 0.75rem 1rem;" required placeholder="e.g. 150" value="">
                             <small id="aiPriceHint" class="text-muted" style="font-size: 0.78rem; display: none;">AI suggested — adjust to match your own rate</small>
                         </div>
                     </div>
@@ -367,6 +382,7 @@ include '../includes/header.php';
                                 <option value="" disabled selected>Select availability...</option>
                                 <option value="available">🟢 Available for new clients</option>
                                 <option value="busy">🟡 Busy (Accepting with delay)</option>
+                                <option value="unavailable">⚪ Not accepting new clients</option>
                             </select>
                         </div>
                         <div>
@@ -377,9 +393,9 @@ include '../includes/header.php';
                     </div>
 
                     <!-- Final Submission -->
-                    <div class="pt-6 border-t flex items-center justify-between gap-4 flex-wrap" style="border-color: var(--border-light);">
+                    <div class="provider-submit-bar pt-6 border-t flex items-center justify-between gap-4 flex-wrap" style="border-color: var(--border-light);">
                         <div class="flex items-center gap-2 text-muted" style="font-size: 0.85rem;">
-                            <span>Pilot listings are reviewed and approved by campus moderation before going live.</span>
+                            <span>We’ll review your listing before it appears in the services directory.</span>
                         </div>
                         <button type="submit" id="btnSubmitListing" class="btn btn-primary" style="padding: 0.85rem 2.25rem; font-weight: 700; font-size: 1rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
                             Submit for Review
@@ -421,6 +437,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLoadDraft    = document.getElementById('btnLoadExistingDraft');
     const btnDismissDraft = document.getElementById('btnDismissDraft');
     const draftBanner     = document.getElementById('existingDraftBanner');
+    const resultsCard     = document.getElementById('aiResultsCard');
+    const aiStatus        = document.getElementById('aiStatus');
+
+    function setOnboardStatus(message, isError = false) {
+        if (!aiStatus) return;
+        aiStatus.textContent = message;
+        aiStatus.style.display = message ? 'block' : 'none';
+        aiStatus.style.color = isError ? 'var(--error, #dc2626)' : 'var(--text-muted)';
+    }
+
+    function showListingDetails() {
+        if (resultsCard) {
+            resultsCard.hidden = false;
+        }
+    }
+
+    document.getElementById('btnManualEntry')?.addEventListener('click', () => {
+        showListingDetails();
+        setOnboardStatus('Fill in the listing details below. You can publish without using AI.');
+        resultsCard?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('category_id')?.focus({ preventScroll: true });
+    });
 
     if (btnDismissDraft && draftBanner) {
         btnDismissDraft.addEventListener('click', () => {
@@ -433,6 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnLoadDraft && window.existingDraftData) {
         btnLoadDraft.addEventListener('click', () => {
             const d = window.existingDraftData;
+            showListingDetails();
             if (d.skills_input) document.getElementById('skills_input').value = d.skills_input;
             if (d.bio) document.getElementById('provider_bio').value = d.bio;
             if (d.portfolio_link) document.getElementById('portfolio_link').value = d.portfolio_link;
@@ -605,7 +644,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── AI Classification Logic ──────────────────────────────────────────
     const btnAnalyze = document.getElementById('btnAnalyzeAi');
     const skillsInput = document.getElementById('skills_input');
-    const aiStatus = document.getElementById('aiStatus');
     const aiIcon = document.getElementById('aiIcon');
     const aiBtnText = document.getElementById('aiBtnText');
     const aiEngineBadge = document.getElementById('aiEngineBadge');
@@ -618,14 +656,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAnalyze && skillsInput) {
         btnAnalyze.addEventListener('click', async () => {
             if (!consentCheckbox?.checked) {
-                alert('Please tick the consent box above first.');
+                setOnboardStatus('To use AI suggestions, first consent to sending your skills description to Google Gemini. Or choose “Enter details myself.”', true);
                 consentCheckbox?.focus();
                 return;
             }
 
             const text = skillsInput.value.trim();
             if (text.length < 5) {
-                alert('Please enter a brief description of what skills or services you can provide.');
+                setOnboardStatus('Add a few details about the services you offer before requesting AI suggestions.', true);
                 skillsInput.focus();
                 return;
             }
@@ -653,9 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnAnalyze.disabled = true;
             aiIcon.textContent = '⏳';
             aiBtnText.textContent = 'Analyzing...';
-            if (aiStatus) {
-                aiStatus.style.display = 'inline';
-            }
+            setOnboardStatus('Analyzing your description and preparing editable suggestions…');
 
             try {
                 const response = await fetch('<?= BASE_URL ?>api/ai_classify_service.php', {
@@ -673,6 +709,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const json = await response.json();
                 if (response.ok && json && json.ok && json.data) {
                     const data = json.data;
+                    showListingDetails();
+                    setOnboardStatus('Suggestions are ready. Review and edit every field before submitting.');
 
                     // Update engine badge accurately
                     if (aiEngineBadge) {
@@ -796,7 +834,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('aiResultsCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     const errMsg = json?.error || 'Could not analyze with AI. You can still fill in the details manually below.';
-                    alert(errMsg);
+                    showListingDetails();
+                    setOnboardStatus(errMsg + ' You can enter the details manually.', true);
                     if (typeof posthog !== 'undefined' && posthog.capture) {
                         posthog.capture('provider_ai_analyze_failed', {
                             error: errMsg,
@@ -806,7 +845,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (err) {
                 console.error('AI classify error:', err);
-                alert('AI assistant is momentarily busy. Please fill in your service details manually.');
+                showListingDetails();
+                setOnboardStatus('AI suggestions are unavailable right now. You can enter the listing details manually.', true);
                 if (typeof posthog !== 'undefined' && posthog.capture) {
                     posthog.capture('provider_ai_analyze_failed', {
                         error: err.message || 'network_error',
@@ -816,10 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 syncAiBtn();
                 aiIcon.textContent = '✨';
-                aiBtnText.textContent = 'Re-Analyze with AI';
-                if (aiStatus) {
-                    aiStatus.style.display = 'none';
-                }
+                aiBtnText.textContent = 'Get AI suggestions';
             }
         });
     }

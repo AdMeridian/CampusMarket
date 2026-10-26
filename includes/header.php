@@ -427,6 +427,7 @@ $navCategories = getNavCategories($pdo);
             <div class="navbar-desktop-actions lg-flex">
                 <a href="<?php echo BASE_URL; ?>pages/browse.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none;"><?= __('nav.browse') ?></a>
                 <a href="<?php echo BASE_URL; ?>pages/services.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none;"><?= __('nav.services') ?></a>
+                <a href="<?php echo BASE_URL; ?>pages/service_jobs.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none;"><?= __('nav.service_requests') ?></a>
                 <?php if (isLoggedIn()): ?>
                     <a href="<?php echo BASE_URL; ?>pages/inbox.php" class="mobile-nav-link" style="font-weight: 500; text-decoration: none; position: relative;">
                         <?= __('nav.inbox') ?>

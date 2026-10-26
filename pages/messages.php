@@ -5,8 +5,10 @@ $pageTitle = __('inbox.messages_tab');
 requireLogin();
 
 $productId = (int)($_GET['product_id'] ?? 0);
+$jobId = (int)($_GET['job_id'] ?? 0);
 $otherUserId = (int)($_GET['other_user_id'] ?? $_GET['to'] ?? 0);
-$currentUserId = currentUserId();
+$currentUserId = (int) currentUserId();
+$serviceJobContext = null;
 
 if (!$otherUserId) {
     setFlash('error', 'Invalid conversation context.');
@@ -76,6 +78,30 @@ if ($productId > 0) {
     ];
     $sellerId = -1; // Not a seller conversation
 }
+
+if ($jobId > 0) {
+    if ($productId > 0 || $otherUserId === $currentUserId) {
+        setFlash('error', 'Invalid service request conversation.');
+        redirect(BASE_URL . 'pages/service_jobs.php');
+    }
+
+    $jobStmt = $pdo->prepare(
+        "SELECT id, poster_id, title, organization_name, location_town
+         FROM service_job_posts
+         WHERE id = :id AND poster_id = :poster_id AND status = 'open' AND expires_at > NOW()
+         LIMIT 1"
+    );
+    $jobStmt->execute([':id' => $jobId, ':poster_id' => $otherUserId]);
+    $serviceJobContext = $jobStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$serviceJobContext) {
+        setFlash('error', 'This service request is no longer open.');
+        redirect(BASE_URL . 'pages/service_jobs.php');
+    }
+}
+
+$jobMessagePrefill = $serviceJobContext
+    ? "Hi, I'm interested in your service request: " . $serviceJobContext['title']
+    : '';
 
 // Compute initial presence status from last_seen_at
 function computePresence(?string $lastSeenAt): array {
@@ -166,6 +192,12 @@ $presenceText = match($otherPresence['status']) {
             </div>
             <svg class="chat-product-strip__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         </a>
+        <?php elseif ($serviceJobContext): ?>
+        <a href="<?= BASE_URL ?>pages/service_jobs.php" class="chat-context-strip" style="display:block;text-decoration:none;">
+            <span class="text-muted small">Regarding service request</span>
+            <strong class="block text-main"><?= htmlspecialchars($serviceJobContext['title'], ENT_QUOTES, 'UTF-8') ?></strong>
+            <span class="text-muted small"><?= htmlspecialchars(formatLocationTown($serviceJobContext['location_town']), ENT_QUOTES, 'UTF-8') ?></span>
+        </a>
         <?php elseif ($product['title'] === 'CampusMarket Support'): ?>
         <div class="chat-context-strip chat-context-strip--support">
             <span><?= __('chat.official_help') ?></span>
@@ -207,7 +239,7 @@ $presenceText = match($otherPresence['status']) {
 
         <div class="chat-input-bar">
             <form id="chat-form" class="chat-input-form m-0">
-                <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" required autocomplete="off" maxlength="250">
+                <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" value="<?= htmlspecialchars($jobMessagePrefill, ENT_QUOTES, 'UTF-8') ?>" required autocomplete="off" maxlength="250">
                 <button type="submit" class="chat-send-btn btn btn-primary" title="<?= htmlspecialchars(__('chat.send')) ?>" aria-label="<?= htmlspecialchars(__('chat.send')) ?>">
                     <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>

@@ -70,6 +70,45 @@ CREATE TABLE wanted_item_requests (
     INDEX idx_wanted_requests_requester_created (requester_id, created_at)
 ) ENGINE=InnoDB;
 
+-- Provider profiles used by the services pilot
+CREATE TABLE provider_profiles (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id             INT NOT NULL UNIQUE,
+    bio                 TEXT NULL,
+    raw_skills_input    TEXT NULL,
+    parsed_skills       JSON NULL,
+    primary_category_id INT NULL,
+    portfolio_link      VARCHAR(500) NULL,
+    enrollment_status   VARCHAR(30) NOT NULL DEFAULT 'active',
+    is_verified         TINYINT(1) NOT NULL DEFAULT 0,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (primary_category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    INDEX idx_provider_profiles_status (enrollment_status),
+    INDEX idx_provider_profiles_category (primary_category_id)
+) ENGINE=InnoDB;
+
+-- One-off service jobs requested by individuals and businesses
+CREATE TABLE service_job_posts (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    poster_id   INT NOT NULL,
+    category_id INT NOT NULL,
+    organization_name VARCHAR(120) NULL,
+    title       VARCHAR(120) NOT NULL,
+    description TEXT NOT NULL,
+    location_town VARCHAR(32) NOT NULL,
+    budget_max  DECIMAL(10,2) NULL,
+    status      ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+    expires_at  DATETIME NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (poster_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+    INDEX idx_service_job_posts_open_created (status, created_at),
+    INDEX idx_service_job_posts_category (category_id, status, created_at),
+    INDEX idx_service_job_posts_poster_created (poster_id, created_at)
+) ENGINE=InnoDB;
+
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 3. tags
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -362,4 +401,3 @@ CREATE TABLE IF NOT EXISTS system_settings (
     setting_value TEXT NOT NULL,
     updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
-

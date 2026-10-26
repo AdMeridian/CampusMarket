@@ -9,6 +9,8 @@ $locationFilter = $_GET['location'] ?? '';
 $sellerId = (int)($_GET['seller'] ?? 0);
 $sort     = $_GET['sort'] ?? 'newest';
 $page     = max(1, (int)($_GET['page'] ?? 1));
+$hasFilters = $search !== '' || $category !== '' || in_array($pricingModel, ['flat', 'hourly'], true)
+    || $locationFilter !== '' || $sellerId > 0;
 
 $sellerInfo = null;
 if ($sellerId > 0) {
@@ -50,6 +52,32 @@ $countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
 $countStmt->execute($params);
 $totalItems = (int) $countStmt->fetchColumn();
 
+$hasProviderProfiles = false;
+$driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+if ($driver === 'pgsql') {
+    $profileTableStmt = $pdo->query(
+        "SELECT COUNT(*) FROM information_schema.tables
+         WHERE table_schema = current_schema() AND table_name = 'provider_profiles'"
+    );
+    $hasProviderProfiles = (int) $profileTableStmt->fetchColumn() > 0;
+} else {
+    $profileTableStmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name = 'provider_profiles'"
+    );
+    $profileTableStmt->execute();
+    $hasProviderProfiles = (int) $profileTableStmt->fetchColumn() > 0;
+}
+$providerFields = $hasProviderProfiles
+    ? 'pp.bio AS provider_bio, pp.parsed_skills AS provider_skills'
+    : 'NULL AS provider_bio, NULL AS provider_skills';
+$providerJoin = $hasProviderProfiles
+    ? "LEFT JOIN provider_profiles pp
+         ON pp.user_id = p.user_id
+        AND pp.enrollment_status = 'pilot'
+        AND pp.is_verified = TRUE"
+    : '';
+
 $orderBy = match($sort) {
     'price_asc'  => "p.is_featured DESC, p.price ASC",
     'price_desc' => "p.is_featured DESC, p.price DESC",
@@ -57,12 +85,14 @@ $orderBy = match($sort) {
 };
 
 $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, u.avatar as seller_avatar, i.image_path,
+        {$providerFields},
         p.delivery_days, p.availability_status,
         COALESCE(r.avg_rating, 0) as avg_rating, COALESCE(r.review_count, 0) as review_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+        {$providerJoin}
         LEFT JOIN (
             SELECT product_id, ROUND(AVG(rating),1) as avg_rating, COUNT(*) as review_count
             FROM ratings GROUP BY product_id
@@ -109,9 +139,13 @@ include '../includes/header.php';
                 <p class="page-subtitle mb-0"><?= __('services.hero_subtitle') ?></p>
             </div>
             
-            <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn--service" style="padding: 0.8rem 1.6rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
-                <span><?= __('services.offer_service') ?></span>
-            </a>
+            <div class="flex gap-2 flex-wrap">
+                <a href="<?= BASE_URL ?>pages/service_jobs.php" class="btn btn-secondary" style="padding: 0.8rem 1.2rem;">Browse service requests</a>
+                <a href="<?= BASE_URL ?>pages/service_jobs.php?post=1" class="btn btn-secondary" style="padding: 0.8rem 1.2rem;">Post a service request</a>
+                <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn--service" style="padding: 0.8rem 1.6rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+                    <span><?= __('services.offer_service') ?></span>
+                </a>
+            </div>
         </div>
 
         <?php if ($sellerInfo): ?>
@@ -238,15 +272,25 @@ include '../includes/header.php';
                             <?php if (empty($services)): ?>
                     <div class="glass-panel p-12 text-center shadow-sm" style="border-radius: var(--radius-xl); border: 2px dashed var(--border-light); background: var(--bg-surface);">
                         <div class="mb-4 flex justify-center" style="font-size: 3rem;">
-                            🚀
+                            <?= $hasFilters ? '🔎' : '🚀' ?>
                         </div>
-                        <h3 class="empty-state-title mb-2" style="font-size: 1.4rem;">Campus Services Pilot is Live!</h3>
+                        <h3 class="empty-state-title mb-2" style="font-size: 1.4rem;">
+                            <?= $hasFilters ? 'No services match those filters' : 'Campus services are getting started' ?>
+                        </h3>
                         <p class="page-subtitle max-w-md mx-auto mb-6" style="font-size: 0.95rem; line-height: 1.5;">
-                            We are curating authentic student services across campus. Be among the first providers in this category during the pilot and start receiving bookings.
+                            <?= $hasFilters
+                                ? 'Try a different category, town, or search—or clear your filters to see all available services.'
+                                : 'Be one of the first providers to list a service, or post a request so providers know what work is needed.' ?>
                         </p>
-                        <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-primary shadow-sm" style="padding: 0.8rem 2rem; font-weight: 700;">
-                            ✨ Join the Campus Pilot
-                        </a>
+                        <div class="flex justify-center gap-2 flex-wrap">
+                            <?php if ($hasFilters): ?>
+                                <a href="<?= BASE_URL ?>pages/services.php" class="btn btn-secondary">Clear filters</a>
+                            <?php endif; ?>
+                            <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-primary shadow-sm" style="padding: 0.8rem 1.5rem; font-weight: 700;">
+                                Offer a service
+                            </a>
+                            <a href="<?= BASE_URL ?>pages/service_jobs.php" class="btn btn-secondary">Browse service requests</a>
+                        </div>
                     </div>
                 <?php else: ?>
                     <!-- Category pills strip -->
@@ -312,6 +356,26 @@ include '../includes/header.php';
                                 <!-- Info -->
                                 <div class="flex flex-col flex-grow" style="padding: 1rem 1.25rem 1.25rem;">
                                     <h4 class="mb-2 text-main product-card-title" style="font-size:0.98rem; line-height:1.35;"><?php echo sanitize($prod['title']); ?></h4>
+
+                                    <?php if (!empty($prod['provider_bio'])): ?>
+                                    <p class="text-muted mb-3" style="font-size:0.82rem;line-height:1.4;">
+                                        <?= sanitize(mb_strimwidth((string) $prod['provider_bio'], 0, 110, '…')) ?>
+                                    </p>
+                                    <?php endif; ?>
+
+                                    <?php
+                                    $providerSkills = json_decode((string) ($prod['provider_skills'] ?? ''), true);
+                                    if (!is_array($providerSkills)) {
+                                        $providerSkills = [];
+                                    }
+                                    ?>
+                                    <?php if ($providerSkills !== []): ?>
+                                    <div class="flex flex-wrap gap-1 mb-3" aria-label="Provider skills">
+                                        <?php foreach (array_slice($providerSkills, 0, 3) as $skill): ?>
+                                            <span class="badge" style="font-size:.68rem;background:var(--bg-main);color:var(--text-muted);"><?= sanitize((string) $skill) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <?php endif; ?>
 
                                     <!-- Star rating -->
                                     <?php if ($sReviewCount > 0): ?>

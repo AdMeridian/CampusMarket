@@ -68,6 +68,7 @@
                 <h4><?= __('footer.services') ?></h4>
                 <ul>
                     <li><a href="<?php echo BASE_URL; ?>/pages/services.php"><?= __('footer.explore_services') ?></a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/pages/service_jobs.php"><?= __('footer.service_requests') ?></a></li>
                     <?php if (isLoggedIn()): ?>
                     <li><a href="<?php echo BASE_URL; ?>pages/provider_onboard.php"><?= __('footer.offer_service') ?></a></li>
                     <?php endif; ?>
