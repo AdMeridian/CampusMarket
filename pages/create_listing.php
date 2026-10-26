@@ -1292,10 +1292,19 @@ document.addEventListener('DOMContentLoaded', function () {
         fd.append('csrf_token', csrfToken());
 
         fetch('api_listing_assist.php', { method: 'POST', body: fd, credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.text().then(function (txt) {
+                        console.error('[AI Assist] HTTP ' + r.status + ':', txt.substring(0, 400));
+                        throw new Error('HTTP ' + r.status);
+                    });
+                }
+                return r.json();
+            })
             .then(function (data) {
                 if (data.error) {
-                    setAssistState('error', 'AI unavailable — fill in manually.');
+                    console.error('[AI Assist] API error:', data.error);
+                    setAssistState('error', 'AI unavailable \u2014 fill in manually.');
                     return;
                 }
 
@@ -1357,7 +1366,15 @@ document.addEventListener('DOMContentLoaded', function () {
             fd.append('csrf_token', csrfToken());
 
             fetch('api_listing_assist.php', { method: 'POST', body: fd, credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
+                .then(function (r) {
+                    if (!r.ok) {
+                        return r.text().then(function (txt) {
+                            console.error('[AI Desc] HTTP ' + r.status + ':', txt.substring(0, 400));
+                            throw new Error('HTTP ' + r.status);
+                        });
+                    }
+                    return r.json();
+                })
                 .then(function (data) {
                     if (data.description) {
                         descTextarea.value  = data.description;

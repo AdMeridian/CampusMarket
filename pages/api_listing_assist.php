@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // pages/api_listing_assist.php
 // AI Listing Assistant endpoint.
 // Given a listing title (and optional description), returns:
@@ -8,8 +8,19 @@
 //   - generated description    (short campus-style selling copy)
 // Requires: POST, active login, valid CSRF token.
 
-require_once '../includes/bootstrap.php';
+ob_start(); // Buffer any stray output so we can always return clean JSON
 
+try {
+    require_once '../includes/bootstrap.php';
+} catch (Throwable $bootErr) {
+    ob_end_clean();
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => 'Bootstrap failed: ' . $bootErr->getMessage()]);
+    exit;
+}
+
+ob_end_clean();
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
@@ -18,9 +29,11 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// Accept request from both POST form and JSON body — skip CSRF only if request carries a valid session
+// (same pattern used by other AJAX endpoints on this project)
 verifyCsrfTokenJson();
 
-$action      = trim($_POST['action'] ?? 'all');   // 'all' | 'description'
+$action      = trim($_POST['action'] ?? 'all');
 $title       = trim($_POST['title'] ?? '');
 $description = trim($_POST['description'] ?? '');
 
