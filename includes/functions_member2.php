@@ -583,6 +583,23 @@ if (!function_exists('getAvailableUniversities')) {
     }
 }
 
+if (!function_exists('getNorthernCyprusUniversities')) {
+    function getNorthernCyprusUniversities(PDO $pdo): array {
+        try {
+            $stmt = $pdo->query('
+                SELECT id, name, slug, domain_pattern, city, country_code
+                FROM universities
+                WHERE is_active = TRUE AND is_northern_cyprus = TRUE
+                ORDER BY name ASC
+            ');
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (PDOException $e) {
+            error_log('[university] Northern Cyprus university directory lookup failed: ' . $e->getMessage());
+            return [];
+        }
+    }
+}
+
 /* ─────────────────────────────────────────────────────────────
  * Student Email OTP Verification Helpers
  * ───────────────────────────────────────────────────────────── */

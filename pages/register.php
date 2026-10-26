@@ -19,7 +19,7 @@ $old    = [
     'university_id' => '',
     'other_university_name' => '',
 ];
-$availableUniversities = getAvailableUniversities($pdo);
+$availableUniversities = getNorthernCyprusUniversities($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -291,7 +291,7 @@ require_once '../includes/header.php';
         <option value=""><?= __('profile.university_not_provided') ?></option>
         <?php foreach ($availableUniversities as $university): ?>
           <option value="<?= (int)$university['id'] ?>" <?= (string)$old['university_id'] === (string)$university['id'] ? 'selected' : '' ?>>
-            <?= htmlspecialchars($university['name'] . (!empty($university['city']) ? ' — ' . $university['city'] : '') . ' (' . $university['country_code'] . ')', ENT_QUOTES, 'UTF-8') ?>
+            <?= htmlspecialchars($university['name'] . (!empty($university['city']) ? ' — ' . $university['city'] : ''), ENT_QUOTES, 'UTF-8') ?>
           </option>
         <?php endforeach; ?>
         <option value="other" <?= $old['university_id'] === 'other' ? 'selected' : '' ?>><?= __('profile.university_other') ?></option>
