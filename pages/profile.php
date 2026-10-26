@@ -1,6 +1,7 @@
 <?php
 // pages/profile.php
 require_once '../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/functions_member2.php';
 
 // Decide which profile to show
 $viewId = isset($_GET['id']) ? (int)$_GET['id'] : (int)(currentUserId() ?? 0);

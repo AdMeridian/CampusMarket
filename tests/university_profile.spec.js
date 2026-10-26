@@ -12,6 +12,7 @@ test('signup and profile editing offer a directory choice and an Other universit
     expect(source).toContain('name="other_university_name"');
     expect(source).toContain('getAvailableUniversities($pdo)');
   }
+  expect(editProfile).toContain("require_once __DIR__ . '/../includes/functions_member2.php';");
   expect(register).toContain('university_id, other_university_name');
   expect(register).toContain("':other_university_name' => $otherUniversityName");
   expect(editProfile).toContain('university_id = :university_id');
@@ -24,6 +25,7 @@ test('profiles display explicitly provided university and admin stats prefer it 
 
   expect(profile).toContain("$user['other_university_name']");
   expect(profile).toContain("__('profile.university_attended')");
+  expect(profile).toContain("require_once __DIR__ . '/../includes/functions_member2.php';");
   expect(adminUsers.indexOf("if ($universityId > 0 && isset($universitiesById[$universityId]))"))
     .toBeLessThan(adminUsers.indexOf("getUniversityInfoFromEmail($user['email'] ?? '')"));
   expect(adminUsers).toContain("'source' => 'self_reported'");

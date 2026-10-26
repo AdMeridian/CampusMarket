@@ -5,6 +5,7 @@
 
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/functions_member2.php';
 
 requireLogin();
 
