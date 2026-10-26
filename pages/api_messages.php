@@ -146,7 +146,7 @@ if ($action === 'share_to_inbox') {
     try {
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, product_id, body) VALUES (:sid, :rid, 0, :body)");
+        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, product_id, body) VALUES (:sid, :rid, NULL, :body)");
         $stmt->execute([
             ':sid' => $currentUserId,
             ':rid' => $recipientId,
