@@ -3139,6 +3139,7 @@ body.page-chat {
 }
 
 body.page-chat .site-footer,
+body.page-chat .mobile-bottom-nav,
 body.page-chat .mobile-search-row,
 body.page-chat .cm-chatbot-fab,
 body.page-chat .cm-chatbot-window {
@@ -3966,40 +3967,93 @@ body.page-chat .chat-send-btn {
 }
 
 @media (max-width: 1023px) {
+  /* Complete screen lockdown for WhatsApp-like messaging experience */
+  body.page-chat {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide main site navbar and bottom tab navigation in active chat thread */
+  body.page-chat .navbar,
+  body.page-chat .mobile-bottom-nav {
+    display: none !important;
+  }
+
   body.page-chat .chat-page-shell {
+    position: fixed;
+    inset: 0;
+    width: 100%;
     max-width: none;
     padding: 0;
-    margin-top: 4.2rem;
-    height: calc(100dvh - 4.2rem - 5rem);
+    margin: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 100;
   }
 
   body.page-chat .chat-thread-panel {
     border-radius: 0;
-    border-left: none;
-    border-right: none;
+    border: none;
     box-shadow: none;
     height: 100%;
     max-height: 100%;
+    flex: 1 1 0%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
+    background: var(--bg-surface);
   }
 
   body.page-chat .chat-composer-header {
     padding-top: max(0.65rem, env(safe-area-inset-top));
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
     flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-light);
   }
 
-  /* Reduced scrollable message area height on mobile to keep header and input pinned */
+  /* Chat window is the ONLY scrollable area — smooth physics, zero outer page bounce */
   body.page-chat .chat-messages,
   body.page-chat #chat-box {
-    flex: 1 1 auto;
-    max-height: calc(100dvh - 19rem);
-    min-height: 120px;
+    flex: 1 1 0%;
+    min-height: 0;
+    max-height: none;
     overflow-y: auto;
+    overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
   }
 
+  /* Chat input is permanently docked at the bottom */
   body.page-chat .chat-input-bar {
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-light);
+    padding-top: 0.6rem;
+    padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
   }
 }
 
