@@ -179,6 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = __('auth.login_page_title');
+$googleOAuthUrl = isSupabaseConfigured() ? supabaseOAuthUrl('google') : '';
 require_once '../includes/header.php';
 ?>
 
@@ -214,6 +215,17 @@ require_once '../includes/header.php';
                     <?= __('auth.resend_btn') ?>
                 </button>
             </form>
+        <?php endif; ?>
+
+        <?php if ($googleOAuthUrl !== ''): ?>
+            <a href="<?= htmlspecialchars($googleOAuthUrl, ENT_QUOTES, 'UTF-8') ?>"
+               class="btn btn-secondary w-full py-3 mb-6"
+               style="border-radius: var(--radius-md); font-weight: 600; text-align: center;">
+                <?= __('auth.continue_with_google') ?>
+            </a>
+            <div class="auth-divider mb-6" style="text-align: center; color: var(--text-muted, #64748b);">
+                <?= __('auth.or') ?>
+            </div>
         <?php endif; ?>
 
         <form method="post" novalidate class="js-form-loading" data-loading-text="<?= htmlspecialchars(__('auth.login_submitting'), ENT_QUOTES, 'UTF-8') ?>">
