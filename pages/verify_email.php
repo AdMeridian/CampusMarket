@@ -74,6 +74,11 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
         <head>
             <meta charset="UTF-8">
             <title>Verifying... - CampusMarket</title>
+        </head>
+        <body>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; text-align:center; padding:100px 20px; color:#475569;">
+                <p style="font-size:1.2rem; font-weight:500;">Verifying your link...</p>
+            </div>
             <script>
                 (function() {
                     const hash = window.location.hash;
@@ -108,11 +113,6 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
                     window.location.href = '<?php echo BASE_URL; ?>pages/login?error=invalid_link';
                 })();
             </script>
-        </head>
-        <body>
-            <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; text-align:center; padding:100px 20px; color:#475569;">
-                <p style="font-size:1.2rem; font-weight:500;">Verifying your link...</p>
-            </div>
         </body>
         </html>
         <?php
@@ -304,4 +304,3 @@ try {
 
 setFlash('success', 'Email verified! You can now log in.');
 redirect(BASE_URL . 'pages/login.php?redirect=/pages/profile.php');
-
