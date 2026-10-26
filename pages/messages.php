@@ -281,6 +281,98 @@ $presenceText = match($otherPresence['status']) {
 #chat-box::-webkit-scrollbar { width: 6px; }
 #chat-box::-webkit-scrollbar-track { background: transparent; }
 #chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* ── Rich Product Card in Chat Bubbles ─────────────────────── */
+.cm-chat-product-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.35rem;
+    text-decoration: none;
+    color: var(--text-main);
+    transition: all 0.2s ease;
+    max-width: 320px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.message-row--out .cm-chat-product-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #1e293b;
+}
+.message-row--out .cm-chat-product-card:hover {
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+.message-row--in .cm-chat-product-card {
+    background: var(--bg-surface);
+}
+.message-row--in .cm-chat-product-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+.cm-chat-product-thumb-container {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cm-chat-product-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.cm-chat-product-details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.cm-chat-product-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary);
+    margin-bottom: 2px;
+}
+.cm-chat-product-tag--sold {
+    color: #ef4444;
+}
+.cm-chat-product-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+.cm-chat-product-price {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin-top: 2px;
+}
+.cm-chat-product-arrow {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+.cm-chat-product-card:hover .cm-chat-product-arrow {
+    transform: translateX(3px);
+    color: var(--primary);
+}
 </style>
 
 <script>
@@ -346,20 +438,59 @@ function buildTranslatedBodyHtml(translatedText, originalText, sourceLang) {
     `;
 }
 
+function renderSharedProductCard(prod) {
+    if (!prod) return '';
+    const symMap = { 'TRY': '₺', 'USD': '$', 'EUR': '€', 'GBP': '£' };
+    const sym = symMap[prod.price_currency] || '₺';
+    const formattedPrice = sym + Number(prod.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const isSold = prod.status === 'sold';
+    const tagHtml = isSold
+        ? '<span class="cm-chat-product-tag cm-chat-product-tag--sold">Sold</span>'
+        : '<span class="cm-chat-product-tag">Shared Listing</span>';
+
+    return `
+        <a href="${prod.url}" target="_blank" rel="noopener" class="cm-chat-product-card">
+            <div class="cm-chat-product-thumb-container">
+                <img src="${prod.image_url}" alt="${prod.title}" class="cm-chat-product-thumb" onerror="this.onerror=null;this.src='${window.__baseUrl || '/'}public/images/logo.png'">
+            </div>
+            <div class="cm-chat-product-details">
+                ${tagHtml}
+                <div class="cm-chat-product-title" title="${prod.title}">${prod.title}</div>
+                <div class="cm-chat-product-price">${formattedPrice}</div>
+            </div>
+            <div class="cm-chat-product-arrow" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+        </a>
+    `;
+}
+
+function cleanMessageBodyText(text, hasProduct) {
+    if (!hasProduct || !text) return text;
+    // Strip raw product link so the card speaks for itself without an ugly link below it
+    return text.replace(/https?:\/\/[^\s]+pages\/product\.php\?id=\d+/gi, '')
+               .replace(/https?:\/\/[^\s]+\/product\/\d+/gi, '')
+               .trim();
+}
+
 function buildIncomingBodyHtml(msg) {
     const showTranslated = translatedMessageIds.has(msg.id) && msg.cached_translation;
     if (showTranslated) {
         return buildTranslatedBodyHtml(msg.cached_translation, msg.original_text, msg.cached_source_lang);
     }
 
-    const translateBtn = translationConfigured
+    const cardHtml = msg.shared_product ? renderSharedProductCard(msg.shared_product) : '';
+    const cleanBody = cleanMessageBodyText(msg.body, !!msg.shared_product);
+
+    const translateBtn = translationConfigured && cleanBody
         ? `<div class="translation-actions" style="margin-top: 6px;">
             <button type="button" class="btn-translate-msg" onclick="translateSingleMessage(${msg.id}, this)" style="background: none; border: none; padding: 0; margin: 0; color: var(--primary); font-size: 0.72rem; cursor: pointer; text-decoration: underline; font-weight: 600;">${__('chat.translate')}</button>
         </div>`
         : '';
 
     return `
-        <div class="message-text-content">${msg.body}</div>
+        ${cardHtml}
+        ${cleanBody ? `<div class="message-text-content">${cleanBody}</div>` : ''}
         ${translateBtn}
     `;
 }
@@ -466,9 +597,21 @@ function formatMessageTime(iso) {
 function buildMessageBubbleHtml(msg, options = {}) {
     const isMine = !!msg.is_mine;
     const timeStr = options.sending ? __('chat.sending') : formatMessageTime(msg.created_at);
-    const bodyHtml = isMine
-        ? `<div class="message-body-wrap"><div class="message-text-content">${msg.body}</div></div>`
-        : `<div class="message-body-wrap">${buildIncomingBodyHtml(msg)}</div>`;
+    
+    let bodyHtml;
+    if (isMine) {
+        const cardHtml = msg.shared_product ? renderSharedProductCard(msg.shared_product) : '';
+        const cleanBody = cleanMessageBodyText(msg.body, !!msg.shared_product);
+        bodyHtml = `
+            <div class="message-body-wrap">
+                ${cardHtml}
+                ${cleanBody ? `<div class="message-text-content">${cleanBody}</div>` : ''}
+            </div>
+        `;
+    } else {
+        bodyHtml = `<div class="message-body-wrap">${buildIncomingBodyHtml(msg)}</div>`;
+    }
+
     const replyHtml = msg.reply_to_message_id && msg.reply_body
         ? `<div class="message-reply-quote"><span class="message-reply-quote__label">Replying to ${msg.reply_sender_name || 'message'}</span><span class="message-reply-quote__text">${msg.reply_body}</span></div>`
         : '';

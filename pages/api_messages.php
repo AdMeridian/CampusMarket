@@ -43,8 +43,34 @@ function isValidConversation(PDO $pdo, int $productId, int $currentUserId, int $
 if ($action === 'search_users') {
     $query = sanitize($_GET['q'] ?? '');
     if (strlen($query) < 1) {
+        // Return recent contacts if available
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT u.id, u.username, u.avatar 
+            FROM messages m
+            JOIN users u ON u.id = (CASE WHEN m.sender_id = :uid1 THEN m.receiver_id ELSE m.sender_id END)
+            WHERE (m.sender_id = :uid2 OR m.receiver_id = :uid3)
+              AND u.id != :uid4
+            ORDER BY m.id DESC
+            LIMIT 6
+        ");
+        $stmt->execute([
+            ':uid1' => $currentUserId,
+            ':uid2' => $currentUserId,
+            ':uid3' => $currentUserId,
+            ':uid4' => $currentUserId,
+        ]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = [];
+        foreach ($users as $u) {
+            $results[] = [
+                'id' => (int)$u['id'],
+                'username' => $u['username'],
+                'avatar_url' => avatarUrl($u['avatar']),
+                'is_recent' => true,
+            ];
+        }
         ob_clean();
-        echo json_encode(['success' => true, 'users' => []]);
+        echo json_encode(['success' => true, 'users' => $results]);
         exit;
     }
     
@@ -64,15 +90,102 @@ if ($action === 'search_users') {
     $results = [];
     foreach ($users as $u) {
         $results[] = [
-            'id' => $u['id'],
+            'id' => (int)$u['id'],
             'username' => $u['username'],
-            'avatar_url' => avatarUrl($u['avatar'])
+            'avatar_url' => avatarUrl($u['avatar']),
+            'is_recent' => false,
         ];
     }
     
     ob_clean();
     echo json_encode(['success' => true, 'users' => $results]);
     exit;
+}
+
+if ($action === 'share_to_inbox') {
+    verifyCsrfTokenJson();
+    $productId = (int)($_POST['product_id'] ?? 0);
+    $recipientId = (int)($_POST['recipient_id'] ?? 0);
+    $note = trim(sanitize($_POST['note'] ?? ''));
+
+    if ($productId <= 0 || $recipientId <= 0 || $recipientId === $currentUserId) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+        exit;
+    }
+
+    $userStmt = $pdo->prepare("SELECT id, username FROM users WHERE id = ?");
+    $userStmt->execute([$recipientId]);
+    $recipient = $userStmt->fetch();
+    if (!$recipient) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Recipient not found']);
+        exit;
+    }
+
+    $prodStmt = $pdo->prepare("SELECT id, title, price, price_currency FROM products WHERE id = ? AND status = 'active'");
+    $prodStmt->execute([$productId]);
+    $prod = $prodStmt->fetch();
+    if (!$prod) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Listing not found or no longer active']);
+        exit;
+    }
+
+    $productUrl = rtrim(BASE_URL, '/') . '/pages/product.php?id=' . $productId;
+    $msgBody = $note !== ''
+        ? $note . "\n\n" . $productUrl
+        : $productUrl;
+
+    if (mb_strlen($msgBody) > 500) {
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Message too long']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, product_id, body) VALUES (:sid, :rid, 0, :body)");
+        $stmt->execute([
+            ':sid' => $currentUserId,
+            ':rid' => $recipientId,
+            ':body' => $msgBody,
+        ]);
+        $messageId = (int)$pdo->lastInsertId();
+
+        $pdo->commit();
+
+        try {
+            $shareStmt = $pdo->prepare("INSERT INTO product_shares (product_id, user_id, channel) VALUES (?, ?, 'inbox')");
+            $shareStmt->execute([$productId, $currentUserId]);
+        } catch (Throwable $e) {}
+
+        $senderUsername = $_SESSION['username'] ?? 'Someone';
+        createNotification(
+            $pdo,
+            $recipientId,
+            'message',
+            'Listing Shared',
+            '@' . $senderUsername . ' shared a listing with you: ' . $prod['title'],
+            $productId
+        );
+
+        ob_clean();
+        echo json_encode([
+            'success' => true,
+            'message_id' => $messageId,
+            'chat_url' => rtrim(BASE_URL, '/') . '/pages/messages.php?other_user_id=' . $recipientId . '&product_id=0',
+            'recipient_username' => $recipient['username']
+        ]);
+        exit;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        logApiError("Share to inbox error: " . $e->getMessage());
+        ob_clean();
+        echo json_encode(['success' => false, 'error' => 'Failed to send listing: ' . $e->getMessage()]);
+        exit;
+    }
 }
 
 if ($action === 'fetch') {
@@ -156,6 +269,44 @@ if ($action === 'fetch') {
     ]);
     $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Batch-resolve any mentioned products in these messages
+    $mentionedProductIds = [];
+    foreach ($messages as $mRow) {
+        if (!empty($mRow['product_id'])) {
+            $mentionedProductIds[(int)$mRow['product_id']] = (int)$mRow['product_id'];
+        }
+        if (preg_match_all('#(?:product\.php\?id=|/product/)(\d+)#i', (string)$mRow['body'], $pMatches)) {
+            foreach ($pMatches[1] as $matchId) {
+                $mentionedProductIds[(int)$matchId] = (int)$matchId;
+            }
+        }
+    }
+
+    $productMetaMap = [];
+    if (!empty($mentionedProductIds)) {
+        $pIdsList = array_values($mentionedProductIds);
+        $placeholders = implode(',', array_fill(0, count($pIdsList), '?'));
+        $metaStmt = $pdo->prepare("
+            SELECT p.id, p.title, p.price, p.price_currency, p.status,
+                   pi.image_path
+            FROM products p
+            LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
+            WHERE p.id IN ($placeholders)
+        ");
+        $metaStmt->execute($pIdsList);
+        foreach ($metaStmt->fetchAll(PDO::FETCH_ASSOC) as $pRow) {
+            $productMetaMap[(int)$pRow['id']] = [
+                'id' => (int)$pRow['id'],
+                'title' => htmlspecialchars($pRow['title'], ENT_QUOTES, 'UTF-8'),
+                'price' => (float)$pRow['price'],
+                'price_currency' => $pRow['price_currency'] ?: 'TRY',
+                'image_url' => getProductImage($pRow['image_path']),
+                'status' => $pRow['status'],
+                'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$pRow['id'],
+            ];
+        }
+    }
+
     // Format response (original text only; per-message translate is a separate action)
     $results = [];
     foreach ($messages as $msg) {
@@ -166,6 +317,14 @@ if ($action === 'fetch') {
         if ($msg['sender_id'] != $currentUserId && $msg['translated_text'] !== null) {
             $cachedTranslation = $msg['translated_text'];
             $cachedSourceLang = (string)($msg['source_lang'] ?? '');
+        }
+
+        $sharedProduct = null;
+        if (preg_match('#(?:product\.php\?id=|/product/)(\d+)#i', $originalText, $singleMatch)) {
+            $targetPid = (int)$singleMatch[1];
+            if (isset($productMetaMap[$targetPid])) {
+                $sharedProduct = $productMetaMap[$targetPid];
+            }
         }
 
         $results[] = [
@@ -185,7 +344,8 @@ if ($action === 'fetch') {
                 : null,
             'is_mine' => $msg['sender_id'] == $currentUserId,
             'sender_name' => $msg['sender_name'],
-            'created_at' => date('c', strtotime((string)($msg['created_at'] ?? '')))
+            'created_at' => date('c', strtotime((string)($msg['created_at'] ?? ''))),
+            'shared_product' => $sharedProduct,
         ];
     }
 
