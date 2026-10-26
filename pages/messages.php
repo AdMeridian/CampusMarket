@@ -403,6 +403,50 @@ const chatBox = document.getElementById('chat-box');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 let loadingDiv = document.getElementById('chat-loading');
+
+// Prevent mobile browser from restoring an arbitrary scroll position that offsets the fixed shell
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+
+function syncChatVisualViewport() {
+    if (window.innerWidth >= 1024) {
+        document.documentElement.style.removeProperty('--cm-chat-height');
+        document.documentElement.style.removeProperty('--cm-chat-top');
+        return;
+    }
+    const vv = window.visualViewport;
+    const height = vv ? vv.height : window.innerHeight;
+    const top = vv ? vv.offsetTop : 0;
+    document.documentElement.style.setProperty('--cm-chat-height', `${height}px`);
+    document.documentElement.style.setProperty('--cm-chat-top', `${top}px`);
+}
+
+syncChatVisualViewport();
+
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        syncChatVisualViewport();
+        if (chatBox) {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    });
+    window.visualViewport.addEventListener('scroll', syncChatVisualViewport);
+} else {
+    window.addEventListener('resize', syncChatVisualViewport);
+}
+
+if (chatInput) {
+    chatInput.addEventListener('focus', () => {
+        setTimeout(() => {
+            syncChatVisualViewport();
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }, 120);
+    });
+}
 const realtimeRoom = `chat:${productId}:${[<?= $currentUserId ?>, otherUserId].sort((a, b) => a - b).join(':')}`;
 let realtimeChannel = null;
 let pollIntervalId = null;
