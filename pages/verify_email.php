@@ -5,10 +5,11 @@
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
 
-if (($_GET['source'] ?? '') === 'supabase') {
+if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
     $tokenHash   = trim((string)($_GET['token_hash'] ?? ''));
-    $accessToken = trim((string)($_GET['access_token'] ?? ''));
-    $type        = trim((string)($_GET['type'] ?? 'email'));
+    $accessToken = trim((string)($_POST['access_token'] ?? $_GET['access_token'] ?? ''));
+    $refreshToken = trim((string)($_POST['refresh_token'] ?? ''));
+    $type        = trim((string)($_POST['type'] ?? $_GET['type'] ?? 'email'));
 
     // Password recovery links must go to the reset password page, not here.
     if ($type === 'recovery') {
@@ -84,7 +85,22 @@ if (($_GET['source'] ?? '') === 'supabase') {
                             if (type === 'recovery' || hash.includes('type=recovery')) {
                                 window.location.href = '<?php echo BASE_URL; ?>pages/reset_password' + hash;
                             } else {
-                                window.location.href = '<?php echo BASE_URL; ?>pages/verify_email?source=supabase&access_token=' + encodeURIComponent(accessToken) + '&type=' + encodeURIComponent(type || 'email');
+                                const form = document.createElement('form');
+                                form.method = 'POST';
+                                form.action = window.location.pathname + '?source=supabase';
+                                [
+                                    ['access_token', accessToken],
+                                    ['refresh_token', params.get('refresh_token') || ''],
+                                    ['type', type || 'email']
+                                ].forEach(function(entry) {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = entry[0];
+                                    input.value = entry[1];
+                                    form.appendChild(input);
+                                });
+                                document.body.appendChild(form);
+                                form.submit();
                             }
                             return;
                         }
@@ -170,6 +186,7 @@ if (($_GET['source'] ?? '') === 'supabase') {
             $_SESSION['username'] = $existingUser['username'];
             $_SESSION['user_email'] = $existingUser['email'];
             $_SESSION['supabase_access_token'] = $accessToken;
+            $_SESSION['supabase_refresh_token'] = $refreshToken;
             $_SESSION['posthog_event'] = ['name' => 'user_logged_in', 'properties' => ['method' => 'oauth']];
             setFlash('success', 'Welcome, ' . sanitize($existingUser['username']) . '!');
             redirect(BASE_URL);
@@ -287,5 +304,4 @@ try {
 
 setFlash('success', 'Email verified! You can now log in.');
 redirect(BASE_URL . 'pages/login.php?redirect=/pages/profile.php');
-
 
