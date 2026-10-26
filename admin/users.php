@@ -146,11 +146,54 @@ $totalUsersCount = count($allUsers);
 $verifiedUsersCount = count(array_filter($allUsers, fn($u) => !empty($u['is_verified'])));
 $unverifiedUsersCount = $totalUsersCount - $verifiedUsersCount;
 
-// Calculate Campus Distribution Stats (academic domains only)
+// Prefer an explicit profile affiliation; fall back to academic email domains for legacy accounts.
+$universitiesById = [];
+foreach (getAvailableUniversities($pdo) as $university) {
+    $universitiesById[(int)$university['id']] = $university;
+}
+$getUserCampus = static function (array $user) use ($universitiesById): array {
+    $universityId = (int)($user['university_id'] ?? 0);
+    if ($universityId > 0 && isset($universitiesById[$universityId])) {
+        $university = $universitiesById[$universityId];
+        $domain = strtolower(trim((string)$university['domain_pattern']));
+        return [
+            'code' => strtoupper((string)$university['slug']),
+            'name' => (string)$university['name'],
+            'domain' => $domain !== '' ? $domain : 'university:' . $universityId,
+            'color' => '#0284c7',
+            'bg' => 'rgba(2, 132, 199, 0.12)',
+            'is_campus' => true,
+            'source' => 'self_reported',
+        ];
+    }
+
+    $otherUniversityName = trim((string)($user['other_university_name'] ?? ''));
+    if ($otherUniversityName !== '') {
+        $normalizedName = preg_replace('/\s+/u', ' ', $otherUniversityName) ?: $otherUniversityName;
+        $normalizedName = function_exists('mb_strtolower')
+            ? mb_strtolower($normalizedName, 'UTF-8')
+            : strtolower($normalizedName);
+        return [
+            'code' => 'OTHER',
+            'name' => $otherUniversityName,
+            'domain' => 'other:' . $normalizedName,
+            'color' => '#0284c7',
+            'bg' => 'rgba(2, 132, 199, 0.12)',
+            'is_campus' => true,
+            'source' => 'self_reported',
+        ];
+    }
+
+    $campus = getUniversityInfoFromEmail($user['email'] ?? '');
+    $campus['source'] = 'email_domain';
+    return $campus;
+};
+
+// Calculate campus distribution from declared affiliations and academic email domains.
 $campusDistribution = [];
-$personalEmailCount = 0;
+$unaffiliatedUsersCount = 0;
 foreach ($allUsers as $u) {
-    $uInfo = getUniversityInfoFromEmail($u['email'] ?? '');
+    $uInfo = $getUserCampus($u);
     if (!empty($uInfo['is_campus'])) {
         $dKey = $uInfo['domain'];
         if (!isset($campusDistribution[$dKey])) {
@@ -165,7 +208,7 @@ foreach ($allUsers as $u) {
         }
         $campusDistribution[$dKey]['count']++;
     } else {
-        $personalEmailCount++;
+        $unaffiliatedUsersCount++;
     }
 }
 
@@ -175,7 +218,7 @@ uasort($campusDistribution, function ($a, $b) {
 });
 
 $campusesCount = count($campusDistribution);
-$academicUsersCount = $totalUsersCount - $personalEmailCount;
+$academicUsersCount = $totalUsersCount - $unaffiliatedUsersCount;
 $topCampus = !empty($campusDistribution) ? reset($campusDistribution) : null;
 $topCampusShare = ($academicUsersCount > 0 && $topCampus) ? round(($topCampus['count'] / $academicUsersCount) * 100) : 0;
 
@@ -185,11 +228,11 @@ $searchQuery = trim($_GET['q'] ?? '');
 
 $users = [];
 foreach ($allUsers as $u) {
-    $uInfo = getUniversityInfoFromEmail($u['email'] ?? '');
+    $uInfo = $getUserCampus($u);
     
     // Filter by Campus
     if ($selectedCampus !== '' && $selectedCampus !== 'all') {
-        if ($selectedCampus === 'non_campus') {
+        if ($selectedCampus === 'university_not_provided' || $selectedCampus === 'non_campus') {
             if (!empty($uInfo['is_campus'])) {
                 continue;
             }
@@ -222,11 +265,11 @@ include '../includes/header.php';
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <div class="badge" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600; box-shadow: var(--shadow-sm);">
-                🎓 <?php echo $campusesCount; ?> Campuses (<?php echo $academicUsersCount; ?> students)
+                🎓 <?php echo $campusesCount; ?> Universities (<?php echo $academicUsersCount; ?> users)
             </div>
-            <?php if ($personalEmailCount > 0): ?>
+            <?php if ($unaffiliatedUsersCount > 0): ?>
             <div class="badge" style="background: var(--bg-surface-2, #f1f5f9); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
-                ✉️ <?php echo $personalEmailCount; ?> Non-Campus
+                🏫 <?php echo $unaffiliatedUsersCount; ?> No University Provided
             </div>
             <?php endif; ?>
             <div class="badge" style="background: var(--primary-light); color: var(--primary); border: 1px solid rgba(var(--primary-rgb, 14, 165, 233), 0.25); font-size: 0.88rem; padding: 0.5rem 0.9rem; border-radius: var(--radius-lg); font-weight: 600;">
@@ -248,7 +291,7 @@ include '../includes/header.php';
             <div>
                 <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Campuses Represented</div>
                 <div style="font-size: 1.65rem; font-weight: 800; color: var(--text-main); line-height: 1.2;"><?php echo $campusesCount; ?></div>
-                <div style="font-size: 0.76rem; color: var(--text-muted);"><?php echo $academicUsersCount; ?> students across verified universities</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);"><?php echo $academicUsersCount; ?> users with a reported university or academic email</div>
             </div>
         </div>
 
@@ -275,7 +318,7 @@ include '../includes/header.php';
                 ⭐
             </div>
             <div>
-                <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Leading Campus</div>
+                <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Leading University</div>
                 <div style="font-size: 1.2rem; font-weight: 800; color: var(--text-main); line-height: 1.2;">
                     <?php echo $topCampus ? htmlspecialchars($topCampus['code']) : 'None'; ?>
                     <?php if ($topCampus): ?>
@@ -326,17 +369,17 @@ include '../includes/header.php';
                 </a>
             <?php endforeach; ?>
 
-            <?php if ($personalEmailCount > 0): ?>
+            <?php if ($unaffiliatedUsersCount > 0): ?>
                 <?php 
-                    $isNonCampusActive = $selectedCampus === 'non_campus';
-                    $ncPct = $totalUsersCount > 0 ? round(($personalEmailCount / $totalUsersCount) * 100) : 0;
+                    $isNonCampusActive = in_array($selectedCampus, ['university_not_provided', 'non_campus'], true);
+                    $ncPct = $totalUsersCount > 0 ? round(($unaffiliatedUsersCount / $totalUsersCount) * 100) : 0;
                 ?>
-                <a href="users.php?campus=non_campus<?php echo $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : ''; ?>"
-                   title="Users registered with personal / non-campus email domains (<?= $personalEmailCount ?> accounts)"
+                <a href="users.php?campus=university_not_provided<?php echo $searchQuery !== '' ? '&q=' . urlencode($searchQuery) : ''; ?>"
+                   title="Users who have not provided a university and do not have a recognized academic email domain (<?= $unaffiliatedUsersCount ?> accounts)"
                    style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0.85rem; border-radius: var(--radius-full); font-size: 0.82rem; font-weight: 600; transition: transform 0.15s ease; <?php echo $isNonCampusActive ? 'background: #475569; color: #ffffff; box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3);' : 'background: var(--bg-surface-2, #f1f5f9); color: var(--text-muted); border: 1px solid var(--border-light);'; ?>">
-                    <span>✉️ Non-Campus</span>
+                    <span>🏫 No university provided</span>
                     <span style="font-size: 0.75rem; padding: 0.1rem 0.45rem; border-radius: var(--radius-full); <?php echo $isNonCampusActive ? 'background: rgba(255,255,255,0.25); color: #fff;' : 'background: #cbd5e1; color: #334155;'; ?>">
-                        <?php echo $personalEmailCount; ?>
+                        <?php echo $unaffiliatedUsersCount; ?>
                     </span>
                     <span style="font-size: 0.72rem; opacity: 0.85; font-weight: 500;">(<?php echo $ncPct; ?>%)</span>
                 </a>
@@ -355,9 +398,9 @@ include '../includes/header.php';
                         <?php echo htmlspecialchars($cStat['code']); ?> — <?php echo htmlspecialchars($cStat['name']); ?> (<?php echo $cStat['count']; ?>)
                     </option>
                 <?php endforeach; ?>
-                <?php if ($personalEmailCount > 0): ?>
-                    <option value="non_campus" <?php echo $selectedCampus === 'non_campus' ? 'selected' : ''; ?>>
-                        ✉️ Non-Campus (Personal Emails) (<?php echo $personalEmailCount; ?>)
+                <?php if ($unaffiliatedUsersCount > 0): ?>
+                    <option value="university_not_provided" <?php echo in_array($selectedCampus, ['university_not_provided', 'non_campus'], true) ? 'selected' : ''; ?>>
+                        No university provided (<?php echo $unaffiliatedUsersCount; ?>)
                     </option>
                 <?php endif; ?>
             </select>
@@ -378,7 +421,7 @@ include '../includes/header.php';
             <div>
                 Showing <strong><?php echo count($users); ?></strong> of <strong><?php echo $totalUsersCount; ?></strong> user<?php echo $totalUsersCount != 1 ? 's' : ''; ?>
                 <?php if ($selectedCampus !== ''): ?>
-                    matching <?php echo $selectedCampus === 'non_campus' ? '<strong>Non-Campus (Personal Emails)</strong>' : 'campus <strong>' . htmlspecialchars($selectedCampus) . '</strong>'; ?>
+                    matching <?php echo in_array($selectedCampus, ['university_not_provided', 'non_campus'], true) ? '<strong>No university provided</strong>' : 'university <strong>' . htmlspecialchars($selectedCampus) . '</strong>'; ?>
                 <?php endif; ?>
                 <?php if ($searchQuery !== ''): ?>
                     matching "<strong><?php echo htmlspecialchars($searchQuery); ?></strong>"
@@ -404,7 +447,7 @@ include '../includes/header.php';
             <tbody>
                 <?php foreach ($users as $u): ?>
                     <?php 
-                        $uCampus = getUniversityInfoFromEmail($u['email'] ?? '');
+                        $uCampus = $getUserCampus($u);
                     ?>
                     <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
@@ -428,14 +471,14 @@ include '../includes/header.php';
                                     <span style="font-size: 0.72rem; color: var(--text-muted); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($uCampus['name']); ?>">
                                         <?php echo htmlspecialchars($uCampus['name']); ?>
                                     </span>
+                                    <span style="font-size: 0.68rem; color: var(--text-muted);">
+                                        <?= ($uCampus['source'] ?? '') === 'self_reported' ? 'Self-reported' : 'Matched from email domain' ?>
+                                    </span>
                                 </a>
                             <?php else: ?>
                                 <div style="display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;">
                                     <span class="badge" style="background: var(--bg-surface-2, #f1f5f9); color: var(--text-muted); border: 1px solid var(--border-light); font-weight: 600; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm);">
-                                        ✉️ Non-Campus (<?= htmlspecialchars($uCampus['code'] ?? 'Personal') ?>)
-                                    </span>
-                                    <span style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.85;">
-                                        <?= htmlspecialchars($uCampus['domain'] ?? '') ?>
+                                        🏫 No university provided
                                     </span>
                                 </div>
                             <?php endif; ?>
