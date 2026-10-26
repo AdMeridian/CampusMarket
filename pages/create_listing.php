@@ -509,7 +509,7 @@ include '../includes/header.php';
                     <div id="ai-assist-bar" style="display:none; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--primary-light); border: 1px solid rgba(99,102,241,0.25); font-size: 0.8rem; color: var(--primary); align-items: center; gap: 0.5rem;">
                         <svg id="ai-assist-spinner" style="width:13px;height:13px;display:none;animation:spin 1s linear infinite;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
                         <svg id="ai-assist-star" style="width:13px;height:13px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <span id="ai-assist-msg">AI is filling in categories, tags &amp; condition&hellip;</span>
+                        <span id="ai-assist-msg">AI is filling in categories &amp; tags&hellip;</span>
                         <button type="button" id="ai-assist-dismiss" style="margin-left:auto;background:none;border:none;color:var(--primary);font-size:1rem;line-height:1;cursor:pointer;opacity:0.6;padding:0;" title="Dismiss">&times;</button>
                     </div>
                 </div>
@@ -1417,18 +1417,12 @@ document.addEventListener('DOMContentLoaded', function () {
         return applied;
     }
 
-    function applyCondition(condition) {
-        if (!condition) return;
-        var radio = document.querySelector('input[name="condition"][value="' + condition + '"]');
-        if (radio) radio.checked = true;
-    }
-
     function runAssist(title) {
         if (title.length < 3) return;
         if (title === lastAssistedTitle) return;
         lastAssistedTitle = title;
 
-        setAssistState('loading', 'AI is filling in categories, tags & condition\u2026');
+        setAssistState('loading', 'AI is filling in categories & tags\u2026');
 
         var fd = new FormData();
         fd.append('action',     'all');
@@ -1454,12 +1448,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 applyCategories(data.category_ids || []);
                 var tagCount = applyTags(data.tag_ids || []);
-                applyCondition(data.condition);
 
                 var parts = [];
                 if ((data.category_ids || []).length) parts.push((data.category_ids.length) + ' categor' + (data.category_ids.length > 1 ? 'ies' : 'y'));
                 if (tagCount)                        parts.push(tagCount + ' tag' + (tagCount > 1 ? 's' : ''));
-                if (data.condition)                  parts.push('condition set to ' + data.condition.replace('_', ' '));
 
                 var summary = parts.length ? '\u2713 AI suggested ' + parts.join(', ') + ' \u2014 adjust freely.' : 'AI ran but found no strong matches.';
                 setAssistState('done', summary);

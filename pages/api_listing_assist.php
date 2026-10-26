@@ -4,7 +4,6 @@
 // Given a listing title (and optional description), returns:
 //   - suggested category_ids  (auto-matched from DB)
 //   - suggested tag_ids        (auto-matched from DB)
-//   - suggested condition      ("new" | "like_new" | "used")
 //   - generated description    (short campus-style selling copy)
 // Requires: POST, active login, valid CSRF token.
 
@@ -41,7 +40,6 @@ if (strlen($title) < 2) {
     echo json_encode([
         'category_ids' => [],
         'tag_ids'      => [],
-        'condition'    => '',
         'description'  => '',
         'note'         => 'Title too short.',
     ]);
@@ -68,13 +66,11 @@ $prompt =
     . "Tasks:\n"
     . "1. Select the best matching categories from the list above. Only pick ones that genuinely fit.\n"
     . "2. Select 3-5 tags from the list above that best describe the item.\n"
-    . "3. Determine the most likely condition: 'new', 'like_new', or 'used'.\n"
-    . "4. Write a short, honest, friendly selling description for this campus item (2-3 sentences, max 200 characters). "
-    . "   Focus on what the item is, its condition, and why a student might want it. No marketing fluff. No pricing.\n\n"
+    . "3. Write a short, honest, friendly selling description for this campus item (2-3 sentences, max 200 characters). "
+    . "   Focus on what the item is and why a student might want it. No marketing fluff. No pricing.\n\n"
     . "Return ONLY JSON with these exact keys:\n"
     . "  categories: array of strings (exact names from the list above)\n"
     . "  tags:       array of strings (exact names from the list above)\n"
-    . "  condition:  string ('new', 'like_new', or 'used')\n"
     . "  description: string\n";
 
 function listingAssistEnv(string $key): ?string {
@@ -174,7 +170,6 @@ if ($aiResult === null) {
     echo json_encode([
         'category_ids' => [],
         'tag_ids'      => [],
-        'condition'    => '',
         'description'  => '',
         'note'         => 'AI unavailable - please fill in manually.',
     ]);
@@ -225,17 +220,12 @@ foreach ($masterTags as $tag) {
 }
 $matchedTagIds = array_values(array_unique(array_slice($matchedTagIds, 0, 5)));
 
-// Normalise condition
-$conditionRaw = strtolower(trim((string)($aiResult['condition'] ?? '')));
-$condition    = in_array($conditionRaw, ['new', 'like_new', 'used'], true) ? $conditionRaw : 'used';
-
 // Clean description
 $generatedDesc = trim((string)($aiResult['description'] ?? ''));
 
 echo json_encode([
     'category_ids' => $matchedCatIds,
     'tag_ids'      => $matchedTagIds,
-    'condition'    => $condition,
     'description'  => $generatedDesc,
     'note'         => '',
 ]);
