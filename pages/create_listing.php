@@ -432,7 +432,13 @@ include '../includes/header.php';
 
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
-                    <input type="text" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <input type="text" id="titleInput" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                    <div id="ai-assist-bar" style="display:none; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--primary-light); border: 1px solid rgba(99,102,241,0.25); font-size: 0.8rem; color: var(--primary); align-items: center; gap: 0.5rem;">
+                        <svg id="ai-assist-spinner" style="width:13px;height:13px;display:none;animation:spin 1s linear infinite;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+                        <svg id="ai-assist-star" style="width:13px;height:13px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <span id="ai-assist-msg">AI is filling in categories &amp; tags&hellip;</span>
+                        <button type="button" id="ai-assist-dismiss" style="margin-left:auto;background:none;border:none;color:var(--primary);font-size:1rem;line-height:1;cursor:pointer;opacity:0.6;padding:0;" title="Dismiss">&times;</button>
+                    </div>
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -508,8 +514,16 @@ include '../includes/header.php';
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
-                    <textarea name="description" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                    <div class="flex items-center justify-between mb-2" style="flex-wrap: wrap; gap: 0.5rem;">
+                        <label class="font-bold" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
+                        <button type="button" id="aiDescBtn"
+                            style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.9rem; border-radius: var(--radius-lg); border: 1px solid var(--primary); background: var(--primary-light); color: var(--primary); font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: var(--transition);">
+                            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            Write description
+                        </button>
+                    </div>
+                    <div id="ai-desc-status" style="font-size: 0.78rem; color: var(--text-muted); min-height: 1.1em; margin-bottom: 0.4rem;"></div>
+                    <textarea name="description" id="descriptionTextarea" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                 </div>
 
                 <?php if (isAgent()): ?>
@@ -1181,6 +1195,203 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+// ── AI Listing Assistant ──────────────────────────────────────
+(function () {
+    var titleInput    = document.getElementById('titleInput');
+    var assistBar     = document.getElementById('ai-assist-bar');
+    var assistMsg     = document.getElementById('ai-assist-msg');
+    var assistSpinner = document.getElementById('ai-assist-spinner');
+    var assistStar    = document.getElementById('ai-assist-star');
+    var dismissBtn    = document.getElementById('ai-assist-dismiss');
+    var descBtn       = document.getElementById('aiDescBtn');
+    var descStatus    = document.getElementById('ai-desc-status');
+    var descTextarea  = document.getElementById('descriptionTextarea');
+
+    if (!titleInput) return;
+
+    var debounceTimer  = null;
+    var lastAssistedTitle = '';
+    var MAX_TAG_PILLS  = 5;
+    var csrfToken      = function () { return document.querySelector('input[name="csrf_token"]')?.value || ''; };
+
+    function setAssistState(state, msg) {
+        // state: 'hidden' | 'loading' | 'done' | 'error'
+        assistBar.style.display = (state === 'hidden') ? 'none' : 'flex';
+        assistMsg.textContent   = msg || '';
+        assistSpinner.style.display = (state === 'loading') ? 'inline-block' : 'none';
+        assistStar.style.display    = (state !== 'loading') ? 'inline-block' : 'none';
+        if (state === 'error') {
+            assistBar.style.background = 'rgba(239,68,68,0.08)';
+            assistBar.style.borderColor = 'rgba(239,68,68,0.3)';
+            assistMsg.style.color = '#dc2626';
+            assistStar.style.color = '#dc2626';
+        } else {
+            assistBar.style.background = '';
+            assistBar.style.borderColor = '';
+            assistMsg.style.color = '';
+            assistStar.style.color = '';
+        }
+    }
+
+    function applyCategories(catIds) {
+        var checkboxes = document.querySelectorAll('input[name="category_ids[]"]');
+        checkboxes.forEach(function (cb) {
+            var id = parseInt(cb.value, 10);
+            if (catIds.indexOf(id) !== -1) {
+                cb.checked = true;
+                // Subtle flash on the parent label
+                var lbl = cb.closest('label');
+                if (lbl) {
+                    lbl.style.transition = 'background 0.3s ease';
+                    lbl.style.background = 'color-mix(in srgb, var(--primary) 12%, var(--bg-surface))';
+                    setTimeout(function () { lbl.style.background = ''; }, 800);
+                }
+            }
+        });
+    }
+
+    function applyTags(tagIds) {
+        var applied  = 0;
+        var occupied = document.querySelectorAll('.tag-pill-check:checked').length;
+        var slots    = MAX_TAG_PILLS - occupied;
+
+        tagIds.forEach(function (id) {
+            if (slots <= 0) return;
+            var chk   = document.getElementById('tag-' + id);
+            var label = chk && chk.nextElementSibling;
+            if (chk && !chk.checked) {
+                chk.checked = true;
+                if (label) {
+                    label.classList.add('ai-suggested');
+                    setTimeout(function () { label.classList.remove('ai-suggested'); }, 400);
+                }
+                applied++;
+                slots--;
+            }
+        });
+        return applied;
+    }
+
+    function runAssist(title) {
+        if (title.length < 3) return;
+        if (title === lastAssistedTitle) return;
+        lastAssistedTitle = title;
+
+        setAssistState('loading', 'AI is filling in categories & tags\u2026');
+
+        var fd = new FormData();
+        fd.append('action',     'all');
+        fd.append('title',      title);
+        fd.append('csrf_token', csrfToken());
+
+        fetch('api_listing_assist.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.text().then(function (txt) {
+                        console.error('[AI Assist] HTTP ' + r.status + ':', txt.substring(0, 400));
+                        throw new Error('HTTP ' + r.status);
+                    });
+                }
+                return r.json();
+            })
+            .then(function (data) {
+                if (data.error) {
+                    console.error('[AI Assist] API error:', data.error);
+                    setAssistState('error', 'AI unavailable \u2014 fill in manually.');
+                    return;
+                }
+
+                applyCategories(data.category_ids || []);
+                var tagCount = applyTags(data.tag_ids || []);
+
+                var parts = [];
+                if ((data.category_ids || []).length) parts.push((data.category_ids.length) + ' categor' + (data.category_ids.length > 1 ? 'ies' : 'y'));
+                if (tagCount)                        parts.push(tagCount + ' tag' + (tagCount > 1 ? 's' : ''));
+
+                var summary = parts.length ? '\u2713 AI suggested ' + parts.join(', ') + ' \u2014 adjust freely.' : 'AI ran but found no strong matches.';
+                setAssistState('done', summary);
+            })
+            .catch(function () {
+                setAssistState('error', 'Network error \u2014 please fill in manually.');
+            });
+    }
+
+    // Debounced title listener
+    titleInput.addEventListener('input', function () {
+        var title = titleInput.value.trim();
+        clearTimeout(debounceTimer);
+        if (title.length < 3) {
+            setAssistState('hidden', '');
+            return;
+        }
+        debounceTimer = setTimeout(function () {
+            runAssist(title);
+        }, 1500);
+    });
+
+    // Dismiss bar
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', function () {
+            setAssistState('hidden', '');
+        });
+    }
+
+    // ── Description generator ─────────────────────────────────
+    if (descBtn && descTextarea) {
+        descBtn.addEventListener('click', function () {
+            var title = titleInput ? titleInput.value.trim() : '';
+            if (title.length < 3) {
+                descStatus.textContent = 'Add a title first so the AI has something to write about.';
+                descStatus.style.color = '#d97706';
+                return;
+            }
+
+            descBtn.disabled = true;
+            descBtn.innerHTML = '<svg style="width:14px;height:14px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Writing\u2026';
+            descStatus.textContent = 'AI is writing a description\u2026';
+            descStatus.style.color = 'var(--primary)';
+
+            var fd = new FormData();
+            fd.append('action',     'all');
+            fd.append('title',      title);
+            fd.append('csrf_token', csrfToken());
+
+            fetch('api_listing_assist.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) {
+                        return r.text().then(function (txt) {
+                            console.error('[AI Desc] HTTP ' + r.status + ':', txt.substring(0, 400));
+                            throw new Error('HTTP ' + r.status);
+                        });
+                    }
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (data.description) {
+                        descTextarea.value  = data.description;
+                        descStatus.textContent = '\u2713 Description written by AI \u2014 edit it freely.';
+                        descStatus.style.color = 'var(--success, #059669)';
+                        descTextarea.focus();
+                        descTextarea.style.transition = 'box-shadow 0.3s ease';
+                        descTextarea.style.boxShadow  = '0 0 0 3px rgba(99,102,241,0.2)';
+                        setTimeout(function () { descTextarea.style.boxShadow = ''; }, 900);
+                    } else {
+                        descStatus.textContent = 'AI did not return a description \u2014 write it yourself.';
+                        descStatus.style.color = '#d97706';
+                    }
+                })
+                .catch(function () {
+                    descStatus.textContent = 'Network error \u2014 please write the description manually.';
+                    descStatus.style.color = '#dc2626';
+                })
+                .finally(function () {
+                    descBtn.disabled = false;
+                    descBtn.innerHTML = '<svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Write description';
+                });
+        });
+    }
+})();
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

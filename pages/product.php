@@ -930,99 +930,243 @@ body.dark-mode .scc-badge {
     background: var(--primary-light);
 }
 
-.cm-share-menu {
+/* ── Listing Share Modal ───────────────────────── */
+.cm-share-modal-overlay {
     position: fixed;
     inset: 0;
-    z-index: 1300;
-    pointer-events: none;
+    z-index: 2000;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
 }
-
-.cm-share-menu.is-open {
-    pointer-events: auto;
+.cm-share-modal-overlay.is-open {
     opacity: 1;
+    pointer-events: auto;
 }
-
-.cm-share-menu__panel {
-    position: fixed;
-    width: min(300px, calc(100vw - 24px));
-    max-height: min(70vh, 520px);
+.cm-share-modal {
     background: var(--bg-surface);
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 440px;
+    max-height: 85vh;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.96) translateY(8px);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.cm-share-menu__body {
-    overflow-y: auto;
-    padding: 0.35rem 0.35rem 0.5rem;
+.cm-share-modal-overlay.is-open .cm-share-modal {
+    transform: scale(1) translateY(0);
 }
-
-.cm-share-menu__section + .cm-share-menu__section {
-    margin-top: 0.35rem;
-    padding-top: 0.35rem;
-    border-top: 1px solid var(--border-light);
-}
-
-.cm-share-menu__section-title {
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 0.35rem 0.85rem 0.15rem;
-}
-
-.cm-share-menu__section-hint {
-    margin: 0 0.85rem 0.35rem;
-    font-size: 0.78rem;
-    line-height: 1.4;
-    color: var(--text-light);
-}
-
-.cm-share-menu__head {
+.cm-share-modal__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
+    padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border-light);
 }
-
-.cm-share-menu__close {
+.cm-share-modal__title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+}
+.cm-share-modal__close {
     background: none;
     border: none;
-    font-size: 1.35rem;
+    font-size: 1.5rem;
     line-height: 1;
-    cursor: pointer;
     color: var(--text-muted);
-}
-
-.cm-share-menu__list {
-    display: flex;
-    flex-direction: column;
-    padding: 0.35rem;
-}
-
-.cm-share-menu__item {
-    width: 100%;
-    text-align: left;
-    border: none;
-    background: transparent;
-    padding: 0.75rem 0.85rem;
-    border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: 600;
+    padding: 0.2rem;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease;
+}
+.cm-share-modal__close:hover {
     color: var(--text-main);
 }
-
-.cm-share-menu__item:hover {
+.cm-share-modal__product-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1.25rem;
     background: var(--bg-main);
+    border-bottom: 1px solid var(--border-light);
+}
+.cm-share-modal__product-img {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+}
+.cm-share-modal__product-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.cm-share-modal__product-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cm-share-modal__product-price {
+    font-size: 0.9rem;
+    font-weight: 800;
     color: var(--primary);
+    margin-top: 2px;
+}
+.cm-share-modal__body {
+    overflow-y: auto;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+}
+.cm-share-modal__section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--text-main);
+    margin-bottom: 0.65rem;
+}
+.cm-share-search-input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    box-sizing: border-box;
+}
+.cm-share-search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+.cm-share-user-list {
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 0.35rem;
+    background: var(--bg-surface);
+}
+.cm-share-user-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border: 1px solid transparent;
+}
+.cm-share-user-item:hover {
+    background: var(--bg-main);
+}
+.cm-share-user-item.is-selected {
+    background: var(--primary-light);
+    border-color: var(--primary);
+}
+.cm-share-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-main);
+}
+.cm-share-user-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.cm-share-user-info strong {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+.cm-share-user-info span {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+.cm-share-note-input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    outline: none;
+    box-sizing: border-box;
+    resize: none;
+}
+.cm-share-note-input:focus {
+    border-color: var(--primary);
+}
+.cm-share-quick-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.cm-share-quick-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.cm-share-quick-btn:hover {
+    background: var(--bg-main);
+    border-color: var(--text-muted);
+}
+.cm-share-guest-notice {
+    padding: 1rem;
+    background: var(--bg-main);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+.cm-share-guest-notice p {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+.cm-share-success-box {
+    padding: 0.85rem 1rem;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-md);
 }
 
 .cm-share-toast {
@@ -1182,6 +1326,8 @@ body.dark-mode .scc-badge {
                         data-title="<?php echo htmlspecialchars($product['title'], ENT_QUOTES, 'UTF-8'); ?>"
                         data-text="<?php echo htmlspecialchars($shareText, ENT_QUOTES, 'UTF-8'); ?>"
                         data-url="<?php echo htmlspecialchars($sharePageUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-image="<?php echo htmlspecialchars(!empty($images) ? getProductImage($images[0]['image_path']) : (rtrim(BASE_URL, '/') . '/public/images/logo.png'), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-price="<?php echo htmlspecialchars(($product['price_currency'] === 'USD' ? '$' : ($product['price_currency'] === 'EUR' ? '€' : ($product['price_currency'] === 'GBP' ? '£' : '₺'))) . number_format($product['price'], 2), ENT_QUOTES, 'UTF-8'); ?>"
                         data-copied-label="<?php echo htmlspecialchars(__('product.share_link_copied'), ENT_QUOTES, 'UTF-8'); ?>"
                         aria-label="<?= htmlspecialchars(__('product.share_listing')) ?>"
                     >
