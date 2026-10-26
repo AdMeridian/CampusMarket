@@ -276,6 +276,7 @@ if (!function_exists('ensureProviderProfilesTable')) {
             );
             $pdo->exec("CREATE INDEX IF NOT EXISTS idx_provider_profiles_user ON public.provider_profiles(user_id)");
             $pdo->exec("CREATE INDEX IF NOT EXISTS idx_provider_profiles_status ON public.provider_profiles(enrollment_status)");
+            $pdo->exec("ALTER TABLE public.provider_profiles ENABLE ROW LEVEL SECURITY");
             return;
         }
 
