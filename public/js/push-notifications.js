@@ -250,7 +250,18 @@
       return;
     }
 
-    if (!global.__promptPush) {
+    // If permission was already granted, ensure an active subscription exists on the server
+    if (global.Notification && Notification.permission === 'granted') {
+      hasActiveSubscription().then(function (subscribed) {
+        if (!subscribed) {
+          subscribe({ silent: true });
+        }
+      });
+      return;
+    }
+
+    // In standalone PWA mode or when prompted on login:
+    if (!global.__promptPush && !isStandalonePwa()) {
       return;
     }
 
