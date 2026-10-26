@@ -3131,10 +3131,10 @@ body {
 }
 
 /* Active conversation — messenger-style layout */
+html.page-chat,
 body.page-chat {
   overflow: hidden;
-  height: 100dvh;
-  min-height: 100dvh;
+  height: 100%;
   padding-bottom: 0 !important;
 }
 
@@ -3160,7 +3160,7 @@ body.page-chat .chat-page-shell {
 }
 
 body.page-chat .chat-thread-panel {
-  flex: 1 1 0%;
+  flex: 1 1 0px;
   min-height: 0;
   height: 100%;
   display: flex;
@@ -3968,13 +3968,16 @@ body.page-chat .chat-send-btn {
 
 @media (max-width: 1023px) {
   /* Complete screen lockdown for WhatsApp-like messaging experience */
+  html.page-chat,
   body.page-chat {
     position: fixed !important;
-    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     width: 100% !important;
-    height: 100dvh !important;
-    min-height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
@@ -3988,13 +3991,16 @@ body.page-chat .chat-send-btn {
 
   body.page-chat .chat-page-shell {
     position: fixed;
-    inset: 0;
+    top: var(--cm-chat-top, 0px);
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     max-width: none;
     padding: 0;
     margin: 0;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: var(--cm-chat-height, 100%);
+    max-height: var(--cm-chat-height, 100%);
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -4006,9 +4012,10 @@ body.page-chat .chat-send-btn {
     border-radius: 0;
     border: none;
     box-shadow: none;
+    width: 100%;
     height: 100%;
     max-height: 100%;
-    flex: 1 1 0%;
+    flex: 1 1 0px;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -4020,19 +4027,28 @@ body.page-chat .chat-send-btn {
     padding-top: max(0.65rem, env(safe-area-inset-top));
     padding-left: max(0.75rem, env(safe-area-inset-left));
     padding-right: max(0.75rem, env(safe-area-inset-right));
+    flex: 0 0 auto;
     flex-shrink: 0;
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 20;
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-light);
   }
 
+  body.page-chat .chat-product-strip,
+  body.page-chat .chat-context-strip,
+  body.page-chat .chat-deal-banner-wrapper,
+  body.page-chat .chat-action-bar,
+  body.page-chat .chat-reply-preview {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+  }
+
   /* Chat window is the ONLY scrollable area — smooth physics, zero outer page bounce */
   body.page-chat .chat-messages,
   body.page-chat #chat-box {
-    flex: 1 1 0%;
-    min-height: 0;
+    flex: 1 1 0px !important;
+    min-height: 0 !important;
     max-height: none;
     overflow-y: auto;
     overscroll-behavior-y: contain;
@@ -4044,9 +4060,9 @@ body.page-chat .chat-send-btn {
 
   /* Chat input is permanently docked at the bottom */
   body.page-chat .chat-input-bar {
+    flex: 0 0 auto;
     flex-shrink: 0;
-    position: sticky;
-    bottom: 0;
+    position: relative;
     z-index: 20;
     background: var(--bg-surface);
     border-top: 1px solid var(--border-light);
