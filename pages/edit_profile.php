@@ -5,6 +5,7 @@
 
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/functions_member2.php';
 
 requireLogin();
 
@@ -18,11 +19,11 @@ $uid = (int) currentUserId();
 
 // Load current user (support older local schemas that may not yet have preferred_language).
 try {
-    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language, home_town, custom_home_town FROM users WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language, home_town, custom_home_town, university_id, other_university_name FROM users WHERE id = :id');
     $stmt->execute([':id' => $uid]);
     $user = $stmt->fetch();
 } catch (PDOException $e) {
-    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar FROM users WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, university_id, other_university_name FROM users WHERE id = :id');
     $stmt->execute([':id' => $uid]);
     $user = $stmt->fetch();
     if ($user) {
@@ -30,6 +31,7 @@ try {
         $user['home_town'] = null;
     }
 }
+$availableUniversities = getNorthernCyprusUniversities($pdo);
 
 if (!$user) {
     // Session points at a user that no longer exists — nuke it.
@@ -49,6 +51,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $preferredLanguage = trim($_POST['preferred_language'] ?? '');
     $homeTown = strtolower(trim((string)($_POST['home_town'] ?? '')));
     $customHomeTown = trim(sanitize($_POST['custom_home_town'] ?? ''));
+    $universitySelection = trim((string)($_POST['university_id'] ?? ''));
+    $otherUniversityName = trim((string)($_POST['other_university_name'] ?? ''));
+    $universityId = null;
+    if ($universitySelection === 'other') {
+        if (!preg_match('/\A.{1,200}\z/us', $otherUniversityName)) {
+            $errors['university'] = __('profile.university_other_required');
+        }
+    } elseif ($universitySelection !== '') {
+        $validUniversityIds = array_map('intval', array_column($availableUniversities, 'id'));
+        if (!ctype_digit($universitySelection) || !in_array((int)$universitySelection, $validUniversityIds, true)) {
+            $errors['university'] = __('profile.university_invalid');
+        } else {
+            $universityId = (int)$universitySelection;
+        }
+        $otherUniversityName = '';
+    } else {
+        $otherUniversityName = '';
+    }
     if ($homeTown !== '' && !isValidLocationTown($homeTown)) {
         $homeTown = '';
     }
@@ -115,7 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, avatar = :a, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town
+                    SET username = :u, phone = :p, avatar = :a, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town,
+                        university_id = :university_id, other_university_name = :other_university_name
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -125,18 +146,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':lang' => $preferredLanguage,
                     ':town' => $homeTown !== '' ? $homeTown : null,
                     ':custom_town' => ($homeTown === 'other' && $customHomeTown !== '') ? $customHomeTown : null,
+                    ':university_id' => $universityId,
+                    ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, avatar = :a
+                    SET username = :u, phone = :p, avatar = :a, university_id = :university_id, other_university_name = :other_university_name
                     WHERE id = :id
                 ');
                 $upd->execute([
                     ':u'  => $username,
                     ':p'  => $phone !== '' ? $phone : null,
                     ':a'  => $newAvatar,
+                    ':university_id' => $universityId,
+                    ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
                     ':id' => $uid,
                 ]);
             }
@@ -144,7 +169,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town
+                    SET username = :u, phone = :p, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town,
+                        university_id = :university_id, other_university_name = :other_university_name
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -153,17 +179,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':lang' => $preferredLanguage,
                     ':town' => $homeTown !== '' ? $homeTown : null,
                     ':custom_town' => ($homeTown === 'other' && $customHomeTown !== '') ? $customHomeTown : null,
+                    ':university_id' => $universityId,
+                    ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p
+                    SET username = :u, phone = :p, university_id = :university_id, other_university_name = :other_university_name
                     WHERE id = :id
                 ');
                 $upd->execute([
                     ':u'  => $username,
                     ':p'  => $phone !== '' ? $phone : null,
+                    ':university_id' => $universityId,
+                    ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
                     ':id' => $uid,
                 ]);
             }
@@ -184,6 +214,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user['preferred_language'] = $preferredLanguage;
     $user['home_town'] = $homeTown !== '' ? $homeTown : null;
     $user['custom_home_town'] = $customHomeTown !== '' ? $customHomeTown : null;
+    $user['university_id'] = $universityId;
+    $user['other_university_name'] = $universitySelection === 'other' ? $otherUniversityName : null;
 }
 
 $pageTitle = __('profile.edit_title');
@@ -288,6 +320,36 @@ require_once '../includes/header.php';
                         <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['home_town']); ?></div>
                     <?php endif; ?>
                     <div class="text-muted small mt-2"><?= __('profile.home_town_note') ?></div>
+                </div>
+
+                <div>
+                    <label for="university_id" class="form-label font-bold"><?= __('profile.university_attended') ?></label>
+                    <?php
+                    $selectedUniversity = !empty($user['other_university_name'])
+                        ? 'other'
+                        : (string)($user['university_id'] ?? '');
+                    ?>
+                    <select id="university_id" name="university_id" class="form-control premium-input" style="background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border-light); padding: 0.75rem; border-radius: var(--radius-md);">
+                        <option value=""><?= __('profile.university_not_provided') ?></option>
+                        <?php foreach ($availableUniversities as $university): ?>
+                            <option value="<?= (int)$university['id'] ?>" <?= $selectedUniversity === (string)$university['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($university['name'] . (!empty($university['city']) ? ' — ' . $university['city'] : ''), ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
+                        <option value="other" <?= $selectedUniversity === 'other' ? 'selected' : '' ?>><?= __('profile.university_other') ?></option>
+                    </select>
+                    <div id="other_university_container" class="mt-3" style="<?= $selectedUniversity === 'other' ? '' : 'display: none;' ?>">
+                        <label for="other_university_name" class="form-label font-bold text-sm"><?= __('profile.university_other') ?></label>
+                        <input type="text" id="other_university_name" name="other_university_name"
+                               value="<?= htmlspecialchars((string)($user['other_university_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                               maxlength="200" placeholder="<?= htmlspecialchars(__('profile.university_other_placeholder'), ENT_QUOTES, 'UTF-8') ?>"
+                               class="form-control premium-input">
+                    </div>
+                    <?php if (isset($errors['university'])): ?>
+                        <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?= sanitize($errors['university']) ?></div>
+                    <?php else: ?>
+                        <div class="text-muted small mt-2"><?= __('profile.university_public_note') ?></div>
+                    <?php endif; ?>
                 </div>
 
                 <div>
@@ -399,6 +461,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         homeTownSelect.addEventListener('change', updateCustomHomeTownVisibility);
         updateCustomHomeTownVisibility();
+    }
+
+    const universitySelect = document.getElementById('university_id');
+    const otherUniversityContainer = document.getElementById('other_university_container');
+    const otherUniversityName = document.getElementById('other_university_name');
+    if (universitySelect && otherUniversityContainer) {
+        function updateOtherUniversityVisibility() {
+            otherUniversityContainer.style.display = universitySelect.value === 'other' ? 'block' : 'none';
+            if (otherUniversityName) {
+                otherUniversityName.required = universitySelect.value === 'other';
+            }
+        }
+        universitySelect.addEventListener('change', updateOtherUniversityVisibility);
+        updateOtherUniversityVisibility();
     }
 });
 </script>

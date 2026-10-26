@@ -25,7 +25,7 @@ if (!function_exists('seoDefaultDescription')) {
     function seoDefaultDescription(): string {
         return function_exists('__')
             ? __('seo.default_description')
-            : 'Buy and sell used items with verified students and staff on North Cyprus university campuses.';
+            : 'Buy and sell used items with the North Cyprus campus community.';
     }
 }
 

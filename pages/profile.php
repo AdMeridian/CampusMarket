@@ -1,6 +1,7 @@
 <?php
 // pages/profile.php
 require_once '../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/functions_member2.php';
 
 // Decide which profile to show
 $viewId = isset($_GET['id']) ? (int)$_GET['id'] : (int)(currentUserId() ?? 0);
@@ -18,11 +19,11 @@ if (isAdmin() && $viewId === (int)currentUserId()) {
 
 // Fetch User (support older local schemas that may not yet have preferred_language)
 try {
-    $stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, preferred_language, created_at FROM users WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, preferred_language, is_verified, university_id, other_university_name, created_at FROM users WHERE id = :id");
     $stmt->execute([':id' => $viewId]);
     $user = $stmt->fetch();
 } catch (PDOException $e) {
-    $stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, created_at FROM users WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT id, username, email, role, phone, avatar, is_verified, university_id, other_university_name, created_at FROM users WHERE id = :id");
     $stmt->execute([':id' => $viewId]);
     $user = $stmt->fetch();
     if ($user) {
@@ -35,6 +36,16 @@ if (!$user) {
     echo '<div class="container mt-24 text-center text-muted"><div class="mb-4 opacity-50 flex justify-center"><svg style="width: 64px; height: 64px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div><h2>User not found</h2><p>This user does not exist or has been deleted.</p><a href="' . BASE_URL . '/" class="btn btn-primary mt-4 hover-scale shadow-sm" style="border-radius: var(--radius-lg);">Back Home</a></div>';
     include '../includes/footer.php';
     exit;
+}
+
+$universityName = trim((string)($user['other_university_name'] ?? ''));
+if ($universityName === '' && !empty($user['university_id'])) {
+    foreach (getAvailableUniversities($pdo) as $university) {
+        if ((int)$university['id'] === (int)$user['university_id']) {
+            $universityName = (string)$university['name'];
+            break;
+        }
+    }
 }
 
 $isSelf  = isLoggedIn() && (int)currentUserId() === (int)$user['id'];
@@ -749,13 +760,15 @@ body.dark-mode .btn-white-solid:hover {
                     <h3 style="font-size: 1rem; margin-bottom: 1.25rem; color: var(--text-main);">Account Details</h3>
                     <div class="info-row">
 
+                        <?php if ($isSelf || isAdmin()): ?>
                         <div class="info-item">
                             <span class="info-label">Status</span>
                             <span class="info-verified">
                                 <svg width="15" height="15" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                Verified Student
+                                <?php echo !empty($user['is_verified']) ? 'Email verified' : 'Email not verified'; ?>
                             </span>
                         </div>
+                        <?php endif; ?>
 
                         <div class="info-divider"></div>
 
@@ -763,6 +776,14 @@ body.dark-mode .btn-white-solid:hover {
                             <span class="info-label">Username</span>
                             <span class="info-value">@<?php echo sanitize($user['username']); ?></span>
                         </div>
+
+                        <?php if ($universityName !== ''): ?>
+                        <div class="info-divider"></div>
+                        <div class="info-item">
+                            <span class="info-label"><?= __('profile.university_attended') ?></span>
+                            <span class="info-value"><?php echo htmlspecialchars($universityName, ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                        <?php endif; ?>
 
                         <div class="info-divider"></div>
 

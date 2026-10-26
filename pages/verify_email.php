@@ -124,6 +124,7 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
         $stmt = $pdo->prepare('SELECT id, username, email, role, is_verified, phone FROM users WHERE LOWER(email) = LOWER(:e) LIMIT 1');
         $stmt->execute([':e' => $verifiedEmail]);
         $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+        $isNewLocalUser = false;
 
         if (!$existingUser) {
             // Social sign-in (Google / Apple) first time: auto-provision user
@@ -155,7 +156,7 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
             $dummyHash = password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT);
             $ins = $pdo->prepare('
                 INSERT INTO users (username, email, password_hash, role, is_verified)
-                VALUES (:u, :e, :h, "user", TRUE)
+                VALUES (:u, :e, :h, \'user\', TRUE)
             ');
             $ins->execute([
                 ':u' => $candidateUsername,
@@ -163,6 +164,7 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
                 ':h' => $dummyHash,
             ]);
             $newUserId = (int)$pdo->lastInsertId();
+            $isNewLocalUser = true;
 
             $existingUser = [
                 'id' => $newUserId,
@@ -180,6 +182,20 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
 
         // If this verification has an active access_token (e.g. Google / Apple OAuth flow), log the user in immediately!
         if ($accessToken !== '' && !empty($existingUser['id'])) {
+            if ($isNewLocalUser) {
+                try {
+                    createNotification(
+                        $pdo,
+                        (int)$existingUser['id'],
+                        'system',
+                        'Complete your profile',
+                        'Add your university and any other profile details you would like to share.'
+                    );
+                } catch (Throwable $e) {
+                    error_log('[verify_email] Could not create profile setup notification for user ' . (int)$existingUser['id'] . ': ' . $e->getMessage());
+                }
+            }
+
             session_regenerate_id(true);
             $_SESSION['user_id'] = (int)$existingUser['id'];
             $_SESSION['role'] = $existingUser['role'];

@@ -24,6 +24,8 @@ CREATE TABLE users (
     account_status    ENUM('active', 'suspended') NOT NULL DEFAULT 'active',
     home_town         VARCHAR(32)  NULL,
     custom_home_town    VARCHAR(100) NULL,
+    university_id     BIGINT NULL,
+    other_university_name VARCHAR(200) NULL,
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -331,4 +333,3 @@ CREATE TABLE IF NOT EXISTS promotion_payments (
     INDEX idx_promo_user_status (user_id, status),
     INDEX idx_promo_product_status (product_id, status)
 ) ENGINE=InnoDB;
-
