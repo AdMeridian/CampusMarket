@@ -31,7 +31,7 @@ try {
         $user['home_town'] = null;
     }
 }
-$availableUniversities = getAvailableUniversities($pdo);
+$availableUniversities = getNorthernCyprusUniversities($pdo);
 
 if (!$user) {
     // Session points at a user that no longer exists — nuke it.
@@ -333,7 +333,7 @@ require_once '../includes/header.php';
                         <option value=""><?= __('profile.university_not_provided') ?></option>
                         <?php foreach ($availableUniversities as $university): ?>
                             <option value="<?= (int)$university['id'] ?>" <?= $selectedUniversity === (string)$university['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($university['name'] . (!empty($university['city']) ? ' — ' . $university['city'] : '') . ' (' . $university['country_code'] . ')', ENT_QUOTES, 'UTF-8') ?>
+                                <?= htmlspecialchars($university['name'] . (!empty($university['city']) ? ' — ' . $university['city'] : ''), ENT_QUOTES, 'UTF-8') ?>
                             </option>
                         <?php endforeach; ?>
                         <option value="other" <?= $selectedUniversity === 'other' ? 'selected' : '' ?>><?= __('profile.university_other') ?></option>
