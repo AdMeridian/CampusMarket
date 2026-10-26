@@ -20,12 +20,14 @@ module.exports = async (req, res) => {
   const internalKey = (process.env.INTERNAL_PUSH_KEY || '').trim();
   const gotKey = (req.headers['x-internal-push-key'] || '').toString().trim();
   if (!internalKey || gotKey !== internalKey) {
+    console.error('[web-push] Unauthorized push trigger attempt. Key mismatch or unset.');
     return json(res, 401, { ok: false, error: 'Unauthorized' });
   }
 
   const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
   const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   if (!supabaseUrl || !serviceRoleKey) {
+    console.error('[web-push] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.');
     return json(res, 500, { ok: false, error: 'Supabase server credentials not configured' });
   }
 
@@ -33,6 +35,7 @@ module.exports = async (req, res) => {
   const vapidPrivateKey = (process.env.WEB_PUSH_PRIVATE_KEY || '').trim();
   const subject = (process.env.WEB_PUSH_SUBJECT || 'mailto:support@campusmarketplace.site').trim();
   if (!vapidPublicKey || !vapidPrivateKey) {
+    console.error('[web-push] Missing WEB_PUSH_PUBLIC_KEY or WEB_PUSH_PRIVATE_KEY.');
     return json(res, 500, { ok: false, error: 'VAPID keys not configured' });
   }
 
@@ -110,6 +113,7 @@ module.exports = async (req, res) => {
         sent += 1;
       } catch (e) {
         failed += 1;
+        console.error(`[web-push] sendNotification failed for user ${userId} on ${s.endpoint}: status=${e.statusCode || 'N/A'}, body=${e.body || e.message}`);
         if (isExpiredSubscriptionError(e)) {
           await supabase
             .from('web_push_subscriptions')
@@ -122,5 +126,6 @@ module.exports = async (req, res) => {
     })
   );
 
+  console.log(`[web-push] Dispatched push for user ${userId}: sent=${sent}, failed=${failed}, removed=${removed}`);
   return json(res, 200, { ok: true, sent, failed, removed });
 };
