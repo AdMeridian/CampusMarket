@@ -218,11 +218,16 @@ require_once '../includes/header.php';
 
   <?php if ($googleOAuthUrl !== ''): ?>
     <a href="<?= htmlspecialchars($googleOAuthUrl, ENT_QUOTES, 'UTF-8') ?>"
-       class="btn btn-secondary w-full py-3 mb-6"
-       style="border-radius: var(--radius-md); font-weight: 600; text-align: center;">
+       class="btn google-auth-button w-full mb-6">
+      <svg class="google-auth-button__logo" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z"/>
+        <path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.6-5.1c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z"/>
+        <path fill="#FBBC05" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3Z"/>
+        <path fill="#EA4335" d="M24 12c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 6 29.5 4 24 4A20 20 0 0 0 5.8 15.1l6.8 5.3C14.2 15.6 18.7 12 24 12Z"/>
+      </svg>
       <?= __('auth.sign_up_with_google') ?>
     </a>
-    <div class="auth-divider mb-6" style="text-align: center; color: var(--text-muted, #64748b);">
+    <div class="auth-divider mb-6">
       <?= __('auth.or') ?>
     </div>
   <?php endif; ?>
