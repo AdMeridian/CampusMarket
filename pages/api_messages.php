@@ -255,8 +255,8 @@ if ($action === 'fetch') {
         LEFT JOIN users reply_sender ON reply_sender.id = replied.sender_id
         LEFT JOIN message_translations t ON m.id = t.message_id AND t.target_lang = :mylang
         WHERE (
-              (m.sender_id = :uid1 AND m.receiver_id = :other1 AND m.deleted_by_sender = 0) OR
-              (m.sender_id = :other2 AND m.receiver_id = :uid2 AND m.deleted_by_receiver = 0)
+              (m.sender_id = :uid1 AND m.receiver_id = :other1 AND (m.deleted_by_sender = 0 OR m.deleted_by_sender IS NULL)) OR
+              (m.sender_id = :other2 AND m.receiver_id = :uid2 AND (m.deleted_by_receiver = 0 OR m.deleted_by_receiver IS NULL))
           )
         ORDER BY m.created_at ASC
     ");
@@ -284,26 +284,30 @@ if ($action === 'fetch') {
 
     $productMetaMap = [];
     if (!empty($mentionedProductIds)) {
-        $pIdsList = array_values($mentionedProductIds);
-        $placeholders = implode(',', array_fill(0, count($pIdsList), '?'));
-        $metaStmt = $pdo->prepare("
-            SELECT p.id, p.title, p.price, p.price_currency, p.status,
-                   pi.image_path
-            FROM products p
-            LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
-            WHERE p.id IN ($placeholders)
-        ");
-        $metaStmt->execute($pIdsList);
-        foreach ($metaStmt->fetchAll(PDO::FETCH_ASSOC) as $pRow) {
-            $productMetaMap[(int)$pRow['id']] = [
-                'id' => (int)$pRow['id'],
-                'title' => htmlspecialchars($pRow['title'], ENT_QUOTES, 'UTF-8'),
-                'price' => (float)$pRow['price'],
-                'price_currency' => $pRow['price_currency'] ?: 'TRY',
-                'image_url' => getProductImage($pRow['image_path']),
-                'status' => $pRow['status'],
-                'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$pRow['id'],
-            ];
+        try {
+            $pIdsList = array_values($mentionedProductIds);
+            $placeholders = implode(',', array_fill(0, count($pIdsList), '?'));
+            $metaStmt = $pdo->prepare("
+                SELECT p.id, p.title, p.price, p.price_currency, p.status,
+                       pi.image_path
+                FROM products p
+                LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
+                WHERE p.id IN ($placeholders)
+            ");
+            $metaStmt->execute($pIdsList);
+            foreach ($metaStmt->fetchAll(PDO::FETCH_ASSOC) as $pRow) {
+                $productMetaMap[(int)$pRow['id']] = [
+                    'id' => (int)$pRow['id'],
+                    'title' => htmlspecialchars($pRow['title'], ENT_QUOTES, 'UTF-8'),
+                    'price' => (float)$pRow['price'],
+                    'price_currency' => $pRow['price_currency'] ?: 'TRY',
+                    'image_url' => getProductImage($pRow['image_path']),
+                    'status' => $pRow['status'],
+                    'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$pRow['id'],
+                ];
+            }
+        } catch (Throwable $metaErr) {
+            logApiError("Failed to resolve product preview cards: " . $metaErr->getMessage());
         }
     }
 
@@ -972,8 +976,8 @@ if ($action === 'translate_message') {
         FROM messages m
         WHERE m.id = :id
           AND (
-              (m.sender_id = :uid1 AND m.receiver_id = :other1 AND m.deleted_by_sender = 0) OR
-              (m.sender_id = :other2 AND m.receiver_id = :uid2 AND m.deleted_by_receiver = 0)
+              (m.sender_id = :uid1 AND m.receiver_id = :other1 AND (m.deleted_by_sender = 0 OR m.deleted_by_sender IS NULL)) OR
+              (m.sender_id = :other2 AND m.receiver_id = :uid2 AND (m.deleted_by_receiver = 0 OR m.deleted_by_receiver IS NULL))
           )
         LIMIT 1
     ");
