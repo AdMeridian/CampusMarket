@@ -761,6 +761,9 @@ function notificationMessagesUrl(PDO $pdo, int $currentUserId, int $productId): 
  * Human-readable category label for activity feed rows.
  */
 function notificationActivityLabel(string $type, string $title): string {
+    if ($title === 'Complete your profile') {
+        return 'Profile Setup';
+    }
     if (str_starts_with($title, '🏷️') || str_contains($title, 'Price Drop') || str_contains($title, 'price drop')) {
         return 'Price Drop';
     }
@@ -828,6 +831,10 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
 
     if ($type === 'message') {
         return notificationMessagesUrl($pdo, $currentUserId, $refId);
+    }
+
+    if ($title === 'Complete your profile') {
+        return $base . 'pages/edit_profile.php';
     }
 
     if ($type === 'order') {

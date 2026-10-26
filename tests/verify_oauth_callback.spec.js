@@ -34,3 +34,30 @@ test('Supabase OAuth callback submits its tokens after the document body exists'
   expect(submittedForm).toContain('refresh_token=refresh456');
   expect(submittedForm).toContain('type=bearer');
 });
+
+test('first-time OAuth user insert uses a PostgreSQL string literal for the role', async () => {
+  const php = fs.readFileSync(path.join(__dirname, '../pages/verify_email.php'), 'utf8');
+
+  expect(php).toMatch(/INSERT INTO users \(username, email, password_hash, role, is_verified\)\s+VALUES \(:u, :e, :h, \\'user\\', TRUE\)/);
+});
+
+test('new OAuth accounts get a profile setup notification linking to edit profile', async () => {
+  const callback = fs.readFileSync(path.join(__dirname, '../pages/verify_email.php'), 'utf8');
+  const helpers = fs.readFileSync(path.join(__dirname, '../includes/functions.php'), 'utf8');
+
+  expect(callback).toContain('if ($isNewLocalUser)');
+  expect(callback).toContain("'Complete your profile'");
+  expect(callback).toContain('createNotification(');
+  expect(helpers).toContain("if ($title === 'Complete your profile')");
+  expect(helpers).toContain("$base . 'pages/edit_profile.php'");
+  expect(helpers).toContain("return 'Profile Setup';");
+});
+
+test('profile email verification status is only rendered for the owner or an admin', async () => {
+  const profile = fs.readFileSync(path.join(__dirname, '../pages/profile.php'), 'utf8');
+
+  expect(profile).toContain('preferred_language, is_verified, university_id');
+  expect(profile).toMatch(/<\?php if \(\$isSelf \|\| isAdmin\(\)\): \?>\s*<div class="info-item">\s*<span class="info-label">Status<\/span>/);
+  expect(profile).toContain("'Email verified' : 'Email not verified'");
+  expect(profile).not.toContain('Verified Student');
+});

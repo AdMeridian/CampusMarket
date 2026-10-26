@@ -576,7 +576,8 @@ if (!function_exists('getAvailableUniversities')) {
                 $stmt = $pdo->query('SELECT id, name, slug, domain_pattern, city, country_code FROM universities WHERE is_active = TRUE ORDER BY name ASC');
             }
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        } catch (Throwable $e) {
+        } catch (PDOException $e) {
+            error_log('[university] University directory lookup failed: ' . $e->getMessage());
             return [];
         }
     }
@@ -759,4 +760,3 @@ if (!function_exists('verifyStudentEmailOtp')) {
         ];
     }
 }
-

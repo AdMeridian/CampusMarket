@@ -1,8 +1,7 @@
 <?php
 // pages/register.php — Member 2
-// Create a CampusMarket account with a verified university email
-// and email verification via Supabase Auth. No auto-login: user must verify
-// before they can sign in.
+// Create a CampusMarket account with an email verified through Supabase Auth.
+// No auto-login: user must verify before they can sign in.
 
 require_once '../config/constants.php';
 require_once '../includes/bootstrap.php';
@@ -17,7 +16,10 @@ $old    = [
     'username' => '',
     'email' => '',
     'phone' => '',
+    'university_id' => '',
+    'other_university_name' => '',
 ];
+$availableUniversities = getAvailableUniversities($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -25,12 +27,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $email    = trim(strtolower($_POST['email'] ?? ''));
     $phone    = trim($_POST['phone'] ?? '');
+    $universitySelection = trim((string)($_POST['university_id'] ?? ''));
+    $otherUniversityName = trim((string)($_POST['other_university_name'] ?? ''));
     $password = $_POST['password'] ?? '';
     $confirm  = $_POST['password_confirm'] ?? '';
 
     $old['username'] = $username;
     $old['email']    = $email;
     $old['phone']    = $phone;
+    $old['university_id'] = $universitySelection;
+    $old['other_university_name'] = $otherUniversityName;
+    $universityId = null;
+
+    if ($universitySelection === 'other') {
+        if (!preg_match('/\A.{1,200}\z/us', $otherUniversityName)) {
+            $errors['university'] = __('profile.university_other_required');
+        }
+        $otherUniversityName = trim($otherUniversityName);
+    } elseif ($universitySelection !== '') {
+        $validUniversityIds = array_map('intval', array_column($availableUniversities, 'id'));
+        if (!ctype_digit($universitySelection) || !in_array((int)$universitySelection, $validUniversityIds, true)) {
+            $errors['university'] = __('profile.university_invalid');
+        } else {
+            $universityId = (int)$universitySelection;
+        }
+        $otherUniversityName = '';
+    } else {
+        $otherUniversityName = '';
+    }
 
     if ($username === '') {
         $errors['username'] = __('auth.register_error_username_required');
@@ -137,8 +161,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $studentId = studentIdFromUniversityEmail($email);
 
             $ins = $pdo->prepare("
-                INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified)
-                VALUES (:u, :e, :s, :h, 'user', :p, :v)
+                INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified, university_id, other_university_name)
+                VALUES (:u, :e, :s, :h, 'user', :p, :v, :university_id, :other_university_name)
             ");
             $ins->execute([
                 ':u' => $username,
@@ -147,6 +171,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':h' => $hash,
                 ':p' => $phone !== '' ? $phone : null,
                 ':v' => $isVerified,
+                ':university_id' => $universityId,
+                ':other_university_name' => $otherUniversityName !== '' ? $otherUniversityName : null,
             ]);
 
             $newUserId = (int)$pdo->lastInsertId();
@@ -260,6 +286,30 @@ require_once '../includes/header.php';
     </div>
 
     <div class="form-row mb-5">
+      <label for="university_id" class="form-label"><?= __('profile.university_attended') ?> <span class="form-label--muted"><?= __('profile.optional') ?></span></label>
+      <select id="university_id" name="university_id" class="premium-input w-full">
+        <option value=""><?= __('profile.university_not_provided') ?></option>
+        <?php foreach ($availableUniversities as $university): ?>
+          <option value="<?= (int)$university['id'] ?>" <?= (string)$old['university_id'] === (string)$university['id'] ? 'selected' : '' ?>>
+            <?= htmlspecialchars($university['name'] . (!empty($university['city']) ? ' — ' . $university['city'] : '') . ' (' . $university['country_code'] . ')', ENT_QUOTES, 'UTF-8') ?>
+          </option>
+        <?php endforeach; ?>
+        <option value="other" <?= $old['university_id'] === 'other' ? 'selected' : '' ?>><?= __('profile.university_other') ?></option>
+      </select>
+      <div id="other_university_container" class="mt-3" style="<?= $old['university_id'] === 'other' ? '' : 'display: none;' ?>">
+        <input type="text" id="other_university_name" name="other_university_name"
+               value="<?= htmlspecialchars($old['other_university_name'], ENT_QUOTES, 'UTF-8') ?>"
+               maxlength="200" placeholder="<?= htmlspecialchars(__('profile.university_other_placeholder'), ENT_QUOTES, 'UTF-8') ?>"
+               class="premium-input w-full">
+      </div>
+      <?php if (isset($errors['university'])): ?>
+        <div class="error"><?= sanitize($errors['university']) ?></div>
+      <?php else: ?>
+        <div class="hint"><?= __('profile.university_public_note') ?></div>
+      <?php endif; ?>
+    </div>
+
+    <div class="form-row mb-5">
       <label for="phone" class="form-label"><?= __('auth.register_phone_label') ?> <span class="form-label--muted"><?= __('auth.register_phone_optional') ?></span></label>
       <input type="tel" id="phone" name="phone"
              value="<?php echo sanitize($old['phone']); ?>"
@@ -356,6 +406,20 @@ require_once '../includes/header.php';
 </div>
 
 <script>
+  var universitySelect = document.getElementById('university_id');
+  var otherUniversityContainer = document.getElementById('other_university_container');
+  var otherUniversityName = document.getElementById('other_university_name');
+  if (universitySelect && otherUniversityContainer) {
+    function updateOtherUniversityVisibility() {
+      otherUniversityContainer.style.display = universitySelect.value === 'other' ? 'block' : 'none';
+      if (otherUniversityName) {
+        otherUniversityName.required = universitySelect.value === 'other';
+      }
+    }
+    universitySelect.addEventListener('change', updateOtherUniversityVisibility);
+    updateOtherUniversityVisibility();
+  }
+
   document.querySelectorAll('.password-toggle').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var input = document.getElementById(btn.dataset.target);
