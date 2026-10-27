@@ -644,7 +644,7 @@ function formatMessageTime(iso) {
 function buildMessageBubbleHtml(msg, options = {}) {
     const isMine = !!msg.is_mine;
     const timeStr = options.sending ? __('chat.sending') : formatMessageTime(msg.created_at);
-    
+
     let bodyHtml;
     if (isMine) {
         const cardHtml = msg.shared_product ? renderSharedProductCard(msg.shared_product) : '';
