@@ -34,14 +34,16 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
         <!-- Product Image Container -->
         <div class="product-card-image-wrap" style="border-radius: var(--radius-md); margin-bottom: 1.5rem; position: relative;">
             <?php 
-                $imgUrl = getProductImage($prod['image_path'] ?? null);
+                $isService = ($prod['listing_type'] ?? 'product') === 'service';
+                $imgUrl = $isService
+                    ? getServiceImage($prod['image_path'] ?? null)
+                    : getProductImage($prod['image_path'] ?? null);
             ?>
             <img src="<?php echo $imgUrl; ?>" alt="<?php echo sanitize($prod['title']); ?>">
 
             <!-- Status Badges Container (Top Left) -->
             <div style="position: absolute; top: 0.75rem; left: 0.75rem; z-index: 10; display: flex; gap: 0.4rem; flex-wrap: wrap; max-width: calc(100% - 1.5rem); pointer-events: none;">
                 <?php
-                $isService = ($prod['listing_type'] ?? 'product') === 'service';
                 if ($isService):
                 ?>
                 <span class="badge shadow-sm" style="background: #ef4444; color: white; font-size: 0.7rem; padding: 0.35rem 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(4px);">

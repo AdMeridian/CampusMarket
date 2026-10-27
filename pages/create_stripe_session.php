@@ -15,17 +15,19 @@ $productId   = (int)($_POST['product_id'] ?? 0);
 $postedAmount = (float)($_POST['amount'] ?? 0);
 $tier         = sanitize($_POST['tier'] ?? 'standard');
 $promotionDays = 0;
-$listingDays   = 30;
-$featuredDays  = 0;
 $productName   = 'CampusMarket Payment';
+
+if ($paymentType === 'service_listing') {
+    setFlash('error', 'Service payments are not available during the pilot.');
+    redirect(BASE_URL . ($productId > 0 ? 'pages/manage_listing.php?id=' . $productId : 'pages/services.php'));
+}
 
 $redirectPath = match($paymentType) {
     'donation'        => 'pages/donate.php',
-    'service_listing' => ($productId > 0 ? 'pages/manage_listing.php?id=' . $productId : 'pages/services.php'),
     default           => 'pages/promotions.php',
 };
 
-if (!in_array($paymentType, ['promotion', 'donation', 'service_listing'], true)) {
+if (!in_array($paymentType, ['promotion', 'donation'], true)) {
     setFlash('error', 'Invalid payment details.');
     redirect(BASE_URL . $redirectPath);
 }
@@ -39,16 +41,6 @@ if ($paymentType === 'promotion') {
     $amount = $resolved['amount'];
     $promotionDays = $resolved['days'];
     $productName = 'Product Promotion';
-} elseif ($paymentType === 'service_listing') {
-    $resolvedService = resolveServiceListingPayment($tier, $pdo);
-    if ($resolvedService === null) {
-        setFlash('error', 'Invalid service listing plan selected.');
-        redirect(BASE_URL . $redirectPath);
-    }
-    $amount = $resolvedService['amount'];
-    $listingDays = $resolvedService['listing_days'];
-    $featuredDays = $resolvedService['featured_days'];
-    $productName = $resolvedService['name'];
 } else {
     $donationAmount = resolveDonationPayment($postedAmount);
     if ($donationAmount === null) {
@@ -64,29 +56,12 @@ if ($paymentType === 'promotion' && $productId <= 0) {
     redirect(BASE_URL . 'pages/promotions.php');
 }
 
-if ($paymentType === 'service_listing' && $productId <= 0) {
-    setFlash('error', 'Please select a service listing to activate.');
-    redirect(BASE_URL . 'pages/services.php');
-}
-
 if ($paymentType === 'promotion') {
-    $ownActiveCheck = $pdo->prepare("SELECT id FROM products WHERE id = :pid AND user_id = :uid AND status = 'active'");
+    $ownActiveCheck = $pdo->prepare("SELECT id FROM products WHERE id = :pid AND user_id = :uid AND status = 'active' AND listing_type <> 'service'");
     $ownActiveCheck->execute([':pid' => $productId, ':uid' => currentUserId()]);
     if (!$ownActiveCheck->fetchColumn()) {
-        setFlash('error', 'Only active listings can be promoted.');
+        setFlash('error', 'Only active product listings can be promoted.');
         redirect(BASE_URL . 'pages/promotions.php');
-    }
-} elseif ($paymentType === 'service_listing') {
-    $ownSvcCheck = $pdo->prepare("SELECT id, status, listing_type FROM products WHERE id = :pid AND user_id = :uid");
-    $ownSvcCheck->execute([':pid' => $productId, ':uid' => currentUserId()]);
-    $svcRow = $ownSvcCheck->fetch(PDO::FETCH_ASSOC);
-    if (!$svcRow || ($svcRow['listing_type'] ?? '') !== 'service') {
-        setFlash('error', 'Service listing not found.');
-        redirect(BASE_URL . 'pages/services.php');
-    }
-    if (!in_array($svcRow['status'] ?? '', ['pending_payment', 'active', 'expired'], true)) {
-        setFlash('error', 'This service must be approved before payment is available.');
-        redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
     }
 }
 
@@ -114,8 +89,6 @@ $postFields = [
     'metadata[tier]' => $tier,
     'metadata[amount]' => $amount,
     'metadata[promotion_days]' => $promotionDays,
-    'metadata[listing_days]' => $listingDays,
-    'metadata[featured_days]' => $featuredDays,
 ];
 
 curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/checkout/sessions');

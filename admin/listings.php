@@ -51,27 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $prod = $stmt->fetch();
             if ($prod) {
                 $approvalStatus = 'active';
-                $serviceExpiresAt = null;
                 $approvalMessage = "Your listing for '" . $prod['title'] . "' has been approved and is now active.";
 
                 if (($prod['listing_type'] ?? 'product') === 'service') {
-                    $svcPricing = getServicePricingSettings($pdo);
-                    $otherServicesStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = ? AND listing_type = 'service' AND status != 'deleted' AND id <> ?");
-                    $otherServicesStmt->execute([(int)$prod['user_id'], $id]);
-                    $isFreeService = $svcPricing['free_trial_enabled'] && (int)$otherServicesStmt->fetchColumn() === 0;
-
-                    if ($isFreeService) {
-                        $listingDays = (int)$svcPricing['listing_days'];
-                        $approvalMessage = "Your first service listing has been approved and is active for {$listingDays} days at no charge.";
-                        $serviceExpiresAt = date('Y-m-d H:i:s', strtotime("+{$listingDays} days"));
-                    } else {
-                        $approvalStatus = 'pending_payment';
-                        $approvalMessage = "Your service listing has been approved. Choose a payment plan to activate it.";
-                    }
+                    $approvalMessage = "Your service listing has been approved and is now visible in the services directory.";
                 }
 
                 $stmtUpdate = $pdo->prepare("UPDATE products SET status = ?, service_expires_at = ?, updated_at = NOW() WHERE id = ?");
-                $stmtUpdate->execute([$approvalStatus, $serviceExpiresAt, $id]);
+                $stmtUpdate->execute([$approvalStatus, null, $id]);
                 try {
                     $pdo->prepare("UPDATE products SET moderation_note = NULL WHERE id = ?")->execute([$id]);
                 } catch (PDOException $e) {

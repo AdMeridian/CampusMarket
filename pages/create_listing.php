@@ -159,15 +159,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
                 $conditionValue = ($listingType === 'service') ? null : $condition;
                 
-                $serviceExpiresAt = ($listingType === 'service') ? date('Y-m-d H:i:s', strtotime('+90 days')) : null;
                 $statusValue = 'active';
 
                 $sellerMarketplace = function_exists('getUserUniversityAndCountry') ? getUserUniversityAndCountry($pdo, $userId) : null;
                 $sellerCountry = $sellerMarketplace['country_code'] ?? 'TR';
                 $sellerUniversityId = $sellerMarketplace['university_id'] ?? null;
 
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location, country_code, university_id, delivery_days, revision_count, availability_status, availability_reset_at, portfolio_link, service_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null), $sellerCountry, $sellerUniversityId, $deliveryDays, $revisionCount, $availabilityStatus, $availabilityResetAt, $portfolioLink, $serviceExpiresAt]);
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location, country_code, university_id, delivery_days, revision_count, availability_status, availability_reset_at, portfolio_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null), $sellerCountry, $sellerUniversityId, $deliveryDays, $revisionCount, $availabilityStatus, $availabilityResetAt, $portfolioLink]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
@@ -363,21 +362,12 @@ if (empty($prevCategoryIds) && !empty($_POST['category_id'])) {
     $prevCategoryIds[] = (int)$_POST['category_id'];
 }
 
-// Fetch dynamic service pricing & user's free service status
-$svcPricing = getServicePricingSettings($pdo);
-$userFreeServiceAvailable = false;
-if (isLoggedIn()) {
-    $existingSvcCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND listing_type = 'service' AND status != 'deleted'");
-    $existingSvcCountStmt->execute([':uid' => currentUserId()]);
-    $userFreeServiceAvailable = ($svcPricing['free_trial_enabled'] && (int)$existingSvcCountStmt->fetchColumn() === 0);
-}
-
 // Post/Redirect/Get success screen — load from DB so it works even if session is flaky on mobile.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
     $createdId = (int)$_GET['created'];
     if ($createdId > 0) {
         $createdStmt = $pdo->prepare("
-            SELECT id, status, category_id, price, moderation_note, listing_type, service_expires_at
+            SELECT id, status, category_id, price, moderation_note, listing_type
             FROM products
             WHERE id = :id AND user_id = :uid
             LIMIT 1
@@ -404,7 +394,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
                 'price' => (float)($createdRow['price'] ?? 0),
                 'moderation_note' => trim((string)($createdRow['moderation_note'] ?? '')),
                 'listing_type' => (string)($createdRow['listing_type'] ?? 'product'),
-                'service_expires_at' => $createdRow['service_expires_at'] ?? null,
             ];
         }
     }
@@ -441,77 +430,22 @@ include '../includes/header.php';
     <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2.25rem 2rem; border-radius: var(--radius-xl); text-align: center;">
         <h1 class="page-hero-title mb-2"><?= __('create_listing.success_msg') ?></h1>
 
-        <?php if ($createdProductStatus === 'pending_payment'): ?>
-            <p class="text-muted mb-6" style="font-size: 1.05rem; line-height: 1.6;">
-                Your service listing details are saved! Choose a plan below to activate your listing and start receiving student bookings.
-            </p>
-            <div class="grid gap-6 mb-8" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); text-align: left;">
-                <!-- Standard Plan -->
-                <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); border: 2px solid var(--border-light); display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--text-main);">Standard Listing</h3>
-                            <span class="badge badge-primary"><?= (int)$svcPricing['listing_days'] ?> Days</span>
-                        </div>
-                        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1.25rem; line-height: 1.5;">Listed in the campus services directory with direct booking & student messaging.</p>
-                        <div style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); margin-bottom: 1.25rem;">₺<?= number_format($svcPricing['listing_fee'], 0) ?> <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">/ <?= (int)$svcPricing['listing_days'] ?> days</span></div>
-                    </div>
-                    <form method="POST" action="<?= BASE_URL ?>pages/create_stripe_session.php">
-                        <?= csrfTokenField() ?>
-                        <input type="hidden" name="payment_type" value="service_listing">
-                        <input type="hidden" name="tier" value="standard">
-                        <input type="hidden" name="product_id" value="<?= (int)$createdProductId ?>">
-                        <button type="submit" class="btn btn-secondary w-full" style="width: 100%; justify-content: center; padding: 0.75rem;">
-                            Activate Standard (₺<?= number_format($svcPricing['listing_fee'], 0) ?>)
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Boosted Plan -->
-                <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); border: 2px solid var(--primary); background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.08) 0%, transparent 100%); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-                    <div style="position: absolute; top: -12px; right: 16px; background: var(--primary); color: white; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px;">MOST POPULAR</div>
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--primary);">Standard + Boost</h3>
-                            <span class="badge" style="background: var(--primary); color: white;"><?= (int)$svcPricing['listing_days'] ?>D + <?= (int)$svcPricing['boost_days'] ?>D Feature</span>
-                        </div>
-                        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1.25rem; line-height: 1.5;">Everything in Standard + <?= (int)$svcPricing['boost_days'] ?> days featured on the homepage carousel for maximum client discovery.</p>
-                        <div style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); margin-bottom: 1.25rem;">₺<?= number_format($svcPricing['total_boosted_fee'], 0) ?> <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">/ total</span></div>
-                    </div>
-                    <form method="POST" action="<?= BASE_URL ?>pages/create_stripe_session.php">
-                        <?= csrfTokenField() ?>
-                        <input type="hidden" name="payment_type" value="service_listing">
-                        <input type="hidden" name="tier" value="boosted">
-                        <input type="hidden" name="product_id" value="<?= (int)$createdProductId ?>">
-                        <button type="submit" class="btn btn-primary w-full" style="width: 100%; justify-content: center; padding: 0.75rem;">
-                            Activate with Boost (₺<?= number_format($svcPricing['total_boosted_fee'], 0) ?>)
-                        </button>
-                    </form>
-                </div>
-            </div>
-            <a class="btn btn-ghost" href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= (int)$createdProductId ?>" style="font-size: 0.9rem; color: var(--text-muted);">
-                I'll activate later from My Listings
-            </a>
-
+        <?php if ($createdProductStatus === 'pending_payment' && $isCreatedService): ?>
+            <p class="text-muted mb-6">Your service details are saved. Update your service profile to submit it for review.</p>
+            <a class="btn btn-primary" href="<?= BASE_URL ?>pages/provider_onboard.php">Update service profile</a>
         <?php elseif ($createdProductStatus === 'active'): ?>
             <?php if ($isCreatedService): ?>
-                <div class="mb-4 inline-block px-4 py-1.5 rounded-full" style="background: rgba(16, 185, 129, 0.12); color: #059669; font-weight: 600; font-size: 0.9rem;">
-                    🎉 1st Service Free Trial Activated (Active for <?= (int)$svcPricing['listing_days'] ?> Days)
-                </div>
                 <p class="text-muted mb-6" style="font-size: 1.05rem;">
-                    Your service listing is now live in the campus directory! Would you like to boost it to the homepage top banner?
+                    Your service listing is live in the services directory.
                 </p>
+                <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>">View service profile</a>
             <?php else: ?>
                 <p class="text-muted mb-6">Your listing is live. Would you like to promote it now?</p>
+                <div class="flex justify-center gap-4 flex-wrap">
+                    <a class="btn btn-primary" href="promotions.php?product_id=<?= (int)$createdProductId ?>&new_listing=1" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">Promote listing</a>
+                    <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">View listing</a>
+                </div>
             <?php endif; ?>
-            <div class="flex justify-center gap-4 flex-wrap">
-                <a class="btn btn-primary" href="promotions.php?product_id=<?= (int)$createdProductId ?>&new_listing=1" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
-                    Yes, promote it
-                </a>
-                <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
-                    No, view my listing
-                </a>
-            </div>
         <?php else: ?>
             <?php $pendingNote = trim((string)($createdListingMeta['moderation_note'] ?? '')); ?>
             <p class="text-muted mb-4" style="font-size: 1.05rem; line-height: 1.6;">
@@ -560,7 +494,7 @@ include '../includes/header.php';
                         <span style="font-size: 1.6rem;">🛠️</span>
                         <div>
                             <strong style="color: var(--text-main); font-size: 0.95rem;">Offering a skill, tutoring, or campus service?</strong>
-                            <p class="text-muted mb-0" style="font-size: 0.83rem;">Join our Campus Services Pilot to set up your provider profile and receive bookings.</p>
+                            <p class="text-muted mb-0" style="font-size: 0.83rem;">Create a profile to share the skills you offer.</p>
                         </div>
                     </div>
                     <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-sm btn--service" style="padding: 0.5rem 1.1rem; font-weight: 700; white-space: nowrap; border-radius: var(--radius-lg);">
@@ -1394,5 +1328,3 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
-

@@ -50,7 +50,7 @@ $visibleListingStatusSql = $isSelf || isAdmin()
 
 $visibleServiceStatusSql = $isSelf || isAdmin()
     ? "p.status IN ('active', 'pending_approval', 'pending_payment')"
-    : "p.status = 'active' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW())";
+    : "p.status = 'active'";
 
 $listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products p WHERE p.user_id = :uid AND p.listing_type = 'product' AND {$visibleListingStatusSql}");
 $listingCountStmt->execute([':uid' => $viewId]);
@@ -1189,4 +1189,3 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-

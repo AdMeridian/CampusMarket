@@ -32,8 +32,6 @@ $productId = !empty($meta['product_id']) ? (int) $meta['product_id'] : null;
 
 if ($paymentType === 'promotion' && $productId) {
     $redirectPath = 'pages/product.php?id=' . $productId;
-} elseif ($paymentType === 'service_listing' && $productId) {
-    $redirectPath = 'pages/product.php?id=' . $productId;
 } elseif ($paymentType === 'donation') {
     $redirectPath = 'pages/donate.php';
 }
@@ -42,9 +40,7 @@ if ($result['ok']) {
     if (!empty($result['already_processed'])) {
         setFlash('info', __('stripe.flash_already_processed'));
     } else {
-        if ($paymentType === 'service_listing') {
-            setFlash('success', 'Payment successful! Your service listing has been updated and will appear after approval when required.');
-        } elseif ($paymentType === 'promotion') {
+        if ($paymentType === 'promotion') {
             setFlash('success', __('stripe.flash_promo_success'));
         } else {
             setFlash('success', __('stripe.flash_donate_success'));

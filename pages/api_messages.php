@@ -256,13 +256,10 @@ if ($action === 'send') {
         
         // Auto-create order if a product is involved
         if ($productId > 0) {
-            $stmtProd = $pdo->prepare("SELECT user_id, price, status, listing_type, service_expires_at FROM products WHERE id = ?");
+            $stmtProd = $pdo->prepare("SELECT user_id, price, status, listing_type FROM products WHERE id = ?");
             $stmtProd->execute([$productId]);
             $prod = $stmtProd->fetch();
-            $serviceBookable = ($prod['listing_type'] ?? 'product') !== 'service'
-                || (($prod['status'] ?? '') === 'active'
-                    && (empty($prod['service_expires_at']) || strtotime($prod['service_expires_at']) > time()));
-            if ($prod && ($prod['status'] ?? '') === 'active' && $serviceBookable) {
+            if ($prod && ($prod['listing_type'] ?? 'product') !== 'service' && ($prod['status'] ?? '') === 'active') {
                 $sellerId = (int)$prod['user_id'];
                 $buyerId = ($currentUserId === $sellerId) ? $receiverId : $currentUserId;
                 
@@ -339,12 +336,16 @@ if ($action === 'propose') {
     }
     
     // Get product details
-    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id FROM products WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id, listing_type FROM products WHERE id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
     
     if (!$product) {
         echo json_encode(['error' => 'Product not found']);
+        exit;
+    }
+    if (($product['listing_type'] ?? 'product') === 'service') {
+        echo json_encode(['error' => 'Service bookings are not available during the pilot. Message the provider directly.']);
         exit;
     }
     
@@ -392,12 +393,16 @@ if ($action === 'get_propose') {
     }
     
     // Get product details
-    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id FROM products WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id, listing_type FROM products WHERE id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
     
     if (!$product) {
         echo json_encode(['error' => 'Product not found']);
+        exit;
+    }
+    if (($product['listing_type'] ?? 'product') === 'service') {
+        echo json_encode(['error' => 'Service bookings are not available during the pilot. Message the provider directly.']);
         exit;
     }
     
@@ -426,6 +431,15 @@ if ($action === 'check_deal_status') {
         exit;
     }
 
+    if ($productId > 0) {
+        $typeStmt = $pdo->prepare("SELECT listing_type FROM products WHERE id = ?");
+        $typeStmt->execute([$productId]);
+        if ($typeStmt->fetchColumn() === 'service') {
+            echo json_encode(['show_handshake' => false]);
+            exit;
+        }
+    }
+
     if ($productId === 0) {
         // Special logic for product_id = 0
         $stmtBuyer = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE sender_id = :me AND receiver_id = :other AND (product_id = 0 OR product_id IS NULL)");
@@ -447,7 +461,8 @@ if ($action === 'check_deal_status') {
             FROM deal_confirmations d
             JOIN products p ON d.product_id = p.id
             JOIN users u ON d.buyer_id = u.id
-            WHERE ((d.buyer_id = :me AND d.seller_id = :other) OR (d.buyer_id = :other AND d.seller_id = :me))
+            WHERE p.listing_type <> 'service'
+            AND ((d.buyer_id = :me AND d.seller_id = :other) OR (d.buyer_id = :other AND d.seller_id = :me))
             AND d.status = 'buyer_confirmed'
             LIMIT 1
         ");
@@ -595,6 +610,10 @@ if ($action === 'confirm_deal') {
         echo json_encode(['error' => 'Product not found']);
         exit;
     }
+    if (($product['listing_type'] ?? 'product') === 'service') {
+        echo json_encode(['error' => 'Service bookings are not available during the pilot.']);
+        exit;
+    }
 
     $sellerId = (int)$product['user_id'];
     $productTitle = $product['title'];
@@ -672,60 +691,7 @@ if ($action === 'confirm_deal') {
 
 if ($action === 'amend_service_booking') {
     verifyCsrfTokenJson();
-    $productId = (int)($_POST['product_id'] ?? 0);
-    $otherUserId = (int)($_POST['other_user_id'] ?? 0);
-    $schedStart = $_POST['scheduled_start'] ?? null;
-    $schedEnd = $_POST['scheduled_end'] ?? null;
-
-    if (!$productId || !$otherUserId || !$schedStart || !$schedEnd) {
-        echo json_encode(['success' => false, 'error' => 'Missing booking details']);
-        exit;
-    }
-
-    $stmt = $pdo->prepare("SELECT user_id, title, listing_type FROM products WHERE id = :pid");
-    $stmt->execute([':pid' => $productId]);
-    $product = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$product || ($product['listing_type'] ?? 'product') !== 'service') {
-        echo json_encode(['success' => false, 'error' => 'Invalid service booking']);
-        exit;
-    }
-
-    $sellerId = (int)$product['user_id'];
-    if ($currentUserId !== $sellerId) {
-        echo json_encode(['success' => false, 'error' => 'Only the seller can amend this booking']);
-        exit;
-    }
-
-    $buyerId = $otherUserId;
-
-    try {
-        $pdo->beginTransaction();
-
-        $stmtDeal = $pdo->prepare("SELECT id FROM deal_confirmations WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid LIMIT 1");
-        $stmtDeal->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
-        $dealId = $stmtDeal->fetchColumn();
-
-        if (!$dealId) {
-            $insertStmt = $pdo->prepare("INSERT INTO deal_confirmations (product_id, buyer_id, seller_id, status, scheduled_start, scheduled_end, updated_at) VALUES (:pid, :bid, :sid, 'buyer_confirmed', :start, :end, NOW())");
-            $insertStmt->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId, ':start' => $schedStart, ':end' => $schedEnd]);
-        } else {
-            $upd = $pdo->prepare("UPDATE deal_confirmations SET scheduled_start = :start, scheduled_end = :end, updated_at = NOW(), status = 'buyer_confirmed' WHERE id = :id");
-            $upd->execute([':start' => $schedStart, ':end' => $schedEnd, ':id' => $dealId]);
-        }
-
-        $stmtUser = $pdo->prepare("SELECT username FROM users WHERE id = :id");
-        $stmtUser->execute([':id' => $sellerId]);
-        $sellerName = $stmtUser->fetchColumn() ?: 'Seller';
-
-        createNotification($pdo, $buyerId, 'order', 'Service time updated', "$sellerName proposed a revised time for '{$product['title']}'. Open the chat to review it.", $productId);
-        $pdo->commit();
-
-        echo json_encode(['success' => true, 'message' => 'Booking time revised.']);
-    } catch (PDOException $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        echo json_encode(['success' => false, 'error' => 'Database error']);
-    }
+    echo json_encode(['success' => false, 'error' => 'Service bookings are not available during the pilot.']);
     exit;
 }
 

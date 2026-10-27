@@ -211,19 +211,18 @@ $presenceText = match($otherPresence['status']) {
             <!-- Messages loaded via JS -->
         </div>
 
-        <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
-            <?php $isServiceChat = ($product['listing_type'] ?? 'product') === 'service'; ?>
-            <div class="chat-action-bar purchase-cta-bar" <?= $isServiceChat ? 'style="border-left: 4px solid var(--service);"' : '' ?>>
+        <?php if ($productId > 0 && $currentUserId !== $sellerId && ($product['listing_type'] ?? 'product') !== 'service'): ?>
+            <div class="chat-action-bar purchase-cta-bar">
                 <div class="chat-action-bar__copy">
-                    <strong><?= $isServiceChat ? '📅 Book This Service' : __('chat.ready_to_buy') ?></strong>
-                    <span><?= $isServiceChat ? 'Schedule and agree on a service time' : __('chat.send_purchase_request') ?></span>
+                    <strong><?= __('chat.ready_to_buy') ?></strong>
+                    <span><?= __('chat.send_purchase_request') ?></span>
                 </div>
                 <form action="api_messages.php" method="POST" class="m-0">
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn <?= $isServiceChat ? 'btn--service' : 'btn-primary' ?> btn-sm" onclick="<?= $isServiceChat ? 'checkDealStatus(true)' : 'proposeOrder()' ?>">
-                        <?= $isServiceChat ? '✨ Book Service' : __('chat.propose_order') ?>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="proposeOrder()">
+                        <?= __('chat.propose_order') ?>
                     </button>
                 </form>
             </div>
@@ -833,6 +832,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 function checkDealStatus(autoOpen = false) {
+    if (isServiceListing) {
+        handshakeBar.hidden = true;
+        handshakeBar.style.display = 'none';
+        return;
+    }
+
     fetch(`api_messages.php?action=check_deal_status&product_id=${productId}&other_user_id=${otherUserId}&_=${Date.now()}`, {
         cache: 'no-store'
     })
@@ -848,44 +853,10 @@ function checkDealStatus(autoOpen = false) {
                 return;
             }
 
-            if (isServiceListing) {
-                renderHandshakeBar({
-                    id: null,
-                    status: 'pending',
-                    is_seller: false,
-                    buyer_username: '',
-                    product_title: productTitle,
-                    product_id: productId,
-                    listing_type: 'service',
-                    pricing_model: 'flat'
-                });
-                handshakeBar.hidden = false;
-                handshakeBar.style.display = 'block';
-                if (autoOpen) {
-                    openDealSheet();
-                }
-                return;
-            }
-
             handshakeBar.hidden = true;
             handshakeBar.style.display = 'none';
         })
         .catch(() => {
-            if (isServiceListing) {
-                renderHandshakeBar({
-                    id: null,
-                    status: 'pending',
-                    is_seller: false,
-                    buyer_username: '',
-                    product_title: productTitle,
-                    product_id: productId,
-                    listing_type: 'service',
-                    pricing_model: 'flat'
-                });
-                handshakeBar.hidden = false;
-                handshakeBar.style.display = 'block';
-                return;
-            }
             handshakeBar.style.display = 'none';
         });
 }
@@ -1284,7 +1255,9 @@ setInterval(refreshPresence, 30000);
 
 // Initial fetch
 fetchMessages();
-checkDealStatus();
+if (!isServiceListing) {
+    checkDealStatus();
+}
 
 function startPolling(intervalMs = 3000) {
     if (pollIntervalId) {

@@ -10,8 +10,8 @@ if (isAdmin()) {
     redirect(BASE_URL . 'admin/services.php');
 }
 
-$pageTitle = 'Become a Campus Service Provider — Pilot';
-$pageDescription = 'Enroll as a student service provider. Describe what you do and our AI will categorize your skills and generate your launch listing.';
+$pageTitle = 'Offer your skills — CampusMarket';
+$pageDescription = 'Create a profile for the services you offer on CampusMarket.';
 
 // Fetch service-type categories
 $serviceCategories = [];
@@ -174,23 +174,18 @@ include '../includes/header.php';
 
         <!-- Hero Section -->
         <div class="provider-hero">
-            <span class="pilot-pill-badge">
-                <span>🚀</span>
-                <span>CAMPUS SERVICES PILOT</span>
-            </span>
-            <h1 class="page-hero-title mb-3" style="font-size: 2.25rem;">Offer Your Skills on Campus</h1>
+            <h1 class="page-hero-title mb-3" style="font-size: 2.25rem;">Offer your skills</h1>
             <p class="page-subtitle mb-0" style="font-size: 1.05rem; line-height: 1.6;">
-                Turn your talents into student bookings. Describe what you do in your own words, and our AI assistant will automatically structure your skills, category, and launch listing.
+                Describe what you can do, then review your profile before it appears in the services directory.
             </p>
         </div>
 
         <?php if (!isLoggedIn()): ?>
             <!-- Login Requirement Notice -->
             <div class="onboard-card text-center py-12">
-                <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">👋</div>
-                <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main);">Sign In to Enroll as a Provider</h3>
+                <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-main);">Sign in to offer a skill</h3>
                 <p class="text-muted mb-6" style="max-width: 480px; margin-left: auto; margin-right: auto; font-size: 0.95rem;">
-                    Log in with your campus student account to register your provider profile and get your listing live during the pilot.
+                    Sign in or create an account to create your service profile.
                 </p>
                 <div class="flex items-center justify-center gap-3 flex-wrap">
                     <a href="<?= BASE_URL ?>pages/login.php?redirect=pages/provider_onboard.php" class="btn btn-primary" style="padding: 0.75rem 2rem;">Log In to Enroll</a>
@@ -206,7 +201,6 @@ include '../includes/header.php';
                     <!-- Optional Draft Loader for Returning Providers -->
                     <div id="existingDraftBanner" class="mb-4 p-3.5 rounded-xl flex items-center justify-between gap-3 flex-wrap" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25);">
                         <div class="flex items-center gap-2 text-sm text-main">
-                            <span>ℹ️</span>
                             <span>You have an existing service listing: <strong><?= sanitize($existingListing['title']) ?></strong>.</span>
                         </div>
                         <div class="flex items-center gap-2">
@@ -214,7 +208,7 @@ include '../includes/header.php';
                                 Load Previous Details
                             </button>
                             <button type="button" id="btnDismissDraft" class="btn btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);" title="Dismiss and start fresh">
-                                ✕ Dismiss
+                                Dismiss
                             </button>
                         </div>
                     </div>
@@ -251,7 +245,7 @@ include '../includes/header.php';
                     <div class="mb-4 p-3.5 rounded-xl" style="background: var(--bg-main); border: 1px solid var(--border-light);">
                         <label class="flex items-start gap-3 cursor-pointer mb-0" style="font-size: 0.88rem;">
                             <input type="checkbox" id="ai_consent" name="ai_consent" style="margin-top: 3px; flex-shrink: 0;">
-                            <span class="text-muted" style="line-height: 1.45;">Your skills description will be processed by <strong>Google's Gemini AI</strong> to suggest categories and listing copy. By checking this box, you provide explicit consent to this automated data processing under KVKK/GDPR. <a href="<?= BASE_URL ?>pages/privacy.php" target="_blank" class="text-primary font-bold">Privacy Policy</a></span>
+                            <span class="text-muted" style="line-height: 1.45;">I agree to send the skills and profile text I enter to an external AI service (Google Gemini or OpenRouter) for suggestions. <a href="<?= BASE_URL ?>pages/privacy.php" target="_blank" rel="noopener noreferrer" class="text-primary font-bold">Privacy Policy</a></span>
                         </label>
                     </div>
 
@@ -259,7 +253,6 @@ include '../includes/header.php';
                     <div class="flex items-center justify-between gap-4 flex-wrap pt-3 border-t" style="border-color: var(--border-light);">
                         <div class="flex items-center gap-2 flex-wrap">
                             <button type="button" id="btnAnalyzeAi" class="btn btn-primary" style="padding: 0.75rem 1.2rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg);">
-                                <span id="aiIcon" aria-hidden="true">✨</span>
                                 <span id="aiBtnText">Get AI suggestions</span>
                             </button>
                             <button type="button" id="btnManualEntry" class="btn btn-secondary" style="padding: 0.75rem 1.2rem; font-weight: 700; border-radius: var(--radius-lg);">
@@ -644,7 +637,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── AI Classification Logic ──────────────────────────────────────────
     const btnAnalyze = document.getElementById('btnAnalyzeAi');
     const skillsInput = document.getElementById('skills_input');
-    const aiIcon = document.getElementById('aiIcon');
     const aiBtnText = document.getElementById('aiBtnText');
     const aiEngineBadge = document.getElementById('aiEngineBadge');
 
@@ -656,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAnalyze && skillsInput) {
         btnAnalyze.addEventListener('click', async () => {
             if (!consentCheckbox?.checked) {
-                setOnboardStatus('To use AI suggestions, first consent to sending your skills description to Google Gemini. Or choose “Enter details myself.”', true);
+                setOnboardStatus('To use AI suggestions, first agree to send your description to an external AI service, or enter your details yourself.', true);
                 consentCheckbox?.focus();
                 return;
             }
@@ -689,7 +681,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // UI loading state
             btnAnalyze.disabled = true;
-            aiIcon.textContent = '⏳';
             aiBtnText.textContent = 'Analyzing...';
             setOnboardStatus('Analyzing your description and preparing editable suggestions…');
 
@@ -702,7 +693,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     body: JSON.stringify({
                         skills_text: text,
-                        bio: document.getElementById('provider_bio')?.value || ''
+                        bio: document.getElementById('provider_bio')?.value || '',
+                        ai_consent: consentCheckbox?.checked === true
                     })
                 });
 
@@ -715,12 +707,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update engine badge accurately
                     if (aiEngineBadge) {
                         if (data.engine === 'fallback') {
-                            aiEngineBadge.textContent = '⚡ KEYWORD MATCHED';
+                            aiEngineBadge.textContent = 'KEYWORD MATCHED';
                             aiEngineBadge.style.background = 'rgba(245, 158, 11, 0.15)';
                             aiEngineBadge.style.color = '#b45309';
                             aiEngineBadge.title = 'Categorized using keyword patterns';
                         } else {
-                            aiEngineBadge.textContent = '✨ AI STRUCTURED';
+                            aiEngineBadge.textContent = 'AI SUGGESTIONS';
                             aiEngineBadge.style.background = 'var(--primary-light)';
                             aiEngineBadge.style.color = 'var(--primary)';
                             aiEngineBadge.title = 'Generated with ' + (data.engine || 'Gemini AI');
@@ -855,7 +847,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } finally {
                 syncAiBtn();
-                aiIcon.textContent = '✨';
                 aiBtnText.textContent = 'Get AI suggestions';
             }
         });

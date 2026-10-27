@@ -566,15 +566,6 @@ if (($product['status'] ?? '') === 'active' && $lastCheckInAt !== null) {
 
 $pageTitle = 'Manage: ' . sanitize($product['title']);
 
-$svcPricing = getServicePricingSettings($pdo);
-$serviceIsExpired = false;
-$serviceDaysRemaining = null;
-if ($isService && !empty($product['service_expires_at'])) {
-    $expiresTimestamp = strtotime($product['service_expires_at']);
-    $serviceIsExpired = ($expiresTimestamp <= time());
-    $serviceDaysRemaining = max(0, (int)ceil(($expiresTimestamp - time()) / 86400));
-}
-
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -844,11 +835,7 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="flex items-center gap-3 mgmt-topbar__actions">
             <?php if ($isService && $product['status'] === 'pending_payment'): ?>
                 <span class="mgmt-header-badge" style="background: #fef3c7; color: #92400e;">
-                    Pending Payment
-                </span>
-            <?php elseif ($isService && $serviceIsExpired): ?>
-                <span class="mgmt-header-badge" style="background: #fee2e2; color: #991b1b;">
-                    Expired
+                    Not active
                 </span>
             <?php else: ?>
                 <span class="mgmt-header-badge" style="background: <?= ($product['status'] === 'active') ? '#dcfce7; color: #166534;' : '#eff6ff; color: #1e40af;' ?>">
@@ -866,56 +853,10 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
-    <?php if ($isService && ($product['status'] === 'pending_payment' || $serviceIsExpired || ($serviceDaysRemaining !== null && $serviceDaysRemaining <= 5))): ?>
-    <!-- Service Status & Renewal Banner -->
-    <div class="glass-panel p-6 mb-8" style="border-radius: var(--radius-xl); border: 2px solid <?= ($product['status'] === 'pending_payment' || $serviceIsExpired) ? 'var(--primary)' : '#f59e0b' ?>; background: <?= ($product['status'] === 'pending_payment' || $serviceIsExpired) ? 'rgba(var(--primary-rgb), 0.04)' : 'rgba(245, 158, 11, 0.05)' ?>;">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div style="flex: 1 1 300px;">
-                <div class="flex items-center gap-2 mb-1">
-                    <span style="font-size: 1.3rem;">
-                        <?= ($product['status'] === 'pending_payment') ? '💳' : ($serviceIsExpired ? '⌛' : '⚡') ?>
-                    </span>
-                    <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--text-main);">
-                        <?php if ($product['status'] === 'pending_payment'): ?>
-                            Activate Your Service Listing
-                        <?php elseif ($serviceIsExpired): ?>
-                            Service Listing Expired
-                        <?php else: ?>
-                            Expiring Soon (<?= $serviceDaysRemaining ?> days left)
-                        <?php endif; ?>
-                    </h3>
-                </div>
-                <p class="text-muted mb-0" style="font-size: 0.9rem; line-height: 1.5;">
-                    <?php if ($product['status'] === 'pending_payment'): ?>
-                        This service listing is currently private. Activate for ₺<?= number_format($svcPricing['listing_fee'], 0) ?> to display it to campus buyers for <?= (int)$svcPricing['listing_days'] ?> days.
-                    <?php elseif ($serviceIsExpired): ?>
-                        This listing expired on <?= date('M j, Y', strtotime($product['service_expires_at'])) ?> and is hidden from search. Renew for <?= (int)$svcPricing['listing_days'] ?> days for ₺<?= number_format($svcPricing['listing_fee'], 0) ?>.
-                    <?php else: ?>
-                        Your service will expire on <?= date('M j, Y', strtotime($product['service_expires_at'])) ?>. You can renew early to keep bookings uninterrupted.
-                    <?php endif; ?>
-                </p>
-            </div>
-            <div class="flex items-center gap-3 flex-wrap">
-                <form method="POST" action="<?= BASE_URL ?>pages/create_stripe_session.php" class="mb-0">
-                    <?= csrfTokenField() ?>
-                    <input type="hidden" name="payment_type" value="service_listing">
-                    <input type="hidden" name="tier" value="standard">
-                    <input type="hidden" name="product_id" value="<?= (int)$productId ?>">
-                    <button type="submit" class="btn btn-secondary btn-sm" style="padding: 0.6rem 1.1rem; font-weight: 700;">
-                        <?= $serviceIsExpired ? 'Renew ' . (int)$svcPricing['listing_days'] . ' Days (₺' . number_format($svcPricing['listing_fee'], 0) . ')' : 'Pay Standard (₺' . number_format($svcPricing['listing_fee'], 0) . ')' ?>
-                    </button>
-                </form>
-                <form method="POST" action="<?= BASE_URL ?>pages/create_stripe_session.php" class="mb-0">
-                    <?= csrfTokenField() ?>
-                    <input type="hidden" name="payment_type" value="service_listing">
-                    <input type="hidden" name="tier" value="boosted">
-                    <input type="hidden" name="product_id" value="<?= (int)$productId ?>">
-                    <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.6rem 1.1rem; font-weight: 700;">
-                        ⚡ <?= $serviceIsExpired ? 'Renew + Boost (₺' . number_format($svcPricing['total_boosted_fee'], 0) . ')' : 'Activate + Boost (₺' . number_format($svcPricing['total_boosted_fee'], 0) . ')' ?>
-                    </button>
-                </form>
-            </div>
-        </div>
+    <?php if ($isService && $product['status'] === 'pending_payment'): ?>
+    <div class="glass-panel p-5 mb-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+        <p class="text-muted mb-3">This service listing is not currently visible.</p>
+        <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>pages/provider_onboard.php">Update service profile</a>
     </div>
     <?php endif; ?>
 

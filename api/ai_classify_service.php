@@ -45,6 +45,12 @@ if (!is_array($body)) {
 $skillsText = trim((string)($body['skills_text'] ?? $body['description'] ?? ''));
 $bioText    = trim((string)($body['bio'] ?? ''));
 
+if (($body['ai_consent'] ?? false) !== true) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'Consent is required to send your description to an external AI service.']);
+    exit;
+}
+
 if (mb_strlen($skillsText) < 4) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Please provide a brief description of the skills or services you offer.']);

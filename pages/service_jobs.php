@@ -151,8 +151,8 @@ $serviceCategories = $pdo->query(
     "SELECT id, name FROM categories WHERE type = 'service' ORDER BY name ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 $hasFilters = $search !== '' || $categoryId > 0 || $location !== '';
-$pageTitle = $showMine ? 'My Service Requests' : 'Service Requests';
-$pageDescription = 'Find one-off service requests from people and businesses, or post work for student providers.';
+$pageTitle = $showMine ? __('service_requests.my_title') : __('service_requests.title');
+$pageDescription = __('service_requests.description');
 include __DIR__ . '/../includes/header.php';
 ?>
 
@@ -190,33 +190,33 @@ include __DIR__ . '/../includes/header.php';
     <div class="container" style="max-width: 1120px;">
         <header class="service-jobs-hero">
             <div>
-                <span class="badge" style="background:var(--service-light);color:var(--service);">SERVICE REQUESTS</span>
-                <h1 class="page-hero-title mt-3 mb-2"><?= $showMine ? 'My service requests' : 'Find service work on campus' ?></h1>
+                <span class="badge" style="background:var(--service-light);color:var(--service);"><?= __('service_requests.title') ?></span>
+                <h1 class="page-hero-title mt-3 mb-2"><?= $showMine ? __('service_requests.my_title') : __('service_requests.hero_title') ?></h1>
                 <p class="page-subtitle mb-0" style="max-width:680px;">
-                    Browse one-off requests from students, people, and businesses—or post a job and hear from providers through CampusMarket messages.
+                    <?= __('service_requests.description') ?>
                 </p>
             </div>
             <div class="flex gap-2 flex-wrap">
                 <?php if (isLoggedIn()): ?>
-                    <a class="btn btn-secondary" href="<?= BASE_URL ?>pages/service_jobs.php?mine=1">My requests</a>
-                    <a class="btn btn-primary" href="<?= BASE_URL ?>pages/service_jobs.php?post=1">+ Post a request</a>
+                    <a class="btn btn-secondary" href="<?= BASE_URL ?>pages/service_jobs.php?mine=1"><?= __('service_requests.my_requests') ?></a>
+                    <a class="btn btn-primary" href="<?= BASE_URL ?>pages/service_jobs.php?post=1"><?= __('service_requests.post_request') ?></a>
                 <?php else: ?>
-                    <a class="btn btn-primary" href="<?= BASE_URL ?>pages/login.php?redirect=pages/service_jobs.php%3Fpost%3D1">Sign in to post a request</a>
+                    <a class="btn btn-primary" href="<?= BASE_URL ?>pages/login.php?redirect=pages/service_jobs.php%3Fpost%3D1"><?= __('service_requests.sign_in_to_post') ?></a>
                 <?php endif; ?>
             </div>
         </header>
 
         <nav class="flex gap-3 mb-6" aria-label="Service marketplace">
-            <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>pages/services.php">Browse services</a>
-            <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/service_jobs.php">Service requests</a>
+            <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>pages/services.php"><?= __('service_requests.browse_services') ?></a>
+            <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/service_jobs.php"><?= __('service_requests.title') ?></a>
         </nav>
 
         <?php if ($showPostForm): ?>
         <section class="card p-6 mb-8" aria-labelledby="post-service-job-title">
             <div class="flex justify-between items-start gap-4 mb-5">
                 <div>
-                    <h2 id="post-service-job-title" class="page-section-title mb-1">Post a service request</h2>
-                    <p class="text-muted mb-0">Tell providers what you need. Requests stay open for 30 days.</p>
+                    <h2 id="post-service-job-title" class="page-section-title mb-1"><?= __('service_requests.post_heading') ?></h2>
+                    <p class="text-muted mb-0"><?= __('service_requests.post_description') ?></p>
                 </div>
                 <a class="text-muted" href="<?= BASE_URL ?>pages/service_jobs.php" aria-label="Cancel">Cancel</a>
             </div>
@@ -225,16 +225,15 @@ include __DIR__ . '/../includes/header.php';
                 <input type="hidden" name="action" value="create">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2">
-                        <label class="block font-bold mb-2" for="job-title">What do you need? <span class="text-danger">*</span></label>
-                        <input class="premium-input w-full" id="job-title" name="title" minlength="8" maxlength="120" required placeholder="e.g. Need a photographer for a graduation portrait session">
+                        <label class="block font-bold mb-2" for="job-title"><?= __('service_requests.what_needed') ?> <span class="text-danger">*</span></label>
+                        <input class="premium-input w-full" id="job-title" name="title" minlength="8" maxlength="120" required placeholder="<?= __('service_requests.title_placeholder') ?>">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block font-bold mb-2" for="job-description">Describe the work <span class="text-danger">*</span></label>
-                        <textarea class="premium-input w-full" id="job-description" name="description" rows="5" minlength="20" maxlength="5000" required placeholder="Share the scope, preferred timing, and any details providers should know."></textarea>
-                        <small class="text-muted">Keep contact details and payments on-platform until you’ve agreed on the work.</small>
+                        <label class="block font-bold mb-2" for="job-description"><?= __('service_requests.describe_work') ?> <span class="text-danger">*</span></label>
+                        <textarea class="premium-input w-full" id="job-description" name="description" rows="5" minlength="20" maxlength="5000" required placeholder="<?= __('service_requests.description_placeholder') ?>"></textarea>
                     </div>
                     <div>
-                        <label class="block font-bold mb-2" for="job-category">Service category <span class="text-danger">*</span></label>
+                        <label class="block font-bold mb-2" for="job-category"><?= __('service_requests.category') ?> <span class="text-danger">*</span></label>
                         <select class="premium-input w-full" id="job-category" name="category_id" required>
                             <option value="">Choose a category</option>
                             <?php foreach ($serviceCategories as $category): ?>
@@ -243,7 +242,7 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div>
-                        <label class="block font-bold mb-2" for="job-location">Location <span class="text-danger">*</span></label>
+                        <label class="block font-bold mb-2" for="job-location"><?= __('service_requests.location') ?> <span class="text-danger">*</span></label>
                         <select class="premium-input w-full" id="job-location" name="location_town" required>
                             <option value="">Choose a town</option>
                             <?php foreach ($jobTowns as $town): ?>
@@ -252,17 +251,16 @@ include __DIR__ . '/../includes/header.php';
                         </select>
                     </div>
                     <div>
-                        <label class="block font-bold mb-2" for="job-organization">Business or team name <span class="text-muted font-normal">(optional)</span></label>
-                        <input class="premium-input w-full" id="job-organization" name="organization_name" maxlength="120" placeholder="Shown with your account name">
-                        <small class="text-muted">This name is self-reported and not a verification badge.</small>
+                        <label class="block font-bold mb-2" for="job-organization"><?= __('service_requests.organization') ?> <span class="text-muted font-normal">(<?= __('common.optional') ?>)</span></label>
+                        <input class="premium-input w-full" id="job-organization" name="organization_name" maxlength="120">
                     </div>
                     <div>
-                        <label class="block font-bold mb-2" for="job-budget">Maximum budget in TRY <span class="text-muted font-normal">(optional)</span></label>
+                        <label class="block font-bold mb-2" for="job-budget"><?= __('service_requests.budget') ?> <span class="text-muted font-normal">(<?= __('common.optional') ?>)</span></label>
                         <input class="premium-input w-full" id="job-budget" name="budget_max" type="number" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="e.g. 500">
                     </div>
                 </div>
                 <div class="flex justify-end mt-5">
-                    <button class="btn btn-primary" type="submit">Post request</button>
+                    <button class="btn btn-primary" type="submit"><?= __('service_requests.post_request') ?></button>
                 </div>
             </form>
         </section>
@@ -307,19 +305,18 @@ include __DIR__ . '/../includes/header.php';
 
         <?php if ($jobs === []): ?>
             <section class="glass-panel p-10 text-center" style="border:1px dashed var(--border-light);border-radius:var(--radius-xl);">
-                <div aria-hidden="true" style="font-size:2.5rem;">🧰</div>
-                <h3 class="empty-state-title mt-3 mb-2"><?= $showMine ? 'No requests posted yet' : ($hasFilters ? 'No matching requests' : 'No open service requests yet') ?></h3>
+                <h3 class="empty-state-title mt-3 mb-2"><?= $showMine ? __('service_requests.empty_mine') : ($hasFilters ? __('service_requests.empty_filtered') : __('service_requests.empty')) ?></h3>
                 <p class="text-muted max-w-md mx-auto mb-5">
                     <?= $showMine
-                        ? 'Post the work you need and local providers can contact you.'
+                        ? __('service_requests.empty_mine_description')
                         : ($hasFilters
-                            ? 'Try another category or location, or clear your filters to see all open requests.'
-                            : 'Check back soon, or post a request to let providers know what you need.') ?>
+                            ? __('service_requests.empty_filtered_description')
+                            : __('service_requests.empty_description')) ?>
                 </p>
                 <div class="flex justify-center gap-2 flex-wrap">
                     <?php if ($hasFilters): ?><a class="btn btn-secondary" href="<?= BASE_URL ?>pages/service_jobs.php">Clear filters</a><?php endif; ?>
-                    <?php if (isLoggedIn()): ?><a class="btn btn-primary" href="<?= BASE_URL ?>pages/service_jobs.php?post=1">Post a request</a><?php endif; ?>
-                    <a class="btn btn-secondary" href="<?= BASE_URL ?>pages/services.php">Browse services</a>
+                    <?php if (isLoggedIn()): ?><a class="btn btn-primary" href="<?= BASE_URL ?>pages/service_jobs.php?post=1"><?= __('service_requests.post_request') ?></a><?php endif; ?>
+                    <a class="btn btn-secondary" href="<?= BASE_URL ?>pages/services.php"><?= __('service_requests.browse_services') ?></a>
                 </div>
             </section>
         <?php else: ?>

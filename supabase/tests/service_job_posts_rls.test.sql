@@ -1,6 +1,6 @@
 BEGIN;
 
-SELECT plan(10);
+SELECT plan(11);
 
 SELECT ok(
     (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.service_job_posts'::regclass),
@@ -12,6 +12,7 @@ SELECT ok(NOT has_table_privilege('anon', 'public.service_job_posts', 'UPDATE'),
 SELECT ok(NOT has_table_privilege('anon', 'public.service_job_posts', 'DELETE'), 'anonymous users cannot delete requests');
 SELECT ok(has_column_privilege('authenticated', 'public.service_job_posts', 'id', 'SELECT'), 'signed-in users can read requests');
 SELECT ok(has_column_privilege('authenticated', 'public.service_job_posts', 'poster_id', 'INSERT'), 'signed-in users can create requests');
+SELECT ok(has_column_privilege('authenticated', 'public.service_job_posts', 'organization_name', 'INSERT'), 'signed-in users can set an organization name');
 SELECT ok(has_column_privilege('authenticated', 'public.service_job_posts', 'expires_at', 'INSERT'), 'signed-in users can set bounded request expiry');
 SELECT ok(has_column_privilege('authenticated', 'public.service_job_posts', 'status', 'UPDATE'), 'signed-in users can close their requests');
 SELECT ok(NOT has_table_privilege('authenticated', 'public.service_job_posts', 'DELETE'), 'signed-in users cannot delete requests');

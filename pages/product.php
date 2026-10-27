@@ -19,7 +19,7 @@ $stmt = $pdo->prepare("
     JOIN users u ON p.user_id = u.id
     WHERE p.id = :id
       AND (
-          (p.status = 'active' AND (p.listing_type <> 'service' OR p.service_expires_at IS NULL OR p.service_expires_at > NOW()))
+          p.status = 'active'
           OR (p.status <> 'deleted' AND (p.user_id = :viewer_id OR :viewer_is_admin = 1))
       )
 ");
@@ -588,6 +588,7 @@ if (isLoggedIn()) {
 }
 
 $pageTitle = $product['title'];
+$isServiceProduct = ($product['listing_type'] ?? 'product') === 'service';
 $primaryImagePath = $images[0]['image_path'] ?? null;
 $rawDescription = trim(strip_tags((string)($product['description'] ?? '')));
 $pageDescription = $rawDescription !== ''
@@ -595,7 +596,7 @@ $pageDescription = $rawDescription !== ''
     : seoProductShareDescription($product);
 $seoOgTitle = $product['title'];
 $seoOgDescription = seoProductShareDescription($product);
-$seoOgImage = getProductImage($primaryImagePath);
+$seoOgImage = $isServiceProduct ? getServiceImage($primaryImagePath) : getProductImage($primaryImagePath);
 $seoOgType = 'product';
 $seoCanonical = rtrim(BASE_URL, '/') . '/pages/product?id=' . $productId;
 if (($product['status'] ?? '') !== 'active') {
@@ -1152,20 +1153,15 @@ body.dark-mode .scc-badge {
     <?php endif; ?>
     <?php if ($isOwner && ($product['listing_type'] ?? '') === 'service'): ?>
         <?php 
-            $svcPricing = getServicePricingSettings($pdo);
-            $isSvcExpired = !empty($product['service_expires_at']) && strtotime($product['service_expires_at']) <= time();
             $isPendingPayment = ($product['status'] ?? '') === 'pending_payment';
         ?>
-        <?php if ($isPendingPayment || $isSvcExpired): ?>
+        <?php if ($isPendingPayment): ?>
             <div class="glass-panel p-4 mb-6 flex flex-wrap items-center justify-between gap-4" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-lg);">
-                <div class="flex items-center gap-3">
-                    <span style="font-size: 1.4rem;">⚠️</span>
-                    <span style="font-weight: 600; color: var(--text-main);">
-                        <?= $isPendingPayment ? 'This service is saved but pending payment and not visible to buyers.' : 'This service listing has expired and is hidden from search.' ?>
-                    </span>
-                </div>
-                <a href="<?= BASE_URL ?>pages/manage_listing.php?id=<?= $productId ?>" class="btn btn-primary btn-sm" style="font-weight: 700;">
-                    <?= $isPendingPayment ? 'Activate Listing (₺' . number_format($svcPricing['listing_fee'], 0) . ')' : 'Renew Listing (₺' . number_format($svcPricing['listing_fee'], 0) . ')' ?>
+                <span style="font-weight: 600; color: var(--text-main);">
+                    This service listing is not currently visible. Update your service profile or contact support if it should be active.
+                </span>
+                <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-primary btn-sm" style="font-weight: 700;">
+                    Update service profile
                 </a>
             </div>
         <?php endif; ?>
@@ -1189,8 +1185,8 @@ body.dark-mode .scc-badge {
         <!-- Gallery -->
         <div class="gallery-container sticky top-24" style="align-self: start;">
             <div class="product-gallery-main relative group">
-                <?php if (!empty($images)): ?>
-                    <img src="<?php echo getProductImage($images[0]['image_path']); ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
+                <?php if (!empty($images) || $isServiceProduct): ?>
+                    <img src="<?php echo $isServiceProduct ? getServiceImage($images[0]['image_path'] ?? null) : getProductImage($images[0]['image_path']); ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
                 <?php else: ?>
                     <div class="flex flex-col items-center justify-center text-muted">
                         <svg class="w-24 h-24 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -1213,7 +1209,7 @@ body.dark-mode .scc-badge {
                     <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
                         <?php $isHourly = ($product['pricing_model'] ?? 'flat') === 'hourly'; ?>
                         <span class="badge shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px); background: var(--service); color: white;">
-                            <?= $isHourly ? '⏱ ' . __('product.hourly_badge') : '🛠️ ' . __('product.service_badge') ?>
+                            <?= $isHourly ? __('product.hourly_badge') : __('product.service_badge') ?>
                         </span>
                     <?php else: ?>
                         <?php $badge = conditionBadge($product['condition']); ?>
@@ -1420,7 +1416,7 @@ body.dark-mode .scc-badge {
             <?php elseif (isLoggedIn()): ?>
             <!-- Action Buttons for Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
-                <?php $isServiceListing = ($product['listing_type'] ?? 'product') === 'service'; ?>
+                <?php $isServiceListing = $isServiceProduct; ?>
                 <?php if ($isServiceListing): ?>
                     <!-- Service CTA: price display + request button -->
                     <div style="display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.25rem;">
@@ -1434,7 +1430,7 @@ body.dark-mode .scc-badge {
                        data-listing-id="<?php echo (int)$product['id']; ?>"
                        data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                        data-contact-method="message">
-                        🛠️ <?= __('product.request_service') ?>
+                        <?= __('product.request_service') ?>
                     </a>
                     <p class="text-muted small text-center mb-0" style="font-size: 0.82rem;"><?= __('product.service_contact_hint') ?></p>
                 <?php else: ?>

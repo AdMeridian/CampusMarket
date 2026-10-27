@@ -46,7 +46,7 @@ if ($sellerId > 0) {
 $fromSql = " FROM products p
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
-        WHERE p.status = 'active' AND p.listing_type = 'service' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW())" . $filterSql;
+        WHERE p.status = 'active' AND p.listing_type = 'service'" . $filterSql;
 
 $countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
 $countStmt->execute($params);
@@ -97,7 +97,7 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, u.avatar
             SELECT product_id, ROUND(AVG(rating),1) as avg_rating, COUNT(*) as review_count
             FROM ratings GROUP BY product_id
         ) r ON r.product_id = p.id
-        WHERE p.status = 'active' AND p.listing_type = 'service' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW())" . $filterSql .
+        WHERE p.status = 'active' AND p.listing_type = 'service'" . $filterSql .
        " ORDER BY " . $orderBy .
        " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
 
@@ -132,7 +132,7 @@ include '../includes/header.php';
             <div class="text-left" style="max-width: 680px;">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="badge" style="background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.76rem; letter-spacing: 0.5px; border: 1px solid rgba(26, 127, 100, 0.25);">
-                        CAMPUS SERVICES
+                        SERVICES
                     </span>
                 </div>
                 <h1 class="page-hero-title mb-2 text-main"><?= __('services.hero_title') ?></h1>
@@ -140,8 +140,7 @@ include '../includes/header.php';
             </div>
             
             <div class="flex gap-2 flex-wrap">
-                <a href="<?= BASE_URL ?>pages/service_jobs.php" class="btn btn-secondary" style="padding: 0.8rem 1.2rem;">Browse service requests</a>
-                <a href="<?= BASE_URL ?>pages/service_jobs.php?post=1" class="btn btn-secondary" style="padding: 0.8rem 1.2rem;">Post a service request</a>
+                <a href="<?= BASE_URL ?>pages/service_jobs.php" class="btn btn-secondary" style="padding: 0.8rem 1.2rem;">Service requests</a>
                 <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn--service" style="padding: 0.8rem 1.6rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
                     <span><?= __('services.offer_service') ?></span>
                 </a>
@@ -151,10 +150,9 @@ include '../includes/header.php';
         <?php if ($sellerInfo): ?>
         <div class="mb-6 flex items-center justify-between gap-4 p-4 rounded-xl" style="background: var(--service-light); border: 1px solid var(--service); color: var(--text-main);">
             <div class="flex items-center gap-2">
-                <span>🛠️</span>
                 <span>Browsing services by <strong>@<?= htmlspecialchars($sellerInfo['username']) ?></strong></span>
             </div>
-            <a href="<?= BASE_URL ?>pages/services.php" class="btn btn-sm btn-secondary" style="font-size: 0.8rem; border-radius: var(--radius-full);">View all services ✕</a>
+            <a href="<?= BASE_URL ?>pages/services.php" class="btn btn-sm btn-secondary" style="font-size: 0.8rem; border-radius: var(--radius-full);">View all services</a>
         </div>
         <?php endif; ?>
 
@@ -271,9 +269,6 @@ include '../includes/header.php';
 
                             <?php if (empty($services)): ?>
                     <div class="glass-panel p-12 text-center shadow-sm" style="border-radius: var(--radius-xl); border: 2px dashed var(--border-light); background: var(--bg-surface);">
-                        <div class="mb-4 flex justify-center" style="font-size: 3rem;">
-                            <?= $hasFilters ? '🔎' : '🚀' ?>
-                        </div>
                         <h3 class="empty-state-title mb-2" style="font-size: 1.4rem;">
                             <?= $hasFilters ? 'No services match those filters' : 'Campus services are getting started' ?>
                         </h3>
@@ -327,7 +322,7 @@ include '../includes/header.php';
                             <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo $prod['id']; ?>" style="text-decoration: none; display: flex; flex-direction: column; height: 100%;">
                                 <!-- Image -->
                                 <div class="product-card-image-wrap" style="border-radius: 0; margin-bottom: 0; position: relative;">
-                                    <img src="<?php echo getProductImage($prod['image_path'] ?? null); ?>" alt="<?php echo sanitize($prod['title']); ?>">
+                                    <img src="<?php echo getServiceImage($prod['image_path'] ?? null); ?>" alt="<?php echo sanitize($prod['title']); ?>">
                                     <!-- Top-left: availability + delivery -->
                                     <div style="position:absolute; top:0.75rem; left:0.75rem; display:flex; gap:0.4rem; align-items:center;">
                                         <span style="display:flex; align-items:center; gap:0.35rem; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); color:white; padding:0.25rem 0.6rem; border-radius:99px; font-size:0.72rem; font-weight:700;">
@@ -344,7 +339,7 @@ include '../includes/header.php';
                                     <div style="position:absolute; top:0.75rem; right:0.75rem; display:flex; gap:0.35rem; align-items:center;">
                                         <?php if (!empty($prod['is_featured'])): ?>
                                         <span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 0.25rem 0.55rem; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display:flex; align-items:center; gap:2px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                                            ⚡ Featured
+                                            Featured
                                         </span>
                                         <?php endif; ?>
                                         <span style="background: var(--service); color: white; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">

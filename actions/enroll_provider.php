@@ -110,7 +110,6 @@ try {
     $sellerUniversityId = $sellerMarketplace['university_id'] ?? null;
 
     // 3. Create or update the pilot service listing
-    // Pilot duration: 90 days free access to prove marketplace demand
     $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
     
     // Check if user targeted an existing service listing or has an active pilot service listing
@@ -146,15 +145,9 @@ try {
 
     if ($existingProductId) {
         $productId = (int)$existingProductId;
-        if ($driver === 'pgsql') {
-            $updateSql = "UPDATE products SET category_id = ?, title = ?, description = ?, price = ?, pricing_model = ?, " .
-                         "delivery_days = ?, location_town = ?, availability_status = ?, portfolio_link = ?, status = 'pending', " .
-                         "service_expires_at = NOW() + INTERVAL '90 days', updated_at = NOW() WHERE id = ?";
-        } else {
-            $updateSql = "UPDATE products SET category_id = ?, title = ?, description = ?, price = ?, pricing_model = ?, " .
-                         "delivery_days = ?, location_town = ?, availability_status = ?, portfolio_link = ?, status = 'pending', " .
-                         "service_expires_at = DATE_ADD(NOW(), INTERVAL 90 DAY), updated_at = NOW() WHERE id = ?";
-        }
+        $updateSql = "UPDATE products SET category_id = ?, title = ?, description = ?, price = ?, pricing_model = ?, " .
+                     "delivery_days = ?, location_town = ?, availability_status = ?, portfolio_link = ?, status = 'pending', " .
+                     "service_expires_at = NULL, updated_at = NOW() WHERE id = ?";
         $updateStmt = $pdo->prepare($updateSql);
         $updateStmt->execute([$categoryId, $serviceTitle, $serviceDescription, $price, $pricingModel, $deliveryDays, $locationTown, $availabilityStatus, $portfolioLink, $productId]);
     } else {
@@ -186,21 +179,12 @@ try {
         $vals[] = $portfolioLink;
         $placeholders[] = "?";
 
-        if ($driver === 'pgsql') {
-            $cols[] = "service_expires_at";
-            $placeholders[] = "NOW() + INTERVAL '90 days'";
-            $cols[] = "created_at";
-            $placeholders[] = "NOW()";
-            $cols[] = "updated_at";
-            $placeholders[] = "NOW()";
-        } else {
-            $cols[] = "service_expires_at";
-            $placeholders[] = "DATE_ADD(NOW(), INTERVAL 90 DAY)";
-            $cols[] = "created_at";
-            $placeholders[] = "NOW()";
-            $cols[] = "updated_at";
-            $placeholders[] = "NOW()";
-        }
+        $cols[] = "service_expires_at";
+        $placeholders[] = "NULL";
+        $cols[] = "created_at";
+        $placeholders[] = "NOW()";
+        $cols[] = "updated_at";
+        $placeholders[] = "NOW()";
 
         $insertSql = "INSERT INTO products (" . implode(", ", $cols) . ") VALUES (" . implode(", ", $placeholders) . ")";
         $insertStmt = $pdo->prepare($insertSql);

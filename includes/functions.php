@@ -609,6 +609,12 @@ function getProductImage(?string $path): string {
     return rtrim(BASE_URL, '/') . '/public/' . ltrim($path, '/');
 }
 
+function getServiceImage(?string $path): string {
+    return empty($path)
+        ? rtrim(BASE_URL, '/') . '/public/images/logo.png'
+        : getProductImage($path);
+}
+
 /**
  * Backward-compatible upload helper used by older pages.
  * Returns relative path string on success, false on failure.
@@ -1521,7 +1527,7 @@ function getFeaturedProducts(PDO $pdo, int $limit = 6, bool $shuffle = true): ar
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active' AND p.is_featured = TRUE AND (p.listing_type = 'product' OR (p.listing_type = 'service' AND (p.service_expires_at IS NULL OR p.service_expires_at > NOW()))){$featuredWindowFilter}
+        WHERE p.status = 'active' AND p.is_featured = TRUE{$featuredWindowFilter}
         ORDER BY p.discount_set_at DESC, p.created_at DESC
         LIMIT :limit
     ");
@@ -2767,25 +2773,6 @@ function setSystemSetting(PDO $pdo, string $key, string $value): bool {
     }
 }
 
-/**
- * Retrieve all service pricing & duration configuration parameters.
- */
-function getServicePricingSettings(PDO $pdo): array {
-    $listingFee = (float) getSystemSetting($pdo, 'service_listing_fee', '30.00');
-    $boostFee   = (float) getSystemSetting($pdo, 'service_boost_fee', '30.00');
-    $listingDays = (int) getSystemSetting($pdo, 'service_listing_days', '30');
-    $boostDays   = (int) getSystemSetting($pdo, 'service_boost_days', '7');
-    $freeTrialEnabled = (bool) ((int) getSystemSetting($pdo, 'service_free_trial_enabled', '1') === 1);
-
-    return [
-        'listing_fee'        => max(0.0, $listingFee),
-        'boost_fee'          => max(0.0, $boostFee),
-        'total_boosted_fee'  => max(0.0, $listingFee + $boostFee),
-        'listing_days'       => max(1, $listingDays),
-        'boost_days'         => max(1, $boostDays),
-        'free_trial_enabled' => $freeTrialEnabled,
-    ];
-}
 
 /**
  * Fetch the latest active in-app popup broadcast for the current user

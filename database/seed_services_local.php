@@ -38,7 +38,7 @@ $serviceListings = [
 
 $listingStmt = $pdo->prepare(
     "INSERT INTO products (user_id, category_id, title, description, price, price_currency, `condition`, status, listing_type, pricing_model, availability_status, service_expires_at) " .
-    "SELECT :user_id, :category_id, :title, :description, :price, 'TRY', 'new', 'active', 'service', :pricing_model, 'available', DATE_ADD(NOW(), INTERVAL 30 DAY) " .
+    "SELECT :user_id, :category_id, :title, :description, :price, 'TRY', 'new', 'active', 'service', :pricing_model, 'available', NULL " .
     "WHERE NOT EXISTS (SELECT 1 FROM products WHERE user_id = :existing_user_id AND listing_type = 'service' AND title = :existing_title)"
 );
 

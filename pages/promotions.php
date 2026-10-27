@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$myProductsStmt = $pdo->prepare("SELECT id, title, status, is_featured FROM products WHERE user_id = :uid AND status = 'active' ORDER BY created_at DESC");
+$myProductsStmt = $pdo->prepare("SELECT id, title, status, is_featured FROM products WHERE user_id = :uid AND status = 'active' AND listing_type <> 'service' ORDER BY created_at DESC");
 $myProductsStmt->execute([':uid' => $currentUserId]);
 $myProducts = $myProductsStmt->fetchAll();
 
@@ -306,6 +306,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
 
 
