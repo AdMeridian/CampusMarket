@@ -28,20 +28,25 @@ if (!in_array($locationTown, $validTowns, true)) {
     redirect(BASE_URL . 'pages/provider_onboard.php');
 }
 
-if (!in_array($_POST['pricing_model'] ?? '', ['flat', 'hourly'], true)) {
-    setFlash('error', 'Please choose whether your service is charged Per Hour or at a Fixed Rate.');
-    redirect(BASE_URL . 'pages/provider_onboard.php');
+$priceInput = trim((string)($_POST['price'] ?? ''));
+$price = null;
+if ($priceInput !== '') {
+    if (!is_numeric($priceInput) || (float)$priceInput <= 0 || (float)$priceInput > 10000) {
+        setFlash('error', 'Enter a rate greater than 0 and no more than 10,000 TRY, or leave it blank.');
+        redirect(BASE_URL . 'pages/provider_onboard.php');
+    }
+    $price = round((float)$priceInput, 2);
 }
-$pricingModel = $_POST['pricing_model'];
 
-$price = max(0, (float)($_POST['price'] ?? 0));
-if ($price <= 0) {
-    setFlash('error', 'Please enter a valid rate or price in TRY.');
+$pricingModelInput = trim((string)($_POST['pricing_model'] ?? ''));
+if ($price !== null && !in_array($pricingModelInput, ['flat', 'hourly'], true)) {
+    setFlash('error', 'Choose a rate basis or leave the rate blank.');
     redirect(BASE_URL . 'pages/provider_onboard.php');
 }
+$pricingModel = $price !== null && $pricingModelInput === 'hourly' ? 'hourly' : 'flat';
 
 // Hourly services do not have turnaround delivery days; clear to null
-$deliveryDays = ($pricingModel === 'hourly') ? null : max(1, min(30, (int)($_POST['delivery_days'] ?? 2)));
+$deliveryDays = ($price === null || $pricingModel === 'hourly') ? null : max(1, min(30, (int)($_POST['delivery_days'] ?? 2)));
 $availabilityStatus = in_array($_POST['availability_status'] ?? '', ['available', 'busy', 'unavailable'], true) ? $_POST['availability_status'] : 'available';
 
 // Capture student-edited fields to track AI accuracy
@@ -146,14 +151,14 @@ try {
     if ($existingProductId) {
         $productId = (int)$existingProductId;
         $updateSql = "UPDATE products SET category_id = ?, title = ?, description = ?, price = ?, pricing_model = ?, " .
-                     "delivery_days = ?, location_town = ?, availability_status = ?, portfolio_link = ?, status = 'pending', " .
+                     "delivery_days = ?, location_town = ?, availability_status = ?, portfolio_link = ?, status = 'pending_approval', " .
                      "service_expires_at = NULL, updated_at = NOW() WHERE id = ?";
         $updateStmt = $pdo->prepare($updateSql);
         $updateStmt->execute([$categoryId, $serviceTitle, $serviceDescription, $price, $pricingModel, $deliveryDays, $locationTown, $availabilityStatus, $portfolioLink, $productId]);
     } else {
         $conditionVal = ($driver === 'mysql') ? 'new' : null;
         $cols = ["user_id", "category_id", "title", "description", "price", "price_currency", $conditionQuote, "status", "listing_type", "pricing_model", "location_town"];
-        $vals = [$userId, $categoryId, $serviceTitle, $serviceDescription, $price, 'TRY', $conditionVal, 'pending', 'service', $pricingModel, $locationTown];
+        $vals = [$userId, $categoryId, $serviceTitle, $serviceDescription, $price, 'TRY', $conditionVal, 'pending_approval', 'service', $pricingModel, $locationTown];
         $placeholders = ["?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?"];
 
         if ($hasCountryCol) {

@@ -167,6 +167,10 @@ include __DIR__ . '/../includes/header.php';
     padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--border-light);
 }
+.service-jobs-market-nav {
+    display: flex;
+    flex-wrap: wrap;
+}
 .service-job-card {
     padding: 1.35rem;
     border: 1px solid var(--border-light);
@@ -180,9 +184,32 @@ include __DIR__ . '/../includes/header.php';
     color: var(--text-muted);
     font-size: .84rem;
 }
+.service-job-card__meta a,
+.service-job-card h3,
+.service-job-card > p {
+    overflow-wrap: anywhere;
+}
 @media (max-width: 640px) {
     .service-job-card { padding: 1rem; }
     .service-jobs-hero .btn { width: 100%; justify-content: center; }
+    .service-jobs-market-nav .btn { flex: 1 1 100%; justify-content: center; }
+    .service-jobs-post-panel { padding: 1rem; }
+    .service-jobs-post-actions .btn,
+    .service-jobs-filter-actions .btn,
+    .service-job-card__actions .btn {
+        width: 100%;
+        min-height: 44px;
+        justify-content: center;
+    }
+    .service-jobs-post-actions,
+    .service-jobs-filter-actions,
+    .service-job-card__actions {
+        flex-direction: column;
+    }
+    .service-jobs-result-count {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
 }
 </style>
 
@@ -206,13 +233,13 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </header>
 
-        <nav class="flex gap-3 mb-6" aria-label="Service marketplace">
+        <nav class="service-jobs-market-nav gap-3 mb-6" aria-label="Service marketplace">
             <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>pages/services.php"><?= __('service_requests.browse_services') ?></a>
             <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/service_jobs.php"><?= __('service_requests.title') ?></a>
         </nav>
 
         <?php if ($showPostForm): ?>
-        <section class="card p-6 mb-8" aria-labelledby="post-service-job-title">
+        <section class="card p-6 mb-8 service-jobs-post-panel" aria-labelledby="post-service-job-title">
             <div class="flex justify-between items-start gap-4 mb-5">
                 <div>
                     <h2 id="post-service-job-title" class="page-section-title mb-1"><?= __('service_requests.post_heading') ?></h2>
@@ -259,7 +286,7 @@ include __DIR__ . '/../includes/header.php';
                         <input class="premium-input w-full" id="job-budget" name="budget_max" type="number" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="e.g. 500">
                     </div>
                 </div>
-                <div class="flex justify-end mt-5">
+                <div class="flex justify-end mt-5 service-jobs-post-actions">
                     <button class="btn btn-primary" type="submit"><?= __('service_requests.post_request') ?></button>
                 </div>
             </form>
@@ -291,14 +318,14 @@ include __DIR__ . '/../includes/header.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="md:col-span-4 flex gap-2">
+                <div class="md:col-span-4 flex gap-2 service-jobs-filter-actions">
                     <button type="submit" class="btn btn-primary">Search requests</button>
                     <?php if ($hasFilters): ?><a class="btn btn-secondary" href="<?= BASE_URL ?>pages/service_jobs.php<?= $showMine ? '?mine=1' : '' ?>">Clear filters</a><?php endif; ?>
                 </div>
             </div>
         </form>
 
-        <div class="flex justify-between items-center gap-3 mb-4">
+        <div class="flex justify-between items-center gap-3 mb-4 service-jobs-result-count">
             <h2 class="page-section-title mb-0"><?= $showMine ? 'Your requests' : 'Open requests' ?></h2>
             <span class="text-muted"><?= number_format($totalJobs) ?> <?= $totalJobs === 1 ? 'request' : 'requests' ?></span>
         </div>
@@ -341,7 +368,7 @@ include __DIR__ . '/../includes/header.php';
                             <span>·</span>
                             <span><?= htmlspecialchars(date('M j, Y', strtotime((string) $job['created_at'])), ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
-                        <div class="flex gap-2 flex-wrap">
+                        <div class="flex gap-2 flex-wrap service-job-card__actions">
                             <?php if ($isOpen && !$isOwner): ?>
                                 <?php if (isLoggedIn()): ?>
                                     <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/messages.php?other_user_id=<?= (int) $job['poster_id'] ?>&amp;product_id=0&amp;job_id=<?= (int) $job['id'] ?>">Message about this request</a>

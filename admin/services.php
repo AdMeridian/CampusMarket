@@ -7,7 +7,7 @@ require_once '../includes/admin_audit.php';
 
 requireAdmin();
 
-$pageTitle = 'Manage Services';
+$pageTitle = 'Manage Service Categories';
 
 if (function_exists('ensureServicesTable')) {
     ensureServicesTable($pdo);
@@ -106,9 +106,9 @@ require_once '../includes/header.php';
     <div class="admin-page-header">
         <div>
             <div class="admin-breadcrumb"><a href="<?php echo BASE_URL; ?>admin/index.php">Dashboard</a> &gt; Services</div>
-            <h1>Marketplace Services</h1>
+            <h1>Service Categories</h1>
             <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
-                <?php echo count($services); ?> service<?php echo count($services) !== 1 ? 's' : ''; ?> listed for the local marketplace
+                Manage the categories providers can choose when submitting a service listing.
             </p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">

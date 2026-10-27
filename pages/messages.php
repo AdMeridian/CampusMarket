@@ -184,11 +184,17 @@ $presenceText = match($otherPresence['status']) {
 
         <?php if ($productId > 0): ?>
         <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="chat-product-strip">
-            <img src="<?= getProductImage($product['image_path'] ?? null) ?>" alt="" class="chat-product-strip__thumb">
+            <img src="<?= ($product['listing_type'] ?? 'product') === 'service' ? getServiceImage($product['image_path'] ?? null) : getProductImage($product['image_path'] ?? null) ?>" alt="" class="chat-product-strip__thumb">
             <div class="chat-product-strip__body">
                 <span class="chat-product-strip__label"><?= __('chat.regarding_item') ?></span>
                 <span class="chat-product-strip__title"><?= htmlspecialchars($product['title']) ?></span>
-                <span class="chat-product-strip__price"><?= renderProductPrice($product) ?></span>
+                <span class="chat-product-strip__price">
+                    <?php if (($product['listing_type'] ?? 'product') === 'service' && $product['price'] === null): ?>
+                        <?= __('product.rate_not_listed') ?>
+                    <?php else: ?>
+                        <?= renderProductPrice($product) ?>
+                    <?php endif; ?>
+                </span>
             </div>
             <svg class="chat-product-strip__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         </a>

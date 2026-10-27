@@ -85,30 +85,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // 2. Update Pricing & Discount
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_pricing') {
     verifyCsrfToken();
-    $newPrice = (float)($_POST['new_price'] ?? 0);
+    $newPriceInput = trim((string)($_POST['new_price'] ?? ''));
+    $newPrice = null;
+    if ($newPriceInput !== '') {
+        $newPrice = is_numeric($newPriceInput) ? (float)$newPriceInput : 0.0;
+    }
     $newCurrency = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
-    $discountPercent = (int)($_POST['discount_percent'] ?? 0);
+    $discountPercent = $isService ? 0 : (int)($_POST['discount_percent'] ?? 0);
 
     if (!array_key_exists($newCurrency, PRODUCT_CURRENCIES)) {
         $newCurrency = DEFAULT_PRODUCT_CURRENCY;
     }
 
-    if ($newPrice <= 0) {
+    if ($newPrice !== null && ($newPrice <= 0 || ($isService && $newPrice > 10000))) {
         setFlash('error', __('product.price_error'));
     } elseif ($discountPercent < 0 || $discountPercent > LISTING_DISCOUNT_MAX_PERCENT) {
         setFlash('error', __('product.discount_range_error', ['max' => LISTING_DISCOUNT_MAX_PERCENT]));
+    } elseif (!$isService && $newPrice === null) {
+        setFlash('error', __('product.price_error'));
     } else {
         $oldBase = (float)($product['price'] ?? 0);
         $oldDisc = (int)($product['discount_percent'] ?? 0);
         $oldEffective = $oldDisc > 0 ? $oldBase * (1 - ($oldDisc / 100)) : $oldBase;
-        $newEffective = $discountPercent > 0 ? $newPrice * (1 - ($discountPercent / 100)) : $newPrice;
+        $newEffective = $newPrice === null
+            ? 0.0
+            : ($discountPercent > 0 ? $newPrice * (1 - ($discountPercent / 100)) : $newPrice);
+        $discountSetAtSql = $isService ? 'NULL' : 'NOW()';
 
         $stmtUp = $pdo->prepare("
             UPDATE products 
             SET price = :price, 
                 price_currency = :currency, 
                 discount_percent = :dp, 
-                discount_set_at = NOW(), 
+                discount_set_at = {$discountSetAtSql},
                 updated_at = NOW() 
             WHERE id = :id
         ");
@@ -119,11 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             ':id' => $productId
         ]);
 
-        if ($newEffective < $oldEffective) {
+        if (!$isService && $newEffective < $oldEffective) {
             triggerPriceDropAlerts($pdo, $productId, $oldEffective, $newEffective, $newCurrency);
         }
 
-        setFlash('success', 'Pricing updated successfully.');
+        setFlash('success', $isService ? 'Asking rate updated successfully.' : 'Pricing updated successfully.');
     }
     redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
 }
@@ -1030,15 +1039,15 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="flex flex-col gap-6">
             <!-- 1. Pricing Strategy -->
             <div class="mgmt-card" id="pricing-card">
-                <h3 class="font-bold text-lg text-main mb-4">Pricing Strategy</h3>
+                <h3 class="font-bold text-lg text-main mb-4"><?= $isService ? 'Asking Rate' : 'Pricing Strategy' ?></h3>
                 <form method="post" class="flex flex-col gap-3">
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="update_pricing">
 
                     <div>
-                        <label class="font-bold mb-1 block small text-muted">Price</label>
+                        <label class="font-bold mb-1 block small text-muted"><?= $isService ? 'Asking rate (optional)' : 'Price' ?></label>
                         <div class="flex gap-2">
-                            <input type="number" name="new_price" step="0.01" min="0.01" value="<?= (float)$product['price'] ?>" class="premium-input flex-1" style="padding: 0.65rem 0.85rem;" required>
+                            <input type="number" name="new_price" step="0.01" min="0.01" <?= $isService ? 'max="10000"' : '' ?> value="<?= $product['price'] !== null ? (float)$product['price'] : '' ?>" class="premium-input flex-1" style="padding: 0.65rem 0.85rem;" <?= $isService ? '' : 'required' ?> placeholder="<?= $isService ? 'Leave blank to discuss directly' : 'Enter a price' ?>">
                             <select name="price_currency" class="premium-input" style="padding: 0.65rem 0.85rem;">
                                 <?php
                                     $selectedCurrency = strtoupper(trim((string)($product['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
@@ -1050,6 +1059,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                     </div>
 
+                    <?php if (!$isService): ?>
                     <div>
                         <label class="font-bold mb-1 block small text-muted" for="discount_percent">Promotional Discount</label>
                         <select name="discount_percent" id="discount_percent" class="premium-input w-full" style="padding: 0.65rem 0.85rem;">
@@ -1060,9 +1070,10 @@ require_once __DIR__ . '/../includes/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php endif; ?>
 
                     <button type="submit" class="btn btn-primary mt-2" style="padding: 0.65rem 1rem; border-radius: var(--radius-md);">
-                        Update Price
+                        <?= $isService ? 'Update Asking Rate' : 'Update Price' ?>
                     </button>
                 </form>
             </div>

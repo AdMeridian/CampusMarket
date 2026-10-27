@@ -11,9 +11,9 @@
   
   --accent: #d63c4a;
   
-  --service: #e53e3e;
-  --service-hover: #c53030;
-  --service-light: #fee2e2;
+  --service: #1a7f64;
+  --service-hover: #15664f;
+  --service-light: #e6f5f0;
   
   --bg-main: #f5f3f0;
   --bg-surface: #ffffff;
@@ -73,9 +73,9 @@ body.dark-mode {
   --secondary: #fbbf24;
   --secondary-hover: #f59e0b;
   
-  --service: #f87171;
-  --service-hover: #ef4444;
-  --service-light: rgba(239, 68, 68, 0.15);
+  --service: #34d399;
+  --service-hover: #2ab383;
+  --service-light: #1a3a2e;
   
   --bg-main: #1c1917;
   --bg-surface: #292524;
@@ -1463,7 +1463,7 @@ body.dark-mode .toggle-icon { display: block; }
   background: var(--service-hover);
   color: #fff !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(229, 62, 62, 0.25);
+  box-shadow: 0 4px 10px rgba(26, 127, 100, 0.25);
 }
 
 .hero-cta--services {
@@ -2107,16 +2107,16 @@ body.dark-mode .order-hub-chip--highlight {
 
 .hero-actions .hero-cta--services {
     width: 100%;
-    background: #ef4444;
+    background: var(--service);
     color: #ffffff !important;
     border: none;
 }
 
 .hero-actions .hero-cta--services:hover {
-    background: #dc2626;
+    background: var(--service-hover);
     color: #ffffff !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+    box-shadow: 0 4px 14px rgba(26, 127, 100, 0.35);
 }
 
 .hero-carousel {

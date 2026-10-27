@@ -124,7 +124,7 @@ CREATE TABLE products (
     category_id INT            NOT NULL,
     title       VARCHAR(200)   NOT NULL,
     description TEXT,
-    price       DECIMAL(10,2)  NOT NULL,
+    price       DECIMAL(10,2)  NULL,
     price_currency VARCHAR(3)  NOT NULL DEFAULT 'TRY',
     discount_percent TINYINT   NOT NULL DEFAULT 0,
     discount_set_at DATETIME   NULL,
@@ -148,6 +148,7 @@ CREATE TABLE products (
     created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     availability_confirmed_at DATETIME NULL,
+    CONSTRAINT chk_products_price_required_for_non_service CHECK (listing_type = 'service' OR price IS NOT NULL),
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;

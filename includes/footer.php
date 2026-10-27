@@ -72,8 +72,6 @@
                     <?php if (isLoggedIn()): ?>
                     <li><a href="<?php echo BASE_URL; ?>pages/provider_onboard.php"><?= __('footer.offer_service') ?></a></li>
                     <?php endif; ?>
-                    <li><a href="<?php echo BASE_URL; ?>/pages/services.php?pricing=hourly"><?= __('footer.hourly_services') ?></a></li>
-                    <li><a href="<?php echo BASE_URL; ?>/pages/services.php?pricing=flat"><?= __('footer.flat_rate_services') ?></a></li>
                 </ul>
             </div>
 

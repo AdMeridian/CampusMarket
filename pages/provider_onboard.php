@@ -272,8 +272,8 @@ include '../includes/header.php';
                         <div class="flex items-center gap-3">
                             <span class="step-number-badge">2</span>
                             <div>
-                                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main);">Review & Publish Your Service</h2>
-                                <p class="text-muted mb-0" style="font-size: 0.85rem;">Fine-tune your generated listing details before publishing to the campus directory.</p>
+                                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main);">Review Your Service</h2>
+                                <p class="text-muted mb-0" style="font-size: 0.85rem;">Review your service details before submitting them for approval.</p>
                             </div>
                         </div>
                         <span id="aiEngineBadge" class="badge" style="background: var(--bg-main); color: var(--text-muted); font-size: 0.76rem; font-weight: 600; letter-spacing: 0.4px;">
@@ -302,7 +302,7 @@ include '../includes/header.php';
                             <button type="button" id="btnAddTagManual" class="btn btn-secondary" style="padding: 0.55rem 1rem; font-size: 0.85rem; font-weight: 600;">+ Add</button>
                         </div>
                         <input type="hidden" id="skillsInputHidden" name="skills" value="">
-                        <small class="text-muted block mt-2" style="font-size: 0.78rem;">These tags appear on your listing card and help student buyers discover you.</small>
+                        <small class="text-muted block mt-2" style="font-size: 0.78rem;">These tags appear on your listing card and help people find your services.</small>
                     </div>
 
                     <!-- Category & Title -->
@@ -347,17 +347,18 @@ include '../includes/header.php';
                             </select>
                         </div>
                         <div>
-                            <label for="pricing_model" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Pricing Model <span class="text-danger">*</span></label>
-                            <select id="pricing_model" name="pricing_model" class="premium-input w-full" style="padding: 0.75rem 1rem; cursor: pointer;" required>
-                                <option value="" disabled selected>Select pricing model...</option>
+                            <label for="pricing_model" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Rate Basis <span class="text-muted font-normal">(Optional)</span></label>
+                            <select id="pricing_model" name="pricing_model" class="premium-input w-full" style="padding: 0.75rem 1rem; cursor: pointer;">
+                                <option value="" selected>Select if sharing a rate...</option>
                                 <option value="hourly">Per Hour (₺ / hr)</option>
                                 <option value="flat">Fixed Rate (₺ total)</option>
                             </select>
                         </div>
                         <div>
-                            <label for="service_price" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Rate (₺ TRY) <span class="text-danger">*</span> <span id="badge_inferred_price" class="inferred-badge" style="display:none;">AI</span></label>
-                            <input type="number" id="service_price" name="price" step="0.01" min="1" max="10000" class="premium-input w-full" style="padding: 0.75rem 1rem;" required placeholder="e.g. 150" value="">
+                            <label for="service_price" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Asking Rate (TRY) <span class="text-muted font-normal">(Optional)</span> <span id="badge_inferred_price" class="inferred-badge" style="display:none;">AI</span></label>
+                            <input type="number" id="service_price" name="price" step="0.01" min="0.01" max="10000" class="premium-input w-full" style="padding: 0.75rem 1rem;" placeholder="e.g. 150" value="">
                             <small id="aiPriceHint" class="text-muted" style="font-size: 0.78rem; display: none;">AI suggested — adjust to match your own rate</small>
+                            <small class="text-muted block mt-1" style="font-size: 0.78rem;">Leave blank if you prefer to discuss the rate directly.</small>
                         </div>
                     </div>
 
@@ -373,9 +374,9 @@ include '../includes/header.php';
                             <label for="availability_status" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Current Availability</label>
                             <select id="availability_status" name="availability_status" class="premium-input w-full" style="padding: 0.75rem 1rem; cursor: pointer;">
                                 <option value="" disabled selected>Select availability...</option>
-                                <option value="available">🟢 Available for new clients</option>
-                                <option value="busy">🟡 Busy (Accepting with delay)</option>
-                                <option value="unavailable">⚪ Not accepting new clients</option>
+                                <option value="available">Available for new clients</option>
+                                <option value="busy">Busy (Accepting with delay)</option>
+                                <option value="unavailable">Not accepting new clients</option>
                             </select>
                         </div>
                         <div>
@@ -476,7 +477,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('pricing_model').value = d.pricing_model;
                 toggleDelivery();
             }
-            if (d.price) document.getElementById('service_price').value = d.price;
+            if (d.price) {
+                document.getElementById('service_price').value = d.price;
+                toggleDelivery();
+            }
             if (d.delivery_days) document.getElementById('delivery_days').value = d.delivery_days;
             if (d.availability_status) document.getElementById('availability_status').value = d.availability_status;
             if (d.product_id) {
@@ -503,11 +507,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Delivery days: hide when pricing model is hourly ──────────────────
     const pricingModelSel = document.getElementById('pricing_model');
     const deliveryWrap    = document.getElementById('delivery_days_wrap');
+    const servicePriceInput = document.getElementById('service_price');
     function toggleDelivery() {
-        if (!deliveryWrap) return;
-        deliveryWrap.style.display = pricingModelSel?.value === 'flat' ? '' : 'none';
+        const hasRate = !!servicePriceInput?.value;
+        if (pricingModelSel) pricingModelSel.required = hasRate;
+        if (deliveryWrap) deliveryWrap.style.display = hasRate && pricingModelSel?.value === 'flat' ? '' : 'none';
     }
     pricingModelSel?.addEventListener('change', toggleDelivery);
+    servicePriceInput?.addEventListener('input', toggleDelivery);
     toggleDelivery(); // run on load
 
     // ── KVKK consent gates the AI button ─────────────────────────────────
@@ -761,6 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         if (priceHint) priceHint.style.display = 'block';
                     }
+                    toggleDelivery();
                     if (data.delivery_days && (overwriteAll || !userEdited.delivery_days)) {
                         const delEl = document.getElementById('delivery_days');
                         if (delEl) delEl.value = data.delivery_days;

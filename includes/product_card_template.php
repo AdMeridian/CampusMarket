@@ -46,7 +46,7 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
                 <?php
                 if ($isService):
                 ?>
-                <span class="badge shadow-sm" style="background: #ef4444; color: white; font-size: 0.7rem; padding: 0.35rem 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(4px);">
+                <span class="badge shadow-sm" style="background: var(--service); color: white; font-size: 0.7rem; padding: 0.35rem 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(4px);">
                     <?php echo (($prod['pricing_model'] ?? 'flat') === 'hourly') ? 'Hourly Service' : 'Service'; ?>
                 </span>
                 <?php else: ?>
@@ -92,9 +92,13 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
             <div class="mt-auto product-card-price-block">
                 <div class="product-card-price-row">
                     <div class="product-card-price-stack">
-                        <?php echo renderProductCardPrice($prod); ?>
-                        <?php if (($prod['listing_type'] ?? 'product') === 'service' && ($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
-                        <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-left: 0.15rem;">/hr</span>
+                        <?php if (($prod['listing_type'] ?? 'product') === 'service' && ($prod['price'] ?? null) === null): ?>
+                            <span class="text-muted" style="font-size:0.88rem;"><?= __('product.rate_not_listed') ?></span>
+                        <?php else: ?>
+                            <?php echo renderProductCardPrice($prod); ?>
+                            <?php if (($prod['listing_type'] ?? 'product') === 'service' && ($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                            <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-left: 0.15rem;">/hr</span>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>

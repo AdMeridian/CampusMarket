@@ -31,7 +31,7 @@ if ($category) {
     $params[] = $category;
 }
 if (in_array($pricingModel, ['flat', 'hourly'])) {
-    $filterSql .= " AND p.pricing_model = ?";
+    $filterSql .= " AND p.price IS NOT NULL AND p.pricing_model = ?";
     $params[] = $pricingModel;
 }
 if ($locationFilter !== '' && isValidLocationTown($locationFilter)) {
@@ -79,8 +79,8 @@ $providerJoin = $hasProviderProfiles
     : '';
 
 $orderBy = match($sort) {
-    'price_asc'  => "p.is_featured DESC, p.price ASC",
-    'price_desc' => "p.is_featured DESC, p.price DESC",
+    'price_asc'  => "p.is_featured DESC, CASE WHEN p.price IS NULL THEN 1 ELSE 0 END ASC, p.price ASC",
+    'price_desc' => "p.is_featured DESC, CASE WHEN p.price IS NULL THEN 1 ELSE 0 END ASC, p.price DESC",
     default      => "p.is_featured DESC, p.created_at DESC",
 };
 
@@ -384,12 +384,17 @@ include '../includes/header.php';
                                     <div class="mt-auto">
                                         <!-- Price -->
                                         <div style="margin-bottom:0.75rem;">
-                                            <span class="product-card-price__now product-card-price__now--regular">
-                                                <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
-                                                <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
-                                                    <small style="font-size:0.75em; color:var(--text-muted); font-weight:500;">/hr</small>
-                                                <?php endif; ?>
-                                            </span>
+                                            <?php if ($prod['price'] !== null): ?>
+                                                <small class="block text-muted mb-1"><?= __('product.asking_rate') ?></small>
+                                                <span class="product-card-price__now product-card-price__now--regular">
+                                                    <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
+                                                    <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                                                        <small style="font-size:0.75em; color:var(--text-muted); font-weight:500;">/hr</small>
+                                                    <?php endif; ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted" style="font-size:0.88rem;"><?= __('product.rate_not_listed') ?></span>
+                                            <?php endif; ?>
                                         </div>
                                         <!-- Seller row -->
                                         <div style="display:flex; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-light);">

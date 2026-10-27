@@ -707,7 +707,7 @@ body.dark-mode .btn-white-solid:hover {
                     <span style="font-size: 0.82rem; color: rgba(255,255,255,0.88);">Trust Score: <?php echo (int)$trust['score']; ?>/100</span>
                     <?php if ($serviceCount > 0): ?>
                     <a href="<?php echo BASE_URL; ?>pages/services.php?seller=<?php echo (int)$user['id']; ?>" class="badge" style="background: var(--service); color: #fff; text-decoration: none; font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: var(--radius-lg); font-weight: 700;">
-                        🛠️ Service Provider (<?php echo $serviceCount; ?>)
+                        Service Provider (<?php echo $serviceCount; ?>)
                     </a>
                     <?php endif; ?>
                 </div>
@@ -946,7 +946,7 @@ body.dark-mode .btn-white-solid:hover {
                             <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
                                 <img 
                                     class="listing-card-img" 
-                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>" 
+                                    src="<?php echo getServiceImage($prod['image_path'] ?? null); ?>"
                                     alt="<?php echo sanitize($prod['title']); ?>"
                                     loading="lazy"
                                 />
@@ -982,10 +982,10 @@ body.dark-mode .btn-white-solid:hover {
                                 <?php if ($isSelf): ?>
                                     <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
                                         <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-primary btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
-                                            ⚙️ Manage
+                                            Manage
                                         </a>
                                         <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
-                                            👁️ View
+                                            View
                                         </a>
                                     </div>
                                 <?php endif; ?>
@@ -1073,7 +1073,7 @@ body.dark-mode .btn-white-solid:hover {
                             <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
                                 <img
                                     class="listing-card-img"
-                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>"
+                                    src="<?php echo getServiceImage($prod['image_path'] ?? null); ?>"
                                     alt="<?php echo sanitize($prod['title']); ?>"
                                     loading="lazy"
                                 />
@@ -1081,9 +1081,13 @@ body.dark-mode .btn-white-solid:hover {
                             <div class="listing-card-body">
                                 <div class="listing-card-meta">
                                     <span class="listing-card-price">
-                                        <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
-                                        <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
-                                            <small style="font-weight: 500; color: var(--text-muted);">/hr</small>
+                                        <?php if ($prod['price'] !== null): ?>
+                                            <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
+                                            <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                                                <small style="font-weight: 500; color: var(--text-muted);">/hr</small>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <small style="font-weight: 500; color: var(--text-muted);"><?= __('product.rate_not_listed') ?></small>
                                         <?php endif; ?>
                                     </span>
                                 </div>
@@ -1100,10 +1104,10 @@ body.dark-mode .btn-white-solid:hover {
                                 <?php if ($isSelf): ?>
                                     <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
                                         <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); background: var(--service); color: white; border: none; font-weight: 700;">
-                                            ⚙️ Manage
+                                            Manage
                                         </a>
                                         <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
-                                            👁️ View
+                                            View
                                         </a>
                                     </div>
                                 <?php endif; ?>

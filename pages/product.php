@@ -1261,7 +1261,15 @@ body.dark-mode .scc-badge {
                 <?php endif; ?>
                 <div class="product-meta-row">
                     <div>
-                        <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                        <?php if ($isServiceProduct): ?>
+                            <small class="block text-muted mb-1"><?= __('product.asking_rate') ?></small>
+                            <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;">
+                                <?php echo $product['price'] !== null ? renderProductPrice($product) : __('product.rate_not_listed'); ?>
+                            </span>
+                            <p class="text-muted small mt-2 mb-0"><?= __('product.service_payment_notice') ?></p>
+                        <?php else: ?>
+                            <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                        <?php endif; ?>
                         <?php if (productCurrencyCode($product) !== 'TRY'): ?>
                         <div class="mt-1 flex items-center gap-1 text-muted small" style="font-size: 0.8rem;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; flex-shrink: 0; color: var(--primary);" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -1419,12 +1427,11 @@ body.dark-mode .scc-badge {
                 <?php $isServiceListing = $isServiceProduct; ?>
                 <?php if ($isServiceListing): ?>
                     <!-- Service CTA: price display + request button -->
+                    <?php if ($product['price'] !== null): ?>
                     <div style="display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.25rem;">
                         <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($product); ?></span>
-                        <?php if (($product['pricing_model'] ?? 'flat') === 'hourly'): ?>
-                            <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted);">/ hour</span>
-                        <?php endif; ?>
                     </div>
+                    <?php endif; ?>
                     <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
                        class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
                        data-listing-id="<?php echo (int)$product['id']; ?>"

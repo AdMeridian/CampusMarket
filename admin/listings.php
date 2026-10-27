@@ -483,8 +483,10 @@ require_once __DIR__ . '/../includes/header.php';
                         $isService = (($item['listing_type'] ?? 'product') === 'service');
                         $isHourly  = $isService && (($item['pricing_model'] ?? 'flat') === 'hourly');
                         $itemCurr  = productCurrencyCode($item);
-                        $priceData = formatPriceInTRY((float)$item['price'], $itemCurr, $pdo);
-                        $thumbUrl  = getProductImage($item['primary_image'] ?? null);
+                        $priceData = $item['price'] === null ? null : formatPriceInTRY((float)$item['price'], $itemCurr, $pdo);
+                        $thumbUrl  = $isService
+                            ? getServiceImage($item['primary_image'] ?? null)
+                            : getProductImage($item['primary_image'] ?? null);
                     ?>
                     <tr style="transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
                         <!-- Item / Service Column with Thumbnail -->
@@ -561,6 +563,9 @@ require_once __DIR__ . '/../includes/header.php';
 
                         <!-- Price Column -->
                         <td class="p-4 font-bold text-main" style="border-bottom: 1px solid var(--border-light); font-size: 1.05rem;">
+                            <?php if ($priceData === null): ?>
+                                <span class="text-muted" style="font-size:0.82rem;font-weight:500;">No asking rate</span>
+                            <?php else: ?>
                             <?= $priceData['display'] ?>
                             <?php if ($isHourly): ?>
                                 <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">/hr</span>
@@ -569,6 +574,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <small style="display:block; font-size:0.72rem; color:var(--text-muted); font-weight:500;">
                                     <?= $priceData['original'] ?>
                                 </small>
+                            <?php endif; ?>
                             <?php endif; ?>
                         </td>
 
@@ -579,7 +585,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <div>
                                         <?php if ($isHourly): ?>
                                             <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 600;">
-                                                ⏱️ Hourly Rate
+                                                Hourly Rate
                                             </span>
                                         <?php else: ?>
                                             <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); font-weight: 600;">

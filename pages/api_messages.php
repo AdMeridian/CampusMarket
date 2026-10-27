@@ -698,7 +698,7 @@ if ($action === 'amend_service_booking') {
 // ─── Get Active Products ────────────────────────
 if ($action === 'get_active_products') {
     $otherUserId = (int)($_GET['other_user_id'] ?? 0);
-    $stmt = $pdo->prepare("SELECT id, title, user_id, price, price_currency FROM products WHERE user_id IN (:me, :other) AND status = 'active' ORDER BY created_at DESC");
+    $stmt = $pdo->prepare("SELECT id, title, user_id, price, price_currency FROM products WHERE user_id IN (:me, :other) AND status = 'active' AND listing_type <> 'service' AND price IS NOT NULL ORDER BY created_at DESC");
     $stmt->execute([':me' => $currentUserId, ':other' => $otherUserId]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
