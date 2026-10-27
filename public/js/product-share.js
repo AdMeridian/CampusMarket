@@ -85,7 +85,7 @@
     var modal = document.createElement('div');
     modal.id = 'cm-share-modal';
     modal.className = 'cm-share-modal-overlay';
-    modal.innerHTML = 
+    modal.innerHTML =
       '<div class="cm-share-modal" role="dialog" aria-modal="true" aria-labelledby="cm-share-modal-title">' +
         '<div class="cm-share-modal__header">' +
           '<h3 id="cm-share-modal-title" class="cm-share-modal__title">Share Listing</h3>' +

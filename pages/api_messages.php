@@ -45,7 +45,7 @@ if ($action === 'search_users') {
     if (strlen($query) < 1) {
         // Return recent contacts if available
         $stmt = $pdo->prepare("
-            SELECT DISTINCT u.id, u.username, u.avatar 
+            SELECT DISTINCT u.id, u.username, u.avatar
             FROM messages m
             JOIN users u ON u.id = (CASE WHEN m.sender_id = :uid1 THEN m.receiver_id ELSE m.sender_id END)
             WHERE (m.sender_id = :uid2 OR m.receiver_id = :uid3)
