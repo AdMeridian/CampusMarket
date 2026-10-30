@@ -12,6 +12,32 @@ USE campusmarket;
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 1. users
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE TABLE countries (
+    code CHAR(2) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    default_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+    currency_symbol VARCHAR(5) NOT NULL DEFAULT '$',
+    symbol_position VARCHAR(10) NOT NULL DEFAULT 'before',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE universities (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    country_code CHAR(2) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    domain_pattern VARCHAR(150) NOT NULL,
+    city VARCHAR(100) NULL,
+    logo_url VARCHAR(255) NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    is_northern_cyprus TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (country_code) REFERENCES countries(code) ON DELETE RESTRICT,
+    INDEX idx_universities_country (country_code),
+    INDEX idx_universities_domain (domain_pattern)
+) ENGINE=InnoDB;
+
 CREATE TABLE users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
@@ -26,7 +52,9 @@ CREATE TABLE users (
     custom_home_town    VARCHAR(100) NULL,
     university_id     BIGINT NULL,
     other_university_name VARCHAR(200) NULL,
-    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    preferred_language VARCHAR(5) NOT NULL DEFAULT 'en',
+    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (university_id) REFERENCES universities(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -117,7 +145,10 @@ CREATE TABLE service_job_posts (
 CREATE TABLE tags (
     id   INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50)  NOT NULL UNIQUE,
-    slug VARCHAR(50)  NOT NULL UNIQUE
+    slug VARCHAR(50)  NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by INT NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE products (
@@ -131,12 +162,15 @@ CREATE TABLE products (
     discount_percent TINYINT   NOT NULL DEFAULT 0,
     discount_set_at DATETIME   NULL,
     `condition`   ENUM('new', 'like_new', 'used', 'poor') NULL DEFAULT 'used',
-    status      ENUM('active', 'sold', 'flagged', 'pending_approval', 'pending_payment', 'expired')       NOT NULL DEFAULT 'active',
+    status      ENUM('active', 'sold', 'flagged', 'pending_approval', 'pending_payment', 'expired', 'deleted') NOT NULL DEFAULT 'active',
     listing_type ENUM('product', 'service') NOT NULL DEFAULT 'product',
     pricing_model ENUM('flat', 'hourly') NOT NULL DEFAULT 'flat',
     moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
     custom_location VARCHAR(100) NULL,
+    country_code CHAR(2) NULL,
+    university_id BIGINT NULL,
+    deleted_at DATETIME NULL,
     delivery_days TINYINT UNSIGNED NULL DEFAULT NULL,
     revision_count TINYINT UNSIGNED NULL DEFAULT NULL,
     availability_status VARCHAR(20) NOT NULL DEFAULT 'available',
@@ -152,7 +186,9 @@ CREATE TABLE products (
     availability_confirmed_at DATETIME NULL,
     CONSTRAINT chk_products_price_required_for_non_service CHECK (listing_type = 'service' OR price IS NOT NULL),
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+    FOREIGN KEY (country_code) REFERENCES countries(code) ON DELETE RESTRICT,
+    FOREIGN KEY (university_id) REFERENCES universities(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- 5. product_images
@@ -402,4 +438,22 @@ CREATE TABLE IF NOT EXISTS system_settings (
     setting_key   VARCHAR(100) PRIMARY KEY,
     setting_value TEXT NOT NULL,
     updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS system_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    user_email VARCHAR(255) NULL,
+    category VARCHAR(64) NOT NULL DEFAULT 'system',
+    message TEXT NOT NULL,
+    raw_trace LONGTEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    url TEXT NULL,
+    request_method VARCHAR(10) NULL DEFAULT 'GET',
+    user_agent TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_system_logs_created_at (created_at),
+    INDEX idx_system_logs_category (category),
+    INDEX idx_system_logs_user_id (user_id)
 ) ENGINE=InnoDB;

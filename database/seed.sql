@@ -14,6 +14,46 @@ TRUNCATE TABLE categories;
 TRUNCATE TABLE users;
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- ─── Countries and Universities ────────────────────────────
+INSERT INTO countries (code, name, default_currency, currency_symbol, symbol_position) VALUES
+    ('TR', 'Turkey', 'TRY', '₺', 'after'),
+    ('US', 'United States', 'USD', '$', 'before'),
+    ('GB', 'United Kingdom', 'GBP', '£', 'before'),
+    ('DE', 'Germany', 'EUR', '€', 'before'),
+    ('CA', 'Canada', 'CAD', '$', 'before')
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    default_currency = VALUES(default_currency),
+    currency_symbol = VALUES(currency_symbol),
+    symbol_position = VALUES(symbol_position);
+
+INSERT INTO universities (country_code, name, slug, domain_pattern, city, is_northern_cyprus) VALUES
+    ('TR', 'Middle East Technical University', 'metu', 'metu.edu.tr', 'Ankara', 0),
+    ('TR', 'Bilkent University', 'bilkent', 'bilkent.edu.tr', 'Ankara', 0),
+    ('GB', 'University of Oxford', 'oxford', 'ox.ac.uk', 'Oxford', 0),
+    ('GB', 'University of Cambridge', 'cambridge', 'cam.ac.uk', 'Cambridge', 0),
+    ('US', 'Harvard University', 'harvard', 'harvard.edu', 'Cambridge', 0),
+    ('US', 'Stanford University', 'stanford', 'stanford.edu', 'Stanford', 0),
+    ('DE', 'Technical University of Munich', 'tum', 'tum.de', 'Munich', 0),
+    ('TR', 'Arkın University of Creative Arts and Design', 'arucad', 'arucad.edu.tr', 'Kyrenia', 1),
+    ('TR', 'Bahçeşehir Cyprus University', 'bau-cyprus', 'baucyprus.edu.tr', 'Nicosia', 1),
+    ('TR', 'Cyprus Health and Social Sciences University', 'kstu', 'kstu.edu.tr', 'Güzelyurt', 1),
+    ('TR', 'Cyprus International University', 'ciu', 'ciu.edu.tr', 'Nicosia', 1),
+    ('TR', 'Eastern Mediterranean University', 'emu', 'emu.edu.tr', 'Famagusta', 1),
+    ('TR', 'European University of Lefke', 'eul', 'eul.edu.tr', 'Lefke', 1),
+    ('TR', 'Final International University', 'final', 'final.edu.tr', 'Kyrenia', 1),
+    ('TR', 'Girne American University', 'gau', 'gau.edu.tr', 'Kyrenia', 1),
+    ('TR', 'Middle East Technical University Northern Cyprus Campus', 'metu-ncc', 'ncc.metu.edu.tr', 'Güzelyurt', 1),
+    ('TR', 'Near East University', 'neu', 'neu.edu.tr', 'Nicosia', 1),
+    ('TR', 'University of Kyrenia', 'kyrenia', 'kyrenia.edu.tr', 'Kyrenia', 1)
+ON DUPLICATE KEY UPDATE
+    country_code = VALUES(country_code),
+    name = VALUES(name),
+    domain_pattern = VALUES(domain_pattern),
+    city = VALUES(city),
+    is_active = 1,
+    is_northern_cyprus = VALUES(is_northern_cyprus);
+
 -- ─── Users ───────────────────────────────────────────────
 INSERT INTO users (id, username, email, password_hash, role) VALUES
 (1, 'admin', 'admin@campusmarketplace.site', '$2y$10$yH9NwmMe1YkBTVg1HVA.NOF0z/fdkuFG8nkklTJT250.7HmVHUlAO', 'admin'),

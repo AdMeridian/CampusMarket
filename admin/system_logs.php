@@ -54,7 +54,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'export') {
             $exportParams[':category'] = $selectedCategory;
         }
         if ($searchQuery !== '') {
-            $exportWhereClauses[] = "(message ILIKE :q OR raw_trace ILIKE :q OR user_email ILIKE :q OR url ILIKE :q)";
+            $exportWhereClauses[] = "(LOWER(message) LIKE LOWER(:q) OR LOWER(raw_trace) LIKE LOWER(:q) OR LOWER(user_email) LIKE LOWER(:q) OR LOWER(url) LIKE LOWER(:q))";
             $exportParams[':q'] = '%' . $searchQuery . '%';
         }
     }
@@ -137,7 +137,7 @@ if ($selectedCategory !== '') {
 }
 
 if ($searchQuery !== '') {
-    $whereClauses[] = "(message ILIKE :q OR raw_trace ILIKE :q OR user_email ILIKE :q OR url ILIKE :q)";
+    $whereClauses[] = "(LOWER(message) LIKE LOWER(:q) OR LOWER(raw_trace) LIKE LOWER(:q) OR LOWER(user_email) LIKE LOWER(:q) OR LOWER(url) LIKE LOWER(:q))";
     $params[':q'] = '%' . $searchQuery . '%';
 }
 

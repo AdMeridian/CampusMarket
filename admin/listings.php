@@ -8,7 +8,7 @@ require_once __DIR__ . '/../includes/admin_audit.php';
 $pageTitle = __('admin.manage_listings');
 $promoPaymentsTableExists = false;
 try {
-    $promoPaymentsTableExists = (bool)$pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'promotion_payments' LIMIT 1")->fetchColumn();
+    $promoPaymentsTableExists = databaseTableExists($pdo, 'promotion_payments');
 } catch (PDOException $e) {
     $promoPaymentsTableExists = false;
 }

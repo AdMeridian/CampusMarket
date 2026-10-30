@@ -1657,6 +1657,16 @@ function clearDonationData(PDO $pdo): int {
     return $stmt->rowCount();
 }
 
+function databaseTableExists(PDO $pdo, string $tableName): bool {
+    $isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
+    $sql = $isPostgres
+        ? "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = :table LIMIT 1"
+        : "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':table' => $tableName]);
+    return (bool)$stmt->fetchColumn();
+}
+
 /**
  * Count donation payment records currently stored.
  */
