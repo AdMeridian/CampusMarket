@@ -288,7 +288,7 @@ if ($action === 'fetch') {
             $pIdsList = array_values($mentionedProductIds);
             $placeholders = implode(',', array_fill(0, count($pIdsList), '?'));
             $metaStmt = $pdo->prepare("
-                SELECT p.id, p.title, p.price, p.price_currency, p.status,
+                SELECT p.id, p.title, p.price, p.price_currency, p.status, p.listing_type,
                        pi.image_path
                 FROM products p
                 LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
@@ -301,7 +301,7 @@ if ($action === 'fetch') {
                     'title' => htmlspecialchars($pRow['title'], ENT_QUOTES, 'UTF-8'),
                     'price' => (float)$pRow['price'],
                     'price_currency' => $pRow['price_currency'] ?: 'TRY',
-                    'image_url' => getProductImage($pRow['image_path']),
+                    'image_url' => (($pRow['listing_type'] ?? 'product') === 'service') ? getServiceImage($pRow['image_path'] ?? null, (int)$pRow['id']) : getProductImage($pRow['image_path']),
                     'status' => $pRow['status'],
                     'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$pRow['id'],
                 ];

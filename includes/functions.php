@@ -609,10 +609,28 @@ function getProductImage(?string $path): string {
     return rtrim(BASE_URL, '/') . '/public/' . ltrim($path, '/');
 }
 
-function getServiceImage(?string $path): string {
-    return empty($path)
-        ? rtrim(BASE_URL, '/') . '/public/images/logo.png'
-        : getProductImage($path);
+function getServiceImage(?string $path, int|string|null $seed = null): string {
+    if (!empty($path) && trim($path) !== '') {
+        return getProductImage($path);
+    }
+
+    $placeholders = [
+        rtrim(BASE_URL, '/') . '/public/images/default-service-1.jpg',
+        rtrim(BASE_URL, '/') . '/public/images/default-service-2.jpg',
+    ];
+
+    static $counter = 0;
+
+    if ($seed !== null && $seed !== '') {
+        $idx = is_numeric($seed)
+            ? abs((int)$seed) % count($placeholders)
+            : abs(crc32((string)$seed)) % count($placeholders);
+        return $placeholders[$idx];
+    }
+
+    $selected = $placeholders[$counter % count($placeholders)];
+    $counter++;
+    return $selected;
 }
 
 /**
@@ -1153,7 +1171,7 @@ function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
 
     $stmt = $pdo->prepare("
         SELECT 
-            p.id, p.title, p.price, p.discount_percent, p.price_currency, p.is_featured,
+            p.id, p.title, p.price, p.discount_percent, p.price_currency, p.is_featured, p.listing_type,
             c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
         JOIN categories c ON p.category_id = c.id
@@ -1191,7 +1209,7 @@ function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
             'original_price_formatted' => $discountPercent > 0 ? $basePriceData['display'] : null,
             'discount_percent' => $discountPercent,
             'is_featured' => (bool)$row['is_featured'],
-            'image_url' => getProductImage($row['image_path'] ?? null),
+            'image_url' => (($row['listing_type'] ?? 'product') === 'service') ? getServiceImage($row['image_path'] ?? null, (int)$row['id']) : getProductImage($row['image_path'] ?? null),
             'category_name' => $row['category_name'],
             'seller_name' => $row['seller_name'],
             'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$row['id']

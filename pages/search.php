@@ -199,7 +199,10 @@ require_once __DIR__ . '/../includes/header.php';
                 <a href="product.php?id=<?php echo $prod['id']; ?>" class="glass-panel hover-scale relative" style="display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-lg); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(255,255,255,0.5); text-decoration: none;">
                     <div style="height: 200px; background: #e2e8f0; position: relative; overflow: hidden;">
                         <?php
-                            $searchImg = getProductImage($prod['image_path'] ?? null);
+                            $isService = (($prod['listing_type'] ?? 'product') === 'service');
+                            $searchImg = $isService
+                                ? getServiceImage($prod['image_path'] ?? null)
+                                : getProductImage($prod['image_path'] ?? null);
                         ?>
                         <img src="<?php echo $searchImg; ?>" alt="<?php echo sanitize($prod['title']); ?>" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
 

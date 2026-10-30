@@ -93,7 +93,8 @@ require_once '../includes/header.php';
                             $imgStmt = $pdo->prepare("SELECT image_path FROM product_images WHERE product_id = ? AND is_primary = TRUE LIMIT 1");
                             $imgStmt->execute([$prod['id']]);
                             $mainImg = $imgStmt->fetchColumn();
-                            $imageSrc = getProductImage($mainImg);
+                            $isService = (($prod['listing_type'] ?? 'product') === 'service');
+                            $imageSrc = $isService ? getServiceImage($mainImg ?: null, $prod['id']) : getProductImage($mainImg);
                             ?>
                             <img src="<?php echo $imageSrc; ?>" alt="<?php echo sanitize($prod['title']); ?>" style="width: 100%; height: 100%; object-fit: cover;">
                             <div class="absolute top-4 right-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-full text-[0.65rem] font-black shadow-lg <?php echo $daysLeft < 5 ? 'text-error' : 'text-slate-600'; ?>" style="letter-spacing: 0.08em; border: 1px solid rgba(0,0,0,0.05); color: <?php echo $daysLeft < 5 ? 'var(--error)' : '#475569'; ?>; background: white;">

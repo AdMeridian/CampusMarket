@@ -596,7 +596,7 @@ $pageDescription = $rawDescription !== ''
     : seoProductShareDescription($product);
 $seoOgTitle = $product['title'];
 $seoOgDescription = seoProductShareDescription($product);
-$seoOgImage = $isServiceProduct ? getServiceImage($primaryImagePath) : getProductImage($primaryImagePath);
+$seoOgImage = $isServiceProduct ? getServiceImage($primaryImagePath, $productId) : getProductImage($primaryImagePath);
 $seoOgType = 'product';
 $seoCanonical = rtrim(BASE_URL, '/') . '/pages/product?id=' . $productId;
 if (($product['status'] ?? '') !== 'active') {
@@ -1330,7 +1330,7 @@ body.dark-mode .scc-badge {
         <div class="gallery-container sticky top-24" style="align-self: start;">
             <div class="product-gallery-main relative group">
                 <?php if (!empty($images) || $isServiceProduct): ?>
-                    <img src="<?php echo $isServiceProduct ? getServiceImage($images[0]['image_path'] ?? null) : getProductImage($images[0]['image_path']); ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
+                    <img src="<?php echo $isServiceProduct ? getServiceImage($images[0]['image_path'] ?? null, $productId) : getProductImage($images[0]['image_path']); ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
                 <?php else: ?>
                     <div class="flex flex-col items-center justify-center text-muted">
                         <svg class="w-24 h-24 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>

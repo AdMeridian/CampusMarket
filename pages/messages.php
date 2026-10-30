@@ -187,7 +187,7 @@ $presenceText = match($otherPresence['status']) {
 
         <?php if ($productId > 0): ?>
         <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="chat-product-strip">
-            <img src="<?= ($product['listing_type'] ?? 'product') === 'service' ? getServiceImage($product['image_path'] ?? null) : getProductImage($product['image_path'] ?? null) ?>" alt="" class="chat-product-strip__thumb">
+            <img src="<?= ($product['listing_type'] ?? 'product') === 'service' ? getServiceImage($product['image_path'] ?? null, $productId) : getProductImage($product['image_path'] ?? null) ?>" alt="" class="chat-product-strip__thumb">
             <div class="chat-product-strip__body">
                 <span class="chat-product-strip__label"><?= __('chat.regarding_item') ?></span>
                 <span class="chat-product-strip__title"><?= htmlspecialchars($product['title']) ?></span>
