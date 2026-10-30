@@ -750,11 +750,11 @@ body.dark-mode .btn-white-solid:hover {
                 <span class="tab-count"><?php echo $listingCount; ?></span>
             </button>
             <?php if ($serviceCount > 0 || $isSelf): ?>
-            <button type="button" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" data-tab="services" style="color: var(--service);">
+            <button type="button" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" data-tab="services">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
                 Services
                 <?php if ($serviceCount > 0): ?>
-                <span class="tab-count" style="background: var(--service); color: white;"><?php echo $serviceCount; ?></span>
+                <span class="tab-count"><?php echo $serviceCount; ?></span>
                 <?php endif; ?>
             </button>
             <?php endif; ?>
