@@ -532,5 +532,6 @@
     "push.not_now_btn": "Not now",
     "push.enabling_btn": "Enabling…",
     "product.listed_as": "Listed in {amount}",
-    "product.currency_converted_hint": "Prices converted to ₺ at today's exchange rate"
+    "product.currency_converted_hint": "Prices converted to ₺ at today's exchange rate",
+    "auth.error_rate_limit": "Too many failed login attempts. Please wait a few minutes before trying again."
 }

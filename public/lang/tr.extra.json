@@ -532,5 +532,6 @@
     "push.not_now_btn": "Şimdi değil",
     "push.enabling_btn": "Etkinleştiriliyor…",
     "product.listed_as": "Listelenen fiyat: {amount}",
-    "product.currency_converted_hint": "Fiyatlar bugünün kuruyla ₺ cinsine çevrilmiştir"
+    "product.currency_converted_hint": "Fiyatlar bugünün kuruyla ₺ cinsine çevrilmiştir",
+    "auth.error_rate_limit": "Çok fazla başarısız giriş denemesi. Lütfen birkaç dakika bekleyip tekrar deneyin."
 }

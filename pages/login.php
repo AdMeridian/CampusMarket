@@ -64,7 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$auth['ok']) {
             $msg = strtolower((string) ($auth['error'] ?? ''));
-            if (strpos($msg, 'email not confirmed') !== false) {
+            $status = (int) ($auth['status'] ?? 0);
+            $isRateLimited = ($status === 429)
+                || (strpos($msg, 'rate limit') !== false)
+                || (strpos($msg, 'too many requests') !== false)
+                || (strpos($msg, 'over_request_rate_limit') !== false);
+
+            if ($isRateLimited) {
+                $errors['form'] = __('auth.error_rate_limit');
+            } elseif (strpos($msg, 'email not confirmed') !== false) {
                 $unverified = true;
                 $unverifiedEmail = strtolower($loginEmail);
                 $errors['form'] = __('auth.error_verify_email');
