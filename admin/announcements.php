@@ -717,6 +717,22 @@ function openAnnouncementModal() {
     modal.style.display = 'flex';
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+    const annForm = document.getElementById('announcementForm');
+    if (annForm) {
+        annForm.addEventListener('submit', function(e) {
+            const isBanner = document.getElementById('annActive')?.checked;
+            const isPush = document.getElementById('sendPushCheckbox')?.checked;
+            const isBell = document.getElementById('sendBellCheckbox')?.checked;
+            if (!isBanner && !isPush && !isBell) {
+                if (!confirm('This announcement is marked inactive and has no delivery channels selected (Banner, Push, or Bell). It will be saved as an unpublished draft. Continue?')) {
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+});
+
 function openAnnouncementModalWithTemplate(templateId) {
     openAnnouncementModal();
     applyAnnouncementTemplate(templateId);
@@ -869,16 +885,16 @@ function updatePreview() {
     if (prevPushMessage) prevPushMessage.textContent = message;
     if (prevPushUrl) prevPushUrl.textContent = cta ? (cta + ' →') : 'tap to open';
     if (prevPushBadge) {
-        prevPushBadge.textContent = type.toUpperCase() + ' NOTICE';
-        const badgeStyles = {
-            info: { bg: '#eff6ff', color: '#1d4ed8' },
-            warning: { bg: '#fffbeb', color: '#b45309' },
-            success: { bg: '#ecfdf5', color: '#047857' },
-            alert: { bg: '#fef2f2', color: '#b91c1c' }
+        const badgeMeta = {
+            info: { text: 'CAMPUS UPDATE', bg: '#eff6ff', color: '#1d4ed8' },
+            warning: { text: 'ADVISORY', bg: '#fffbeb', color: '#b45309' },
+            success: { text: 'NEW UPDATE', bg: '#ecfdf5', color: '#047857' },
+            alert: { text: 'URGENT ALERT', bg: '#fef2f2', color: '#b91c1c' }
         };
-        const bs = badgeStyles[type] || badgeStyles.info;
-        prevPushBadge.style.background = bs.bg;
-        prevPushBadge.style.color = bs.color;
+        const meta = badgeMeta[type] || badgeMeta.info;
+        prevPushBadge.textContent = meta.text;
+        prevPushBadge.style.background = meta.bg;
+        prevPushBadge.style.color = meta.color;
     }
 }
 </script>
