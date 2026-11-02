@@ -11,6 +11,114 @@ ensureAnnouncementsTable($pdo);
 $pageTitle = "Platform Announcements";
 $currentAdminId = currentUserId();
 
+$announcementTemplates = [
+    [
+        'id' => 'services_pilot',
+        'icon' => '🛠️',
+        'category' => 'Feature Launch',
+        'badge' => 'Services Pilot',
+        'type' => 'success',
+        'title' => 'Campus Services Pilot is Now Live!',
+        'message' => 'Hire fellow students or offer your skills for tutoring, tech support, moving, design, and campus gigs.',
+        'cta_text' => 'Explore Services',
+        'cta_url' => BASE_URL . 'pages/services.php',
+        'target_role' => 'all',
+        'desc' => 'Announce the newly launched student skills directory.'
+    ],
+    [
+        'id' => 'service_requests',
+        'icon' => '📝',
+        'category' => 'Job Board',
+        'badge' => 'Service Gigs',
+        'type' => 'info',
+        'title' => 'Need Help with a Task or Project?',
+        'message' => 'Post a free service request on the campus board to connect with student providers ready to help.',
+        'cta_text' => 'Post a Request',
+        'cta_url' => BASE_URL . 'pages/service_jobs.php?post=1',
+        'target_role' => 'user',
+        'desc' => 'Prompt students to post freelance tasks and gig requests.'
+    ],
+    [
+        'id' => 'maintenance',
+        'icon' => '⚠️',
+        'category' => 'Operations',
+        'badge' => 'Maintenance',
+        'type' => 'warning',
+        'title' => 'Scheduled System Maintenance',
+        'message' => 'CampusMarket will undergo brief scheduled maintenance tonight at 02:00 AM UTC. Active listings will remain safe.',
+        'cta_text' => 'System Health',
+        'cta_url' => BASE_URL . 'pages/health.php',
+        'target_role' => 'all',
+        'desc' => 'Notice for scheduled downtime or infrastructure maintenance.'
+    ],
+    [
+        'id' => 'campus_safety',
+        'icon' => '🛡️',
+        'category' => 'Trust & Safety',
+        'badge' => 'Safety Tip',
+        'type' => 'alert',
+        'title' => 'Campus Safety Reminder',
+        'message' => 'Always meet in well-lit, public campus areas (Student Center, Library) during daylight and inspect items thoroughly before paying.',
+        'cta_text' => 'Safety Guide',
+        'cta_url' => BASE_URL . 'pages/safety.php',
+        'target_role' => 'all',
+        'desc' => 'Remind users about safe campus meetup and exchange rules.'
+    ],
+    [
+        'id' => 'textbook_fair',
+        'icon' => '📚',
+        'category' => 'Academic',
+        'badge' => 'Term Start',
+        'type' => 'info',
+        'title' => 'New Semester Textbook & Supply Exchange',
+        'message' => 'Get ready for classes! Find discounted course textbooks, calculators, dorm gear, and notes from senior students.',
+        'cta_text' => 'Browse Textbooks',
+        'cta_url' => BASE_URL . 'pages/browse.php?q=textbook',
+        'target_role' => 'all',
+        'desc' => 'Textbook and academic materials announcement for term start.'
+    ],
+    [
+        'id' => 'verify_email',
+        'icon' => '🎓',
+        'category' => 'Verification',
+        'badge' => 'Trust Badge',
+        'type' => 'info',
+        'title' => 'Verify Your Student Email for a Verified Badge',
+        'message' => 'Build instant trust with buyers and clients by verifying your official campus email address in your profile.',
+        'cta_text' => 'Verify Profile',
+        'cta_url' => BASE_URL . 'pages/edit_profile.php',
+        'target_role' => 'user',
+        'desc' => 'Encourage unverified students to confirm their student status.'
+    ],
+    [
+        'id' => 'mobile_pwa',
+        'icon' => '📱',
+        'category' => 'Mobile App',
+        'badge' => 'App Install',
+        'type' => 'info',
+        'title' => 'Add CampusMarket to Your Phone Home Screen',
+        'message' => 'Never miss a buyer message or deal! Install our progressive web app for instant push notifications and fast browsing.',
+        'cta_text' => 'Install App',
+        'cta_url' => BASE_URL . 'pages/home.php#install-app',
+        'target_role' => 'all',
+        'desc' => 'Promote PWA installation for push notifications.'
+    ],
+    [
+        'id' => 'dorm_clearance',
+        'icon' => '📦',
+        'category' => 'Seasonal',
+        'badge' => 'Term End',
+        'type' => 'warning',
+        'title' => 'End-of-Term Dorm Move-Out & Clearance',
+        'message' => 'Moving out for break? List unwanted dorm items, appliances, and furniture before dorm checkout week.',
+        'cta_text' => 'List Items Free',
+        'cta_url' => BASE_URL . 'pages/create_listing.php',
+        'target_role' => 'user',
+        'desc' => 'Clearance and move-out reminder before holidays.'
+    ]
+];
+
+
 // Handle Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
@@ -130,9 +238,68 @@ require_once __DIR__ . '/../includes/header.php';
                 Broadcast high-priority notices, maintenance warnings, or promotional announcements across the marketplace.
             </p>
         </div>
-        <button type="button" class="btn btn-primary" onclick="openAnnouncementModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; border-radius: var(--radius-md); font-weight: 600; padding: 0.7rem 1.25rem;">
-            <span>+</span> New Announcement
-        </button>
+        <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" onclick="toggleTemplatesSection()" style="display: inline-flex; align-items: center; gap: 0.4rem; border-radius: var(--radius-md); font-weight: 600; padding: 0.7rem 1.1rem;">
+                <span>⚡</span> Presets & Templates
+            </button>
+            <button type="button" class="btn btn-primary" onclick="openAnnouncementModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; border-radius: var(--radius-md); font-weight: 600; padding: 0.7rem 1.25rem;">
+                <span>+</span> New Announcement
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Preset Templates Gallery -->
+    <div id="templatesGallerySection" class="card mb-6" style="padding: 1.5rem; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.25rem;">⚡</span>
+                    <h2 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-main);">Announcement Templates</h2>
+                    <span style="font-size: 0.75rem; font-weight: 700; background: var(--bg-main); border: 1px solid var(--border-light); padding: 0.2rem 0.5rem; border-radius: 99px; color: var(--text-muted);"><?= count($announcementTemplates) ?> ready to use</span>
+                </div>
+                <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                    Click any template to instantly pre-fill the announcement banner and preview it.
+                </p>
+            </div>
+            <button type="button" onclick="toggleTemplatesSection()" style="background: none; border: none; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; text-decoration: underline;">
+                Hide Templates
+            </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem;">
+            <?php foreach ($announcementTemplates as $tpl): 
+                $badgeColors = [
+                    'info' => '#3b82f6',
+                    'warning' => '#f59e0b',
+                    'success' => '#10b981',
+                    'alert' => '#ef4444'
+                ];
+                $color = $badgeColors[$tpl['type']] ?? '#3b82f6';
+            ?>
+            <div style="border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; background: var(--bg-main); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.15s ease, box-shadow 0.15s ease;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-light)'">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-size: 1.35rem;"><?= $tpl['icon'] ?></span>
+                        <span style="font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: var(--radius-sm); background: color-mix(in srgb, <?= $color ?> 15%, transparent); color: <?= $color ?>;">
+                            <?= strtoupper($tpl['type']) ?>
+                        </span>
+                    </div>
+                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.35rem; line-height: 1.3;">
+                        <?= htmlspecialchars($tpl['title']) ?>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.75rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        <?= htmlspecialchars($tpl['message']) ?>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--border-light); margin-top: 0.5rem;">
+                    <span style="font-size: 0.72rem; color: var(--text-muted);"><?= htmlspecialchars($tpl['category']) ?></span>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openAnnouncementModalWithTemplate('<?= $tpl['id'] ?>')" style="padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 600; border-radius: var(--radius-sm);">
+                        Use Template &rarr;
+                    </button>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 
     <!-- Active List -->
@@ -242,6 +409,25 @@ require_once __DIR__ . '/../includes/header.php';
             <input type="hidden" name="action" id="formAction" value="create">
             <input type="hidden" name="id" id="announcementId" value="0">
 
+            <!-- Template Preset Selector -->
+            <div style="margin-bottom: 1.25rem; background: var(--bg-main); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1.5px solid var(--border-light);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <label for="templateSelector" style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+                        <span>⚡</span> Preset Template (Autofill)
+                    </label>
+                    <span id="templateNotice" style="font-size: 0.75rem; color: var(--text-muted);">Select a preset to fill form</span>
+                </div>
+                <select id="templateSelector" class="premium-input w-full" onchange="applyAnnouncementTemplate(this.value)" style="background: var(--bg-surface);">
+                    <option value="">-- Choose a template to autofill --</option>
+                    <?php foreach ($announcementTemplates as $tpl): ?>
+                        <option value="<?= htmlspecialchars($tpl['id']) ?>">
+                            <?= $tpl['icon'] ?> <?= htmlspecialchars($tpl['title']) ?> (<?= htmlspecialchars($tpl['category']) ?>)
+                        </option>
+                    <?php endforeach; ?>
+                    <option value="__blank__">✕ Clear / Blank Form</option>
+                </select>
+            </div>
+
             <div style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.4rem; color: var(--text-main);">Banner Type</label>
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
@@ -328,20 +514,76 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
+const announcementTemplates = <?= json_encode($announcementTemplates, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+function toggleTemplatesSection() {
+    const sec = document.getElementById('templatesGallerySection');
+    if (!sec) return;
+    sec.style.display = (sec.style.display === 'none') ? 'block' : 'none';
+}
+
 function openAnnouncementModal() {
     document.getElementById('formAction').value = 'create';
     document.getElementById('announcementId').value = '0';
     document.getElementById('modalTitle').textContent = 'New Announcement';
     document.getElementById('modalSubmitBtn').textContent = 'Publish Announcement';
+    document.getElementById('templateSelector').value = '';
+    document.getElementById('templateNotice').textContent = 'Select a preset to fill form';
     document.getElementById('annTitle').value = '';
     document.getElementById('annMessage').value = '';
     document.getElementById('annCtaText').value = '';
     document.getElementById('annCtaUrl').value = '';
     document.getElementById('annActive').checked = true;
+    document.getElementById('annTarget').value = 'all';
     document.querySelector('input[name="type"][value="info"]').checked = true;
     updatePreview();
     const modal = document.getElementById('announcementModal');
     modal.style.display = 'flex';
+}
+
+function openAnnouncementModalWithTemplate(templateId) {
+    openAnnouncementModal();
+    applyAnnouncementTemplate(templateId);
+}
+
+function applyAnnouncementTemplate(templateId) {
+    const sel = document.getElementById('templateSelector');
+    if (sel && sel.value !== templateId) {
+        sel.value = templateId;
+    }
+
+    if (templateId === '__blank__') {
+        document.getElementById('annTitle').value = '';
+        document.getElementById('annMessage').value = '';
+        document.getElementById('annCtaText').value = '';
+        document.getElementById('annCtaUrl').value = '';
+        document.getElementById('annTarget').value = 'all';
+        document.querySelector('input[name="type"][value="info"]').checked = true;
+        document.getElementById('templateNotice').textContent = 'Form cleared';
+        updatePreview();
+        return;
+    }
+
+    const tpl = announcementTemplates.find(t => t.id === templateId);
+    if (!tpl) return;
+
+    document.getElementById('annTitle').value = tpl.title || '';
+    document.getElementById('annMessage').value = tpl.message || '';
+    document.getElementById('annCtaText').value = tpl.cta_text || '';
+    document.getElementById('annCtaUrl').value = tpl.cta_url || '';
+    document.getElementById('annTarget').value = tpl.target_role || 'all';
+
+    const typeRadio = document.querySelector('input[name="type"][value="' + (tpl.type || 'info') + '"]');
+    if (typeRadio) {
+        typeRadio.checked = true;
+    }
+
+    const notice = document.getElementById('templateNotice');
+    if (notice) {
+        notice.textContent = 'Template loaded: ' + tpl.badge;
+    }
+
+    updatePreview();
 }
 
 function closeAnnouncementModal() {
@@ -349,6 +591,10 @@ function closeAnnouncementModal() {
 }
 
 function editAnnouncement(data) {
+    const sel = document.getElementById('templateSelector');
+    if (sel) sel.value = '';
+    const notice = document.getElementById('templateNotice');
+    if (notice) notice.textContent = 'Custom announcement';
     document.getElementById('formAction').value = 'edit';
     document.getElementById('announcementId').value = data.id;
     document.getElementById('modalTitle').textContent = 'Edit Announcement #' + data.id;
