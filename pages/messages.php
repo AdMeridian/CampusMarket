@@ -128,6 +128,21 @@ $bodyClass = 'page-chat';
 
 require_once __DIR__ . '/../includes/header.php';
 
+// Contextual push opt-in: prompt when user opens their first-ever conversation
+if (isLoggedIn() && empty($_SESSION['cm_push_prompted_message'])) {
+    try {
+        $firstMsgCheck = $pdo->prepare(
+            "SELECT COUNT(*) FROM messages WHERE sender_id = :uid OR receiver_id = :uid2 LIMIT 1"
+        );
+        $firstMsgCheck->execute([':uid' => currentUserId(), ':uid2' => currentUserId()]);
+        $msgCount = (int)$firstMsgCheck->fetchColumn();
+        if ($msgCount <= 1) {
+            $_SESSION['prompt_push'] = true;
+        }
+    } catch (Throwable $e) {}
+    $_SESSION['cm_push_prompted_message'] = true;
+}
+
 $presenceColor = match($otherPresence['status']) {
     'online'   => '#10b981',
     'recently' => '#f59e0b',

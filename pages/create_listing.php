@@ -309,6 +309,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $pdo->commit();
+
+                // Contextual push opt-in: prompt after first listing posted
+                if (empty($_SESSION['cm_push_prompted_listing'])) {
+                    $_SESSION['prompt_push'] = true;
+                    $_SESSION['cm_push_prompted_listing'] = true;
+                }
+
                 redirect(BASE_URL . 'pages/create_listing.php?created=' . (int)$productId);
             }
 

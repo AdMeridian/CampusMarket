@@ -371,9 +371,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const btn = document.getElementById('enable-browser-notifs');
     if (btn && window.CampusMarketPush) {
         btn.addEventListener('click', async function() {
+            btn.disabled = true;
+            btn.textContent = <?= json_encode(__('push.enabling_btn')) ?>;
             const result = await window.CampusMarketPush.subscribe();
+            btn.disabled = false;
             if (result.ok) {
-                alert(<?= json_encode(__('activity.push_enabled')) ?>);
+                btn.textContent = <?= json_encode(__('activity.notifs_enabled')) ?>;
+                const toast = document.createElement('div');
+                toast.className = 'flash-toast-container';
+                toast.innerHTML = '<div class="flash flash-success" style="display:flex;align-items:center;gap:0.75rem;">'
+                    + '<svg style="width:20px;height:20px;flex-shrink:0;" viewBox="0 0 20 20" fill="currentColor">'
+                    + '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                    + '<span>' + <?= json_encode(__('activity.push_enabled')) ?> + '</span>'
+                    + '</div>';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 4000);
+            } else {
+                btn.textContent = <?= json_encode(__('activity.enable_notifs')) ?>;
             }
         });
 

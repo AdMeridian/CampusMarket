@@ -144,15 +144,94 @@ include '../includes/header.php';
         </div>
 
         <!-- Services Discovery Banner -->
-        <a href="<?php echo BASE_URL; ?>pages/services.php" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 1.25rem; border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.04) 100%); border: 1px solid rgba(239,68,68,0.25); text-decoration: none; margin-bottom: 2rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='rgba(239,68,68,0.25)'">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <span style="font-size: 1.3rem;">🛠️</span>
-                <div>
-                    <span style="font-weight: 700; color: #ef4444; font-size: 0.9rem;"><?= __('nav.services') ?></span>
-                    <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">Tutoring, photography, cleaning &amp; more from students</span>
+        <style>
+        .services-browse-callout {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.25rem;
+            padding: 1rem 1.35rem;
+            border-radius: var(--radius-xl);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            text-decoration: none;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .services-browse-callout:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+            border-color: var(--service);
+        }
+        .services-browse-callout:hover .services-browse-arrow {
+            transform: translateX(3px);
+            background: var(--service);
+            color: #ffffff;
+        }
+        .services-browse-stripe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--service);
+        }
+        .services-browse-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-lg);
+            background: var(--service-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            flex-shrink: 0;
+            border: 1px solid rgba(26, 127, 100, 0.15);
+        }
+        .services-browse-arrow {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-full);
+            background: var(--service-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--service);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        </style>
+        <a href="<?php echo BASE_URL; ?>pages/services.php" class="services-browse-callout">
+            <div class="services-browse-stripe"></div>
+            <div style="display: flex; align-items: center; gap: 1rem; min-width: 0;">
+                <div class="services-browse-icon-wrap">
+                    🛠️
+                </div>
+                <div style="min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--text-main); font-size: 0.96rem; font-family: 'Outfit', sans-serif;">
+                            <?= __('nav.services') ?>
+                        </span>
+                        <span style="font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: var(--service-light); color: var(--service); padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid rgba(26, 127, 100, 0.2);">
+                            Pilot
+                        </span>
+                    </div>
+                    <p style="margin: 0.2rem 0 0 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.35;">
+                        Tutoring, repairs, photography, dorm moving &amp; freelance skills from fellow students
+                    </p>
                 </div>
             </div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;">
+                <span class="lg-flex hidden" style="font-size: 0.84rem; font-weight: 600; color: var(--service);">
+                    Explore Services
+                </span>
+                <div class="services-browse-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+            </div>
         </a>
 
         <div class="grid grid-cols-1 lg-grid-cols-5 gap-8 items-start">
