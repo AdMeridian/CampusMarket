@@ -12,6 +12,32 @@ USE campusmarket;
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 1. users
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE TABLE countries (
+    code CHAR(2) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    default_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+    currency_symbol VARCHAR(5) NOT NULL DEFAULT '$',
+    symbol_position VARCHAR(10) NOT NULL DEFAULT 'before',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE universities (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    country_code CHAR(2) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    domain_pattern VARCHAR(150) NOT NULL,
+    city VARCHAR(100) NULL,
+    logo_url VARCHAR(255) NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    is_northern_cyprus TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (country_code) REFERENCES countries(code) ON DELETE RESTRICT,
+    INDEX idx_universities_country (country_code),
+    INDEX idx_universities_domain (domain_pattern)
+) ENGINE=InnoDB;
+
 CREATE TABLE users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
@@ -26,7 +52,9 @@ CREATE TABLE users (
     custom_home_town    VARCHAR(100) NULL,
     university_id     BIGINT NULL,
     other_university_name VARCHAR(200) NULL,
-    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    preferred_language VARCHAR(5) NOT NULL DEFAULT 'en',
+    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (university_id) REFERENCES universities(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -35,7 +63,19 @@ CREATE TABLE users (
 CREATE TABLE categories (
     id    INT AUTO_INCREMENT PRIMARY KEY,
     name  VARCHAR(100) NOT NULL,
-    slug  VARCHAR(100) NOT NULL UNIQUE
+    slug  VARCHAR(100) NOT NULL UNIQUE,
+    `type`  ENUM('product', 'service') NOT NULL DEFAULT 'product'
+) ENGINE=InnoDB;
+
+-- 2b. services
+CREATE TABLE services (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT NULL,
+    icon       VARCHAR(64) NOT NULL DEFAULT 'service',
+    is_active  TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order SMALLINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- Wanted item suggestions captured from zero-result searches
@@ -60,13 +100,55 @@ CREATE TABLE wanted_item_requests (
     INDEX idx_wanted_requests_requester_created (requester_id, created_at)
 ) ENGINE=InnoDB;
 
+-- Provider profiles used by the services pilot
+CREATE TABLE provider_profiles (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id             INT NOT NULL UNIQUE,
+    bio                 TEXT NULL,
+    raw_skills_input    TEXT NULL,
+    parsed_skills       JSON NULL,
+    primary_category_id INT NULL,
+    portfolio_link      VARCHAR(500) NULL,
+    enrollment_status   VARCHAR(30) NOT NULL DEFAULT 'active',
+    is_verified         TINYINT(1) NOT NULL DEFAULT 0,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (primary_category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    INDEX idx_provider_profiles_status (enrollment_status),
+    INDEX idx_provider_profiles_category (primary_category_id)
+) ENGINE=InnoDB;
+
+-- One-off service jobs requested by individuals and businesses
+CREATE TABLE service_job_posts (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    poster_id   INT NOT NULL,
+    category_id INT NOT NULL,
+    organization_name VARCHAR(120) NULL,
+    title       VARCHAR(120) NOT NULL,
+    description TEXT NOT NULL,
+    location_town VARCHAR(32) NOT NULL,
+    budget_max  DECIMAL(10,2) NULL,
+    status      ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+    expires_at  DATETIME NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (poster_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+    INDEX idx_service_job_posts_open_created (status, created_at),
+    INDEX idx_service_job_posts_category (category_id, status, created_at),
+    INDEX idx_service_job_posts_poster_created (poster_id, created_at)
+) ENGINE=InnoDB;
+
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- 3. tags
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE tags (
     id   INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50)  NOT NULL UNIQUE,
-    slug VARCHAR(50)  NOT NULL UNIQUE
+    slug VARCHAR(50)  NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by INT NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE products (
@@ -75,15 +157,26 @@ CREATE TABLE products (
     category_id INT            NOT NULL,
     title       VARCHAR(200)   NOT NULL,
     description TEXT,
-    price       DECIMAL(10,2)  NOT NULL,
+    price       DECIMAL(10,2)  NULL,
     price_currency VARCHAR(3)  NOT NULL DEFAULT 'TRY',
     discount_percent TINYINT   NOT NULL DEFAULT 0,
     discount_set_at DATETIME   NULL,
-    `condition`   ENUM('new', 'like_new', 'used', 'poor') NOT NULL DEFAULT 'used',
-    status      ENUM('active', 'sold', 'flagged', 'pending_approval')       NOT NULL DEFAULT 'active',
+    `condition`   ENUM('new', 'like_new', 'used', 'poor') NULL DEFAULT 'used',
+    status      ENUM('active', 'sold', 'flagged', 'pending_approval', 'pending_payment', 'expired', 'deleted') NOT NULL DEFAULT 'active',
+    listing_type ENUM('product', 'service') NOT NULL DEFAULT 'product',
+    pricing_model ENUM('flat', 'hourly') NOT NULL DEFAULT 'flat',
     moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
     custom_location VARCHAR(100) NULL,
+    country_code CHAR(2) NULL,
+    university_id BIGINT NULL,
+    deleted_at DATETIME NULL,
+    delivery_days TINYINT UNSIGNED NULL DEFAULT NULL,
+    revision_count TINYINT UNSIGNED NULL DEFAULT NULL,
+    availability_status VARCHAR(20) NOT NULL DEFAULT 'available',
+    availability_reset_at TIMESTAMP NULL DEFAULT NULL,
+    portfolio_link VARCHAR(500) NULL DEFAULT NULL,
+    service_expires_at DATETIME NULL DEFAULT NULL,
     is_featured TINYINT(1)     NOT NULL DEFAULT 0,
     featured_until DATETIME    NULL,
     is_recent_fallback TINYINT(1) NOT NULL DEFAULT 0,
@@ -91,8 +184,11 @@ CREATE TABLE products (
     created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     availability_confirmed_at DATETIME NULL,
+    CONSTRAINT chk_products_price_required_for_non_service CHECK (listing_type = 'service' OR price IS NOT NULL),
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+    FOREIGN KEY (country_code) REFERENCES countries(code) ON DELETE RESTRICT,
+    FOREIGN KEY (university_id) REFERENCES universities(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- 5. product_images
@@ -178,6 +274,8 @@ CREATE TABLE orders (
     status        ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
     meeting_point VARCHAR(255)   NULL,
     notes         TEXT           NULL,
+    scheduled_start DATETIME     NULL,
+    scheduled_end   DATETIME     NULL,
     created_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (buyer_id)   REFERENCES users(id)    ON DELETE CASCADE,
@@ -210,6 +308,7 @@ CREATE TABLE messages (
     is_read     BOOLEAN NOT NULL DEFAULT 0,
     deleted_by_sender TINYINT(1) NOT NULL DEFAULT 0,
     deleted_by_receiver TINYINT(1) NOT NULL DEFAULT 0,
+    reply_to_message_id INT NULL,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id)   REFERENCES users(id)    ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(id)    ON DELETE CASCADE,
@@ -315,7 +414,7 @@ CREATE TABLE IF NOT EXISTS promotion_payments (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     user_id         INT NOT NULL,
     product_id      INT NULL,
-    payment_type    ENUM('promotion', 'donation') NOT NULL,
+    payment_type    ENUM('promotion', 'donation', 'service_listing', 'service_boost') NOT NULL,
     payment_method  ENUM('cash', 'venmo', 'zelle', 'other') NOT NULL DEFAULT 'other',
     amount          DECIMAL(10,2) NOT NULL,
     transaction_ref VARCHAR(255) NULL,
@@ -331,5 +430,30 @@ CREATE TABLE IF NOT EXISTS promotion_payments (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
     FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_promo_user_status (user_id, status),
-    INDEX idx_promo_product_status (product_id, status)
+    INDEX idx_promo_product_status (product_id, status),
+    UNIQUE KEY uq_promotion_transaction_ref (transaction_ref)
+) ENGINE=InnoDB;
+-- System Settings
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key   VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS system_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    user_email VARCHAR(255) NULL,
+    category VARCHAR(64) NOT NULL DEFAULT 'system',
+    message TEXT NOT NULL,
+    raw_trace LONGTEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    url TEXT NULL,
+    request_method VARCHAR(10) NULL DEFAULT 'GET',
+    user_agent TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_system_logs_created_at (created_at),
+    INDEX idx_system_logs_category (category),
+    INDEX idx_system_logs_user_id (user_id)
 ) ENGINE=InnoDB;

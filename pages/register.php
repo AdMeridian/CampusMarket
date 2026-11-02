@@ -159,6 +159,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
         try {
             $studentId = studentIdFromUniversityEmail($email);
+            $uniLookup = function_exists('lookupUniversityByEmail') ? lookupUniversityByEmail($pdo, $email) : null;
+            $uniId = $universityId ?? (
+                $universitySelection === '' && $uniLookup
+                    ? (int)$uniLookup['university_id']
+                    : null
+            );
 
             $ins = $pdo->prepare("
                 INSERT INTO users (username, email, student_id, password_hash, role, phone, is_verified, university_id, other_university_name)
@@ -171,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':h' => $hash,
                 ':p' => $phone !== '' ? $phone : null,
                 ':v' => $isVerified,
-                ':university_id' => $universityId,
+                ':university_id' => $uniId,
                 ':other_university_name' => $otherUniversityName !== '' ? $otherUniversityName : null,
             ]);
 

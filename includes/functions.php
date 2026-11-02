@@ -406,6 +406,7 @@ function renderProductPrice(array $product, ?PDO $pdo = null): string {
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
+    $unitSuffix = (($product['pricing_model'] ?? 'flat') === 'hourly') ? ' <small style="font-size:0.75em;color:var(--text-muted);font-weight:500;">/hr</small>' : '';
 
     $finalPriceData = formatPriceInTRY($final, $currency, $pdo);
     $basePriceData  = formatPriceInTRY($base, $currency, $pdo);
@@ -417,11 +418,11 @@ function renderProductPrice(array $product, ?PDO $pdo = null): string {
     }
 
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span>' . $finalPriceData['display'] . '</span>' . $originalNote;
+        return '<span>' . $finalPriceData['display'] . $unitSuffix . '</span>' . $originalNote;
     }
 
     return
-        '<span style="font-weight:800;color:var(--primary);">' . $finalPriceData['display'] . '</span> ' .
+        '<span style="font-weight:800;color:var(--primary);">' . $finalPriceData['display'] . $unitSuffix . '</span> ' .
         '<span style="text-decoration:line-through;opacity:.65;font-weight:600;font-size:.9em;margin-left:0.35rem;">' . $basePriceData['display'] . '</span> ' .
         '<span class="badge" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.35rem;background:#ef4444;color:white;font-weight:700;border-radius:4px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.02em;">' . (function_exists('__') ? __('product.discounted') : 'Discounted') . '</span> ' .
         '<span class="badge badge-new" style="font-size:.68rem;padding:.15rem .45rem;margin-left:0.2rem;display:inline-block;vertical-align:middle;">-' . $discountPercent . '%</span>' .
@@ -436,6 +437,7 @@ function renderProductCardPrice(array $product, ?PDO $pdo = null): string {
     $base = (float)($product['price'] ?? 0);
     $final = getDiscountedPrice($product);
     $currency = productCurrencyCode($product);
+    $unitSuffix = (($product['pricing_model'] ?? 'flat') === 'hourly') ? ' <small style="font-size:0.75em;color:var(--text-muted);font-weight:500;">/hr</small>' : '';
 
     $finalPriceData = formatPriceInTRY($final, $currency, $pdo);
     $basePriceData  = formatPriceInTRY($base, $currency, $pdo);
@@ -446,7 +448,7 @@ function renderProductCardPrice(array $product, ?PDO $pdo = null): string {
     }
 
     if ($discountPercent <= 0 || $final >= $base) {
-        return '<span class="product-card-price__now product-card-price__now--regular">' . $finalPriceData['display'] . '</span>' . $originalSecondary;
+        return '<span class="product-card-price__now product-card-price__now--regular">' . $finalPriceData['display'] . $unitSuffix . '</span>' . $originalSecondary;
     }
 
     return
@@ -454,7 +456,7 @@ function renderProductCardPrice(array $product, ?PDO $pdo = null): string {
             '<span class="product-card-price__original">' . $basePriceData['display'] . '</span>' .
             '<span class="product-card-price__pct">-' . $discountPercent . '%</span>' .
         '</span>' .
-        '<span class="product-card-price__now">' . $finalPriceData['display'] . '</span>' .
+        '<span class="product-card-price__now">' . $finalPriceData['display'] . $unitSuffix . '</span>' .
         $originalSecondary;
 }
 
@@ -605,6 +607,30 @@ function getProductImage(?string $path): string {
         return $path;
     }
     return rtrim(BASE_URL, '/') . '/public/' . ltrim($path, '/');
+}
+
+function getServiceImage(?string $path, int|string|null $seed = null): string {
+    if (!empty($path) && trim($path) !== '') {
+        return getProductImage($path);
+    }
+
+    $placeholders = [
+        rtrim(BASE_URL, '/') . '/public/images/default-service-1.jpg',
+        rtrim(BASE_URL, '/') . '/public/images/default-service-2.jpg',
+    ];
+
+    static $counter = 0;
+
+    if ($seed !== null && $seed !== '') {
+        $idx = is_numeric($seed)
+            ? abs((int)$seed) % count($placeholders)
+            : abs(crc32((string)$seed)) % count($placeholders);
+        return $placeholders[$idx];
+    }
+
+    $selected = $placeholders[$counter % count($placeholders)];
+    $counter++;
+    return $selected;
 }
 
 /**
@@ -1145,7 +1171,7 @@ function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
 
     $stmt = $pdo->prepare("
         SELECT 
-            p.id, p.title, p.price, p.discount_percent, p.price_currency, p.is_featured,
+            p.id, p.title, p.price, p.discount_percent, p.price_currency, p.is_featured, p.listing_type,
             c.name as category_name, i.image_path, u.username as seller_name
         FROM products p
         JOIN categories c ON p.category_id = c.id
@@ -1183,7 +1209,7 @@ function getSpotlightPromoProducts(PDO $pdo, int $limit = 6): array {
             'original_price_formatted' => $discountPercent > 0 ? $basePriceData['display'] : null,
             'discount_percent' => $discountPercent,
             'is_featured' => (bool)$row['is_featured'],
-            'image_url' => getProductImage($row['image_path'] ?? null),
+            'image_url' => (($row['listing_type'] ?? 'product') === 'service') ? getServiceImage($row['image_path'] ?? null, (int)$row['id']) : getProductImage($row['image_path'] ?? null),
             'category_name' => $row['category_name'],
             'seller_name' => $row['seller_name'],
             'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$row['id']
@@ -1319,7 +1345,7 @@ function getRecentProducts(PDO $pdo, int $limit = 8, ?int $withinDays = null): a
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'{$dateFilter}
+        WHERE p.status = 'active' AND p.listing_type = 'product'{$dateFilter}
         ORDER BY p.created_at DESC
         LIMIT :limit
     ");
@@ -1355,7 +1381,7 @@ function getCuratedRecentProducts(PDO $pdo, int $limit = 8, array $excludeIds = 
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-            WHERE p.status = 'active' AND p.is_recent_fallback = TRUE{$excludeSql}
+            WHERE p.status = 'active' AND p.listing_type = 'product' AND p.is_recent_fallback = TRUE{$excludeSql}
             ORDER BY p.created_at DESC
             LIMIT " . (int)$poolLimit;
 
@@ -1402,7 +1428,7 @@ function getLatestActiveProducts(PDO $pdo, int $limit = 8, array $excludeIds = [
         JOIN categories c ON p.category_id = c.id
         JOIN users u ON p.user_id = u.id
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'{$excludeSql}
+        WHERE p.status = 'active' AND p.listing_type = 'product'{$excludeSql}
         ORDER BY p.created_at DESC
         LIMIT " . (int)$limit;
 
@@ -1468,7 +1494,7 @@ function getHomepageCategorySections(PDO $pdo, int $categoryLimit = 4, int $prod
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-            WHERE p.category_id = :category_id AND p.status = 'active'
+            WHERE p.category_id = :category_id AND p.status = 'active' AND p.listing_type = 'product'
             ORDER BY p.created_at DESC
             LIMIT :limit
         ");
@@ -1549,7 +1575,7 @@ function getTopCategories(PDO $pdo): array {
     return $pdo->query("
         SELECT c.*, COUNT(DISTINCT p.id) as product_count
         FROM categories c
-        LEFT JOIN products p ON p.status = 'active' AND (
+        LEFT JOIN products p ON p.status = 'active' AND p.listing_type = 'product' AND (
             p.category_id = c.id
             OR EXISTS (
                 SELECT 1
@@ -1647,6 +1673,16 @@ function clearDonationData(PDO $pdo): int {
     $stmt = $pdo->prepare("DELETE FROM promotion_payments WHERE payment_type = 'donation'");
     $stmt->execute();
     return $stmt->rowCount();
+}
+
+function databaseTableExists(PDO $pdo, string $tableName): bool {
+    $isPostgres = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql';
+    $sql = $isPostgres
+        ? "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = :table LIMIT 1"
+        : "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':table' => $tableName]);
+    return (bool)$stmt->fetchColumn();
 }
 
 /**
@@ -2362,10 +2398,54 @@ function invalidateNavCategoriesCache(): void {
 }
 
 /**
+ * Default services available in the local XAMPP marketplace.
+ */
+function getDefaultCampusServices(): array {
+    return [
+        ['Tutoring & Academic Help', 'Course tutoring, exam preparation, language lessons, assignment review', 'book-open', 1],
+        ['Tech & Device Repair', 'Laptop repair, phone screen replacement, software troubleshooting', 'laptop', 2],
+        ['Moving & Hauling Assistance', 'Help moving into dorms/apartments, heavy lifting, truck assistance', 'package', 3],
+        ['Graphic Design & Creative', 'Posters, flyers, logos, social media graphics, UI/UX', 'palette', 4],
+        ['Photography & Videography', 'Graduation photos, event coverage, portraits, video editing', 'camera', 5],
+        ['Cleaning & Organization', 'Dorm room cleaning, deep cleaning, room organizing', 'sparkles', 6],
+        ['Music & Audio Services', 'DJing events, music lessons, audio editing/mixing', 'music', 7],
+        ['Hair, Beauty & Grooming', 'Haircuts, styling, braiding, makeup, nails', 'scissors', 8],
+        ['Delivery & Errand Running', 'Campus deliveries, grocery runs, package pick-ups', 'bike', 9],
+        ['Fitness & Personal Training', 'Workout coaching, gym buddy, sports training', 'dumbbell', 10],
+    ];
+}
+
+function seedDefaultServices(PDO $pdo): int {
+    if (function_exists('ensureServicesTable')) {
+        ensureServicesTable($pdo);
+    }
+
+    $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+    $added = 0;
+    foreach (getDefaultCampusServices() as [$name, $description, $icon, $sortOrder]) {
+        if ($driver === 'pgsql') {
+            $stmt = $pdo->prepare(
+                "INSERT INTO services (name, description, icon, sort_order, is_active) " .
+                "VALUES (?, ?, ?, ?, TRUE) ON CONFLICT (name) DO NOTHING"
+            );
+        } else {
+            $stmt = $pdo->prepare(
+                "INSERT IGNORE INTO services (name, description, icon, sort_order, is_active) " .
+                "VALUES (?, ?, ?, ?, 1)"
+            );
+        }
+        $stmt->execute([$name, $description, $icon, $sortOrder]);
+        $added += $stmt->rowCount() > 0 ? 1 : 0;
+    }
+
+    return $added;
+}
+
+/**
  * Allowed North Cyprus town slugs for listing geotags.
  */
 function locationTownSlugs(): array {
-    return ['lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele', 'other'];
+    return ['remote', 'lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele', 'other'];
 }
 
 function isValidLocationTown(?string $town): bool {
@@ -2378,6 +2458,9 @@ function isValidLocationTown(?string $town): bool {
 function formatLocationTown(?string $town, ?string $customLocation = null): string {
     if (!isValidLocationTown($town)) {
         return '';
+    }
+    if (strtolower($town) === 'remote') {
+        return 'Remote / Online';
     }
     if (strtolower($town) === 'other' && !empty(trim((string)$customLocation))) {
         return trim((string)$customLocation);
@@ -2681,6 +2764,50 @@ function logSystemError(PDO $pdo, string $category, string $message, $rawTrace =
         error_log('[logSystemError failed] ' . $e->getMessage());
     }
 }
+
+/**
+ * Retrieve a system setting from the database with in-memory caching and default fallback.
+ */
+function getSystemSetting(PDO $pdo, string $key, $default = null): ?string {
+    static $cache = [];
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        if ($val !== false && $val !== null) {
+            $cache[$key] = (string)$val;
+            return (string)$val;
+        }
+    } catch (Throwable $e) {
+        // Table may not exist yet or connection issue
+    }
+
+    $cache[$key] = ($default !== null) ? (string)$default : null;
+    return $cache[$key];
+}
+
+/**
+ * Set or update a system setting in the database.
+ */
+function setSystemSetting(PDO $pdo, string $key, string $value): bool {
+    try {
+        $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $sql = ($driverName === 'pgsql')
+            ? "INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()"
+            : "INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()";
+
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute([$key, $value]);
+    } catch (Throwable $e) {
+        error_log('[setSystemSetting] ' . $e->getMessage());
+        return false;
+    }
+}
+
 
 /**
  * Fetch the latest active in-app popup broadcast for the current user

@@ -5,8 +5,10 @@ $pageTitle = __('inbox.messages_tab');
 requireLogin();
 
 $productId = (int)($_GET['product_id'] ?? 0);
+$jobId = (int)($_GET['job_id'] ?? 0);
 $otherUserId = (int)($_GET['other_user_id'] ?? $_GET['to'] ?? 0);
-$currentUserId = currentUserId();
+$currentUserId = (int) currentUserId();
+$serviceJobContext = null;
 
 if (!$otherUserId) {
     setFlash('error', 'Invalid conversation context.');
@@ -77,6 +79,30 @@ if ($productId > 0) {
     $sellerId = -1; // Not a seller conversation
 }
 
+if ($jobId > 0) {
+    if ($productId > 0 || $otherUserId === $currentUserId) {
+        setFlash('error', 'Invalid service request conversation.');
+        redirect(BASE_URL . 'pages/service_jobs.php');
+    }
+
+    $jobStmt = $pdo->prepare(
+        "SELECT id, poster_id, title, organization_name, location_town
+         FROM service_job_posts
+         WHERE id = :id AND poster_id = :poster_id AND status = 'open' AND expires_at > NOW()
+         LIMIT 1"
+    );
+    $jobStmt->execute([':id' => $jobId, ':poster_id' => $otherUserId]);
+    $serviceJobContext = $jobStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$serviceJobContext) {
+        setFlash('error', 'This service request is no longer open.');
+        redirect(BASE_URL . 'pages/service_jobs.php');
+    }
+}
+
+$jobMessagePrefill = $serviceJobContext
+    ? "Hi, I'm interested in your service request: " . $serviceJobContext['title']
+    : '';
+
 // Compute initial presence status from last_seen_at
 function computePresence(?string $lastSeenAt): array {
     if (!$lastSeenAt) {
@@ -129,7 +155,7 @@ $presenceText = match($otherPresence['status']) {
             <div class="chat-peer">
                 <img src="<?= htmlspecialchars($otherAvatarUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" class="chat-peer-avatar chat-peer-avatar--logo">
                 <div class="chat-peer-meta">
-                    <span class="chat-peer-name">@<?= htmlspecialchars($otherUser['username']) ?></span>
+                        <span class="chat-peer-name chat-peer-name--support"><?= htmlspecialchars($product['title']) ?></span>
                     <p id="user-presence" class="chat-peer-status mb-0">
                         <span id="presence-dot" class="chat-presence-dot" style="background:<?= $presenceColor ?>;"></span>
                         <span id="presence-text"><?= htmlspecialchars($presenceText) ?></span>
@@ -161,13 +187,25 @@ $presenceText = match($otherPresence['status']) {
 
         <?php if ($productId > 0): ?>
         <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="chat-product-strip">
-            <img src="<?= getProductImage($product['image_path'] ?? null) ?>" alt="" class="chat-product-strip__thumb">
+            <img src="<?= ($product['listing_type'] ?? 'product') === 'service' ? getServiceImage($product['image_path'] ?? null, $productId) : getProductImage($product['image_path'] ?? null) ?>" alt="" class="chat-product-strip__thumb">
             <div class="chat-product-strip__body">
                 <span class="chat-product-strip__label"><?= __('chat.regarding_item') ?></span>
                 <span class="chat-product-strip__title"><?= htmlspecialchars($product['title']) ?></span>
-                <span class="chat-product-strip__price"><?= renderProductPrice($product) ?></span>
+                <span class="chat-product-strip__price">
+                    <?php if (($product['listing_type'] ?? 'product') === 'service' && $product['price'] === null): ?>
+                        <?= __('product.rate_not_listed') ?>
+                    <?php else: ?>
+                        <?= renderProductPrice($product) ?>
+                    <?php endif; ?>
+                </span>
             </div>
             <svg class="chat-product-strip__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
+        <?php elseif ($serviceJobContext): ?>
+        <a href="<?= BASE_URL ?>pages/service_jobs.php" class="chat-context-strip" style="display:block;text-decoration:none;">
+            <span class="text-muted small">Regarding service request</span>
+            <strong class="block text-main"><?= htmlspecialchars($serviceJobContext['title'], ENT_QUOTES, 'UTF-8') ?></strong>
+            <span class="text-muted small"><?= htmlspecialchars(formatLocationTown($serviceJobContext['location_town']), ENT_QUOTES, 'UTF-8') ?></span>
         </a>
         <?php elseif ($product['title'] === 'CampusMarket Support'): ?>
         <div class="chat-context-strip chat-context-strip--support">
@@ -182,19 +220,18 @@ $presenceText = match($otherPresence['status']) {
             <!-- Messages loaded via JS -->
         </div>
 
-        <?php if ($productId > 0 && $currentUserId !== $sellerId): ?>
-            <?php $isServiceChat = ($product['listing_type'] ?? 'product') === 'service'; ?>
-            <div class="chat-action-bar purchase-cta-bar" <?= $isServiceChat ? 'style="border-left: 4px solid var(--service);"' : '' ?>>
+        <?php if ($productId > 0 && $currentUserId !== $sellerId && ($product['listing_type'] ?? 'product') !== 'service'): ?>
+            <div class="chat-action-bar purchase-cta-bar">
                 <div class="chat-action-bar__copy">
-                    <strong><?= $isServiceChat ? '📅 Book This Service' : __('chat.ready_to_buy') ?></strong>
-                    <span><?= $isServiceChat ? 'Schedule and agree on a service time' : __('chat.send_purchase_request') ?></span>
+                    <strong><?= __('chat.ready_to_buy') ?></strong>
+                    <span><?= __('chat.send_purchase_request') ?></span>
                 </div>
                 <form action="api_messages.php" method="POST" class="m-0">
                     <?php echo csrfTokenField(); ?>
                     <input type="hidden" name="action" value="propose">
                     <input type="hidden" name="product_id" value="<?= $productId ?>">
-                    <button type="button" class="btn <?= $isServiceChat ? 'btn--service' : 'btn-primary' ?> btn-sm" onclick="<?= $isServiceChat ? 'checkDealStatus(true)' : 'proposeOrder()' ?>">
-                        <?= $isServiceChat ? '✨ Book Service' : __('chat.propose_order') ?>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="proposeOrder()">
+                        <?= __('chat.propose_order') ?>
                     </button>
                 </form>
             </div>
@@ -210,7 +247,7 @@ $presenceText = match($otherPresence['status']) {
 
         <div class="chat-input-bar">
             <form id="chat-form" class="chat-input-form m-0">
-                <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" required autocomplete="off" maxlength="250">
+                <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" value="<?= htmlspecialchars($jobMessagePrefill, ENT_QUOTES, 'UTF-8') ?>" required autocomplete="off" maxlength="250">
                 <button type="submit" class="chat-send-btn btn btn-primary" title="<?= htmlspecialchars(__('chat.send')) ?>" aria-label="<?= htmlspecialchars(__('chat.send')) ?>">
                     <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
@@ -357,6 +394,8 @@ function goBackOrInbox() {
 
 const productId = <?= $productId ?>;
 const otherUserId = <?= $otherUserId ?>;
+const isServiceListing = <?= (($product['listing_type'] ?? 'product') === 'service') ? 'true' : 'false' ?>;
+const productTitle = <?= json_encode((string)($product['title'] ?? 'this service')) ?>;
 const currentProductCategory = <?= json_encode((string)($product['category_name'] ?? '')) ?>;
 const dealExplainerHtml = <?= json_encode('<p class="chat-deal-bar__hint text-muted small mb-3">' . htmlspecialchars(__('chat.orders_deal_explainer'), ENT_QUOTES, 'UTF-8') . '</p>') ?>;
 const isAdmin = <?= isAdmin() ? 'true' : 'false' ?>;
@@ -605,7 +644,7 @@ function formatMessageTime(iso) {
 function buildMessageBubbleHtml(msg, options = {}) {
     const isMine = !!msg.is_mine;
     const timeStr = options.sending ? __('chat.sending') : formatMessageTime(msg.created_at);
-    
+
     let bodyHtml;
     if (isMine) {
         const cardHtml = msg.shared_product ? renderSharedProductCard(msg.shared_product) : '';
@@ -995,6 +1034,12 @@ document.addEventListener('keydown', (e) => {
 });
 
 function checkDealStatus(autoOpen = false) {
+    if (isServiceListing) {
+        handshakeBar.hidden = true;
+        handshakeBar.style.display = 'none';
+        return;
+    }
+
     fetch(`api_messages.php?action=check_deal_status&product_id=${productId}&other_user_id=${otherUserId}&_=${Date.now()}`, {
         cache: 'no-store'
     })
@@ -1007,10 +1052,11 @@ function checkDealStatus(autoOpen = false) {
                 if (autoOpen) {
                     openDealSheet();
                 }
-            } else {
-                handshakeBar.hidden = true;
-                handshakeBar.style.display = 'none';
+                return;
             }
+
+            handshakeBar.hidden = true;
+            handshakeBar.style.display = 'none';
         })
         .catch(() => {
             handshakeBar.style.display = 'none';
@@ -1088,7 +1134,6 @@ function renderHandshakeBar(deal) {
                 </button>
             </div>
         `;
-
         let extraFields = '';
         if (isService) {
             extraFields = `
@@ -1163,6 +1208,27 @@ function renderHandshakeBar(deal) {
             </div>
         `;
 
+        const dealStart = deal.scheduled_start || '';
+        const dealEnd = deal.scheduled_end || '';
+        const serviceAdjustmentBlock = deal.listing_type === 'service' ? `
+            <div id="seller-amend-booking" style="display:none; width:100%; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-light);">
+                <div style="display:flex; flex-wrap:wrap; gap:0.75rem; width:100%;">
+                    <div style="flex:1; min-width:140px;">
+                        <label style="display:block; font-size:0.72rem; font-weight:700; color:var(--text-main); margin-bottom:0.25rem;">Proposed start</label>
+                        <input type="datetime-local" id="seller-amend-start" class="premium-input" value="${dealStart ? dealStart.slice(0, 16) : ''}" style="width:100%; padding:0.45rem 0.5rem; border-radius:var(--radius-md); font-size:0.85rem;">
+                    </div>
+                    <div style="flex:1; min-width:140px;">
+                        <label style="display:block; font-size:0.72rem; font-weight:700; color:var(--text-main); margin-bottom:0.25rem;">Proposed end</label>
+                        <input type="datetime-local" id="seller-amend-end" class="premium-input" value="${dealEnd ? dealEnd.slice(0, 16) : ''}" style="width:100%; padding:0.45rem 0.5rem; border-radius:var(--radius-md); font-size:0.85rem;">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
+                    <button type="button" onclick="submitSellerBookingAmend()" class="btn btn-primary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem;">Send revised time</button>
+                    <button type="button" onclick="hideSellerBookingAmend()" class="btn btn-secondary btn-sm" style="font-size:0.8rem; border-radius:var(--radius-lg); padding:0.4rem 1rem; opacity:0.7;">Cancel</button>
+                </div>
+            </div>
+        ` : '';
+
         sheetHtml = `
             <div class="deal-sheet-flow">
                 <p class="deal-sheet-explainer">${__('chat.orders_deal_explainer')}</p>
@@ -1170,10 +1236,14 @@ function renderHandshakeBar(deal) {
                     <div class="deal-sheet-prompt-title">${__('deal.says_done', {buyer: buyerName})}</div>
                     <div class="deal-sheet-prompt-desc">${__('deal.confirm_to_mark', {product: productTitle})}</div>
                 </div>
+                ${serviceAdjustmentBlock}
                 <div class="deal-sheet-actions">
                     <button type="button" onclick="confirmDeal(${deal.product_id || 'null'})" class="btn btn-primary btn-md w-full" style="background: var(--secondary); border-color: var(--secondary);">${__('deal.confirm_delist')}</button>
+                    ${deal.listing_type === 'service' ? '<button type="button" onclick="showSellerBookingAmend()" class="btn btn-secondary btn-md w-full">Amend Proposed Time</button>' : ''}
                     <button type="button" onclick="closeDealSheet()" class="btn btn-secondary btn-md w-full">${__('deal.not_done_yet')}</button>
                 </div>
+            </div>
+        `;
             </div>
         `;
     } else if (status === 'completed') {
@@ -1255,6 +1325,52 @@ function submitChosenProduct() {
     const isSeller = option.getAttribute('data-is-mine') === 'true';
     
     confirmDeal(prodId, isSeller);
+}
+
+function showSellerBookingAmend() {
+    const amendBox = document.getElementById('seller-amend-booking');
+    if (!amendBox) return;
+    amendBox.style.display = 'block';
+}
+
+function hideSellerBookingAmend() {
+    const amendBox = document.getElementById('seller-amend-booking');
+    if (!amendBox) return;
+    amendBox.style.display = 'none';
+}
+
+function submitSellerBookingAmend() {
+    const startInput = document.getElementById('seller-amend-start');
+    const endInput = document.getElementById('seller-amend-end');
+    if (!startInput || !endInput) return;
+
+    if (!startInput.value || !endInput.value) {
+        alert('Please set both a proposed start and end time for the booking.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'amend_service_booking');
+    formData.append('product_id', productId);
+    formData.append('other_user_id', otherUserId);
+    formData.append('scheduled_start', startInput.value);
+    formData.append('scheduled_end', endInput.value);
+    formData.append('csrf_token', window.__csrfToken || '');
+
+    fetch('api_messages.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const proposedMessage = `I can do the booking from ${startInput.value.replace('T', ' ')} to ${endInput.value.replace('T', ' ')} instead. Please let me know if that works for you.`;
+                chatInput.value = proposedMessage;
+                chatInput.focus();
+                hideSellerBookingAmend();
+                checkDealStatus();
+            } else {
+                alert('Error: ' + (data.error || 'Unable to amend the booking.'));
+            }
+        })
+        .catch(() => alert('Unable to amend the booking.'));
 }
 
 function confirmDeal(prodId = null, isSellerOverride = null) {
@@ -1341,7 +1457,9 @@ setInterval(refreshPresence, 30000);
 
 // Initial fetch
 fetchMessages();
-checkDealStatus();
+if (!isServiceListing) {
+    checkDealStatus();
+}
 
 function startPolling(intervalMs = 3000) {
     if (pollIntervalId) {

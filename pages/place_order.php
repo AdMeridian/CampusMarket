@@ -25,7 +25,8 @@ $stmt = $pdo->prepare("
     JOIN users u ON p.user_id = u.id 
     JOIN categories c ON p.category_id = c.id
     LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-    WHERE p.id = :id AND p.status = 'active'
+        WHERE p.id = :id
+            AND p.status = 'active'
 ");
 $stmt->execute([':id' => $productId]);
 $product = $stmt->fetch();
@@ -33,6 +34,11 @@ $product = $stmt->fetch();
 if (!$product) {
     setFlash('error', 'Product is no longer available.');
     redirect(BASE_URL . '/pages/browse.php');
+}
+
+if (($product['listing_type'] ?? 'product') === 'service') {
+    setFlash('info', 'Service bookings are not available during the pilot. Message the provider to discuss the service.');
+    redirect(BASE_URL . '/pages/product.php?id=' . (int)$productId);
 }
 
 if ($product['user_id'] == $currentUserId) {
@@ -180,7 +186,5 @@ require_once __DIR__ . '/../includes/header.php';
 
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
-
 
 

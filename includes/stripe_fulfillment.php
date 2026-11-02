@@ -42,7 +42,7 @@ if (!function_exists('resolveDonationPayment')) {
 
 if (!function_exists('fulfillStripeCheckoutSession')) {
     /**
-     * Record a paid Stripe Checkout session and apply promotion side effects.
+     * Record a paid Stripe Checkout session and apply promotion / service listing side effects.
      *
      * @return array{ok:bool,already_processed?:bool,error?:string,payment_type?:string,product_id?:?int}
      */
@@ -66,6 +66,9 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
         if ($userId <= 0 || $amount <= 0) {
             return ['ok' => false, 'error' => 'Invalid payment metadata.'];
         }
+        if (!in_array($paymentType, ['promotion', 'donation'], true)) {
+            return ['ok' => false, 'error' => 'Unsupported payment type.'];
+        }
 
         $check = $pdo->prepare('SELECT id FROM promotion_payments WHERE transaction_ref = ?');
         $check->execute([$sessionId]);
@@ -73,8 +76,23 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
             return ['ok' => true, 'already_processed' => true, 'payment_type' => $paymentType, 'product_id' => $productId];
         }
 
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
         $pdo->beginTransaction();
         try {
+            if ($productId) {
+                $productStmt = $pdo->prepare('SELECT user_id, listing_type, status FROM products WHERE id = ? FOR UPDATE');
+                $productStmt->execute([$productId]);
+                $product = $productStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$product || (int)$product['user_id'] !== $userId) {
+                    throw new RuntimeException('Payment product ownership could not be verified.');
+                }
+                if ($paymentType === 'promotion' && ($product['status'] !== 'active' || $product['listing_type'] === 'service')) {
+                    throw new RuntimeException('Listing is not eligible for promotion.');
+                }
+            }
+
             $ins = $pdo->prepare("
                 INSERT INTO promotion_payments
                     (user_id, product_id, payment_type, payment_method, amount, transaction_ref, status, approved_at, notes)
@@ -91,14 +109,20 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
 
             if ($paymentType === 'promotion' && $productId) {
                 $days = $promotionDays > 0 ? $promotionDays : max(1, (int) floor($amount / 15));
-                $upd = $pdo->prepare("
-                    UPDATE products
-                    SET is_featured = TRUE,
-                        discount_set_at = NOW(),
-                        featured_until = NOW() + (CAST(? AS text) || ' days')::interval
-                    WHERE id = ? AND status = 'active'
-                ");
-                $upd->execute([$days, $productId]);
+                $updSql = ($driver === 'pgsql')
+                    ? "UPDATE products
+                       SET is_featured = TRUE,
+                           discount_set_at = NOW(),
+                           featured_until = NOW() + (CAST(? AS text) || ' days')::interval
+                       WHERE id = ? AND user_id = ? AND status = 'active'"
+                    : "UPDATE products
+                       SET is_featured = 1,
+                           discount_set_at = NOW(),
+                           featured_until = DATE_ADD(NOW(), INTERVAL ? DAY)
+                       WHERE id = ? AND user_id = ? AND status = 'active'";
+
+                $upd = $pdo->prepare($updSql);
+                $upd->execute([$days, $productId, $userId]);
                 if ($upd->rowCount() === 0) {
                     throw new RuntimeException('Listing is not active and cannot be promoted yet.');
                 }
@@ -112,6 +136,11 @@ if (!function_exists('fulfillStripeCheckoutSession')) {
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
+            }
+            $duplicateCheck = $pdo->prepare('SELECT id FROM promotion_payments WHERE transaction_ref = ?');
+            $duplicateCheck->execute([$sessionId]);
+            if ($duplicateCheck->fetchColumn()) {
+                return ['ok' => true, 'already_processed' => true, 'payment_type' => $paymentType, 'product_id' => $productId];
             }
             error_log('[stripe_fulfillment] ' . $e->getMessage());
             return ['ok' => false, 'error' => $e->getMessage()];

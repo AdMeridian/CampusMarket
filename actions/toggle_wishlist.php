@@ -49,6 +49,9 @@ try {
 
 } catch (PDOException $e) {
     // Log error if needed and show message
+    if (function_exists('logSystemError')) {
+        logSystemError($pdo, 'wishlist', 'Wishlist toggle failed: ' . $e->getMessage(), $e, (int)$user_id);
+    }
     setFlash('error', 'An error occurred while updating your wishlist.');
     redirect($_SERVER['HTTP_REFERER'] ?? BASE_URL);
 }

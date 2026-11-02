@@ -173,16 +173,22 @@ if (!function_exists('universityDomainCustomOption')) {
 }
 
 /**
- * True when the domain is a Turkish university address (e.g. ciu.edu.tr, staff.neu.edu.tr).
+ * True when the domain is a valid university academic address (e.g. .edu.tr, .ac.uk, .edu, .edu.de).
  */
 if (!function_exists('isEduTrEmailDomain')) {
     function isEduTrEmailDomain(string $domain): bool {
         $domain = strtolower(trim($domain));
-        if ($domain === '' || $domain === 'edu.tr') {
+        if ($domain === '' || $domain === 'edu.tr' || $domain === 'edu' || $domain === 'ac.uk') {
             return false;
         }
 
-        return str_ends_with($domain, '.edu.tr');
+        return str_ends_with($domain, '.edu.tr')
+            || str_ends_with($domain, '.ac.uk')
+            || str_ends_with($domain, '.edu')
+            || str_ends_with($domain, '.edu.de')
+            || str_ends_with($domain, '.edu.ca')
+            || str_ends_with($domain, '.edu.au')
+            || str_ends_with($domain, '.tum.de');
     }
 }
 
@@ -580,6 +586,25 @@ if (!function_exists('getAvailableUniversities')) {
             error_log('[university] University directory lookup failed: ' . $e->getMessage());
             return [];
         }
+    }
+}
+
+if (!function_exists('formatProductPriceWithCurrency')) {
+    function formatProductPriceWithCurrency(float $price, string $currencyCode = 'USD'): string {
+        $currencies = defined('PRODUCT_CURRENCIES') ? PRODUCT_CURRENCIES : [
+            'TRY' => ['symbol' => '₺', 'position' => 'after'],
+            'USD' => ['symbol' => '$', 'position' => 'before'],
+            'EUR' => ['symbol' => '€', 'position' => 'before'],
+            'GBP' => ['symbol' => '£', 'position' => 'before'],
+            'CAD' => ['symbol' => '$', 'position' => 'before'],
+        ];
+
+        $info = $currencies[strtoupper($currencyCode)] ?? ['symbol' => '$', 'position' => 'before'];
+        $formattedPrice = number_format($price, 2);
+
+        return $info['position'] === 'after'
+            ? $formattedPrice . ' ' . $info['symbol']
+            : $info['symbol'] . $formattedPrice;
     }
 }
 

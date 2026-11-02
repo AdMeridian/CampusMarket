@@ -34,24 +34,35 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
         <!-- Product Image Container -->
         <div class="product-card-image-wrap" style="border-radius: var(--radius-md); margin-bottom: 1.5rem; position: relative;">
             <?php 
-                $imgUrl = getProductImage($prod['image_path'] ?? null);
+                $isService = ($prod['listing_type'] ?? 'product') === 'service';
+                $imgUrl = $isService
+                    ? getServiceImage($prod['image_path'] ?? null)
+                    : getProductImage($prod['image_path'] ?? null);
             ?>
             <img src="<?php echo $imgUrl; ?>" alt="<?php echo sanitize($prod['title']); ?>">
 
             <!-- Status Badges Container (Top Left) -->
             <div style="position: absolute; top: 0.75rem; left: 0.75rem; z-index: 10; display: flex; gap: 0.4rem; flex-wrap: wrap; max-width: calc(100% - 1.5rem); pointer-events: none;">
-                <?php 
+                <?php
+                if ($isService):
+                ?>
+                <span class="badge shadow-sm" style="background: var(--service); color: white; font-size: 0.7rem; padding: 0.35rem 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; backdrop-filter: blur(4px);">
+                    <?php echo (($prod['pricing_model'] ?? 'flat') === 'hourly') ? 'Hourly Service' : 'Service'; ?>
+                </span>
+                <?php else: ?>
+                <?php
                 $cond = $prod['condition'] ?? 'used';
-                $badge = conditionBadge($cond); 
+                $badge = conditionBadge($cond);
                 ?>
                 <span class="badge <?php echo $badge['class']; ?> shadow-sm" style="font-size: 0.7rem; padding: 0.35rem 0.75rem; backdrop-filter: blur(4px);">
                     <?php echo $badge['label']; ?>
                 </span>
-                
+
                 <?php if (!empty($prod['discount_percent']) && (int)$prod['discount_percent'] > 0): ?>
                 <span class="badge shadow-sm" style="background: #ef4444; color: white; font-size: 0.7rem; padding: 0.35rem 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
                     <?= __('product.discounted') ?>
                 </span>
+                <?php endif; ?>
                 <?php endif; ?>
 
                 <?php if (!empty($prod['is_featured']) && (int)$prod['is_featured'] === 1): ?>
@@ -81,7 +92,14 @@ $isOwner = isLoggedIn() && (int)currentUserId() === (int)$prod['user_id'];
             <div class="mt-auto product-card-price-block">
                 <div class="product-card-price-row">
                     <div class="product-card-price-stack">
-                        <?php echo renderProductCardPrice($prod); ?>
+                        <?php if (($prod['listing_type'] ?? 'product') === 'service' && ($prod['price'] ?? null) === null): ?>
+                            <span class="text-muted" style="font-size:0.88rem;"><?= __('product.rate_not_listed') ?></span>
+                        <?php else: ?>
+                            <?php echo renderProductCardPrice($prod); ?>
+                            <?php if (($prod['listing_type'] ?? 'product') === 'service' && ($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                            <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-left: 0.15rem;">/hr</span>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

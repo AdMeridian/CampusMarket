@@ -9,9 +9,50 @@ TRUNCATE TABLE product_images;
 TRUNCATE TABLE wishlists;
 TRUNCATE TABLE products;
 TRUNCATE TABLE tags;
+TRUNCATE TABLE services;
 TRUNCATE TABLE categories;
 TRUNCATE TABLE users;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ─── Countries and Universities ────────────────────────────
+INSERT INTO countries (code, name, default_currency, currency_symbol, symbol_position) VALUES
+    ('TR', 'Turkey', 'TRY', '₺', 'after'),
+    ('US', 'United States', 'USD', '$', 'before'),
+    ('GB', 'United Kingdom', 'GBP', '£', 'before'),
+    ('DE', 'Germany', 'EUR', '€', 'before'),
+    ('CA', 'Canada', 'CAD', '$', 'before')
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    default_currency = VALUES(default_currency),
+    currency_symbol = VALUES(currency_symbol),
+    symbol_position = VALUES(symbol_position);
+
+INSERT INTO universities (country_code, name, slug, domain_pattern, city, is_northern_cyprus) VALUES
+    ('TR', 'Middle East Technical University', 'metu', 'metu.edu.tr', 'Ankara', 0),
+    ('TR', 'Bilkent University', 'bilkent', 'bilkent.edu.tr', 'Ankara', 0),
+    ('GB', 'University of Oxford', 'oxford', 'ox.ac.uk', 'Oxford', 0),
+    ('GB', 'University of Cambridge', 'cambridge', 'cam.ac.uk', 'Cambridge', 0),
+    ('US', 'Harvard University', 'harvard', 'harvard.edu', 'Cambridge', 0),
+    ('US', 'Stanford University', 'stanford', 'stanford.edu', 'Stanford', 0),
+    ('DE', 'Technical University of Munich', 'tum', 'tum.de', 'Munich', 0),
+    ('TR', 'Arkın University of Creative Arts and Design', 'arucad', 'arucad.edu.tr', 'Kyrenia', 1),
+    ('TR', 'Bahçeşehir Cyprus University', 'bau-cyprus', 'baucyprus.edu.tr', 'Nicosia', 1),
+    ('TR', 'Cyprus Health and Social Sciences University', 'kstu', 'kstu.edu.tr', 'Güzelyurt', 1),
+    ('TR', 'Cyprus International University', 'ciu', 'ciu.edu.tr', 'Nicosia', 1),
+    ('TR', 'Eastern Mediterranean University', 'emu', 'emu.edu.tr', 'Famagusta', 1),
+    ('TR', 'European University of Lefke', 'eul', 'eul.edu.tr', 'Lefke', 1),
+    ('TR', 'Final International University', 'final', 'final.edu.tr', 'Kyrenia', 1),
+    ('TR', 'Girne American University', 'gau', 'gau.edu.tr', 'Kyrenia', 1),
+    ('TR', 'Middle East Technical University Northern Cyprus Campus', 'metu-ncc', 'ncc.metu.edu.tr', 'Güzelyurt', 1),
+    ('TR', 'Near East University', 'neu', 'neu.edu.tr', 'Nicosia', 1),
+    ('TR', 'University of Kyrenia', 'kyrenia', 'kyrenia.edu.tr', 'Kyrenia', 1)
+ON DUPLICATE KEY UPDATE
+    country_code = VALUES(country_code),
+    name = VALUES(name),
+    domain_pattern = VALUES(domain_pattern),
+    city = VALUES(city),
+    is_active = 1,
+    is_northern_cyprus = VALUES(is_northern_cyprus);
 
 -- ─── Users ───────────────────────────────────────────────
 INSERT INTO users (id, username, email, password_hash, role) VALUES
@@ -22,17 +63,34 @@ INSERT INTO users (id, username, email, password_hash, role) VALUES
 (5, 'chris_e', 'chris@student.edu', '$2y$10$yH9NwmMe1YkBTVg1HVA.NOF0z/fdkuFG8nkklTJT250.7HmVHUlAO', 'user');
 
 -- ─── Categories ───────────────────────────────────────────
-INSERT INTO categories (id, name, slug) VALUES
-(1,  'Electronics & Accessories', 'electronics-accessories'),
-(2,  'Books & Study Materials', 'books-study-materials'),
-(3,  'Furniture', 'furniture'),
-(4,  'Clothing & Fashion', 'clothing-fashion'),
-(5,  'Kitchen Essentials', 'kitchen-essentials'),
-(6,  'Health & Personal Care', 'health-personal-care'),
-(7,  'Food & Beverages', 'food-beverages'),
-(8,  'Stationery & Study Supplies', 'stationery-study-supplies'),
-(9,  'Dorm & Living Essentials', 'dorm-living-essentials'),
-(10, 'Transportation (Bikes & Scooters)', 'transportation');
+INSERT INTO categories (id, name, slug, `type`) VALUES
+(1,  'Electronics & Accessories', 'electronics-accessories', 'product'),
+(2,  'Books & Study Materials', 'books-study-materials', 'product'),
+(3,  'Furniture', 'furniture', 'product'),
+(4,  'Clothing & Fashion', 'clothing-fashion', 'product'),
+(5,  'Kitchen Essentials', 'kitchen-essentials', 'product'),
+(6,  'Health & Personal Care', 'health-personal-care', 'product'),
+(7,  'Food & Beverages', 'food-beverages', 'product'),
+(8,  'Stationery & Study Supplies', 'stationery-study-supplies', 'product'),
+(9,  'Dorm & Living Essentials', 'dorm-living-essentials', 'product'),
+(10, 'Transportation (Bikes & Scooters)', 'transportation', 'product'),
+(11, 'Tutoring & Academic Help', 'tutoring', 'service'),
+(12, 'Cleaning Services', 'cleaning', 'service'),
+(13, 'Moving & Packing', 'moving', 'service'),
+(14, 'Photography & Media', 'photography', 'service');
+
+-- Available services (local XAMPP seed data)
+INSERT INTO services (id, name, description, icon, sort_order, is_active) VALUES
+(1, 'Tutoring & Academic Help', 'Course tutoring, exam preparation, language lessons, assignment review', 'book-open', 1, 1),
+(2, 'Tech & Device Repair', 'Laptop repair, phone screen replacement, software troubleshooting', 'laptop', 2, 1),
+(3, 'Moving & Hauling Assistance', 'Help moving into dorms/apartments, heavy lifting, truck assistance', 'package', 3, 1),
+(4, 'Graphic Design & Creative', 'Posters, flyers, logos, social media graphics, UI/UX', 'palette', 4, 1),
+(5, 'Photography & Videography', 'Graduation photos, event coverage, portraits, video editing', 'camera', 5, 1),
+(6, 'Cleaning & Organization', 'Dorm room cleaning, deep cleaning, room organizing', 'sparkles', 6, 1),
+(7, 'Music & Audio Services', 'DJing events, music lessons, audio editing/mixing', 'music', 7, 1),
+(8, 'Hair, Beauty & Grooming', 'Haircuts, styling, braiding, makeup, nails', 'scissors', 8, 1),
+(9, 'Delivery & Errand Running', 'Campus deliveries, grocery runs, package pick-ups', 'bike', 9, 1),
+(10, 'Fitness & Personal Training', 'Workout coaching, gym buddy, sports training', 'dumbbell', 10, 1);
 
 -- ─── Tags ───────────────────────────────────────────────────
 INSERT INTO tags (id, name, slug) VALUES

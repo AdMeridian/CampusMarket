@@ -52,6 +52,9 @@ if (!function_exists('databaseUrlCandidates')) {
             if ($value === '' || isset($seen[$value])) {
                 continue;
             }
+            if (str_contains($value, 'YOUR_PROJECT_REF') || str_contains($value, 'YOUR_PASSWORD')) {
+                continue;
+            }
             $seen[$value] = true;
             $urls[] = $value;
         }
@@ -212,6 +215,100 @@ if (!function_exists('ensureProductCategoriesTable')) {
     }
 }
 
+if (!function_exists('ensureServicesTable')) {
+    function ensureServicesTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.services (" .
+                "id BIGSERIAL PRIMARY KEY, " .
+                "name VARCHAR(255) NOT NULL UNIQUE, " .
+                "description TEXT NULL, " .
+                "icon VARCHAR(64) NOT NULL DEFAULT 'service', " .
+                "is_active BOOLEAN NOT NULL DEFAULT TRUE, " .
+                "sort_order SMALLINT NOT NULL DEFAULT 0, " .
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+            );
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.tables " .
+            "WHERE table_schema = DATABASE() AND table_name = 'services'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() > 0) {
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE services (" .
+            "id INT AUTO_INCREMENT PRIMARY KEY, " .
+            "name VARCHAR(255) NOT NULL UNIQUE, " .
+            "description TEXT NULL, " .
+            "icon VARCHAR(64) NOT NULL DEFAULT 'service', " .
+            "is_active TINYINT(1) NOT NULL DEFAULT 1, " .
+            "sort_order SMALLINT NOT NULL DEFAULT 0, " .
+            "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB"
+        );
+    }
+}
+
+if (!function_exists('ensureProviderProfilesTable')) {
+    function ensureProviderProfilesTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.provider_profiles (" .
+                "id BIGSERIAL PRIMARY KEY, " .
+                "user_id BIGINT NOT NULL UNIQUE REFERENCES public.users(id) ON DELETE CASCADE, " .
+                "bio TEXT NULL, " .
+                "raw_skills_input TEXT NULL, " .
+                "parsed_skills JSONB NULL DEFAULT '[]'::jsonb, " .
+                "primary_category_id BIGINT NULL REFERENCES public.categories(id) ON DELETE SET NULL, " .
+                "portfolio_link VARCHAR(500) NULL, " .
+                "enrollment_status VARCHAR(30) NOT NULL DEFAULT 'active', " .
+                "is_verified BOOLEAN NOT NULL DEFAULT FALSE, " .
+                "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), " .
+                "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+            );
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_provider_profiles_user ON public.provider_profiles(user_id)");
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_provider_profiles_status ON public.provider_profiles(enrollment_status)");
+            $pdo->exec("ALTER TABLE public.provider_profiles ENABLE ROW LEVEL SECURITY");
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.tables " .
+            "WHERE table_schema = DATABASE() AND table_name = 'provider_profiles'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() > 0) {
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE provider_profiles (" .
+            "id INT AUTO_INCREMENT PRIMARY KEY, " .
+            "user_id INT NOT NULL UNIQUE, " .
+            "bio TEXT NULL, " .
+            "raw_skills_input TEXT NULL, " .
+            "parsed_skills JSON NULL, " .
+            "primary_category_id INT NULL, " .
+            "portfolio_link VARCHAR(500) NULL, " .
+            "enrollment_status VARCHAR(30) NOT NULL DEFAULT 'active', " .
+            "is_verified TINYINT(1) NOT NULL DEFAULT 0, " .
+            "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+            "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " .
+            "INDEX idx_provider_profiles_user (user_id), " .
+            "INDEX idx_provider_profiles_status (enrollment_status)) ENGINE=InnoDB"
+        );
+    }
+}
+
+
 if (!function_exists('ensurePwaInstallationsTable')) {
     function ensurePwaInstallationsTable(PDO $pdo): void {
         $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
@@ -262,6 +359,84 @@ if (!function_exists('ensurePwaInstallationsTable')) {
             "INDEX idx_pwa_user_id (user_id), " .
             "CONSTRAINT fk_pwa_installations_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL) ENGINE=InnoDB"
         );
+    }
+}
+
+if (!function_exists('ensureMessageTranslationsTable')) {
+    function ensureMessageTranslationsTable(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec(
+                "CREATE TABLE IF NOT EXISTS public.message_translations (" .
+                "id BIGSERIAL PRIMARY KEY, " .
+                "message_id BIGINT NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE, " .
+                "target_lang VARCHAR(5) NOT NULL, " .
+                "translated_text TEXT NOT NULL, " .
+                "source_lang VARCHAR(5) NOT NULL, " .
+                "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+                "UNIQUE (message_id, target_lang))"
+            );
+            return;
+        }
+
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS message_translations (" .
+            "id INT AUTO_INCREMENT PRIMARY KEY, " .
+            "message_id INT NOT NULL, " .
+            "target_lang VARCHAR(5) NOT NULL, " .
+            "translated_text TEXT NOT NULL, " .
+            "source_lang VARCHAR(5) NOT NULL, " .
+            "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+            "UNIQUE KEY uq_message_translation (message_id, target_lang), " .
+            "CONSTRAINT fk_message_translations_message FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE) ENGINE=InnoDB"
+        );
+    }
+}
+
+if (!function_exists('ensureMessageReplyColumn')) {
+    function ensureMessageReplyColumn(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec("ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS reply_to_message_id BIGINT NULL");
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.columns " .
+            "WHERE table_schema = DATABASE() AND table_name = 'messages' AND column_name = 'reply_to_message_id'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() === 0) {
+            $pdo->exec("ALTER TABLE messages ADD COLUMN reply_to_message_id INT NULL");
+        }
+    }
+}
+
+if (!function_exists('ensureOrderExpiryColumns')) {
+    function ensureOrderExpiryColumns(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+        if ($driver === 'pgsql') {
+            $pdo->exec("ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NULL");
+            $pdo->exec("ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS expiry_reminder_sent_at TIMESTAMPTZ NULL");
+            return;
+        }
+
+        $columns = [
+            'expires_at' => 'DATETIME NULL',
+            'expiry_reminder_sent_at' => 'DATETIME NULL',
+        ];
+        foreach ($columns as $column => $definition) {
+            $check = $pdo->prepare(
+                "SELECT COUNT(*) FROM information_schema.columns " .
+                "WHERE table_schema = DATABASE() AND table_name = 'orders' AND column_name = ?"
+            );
+            $check->execute([$column]);
+            if ((int) $check->fetchColumn() === 0) {
+                $pdo->exec("ALTER TABLE orders ADD COLUMN {$column} {$definition}");
+            }
+        }
     }
 }
 
@@ -388,14 +563,14 @@ if (!function_exists('connectDatabase')) {
         $lastError = null;
         $urls = databaseUrlCandidates();
 
-        if ($urls === []) {
-            $attemptConfigs = [$config];
-        } else {
-            $attemptConfigs = [];
-            foreach ($urls as $url) {
-                $attemptConfigs[] = parseDatabaseUrl($url);
+        $attemptConfigs = [];
+        foreach ($urls as $url) {
+            $parsed = parseDatabaseUrl($url);
+            if (!str_contains($parsed['host'], 'YOUR_PROJECT_REF')) {
+                $attemptConfigs[] = $parsed;
             }
         }
+        $attemptConfigs[] = $config;
 
         foreach ($attemptConfigs as $attemptConfig) {
             $attemptDsn = buildPdoDsn($attemptConfig);
@@ -416,6 +591,11 @@ if (!function_exists('connectDatabase')) {
                 }
                 try {
                     ensureProductCategoriesTable($pdo);
+                    ensureServicesTable($pdo);
+                    ensureProviderProfilesTable($pdo);
+                    ensureMessageTranslationsTable($pdo);
+                    ensureMessageReplyColumn($pdo);
+                    ensureOrderExpiryColumns($pdo);
                     ensureCustomLocationColumns($pdo);
                     ensureMessageReplyColumn($pdo);
                     ensureRecentFallbackColumn($pdo);

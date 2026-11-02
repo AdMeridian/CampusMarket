@@ -80,7 +80,7 @@ if ($query !== '' || $categoryId !== '' || $town !== '') {
     $fromSql = " FROM products p
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
-            WHERE p.status = 'active'" . $filterSql;
+            WHERE p.status = 'active' AND p.listing_type = 'product'" . $filterSql;
 
     $countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
     $countStmt->execute($filterParams);
@@ -94,7 +94,7 @@ if ($query !== '' || $categoryId !== '' || $town !== '') {
             JOIN categories c ON p.category_id = c.id
             JOIN users u ON p.user_id = u.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-            WHERE p.status = 'active'" . $filterSql . " " . $orderBySql . " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
+            WHERE p.status = 'active' AND p.listing_type = 'product'" . $filterSql . " " . $orderBySql . " LIMIT " . ITEMS_PER_PAGE . " OFFSET " . getOffset($page);
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($queryParams);
@@ -153,6 +153,9 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="flex justify-center gap-4 flex-wrap">
                 <a href="<?php echo BASE_URL; ?>pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
                 <?php if ($query !== ''): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/services.php?q=<?php echo urlencode($query); ?>" class="btn hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold; background: #e53e3e; color: white; border: none;">
+                        🛠️ Search Services instead
+                    </a>
                     <?php if ($hasPendingSuggestion): ?>
                         <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; border-radius: var(--radius-lg); padding: 0.8rem 1.4rem; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">✓ Suggestion Under Review</span>
                     <?php elseif (isLoggedIn()): ?>
@@ -196,13 +199,22 @@ require_once __DIR__ . '/../includes/header.php';
                 <a href="product.php?id=<?php echo $prod['id']; ?>" class="glass-panel hover-scale relative" style="display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-lg); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(255,255,255,0.5); text-decoration: none;">
                     <div style="height: 200px; background: #e2e8f0; position: relative; overflow: hidden;">
                         <?php
-                            $searchImg = getProductImage($prod['image_path'] ?? null);
+                            $isService = (($prod['listing_type'] ?? 'product') === 'service');
+                            $searchImg = $isService
+                                ? getServiceImage($prod['image_path'] ?? null)
+                                : getProductImage($prod['image_path'] ?? null);
                         ?>
                         <img src="<?php echo $searchImg; ?>" alt="<?php echo sanitize($prod['title']); ?>" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
 
                         <div style="position: absolute; top: 0.75rem; right: 0.75rem;">
-                            <?php $badge = conditionBadge($prod['condition']); ?>
-                            <span class="badge <?php echo $badge['class']; ?> shadow-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem; backdrop-filter: blur(4px);"><?php echo $badge['label']; ?></span>
+                            <?php if (($prod['listing_type'] ?? 'product') === 'service'): ?>
+                                <span class="badge shadow-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem; backdrop-filter: blur(4px); background: #e53e3e; color: white;">
+                                    <?php echo ($prod['pricing_model'] ?? 'flat') === 'hourly' ? '⏱ Hourly' : '🛠️ Service'; ?>
+                                </span>
+                            <?php else: ?>
+                                <?php $badge = conditionBadge($prod['condition']); ?>
+                                <span class="badge <?php echo $badge['class']; ?> shadow-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem; backdrop-filter: blur(4px);"><?php echo $badge['label']; ?></span>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="p-5 flex flex-col flex-grow bg-white">

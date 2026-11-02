@@ -13,9 +13,19 @@ verifyCsrfToken();
 $paymentType = sanitize($_POST['payment_type'] ?? '');
 $productId   = (int)($_POST['product_id'] ?? 0);
 $postedAmount = (float)($_POST['amount'] ?? 0);
+$tier         = sanitize($_POST['tier'] ?? 'standard');
 $promotionDays = 0;
+$productName   = 'CampusMarket Payment';
 
-$redirectPath = ($paymentType === 'donation') ? 'pages/donate.php' : 'pages/promotions.php';
+if ($paymentType === 'service_listing') {
+    setFlash('error', 'Service payments are not available during the pilot.');
+    redirect(BASE_URL . ($productId > 0 ? 'pages/manage_listing.php?id=' . $productId : 'pages/services.php'));
+}
+
+$redirectPath = match($paymentType) {
+    'donation'        => 'pages/donate.php',
+    default           => 'pages/promotions.php',
+};
 
 if (!in_array($paymentType, ['promotion', 'donation'], true)) {
     setFlash('error', 'Invalid payment details.');
@@ -30,6 +40,7 @@ if ($paymentType === 'promotion') {
     }
     $amount = $resolved['amount'];
     $promotionDays = $resolved['days'];
+    $productName = 'Product Promotion';
 } else {
     $donationAmount = resolveDonationPayment($postedAmount);
     if ($donationAmount === null) {
@@ -37,6 +48,7 @@ if ($paymentType === 'promotion') {
         redirect(BASE_URL . 'pages/donate.php');
     }
     $amount = $donationAmount;
+    $productName = 'CampusMarket Donation';
 }
 
 if ($paymentType === 'promotion' && $productId <= 0) {
@@ -45,10 +57,10 @@ if ($paymentType === 'promotion' && $productId <= 0) {
 }
 
 if ($paymentType === 'promotion') {
-    $ownActiveCheck = $pdo->prepare("SELECT id FROM products WHERE id = :pid AND user_id = :uid AND status = 'active'");
+    $ownActiveCheck = $pdo->prepare("SELECT id FROM products WHERE id = :pid AND user_id = :uid AND status = 'active' AND listing_type <> 'service'");
     $ownActiveCheck->execute([':pid' => $productId, ':uid' => currentUserId()]);
     if (!$ownActiveCheck->fetchColumn()) {
-        setFlash('error', 'Only active listings can be promoted.');
+        setFlash('error', 'Only active product listings can be promoted.');
         redirect(BASE_URL . 'pages/promotions.php');
     }
 }
@@ -58,22 +70,23 @@ $unitAmount = (int) round($amount * 100);
 $ch = curl_init();
 
 $successUrl = BASE_URL . 'pages/stripe_success.php?session_id={CHECKOUT_SESSION_ID}&type=' . $paymentType;
-if ($paymentType === 'promotion' && $productId > 0) {
+if ($productId > 0) {
     $successUrl .= '&product_id=' . $productId;
 }
-$cancelUrl  = BASE_URL . (($paymentType === 'donation') ? 'pages/donate.php' : 'pages/promotions.php');
+$cancelUrl  = BASE_URL . $redirectPath;
 
 $postFields = [
     'success_url' => $successUrl,
     'cancel_url'  => $cancelUrl,
     'mode'        => 'payment',
     'line_items[0][price_data][currency]' => 'try',
-    'line_items[0][price_data][product_data][name]' => ($paymentType === 'promotion' ? 'Product Promotion' : 'CampusMarket Donation'),
+    'line_items[0][price_data][product_data][name]' => $productName,
     'line_items[0][price_data][unit_amount]' => $unitAmount,
     'line_items[0][quantity]' => 1,
     'metadata[user_id]' => currentUserId(),
     'metadata[product_id]' => $productId,
     'metadata[payment_type]' => $paymentType,
+    'metadata[tier]' => $tier,
     'metadata[amount]' => $amount,
     'metadata[promotion_days]' => $promotionDays,
 ];

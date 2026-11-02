@@ -55,12 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['restore_default_tags'
     redirect(BASE_URL . 'admin/tags.php');
 }
 
-// Fetch tags with usage count
+// Fetch tags with usage count and creator
 $tags = $pdo->query("
-    SELECT t.id, t.name, t.slug, COUNT(pt.product_id) AS usage_count
+    SELECT t.id, t.name, t.slug, t.created_at, t.created_by, u.username AS creator_username, COUNT(pt.product_id) AS usage_count
     FROM tags t
     LEFT JOIN product_tags pt ON pt.tag_id = t.id
-    GROUP BY t.id, t.name, t.slug
+    LEFT JOIN users u ON u.id = t.created_by
+    GROUP BY t.id, t.name, t.slug, t.created_at, t.created_by, u.username
     ORDER BY t.name ASC
 ")->fetchAll();
 
@@ -111,14 +112,15 @@ require_once '../includes/header.php';
                             <th style="width: 60px;">ID</th>
                             <th>Tag</th>
                             <th>System Slug</th>
-                            <th style="width: 100px; text-align: center;">Listings</th>
+                            <th>Source</th>
+                            <th style="width: 90px; text-align: center;">Listings</th>
                             <th style="width: 80px; text-align: right;">Remove</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($tags)): ?>
                         <tr>
-                            <td colspan="5">
+                            <td colspan="6">
                                 <div class="admin-empty">
                                     <span class="admin-empty-icon"><svg style="width: 32px; height: 32px; display: inline-block; color: var(--text-muted); opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></span>
                                     No tags yet. <strong>Restore defaults</strong> to re-enable AI tagging →
@@ -133,6 +135,13 @@ require_once '../includes/header.php';
                                 <span class="badge badge-secondary" style="font-size: 0.85rem;">#<?php echo sanitize($tag['name']); ?></span>
                             </td>
                             <td><code style="background: var(--bg-main); padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.82rem;"><?php echo sanitize($tag['slug']); ?></code></td>
+                            <td>
+                                <?php if (!empty($tag['creator_username'])): ?>
+                                    <span class="badge" style="background: var(--primary-light); color: var(--primary); font-size: 0.75rem;">@<?= sanitize($tag['creator_username']) ?></span>
+                                <?php else: ?>
+                                    <span style="color: var(--text-muted); font-size: 0.8rem;">System / Admin</span>
+                                <?php endif; ?>
+                            </td>
                             <td style="text-align: center;">
                                 <?php if ((int)$tag['usage_count'] > 0): ?>
                                     <span class="badge badge-primary" style="font-size: 0.78rem;"><?php echo (int)$tag['usage_count']; ?></span>

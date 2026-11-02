@@ -52,27 +52,49 @@ $isSelf  = isLoggedIn() && (int)currentUserId() === (int)$user['id'];
 $rating  = getSellerRating($pdo, (int)$user['id']);
 $trust   = getSellerTrustScore($pdo, (int)$user['id']);
 $pageTitle = sanitize($user['username']) . "'s Profile";
-$activeTab = ($_GET['tab'] ?? 'about') === 'listings' ? 'listings' : 'about';
+$activeTab = in_array($_GET['tab'] ?? 'about', ['about', 'listings', 'services']) ? ($_GET['tab'] ?? 'about') : 'about';
 
 // Fetch listings count for the stat pill. Owners see their pending review items too.
 $visibleListingStatusSql = $isSelf || isAdmin()
-    ? "status IN ('active', 'pending_approval')"
-    : "status = 'active'";
-$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE user_id = :uid AND {$visibleListingStatusSql}");
+    ? "p.status IN ('active', 'pending_approval')"
+    : "p.status = 'active'";
+
+$visibleServiceStatusSql = $isSelf || isAdmin()
+    ? "p.status IN ('active', 'pending_approval', 'pending_payment')"
+    : "p.status = 'active'";
+
+$listingCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products p WHERE p.user_id = :uid AND p.listing_type = 'product' AND {$visibleListingStatusSql}");
 $listingCountStmt->execute([':uid' => $viewId]);
 $listingCount = (int)$listingCountStmt->fetchColumn();
 
-// Fetch listings visible on this profile view.
+// Fetch services count
+$serviceCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products p WHERE p.user_id = :uid AND p.listing_type = 'service' AND {$visibleServiceStatusSql}");
+$serviceCountStmt->execute([':uid' => $viewId]);
+$serviceCount = (int)$serviceCountStmt->fetchColumn();
+
+// Fetch physical listings visible on this profile view.
 $stmt = $pdo->prepare("
     SELECT p.*, c.name as category_name, i.image_path
     FROM products p
     JOIN categories c ON p.category_id = c.id
     LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-    WHERE p.user_id = :uid AND {$visibleListingStatusSql}
+    WHERE p.user_id = :uid AND p.listing_type = 'product' AND {$visibleListingStatusSql}
     ORDER BY p.created_at DESC
 ");
 $stmt->execute([':uid' => $viewId]);
 $userProducts = $stmt->fetchAll();
+
+// Fetch services visible on this profile view.
+$stmtServices = $pdo->prepare("
+    SELECT p.*, c.name as category_name, i.image_path
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
+    WHERE p.user_id = :uid AND p.listing_type = 'service' AND {$visibleServiceStatusSql}
+    ORDER BY p.created_at DESC
+");
+$stmtServices->execute([':uid' => $viewId]);
+$userServices = $stmtServices->fetchAll();
 
 // Fetch sold items (publicly visible on profile to show seller history)
 $soldItems = $pdo->prepare("
@@ -689,11 +711,16 @@ body.dark-mode .btn-white-solid:hover {
                         <span>No reviews yet</span>
                     <?php endif; ?>
                 </div>
-                <div style="margin-top: 0.45rem; display: inline-flex; align-items: center; gap: 0.45rem;">
+                <div style="margin-top: 0.45rem; display: inline-flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
                     <span class="badge" style="background: rgba(255,255,255,0.22); color: #fff; font-size: 0.72rem; padding: 0.18rem 0.55rem; border: 1px solid rgba(255,255,255,0.35); border-radius: var(--radius-lg);">
                         <?php echo sanitize($trust['tier']); ?>
                     </span>
                     <span style="font-size: 0.82rem; color: rgba(255,255,255,0.88);">Trust Score: <?php echo (int)$trust['score']; ?>/100</span>
+                    <?php if ($serviceCount > 0): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/services.php?seller=<?php echo (int)$user['id']; ?>" class="badge" style="background: var(--service); color: #fff; text-decoration: none; font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: var(--radius-lg); font-weight: 700;">
+                        Service Provider (<?php echo $serviceCount; ?>)
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -722,6 +749,15 @@ body.dark-mode .btn-white-solid:hover {
                 Listings
                 <span class="tab-count"><?php echo $listingCount; ?></span>
             </button>
+            <?php if ($serviceCount > 0 || $isSelf): ?>
+            <button type="button" class="profile-tab <?php echo $activeTab === 'services' ? 'active' : ''; ?>" data-tab="services">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                Services
+                <?php if ($serviceCount > 0): ?>
+                <span class="tab-count"><?php echo $serviceCount; ?></span>
+                <?php endif; ?>
+            </button>
+            <?php endif; ?>
         </nav>
     </div>
 </div>
@@ -931,7 +967,7 @@ body.dark-mode .btn-white-solid:hover {
                             <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
                                 <img 
                                     class="listing-card-img" 
-                                    src="<?php echo getProductImage($prod['image_path'] ?? null); ?>" 
+                                    src="<?php echo getServiceImage($prod['image_path'] ?? null); ?>"
                                     alt="<?php echo sanitize($prod['title']); ?>"
                                     loading="lazy"
                                 />
@@ -954,7 +990,7 @@ body.dark-mode .btn-white-solid:hover {
                                     <?php $pendingNote = trim((string)($prod['moderation_note'] ?? '')); ?>
                                     <?php if ($pendingNote !== ''): ?>
                                         <p class="mb-2" style="font-size: 0.78rem; color: #1d4ed8; line-height: 1.45;">
-                                            <?= sanitize($pendingNote) ?>
+                                             <?= sanitize($pendingNote) ?>
                                         </p>
                                     <?php endif; ?>
                                 <?php endif; ?>
@@ -967,10 +1003,10 @@ body.dark-mode .btn-white-solid:hover {
                                 <?php if ($isSelf): ?>
                                     <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
                                         <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-primary btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
-                                            ⚙️ Manage
+                                            Manage
                                         </a>
                                         <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
-                                            👁️ View
+                                            View
                                         </a>
                                     </div>
                                 <?php endif; ?>
@@ -1032,6 +1068,79 @@ body.dark-mode .btn-white-solid:hover {
         </section>
     </div>
 
+    <!-- ── Tab Panel 3: Services ───────────────────────────────── -->
+    <?php if ($serviceCount > 0 || $isSelf): ?>
+    <div id="tab-panel-services" class="profile-tab-panel <?php echo $activeTab === 'services' ? 'active' : ''; ?>">
+        <section id="services" style="margin-top: 0;">
+            <div class="listings-header">
+                <h2 class="page-section-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--service)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                    <?php echo $isSelf ? 'Your Services' : 'Services Offered'; ?> (<?php echo $serviceCount; ?>)
+                </h2>
+                <?php if ($isSelf): ?>
+                    <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn-sm hover-scale shadow-sm" style="border-radius: var(--radius-lg); padding: 0.5rem 1rem; background: var(--service); color: white; border: none;">
+                        + Offer a Service
+                    </a>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($userServices)): ?>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;"><?php echo $isSelf ? 'No services offered yet.' : 'No services offered.'; ?></p>
+            <?php else: ?>
+                <div class="listing-grid">
+                    <?php foreach ($userServices as $prod): ?>
+                        <?php $isPendingApproval = ($prod['status'] === 'pending_approval'); ?>
+                        <div class="listing-card" style="border-top: 3px solid var(--service);">
+                            <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit; display: block;">
+                                <img
+                                    class="listing-card-img"
+                                    src="<?php echo getServiceImage($prod['image_path'] ?? null); ?>"
+                                    alt="<?php echo sanitize($prod['title']); ?>"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <div class="listing-card-body">
+                                <div class="listing-card-meta">
+                                    <span class="listing-card-price">
+                                        <?php if ($prod['price'] !== null): ?>
+                                            <?php echo formatPrice($prod['price'], productCurrencyCode($prod)); ?>
+                                            <?php if (($prod['pricing_model'] ?? 'flat') === 'hourly'): ?>
+                                                <small style="font-weight: 500; color: var(--text-muted);">/hr</small>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <small style="font-weight: 500; color: var(--text-muted);"><?= __('product.rate_not_listed') ?></small>
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                <?php if ($isSelf && $isPendingApproval): ?>
+                                    <div class="badge badge-pending" style="display: inline-flex; width: fit-content; margin-bottom: 0.6rem; border-radius: var(--radius-lg); padding: 0.3rem 0.65rem; font-size: 0.72rem; font-weight: 800;">
+                                        Pending Review
+                                    </div>
+                                <?php endif; ?>
+                                <h3 class="listing-card-title">
+                                    <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" style="text-decoration: none; color: inherit;">
+                                        <?php echo sanitize($prod['title']); ?>
+                                    </a>
+                                </h3>
+                                <?php if ($isSelf): ?>
+                                    <div class="mt-4 flex items-center gap-2" style="border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
+                                        <a href="<?php echo BASE_URL; ?>pages/manage_listing.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-sm flex-1" style="padding: 0.45rem 0.5rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); background: var(--service); color: white; border: none; font-weight: 700;">
+                                            Manage
+                                        </a>
+                                        <a href="<?php echo BASE_URL; ?>pages/product.php?id=<?php echo (int)$prod['id']; ?>" class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem; font-size: 0.8rem; text-align: center; border-radius: var(--radius-md); font-weight: 700;">
+                                            View
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+    </div>
+    <?php endif; ?>
+
 </div>
 
 <script>
@@ -1039,7 +1148,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const tabs = Array.from(document.querySelectorAll('.profile-tab'));
     const panels = {
         about: document.getElementById('tab-panel-about'),
-        listings: document.getElementById('tab-panel-listings')
+        listings: document.getElementById('tab-panel-listings'),
+        services: document.getElementById('tab-panel-services')
     };
 
     function switchTab(tabName, updateUrl = true) {
@@ -1068,13 +1178,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    const validTabs = ['about', 'listings', 'services'];
     const hash = (window.location.hash || '').replace('#', '');
-    if (hash === 'about' || hash === 'listings') {
+    if (validTabs.includes(hash) && panels[hash]) {
         switchTab(hash, false);
     } else {
         const urlParams = new URLSearchParams(window.location.search);
         const urlTab = urlParams.get('tab');
-        if (urlTab === 'about' || urlTab === 'listings') {
+        if (validTabs.includes(urlTab) && panels[urlTab]) {
             switchTab(urlTab, false);
         } else {
             switchTab('about', false);
@@ -1083,7 +1194,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.addEventListener('hashchange', () => {
         const newHash = (window.location.hash || '').replace('#', '');
-        if (newHash === 'about' || newHash === 'listings') {
+        if (validTabs.includes(newHash) && panels[newHash]) {
             switchTab(newHash, false);
         }
     });
