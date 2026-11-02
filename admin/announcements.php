@@ -8,6 +8,50 @@ require_once __DIR__ . '/../includes/announcements.php';
 requireAdmin();
 ensureAnnouncementsTable($pdo);
 
+require_once __DIR__ . '/../includes/web_push.php';
+
+if (!function_exists('getWebPushSubscriberUserIds')) {
+    function getWebPushSubscriberUserIds(PDO $pdo, string $targetRole = 'all'): array {
+        try {
+            $sql = "SELECT DISTINCT s.user_id 
+                    FROM web_push_subscriptions s 
+                    JOIN users u ON u.id = s.user_id 
+                    WHERE u.account_status = 'active'";
+            if ($targetRole === 'admin') {
+                $sql .= " AND u.role = 'admin'";
+            } elseif ($targetRole === 'user') {
+                $sql .= " AND u.role = 'user'";
+            }
+            $stmt = $pdo->query($sql);
+            return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+}
+
+if (!function_exists('getAnnouncementTargetUserIds')) {
+    function getAnnouncementTargetUserIds(PDO $pdo, string $targetRole = 'all'): array {
+        try {
+            $sql = "SELECT id FROM users WHERE account_status = 'active'";
+            if ($targetRole === 'admin') {
+                $sql .= " AND role = 'admin'";
+            } elseif ($targetRole === 'user') {
+                $sql .= " AND role = 'user'";
+            } elseif ($targetRole === 'guest') {
+                return [];
+            }
+            $stmt = $pdo->query($sql);
+            return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+}
+
+$pushSubscriberCount = count(getWebPushSubscriberUserIds($pdo, 'all'));
+
+
 $pageTitle = "Platform Announcements";
 $currentAdminId = currentUserId();
 
@@ -139,6 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($title === '' || $message === '') {
             setFlash('error', 'Title and message are required.');
         } else {
+            $sendPush = !empty($_POST['send_push']);
+            $sendBell = !empty($_POST['send_bell']);
             $driver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
             $activeVal = $driver === 'mysql' ? $isActive : ($isActive ? 'TRUE' : 'FALSE');
 
@@ -160,8 +206,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':cb' => $currentAdminId,
                 ]);
                 $newId = (int)$pdo->lastInsertId();
-                logAdminAction($pdo, 'create_announcement', 'announcement', $newId, ['title' => $title, 'type' => $type]);
-                setFlash('success', 'Announcement published successfully.');
+                
+                $dispatchedChannels = ['Banner active'];
+                if ($sendPush) {
+                    $subscribers = getWebPushSubscriberUserIds($pdo, $targetRole);
+                    $pushUrl = !empty($ctaUrl) ? $ctaUrl : (rtrim(BASE_URL, '/') . '/pages/home.php');
+                    $pushCount = 0;
+                    foreach ($subscribers as $sUid) {
+                        triggerWebPushBestEffort((int)$sUid, $title, $message, $pushUrl);
+                        $pushCount++;
+                    }
+                    if ($pushCount > 0) {
+                        $dispatchedChannels[] = "{$pushCount} push notifications sent";
+                    }
+                }
+
+                if ($sendBell) {
+                    $targetUsers = getAnnouncementTargetUserIds($pdo, $targetRole);
+                    $bellUrl = !empty($ctaUrl) ? $ctaUrl : (rtrim(BASE_URL, '/') . '/pages/home.php');
+                    $bellCount = 0;
+                    foreach ($targetUsers as $bUid) {
+                        createNotification($pdo, (int)$bUid, 'system', "📢 " . $title, $message, null);
+                        $bellCount++;
+                    }
+                    if ($bellCount > 0) {
+                        $dispatchedChannels[] = "{$bellCount} bell alerts delivered";
+                    }
+                }
+
+                logAdminAction($pdo, 'create_announcement', 'announcement', $newId, [
+                    'title' => $title,
+                    'type' => $type,
+                    'send_push' => $sendPush,
+                    'send_bell' => $sendBell
+                ]);
+                setFlash('success', 'Announcement published successfully (' . implode(' · ', $dispatchedChannels) . ').');
             } else {
                 $sql = "
                     UPDATE announcements
@@ -185,6 +264,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 logAdminAction($pdo, 'update_announcement', 'announcement', $id, ['title' => $title]);
                 setFlash('success', 'Announcement updated successfully.');
             }
+        }
+        redirect(BASE_URL . 'admin/announcements.php');
+    }
+
+    if ($action === 'broadcast_push') {
+        $id = (int)($_POST['id'] ?? 0);
+        $annStmt = $pdo->prepare("SELECT * FROM announcements WHERE id = ? LIMIT 1");
+        $annStmt->execute([$id]);
+        $targetAnn = $annStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($targetAnn) {
+            $subscribers = getWebPushSubscriberUserIds($pdo, $targetAnn['target_role']);
+            $pushUrl = !empty($targetAnn['cta_url']) ? $targetAnn['cta_url'] : (rtrim(BASE_URL, '/') . '/pages/home.php');
+            $pushCount = 0;
+            foreach ($subscribers as $sUid) {
+                triggerWebPushBestEffort((int)$sUid, $targetAnn['title'], $targetAnn['message'], $pushUrl);
+                $pushCount++;
+            }
+            logAdminAction($pdo, 'broadcast_announcement_push', 'announcement', $id, ['push_recipients' => $pushCount]);
+            setFlash('success', "🚀 Dispatched web push notification to {$pushCount} subscribed device(s).");
+        } else {
+            setFlash('error', 'Announcement not found.');
         }
         redirect(BASE_URL . 'admin/announcements.php');
     }
@@ -375,6 +476,14 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td style="padding: 1rem 0.5rem; text-align: right; white-space: nowrap;">
+                                <form method="POST" style="display: inline; margin: 0 0.25rem 0 0;" onsubmit="return confirm('Send push notification for this announcement to all subscribed devices?');">
+                                    <?php echo csrfTokenField(); ?>
+                                    <input type="hidden" name="action" value="broadcast_push">
+                                    <input type="hidden" name="id" value="<?= (int)$a['id'] ?>">
+                                    <button type="submit" class="btn btn-sm" title="Send push notification to subscribed devices" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-main); padding: 0.35rem 0.55rem; border-radius: var(--radius-sm); font-size: 0.78rem;">
+                                        🔔 Push
+                                    </button>
+                                </form>
                                 <button type="button" class="btn btn-sm" onclick='editAnnouncement(<?= json_encode($a, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)' style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-main); padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); margin-right: 0.25rem; font-size: 0.78rem;">
                                     Edit
                                 </button>
@@ -484,24 +593,89 @@ require_once __DIR__ . '/../includes/header.php';
                 <div style="display: flex; align-items: center; padding-top: 1.5rem;">
                     <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: var(--text-main);">
                         <input type="checkbox" id="annActive" name="is_active" value="1" checked style="width: 18px; height: 18px;">
-                        <span>Activate immediately</span>
+                        <span>Activate banner on site</span>
                     </label>
                 </div>
             </div>
 
-            <!-- Live Banner Preview -->
-            <div style="margin: 1.5rem 0; padding: 1rem; background: var(--bg-main); border-radius: var(--radius-lg); border: 1px dashed var(--border-light);">
-                <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">Live Banner Preview</div>
-                <div id="livePreviewBanner" style="padding: 0.8rem 1rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); color: #1e40af;">
-                    <div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
-                        <span id="prevIcon" style="font-size: 1.2rem;">ℹ️</span>
-                        <div>
-                            <strong id="prevTitle">Scheduled System Upgrade</strong>
-                            <span style="opacity: 0.75; margin: 0 0.35rem;">·</span>
-                            <span id="prevMessage" style="font-size: 0.9rem;">Brief announcement details for students...</span>
+            <!-- Additional Broadcast Channels -->
+            <div style="background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+                <div style="font-weight: 700; font-size: 0.82rem; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <span>📢</span> Additional Delivery Channels (Optional)
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 500; cursor: pointer; color: var(--text-main);">
+                        <input type="checkbox" id="sendPushCheckbox" name="send_push" value="1" style="width: 17px; height: 17px;">
+                        <span>📱 Send as <strong>Web Push Notification</strong> to subscribed phones/desktops <small style="color: var(--text-muted);">(<?= $pushSubscriberCount ?> subscriber devices)</small></span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 500; cursor: pointer; color: var(--text-main);">
+                        <input type="checkbox" id="sendBellCheckbox" name="send_bell" value="1" style="width: 17px; height: 17px;">
+                        <span>🔔 Deliver to user in-app <strong>Notification Inbox (Bell icon)</strong></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Live Dual Preview Section (Website Banner + Push Notification) -->
+            <div style="margin: 1.5rem 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+                        Live Preview
+                    </span>
+                    <div style="display: flex; gap: 0.35rem; background: var(--bg-main); padding: 0.2rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+                        <button type="button" id="prevTabBanner" onclick="switchPreviewTab('banner')" style="background: var(--bg-surface); border: none; padding: 0.25rem 0.65rem; border-radius: 4px; font-size: 0.78rem; font-weight: 700; color: var(--text-main); cursor: pointer; box-shadow: var(--shadow-sm);">
+                            🖥️ Website Banner
+                        </button>
+                        <button type="button" id="prevTabPush" onclick="switchPreviewTab('push')" style="background: transparent; border: none; padding: 0.25rem 0.65rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); cursor: pointer;">
+                            📱 Push Notification
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. Simulated Website Top Banner Preview -->
+                <div id="previewBannerContainer" style="background: var(--bg-main); padding: 0.85rem; border-radius: var(--radius-lg); border: 1px dashed var(--border-light);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.35rem;">
+                        <span>🌐</span> <span>Sticky top banner below navbar:</span>
+                    </div>
+                    <div id="livePreviewBanner" style="padding: 0.85rem 1rem; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 0.85rem; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); color: #1e40af;">
+                        <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0;">
+                            <span id="prevIcon" style="font-size: 1.25rem; flex-shrink: 0;">ℹ️</span>
+                            <div style="min-width: 0;">
+                                <strong id="prevTitle" style="display: inline-block; font-weight: 700; margin-right: 0.35rem;">Scheduled System Upgrade</strong>
+                                <span style="opacity: 0.6; margin-right: 0.35rem;">—</span>
+                                <span id="prevMessage" style="font-size: 0.88rem; opacity: 0.95;">Brief announcement details for students...</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;">
+                            <span id="prevBtn" style="font-size: 0.82rem; font-weight: 700; text-decoration: underline; white-space: nowrap; cursor: pointer;">Learn More &rarr;</span>
+                            <span style="opacity: 0.5; font-size: 1.1rem; line-height: 1; cursor: pointer;">&times;</span>
                         </div>
                     </div>
-                    <span id="prevBtn" style="font-size: 0.8rem; font-weight: 700; text-decoration: underline; white-space: nowrap;">Learn More &rarr;</span>
+                </div>
+
+                <!-- 2. Simulated OS Push Notification Preview -->
+                <div id="previewPushContainer" style="display: none; background: var(--bg-main); padding: 1rem; border-radius: var(--radius-lg); border: 1px dashed var(--border-light);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem;">
+                        <span>🔔</span> <span>Device push notification (Android / Windows / macOS):</span>
+                    </div>
+                    <div style="max-width: 420px; margin: 0 auto; background: #ffffff; color: #111827; border-radius: 14px; padding: 0.85rem 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.12); border: 1px solid #e5e7eb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem;">
+                            <div style="display: flex; align-items: center; gap: 0.45rem;">
+                                <img src="<?= rtrim(BASE_URL, '/') ?>/public/images/logo.png" alt="CampusMarket" style="width: 18px; height: 18px; border-radius: 4px; object-fit: contain;">
+                                <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #4b5563;">CampusMarket</span>
+                            </div>
+                            <span style="font-size: 0.7rem; color: #9ca3af;">just now</span>
+                        </div>
+                        <div id="prevPushTitle" style="font-size: 0.92rem; font-weight: 700; color: #111827; margin-bottom: 0.2rem; line-height: 1.25;">
+                            Scheduled System Upgrade
+                        </div>
+                        <div id="prevPushMessage" style="font-size: 0.82rem; color: #4b5563; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                            Brief announcement details for students...
+                        </div>
+                        <div style="margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;">
+                            <span id="prevPushUrl" style="font-size: 0.7rem; color: #6b7280;">tap to open</span>
+                            <span id="prevPushBadge" style="font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 4px; background: #eff6ff; color: #1d4ed8;">SYSTEM NOTICE</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -535,6 +709,8 @@ function openAnnouncementModal() {
     document.getElementById('annCtaUrl').value = '';
     document.getElementById('annActive').checked = true;
     document.getElementById('annTarget').value = 'all';
+    document.getElementById('sendPushCheckbox').checked = false;
+    document.getElementById('sendBellCheckbox').checked = false;
     document.querySelector('input[name="type"][value="info"]').checked = true;
     updatePreview();
     const modal = document.getElementById('announcementModal');
@@ -558,6 +734,8 @@ function applyAnnouncementTemplate(templateId) {
         document.getElementById('annCtaText').value = '';
         document.getElementById('annCtaUrl').value = '';
         document.getElementById('annTarget').value = 'all';
+    document.getElementById('sendPushCheckbox').checked = false;
+    document.getElementById('sendBellCheckbox').checked = false;
         document.querySelector('input[name="type"][value="info"]').checked = true;
         document.getElementById('templateNotice').textContent = 'Form cleared';
         updatePreview();
@@ -605,12 +783,45 @@ function editAnnouncement(data) {
     document.getElementById('annCtaUrl').value = data.cta_url || '';
     document.getElementById('annActive').checked = (data.is_active == 1 || data.is_active === true || data.is_active === 't');
     document.getElementById('annTarget').value = data.target_role || 'all';
+    document.getElementById('sendPushCheckbox').checked = false;
+    document.getElementById('sendBellCheckbox').checked = false;
     
     const typeRadio = document.querySelector('input[name="type"][value="' + (data.type || 'info') + '"]');
     if (typeRadio) typeRadio.checked = true;
 
     updatePreview();
     document.getElementById('announcementModal').style.display = 'flex';
+}
+
+function switchPreviewTab(tab) {
+    const bannerContainer = document.getElementById('previewBannerContainer');
+    const pushContainer = document.getElementById('previewPushContainer');
+    const btnBanner = document.getElementById('prevTabBanner');
+    const btnPush = document.getElementById('prevTabPush');
+
+    if (tab === 'push') {
+        bannerContainer.style.display = 'none';
+        pushContainer.style.display = 'block';
+        btnPush.style.background = 'var(--bg-surface)';
+        btnPush.style.color = 'var(--text-main)';
+        btnPush.style.fontWeight = '700';
+        btnPush.style.boxShadow = 'var(--shadow-sm)';
+        btnBanner.style.background = 'transparent';
+        btnBanner.style.color = 'var(--text-muted)';
+        btnBanner.style.fontWeight = '600';
+        btnBanner.style.boxShadow = 'none';
+    } else {
+        bannerContainer.style.display = 'block';
+        pushContainer.style.display = 'none';
+        btnBanner.style.background = 'var(--bg-surface)';
+        btnBanner.style.color = 'var(--text-main)';
+        btnBanner.style.fontWeight = '700';
+        btnBanner.style.boxShadow = 'var(--shadow-sm)';
+        btnPush.style.background = 'transparent';
+        btnPush.style.color = 'var(--text-muted)';
+        btnPush.style.fontWeight = '600';
+        btnPush.style.boxShadow = 'none';
+    }
 }
 
 function updatePreview() {
@@ -647,6 +858,28 @@ function updatePreview() {
     prev.style.background = cfg.bg;
     prev.style.borderColor = cfg.border;
     prev.style.color = cfg.color;
+
+    // Update Push Notification preview
+    const prevPushTitle = document.getElementById('prevPushTitle');
+    const prevPushMessage = document.getElementById('prevPushMessage');
+    const prevPushUrl = document.getElementById('prevPushUrl');
+    const prevPushBadge = document.getElementById('prevPushBadge');
+
+    if (prevPushTitle) prevPushTitle.textContent = title;
+    if (prevPushMessage) prevPushMessage.textContent = message;
+    if (prevPushUrl) prevPushUrl.textContent = cta ? (cta + ' →') : 'tap to open';
+    if (prevPushBadge) {
+        prevPushBadge.textContent = type.toUpperCase() + ' NOTICE';
+        const badgeStyles = {
+            info: { bg: '#eff6ff', color: '#1d4ed8' },
+            warning: { bg: '#fffbeb', color: '#b45309' },
+            success: { bg: '#ecfdf5', color: '#047857' },
+            alert: { bg: '#fef2f2', color: '#b91c1c' }
+        };
+        const bs = badgeStyles[type] || badgeStyles.info;
+        prevPushBadge.style.background = bs.bg;
+        prevPushBadge.style.color = bs.color;
+    }
 }
 </script>
 
