@@ -12,6 +12,7 @@ $navCategories = getNavCategories($pdo);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title><?php echo htmlspecialchars(seoFullTitle($pageTitle ?? null), ENT_QUOTES, 'UTF-8'); ?></title>
+    <meta name="google-site-verification" content="2qArGBd6rSUObQoTMAKd281VBqez8wxVYns30Tfzoqs">
     <?php seoRenderHeadTags(); ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
