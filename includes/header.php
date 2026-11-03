@@ -569,6 +569,57 @@ function dismissPlatformAnnouncement(id) {
 </script>
 <?php endif; ?>
 
+<?php if (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id'])): ?>
+<div class="platform-announcements-wrapper" id="campusNudgeBanner">
+    <div class="container">
+        <div class="platform-announcement platform-announcement--info" id="campus-nudge-item" role="alert">
+            <div class="platform-announcement__icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </div>
+            <div class="platform-announcement__body">
+                <span class="platform-announcement__title"><?= __('campus_nudge.title') ?></span>
+                <span class="platform-announcement__message"><?= __('campus_nudge.message') ?></span>
+            </div>
+            <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta">
+                <?= __('campus_nudge.cta') ?>
+            </a>
+            <button type="button" class="platform-announcement__dismiss" onclick="dismissCampusNudge()" aria-label="Dismiss">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    try {
+        var key = 'cm_campus_nudge_dismissed';
+        var val = localStorage.getItem(key);
+        if (val) {
+            var until = parseInt(val, 10);
+            if (Date.now() < until) {
+                var el = document.getElementById('campusNudgeBanner');
+                if (el) el.style.display = 'none';
+            } else {
+                localStorage.removeItem(key);
+            }
+        }
+    } catch(e) {}
+})();
+function dismissCampusNudge() {
+    try {
+        localStorage.setItem('cm_campus_nudge_dismissed', String(Date.now() + 86400000));
+    } catch(e) {}
+    var el = document.getElementById('campusNudgeBanner');
+    if (el) {
+        el.style.transition = 'all 0.25s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-6px)';
+        setTimeout(function() { el.remove(); }, 250);
+    }
+}
+</script>
+<?php endif; ?>
+
 <!-- Mobile Search Row (Visible only on mobile, pushed below the fixed navbar) -->
 <div class="lg-hidden mobile-search-row">
     <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar" style="max-width: 500px; margin: 0 auto;">

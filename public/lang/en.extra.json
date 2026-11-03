@@ -553,5 +553,8 @@
     "profile.select_campus_title": "Which campus are you on?",
     "profile.select_campus_subtitle": "Select your university to discover listings, student services, and meetups near you.",
     "profile.select_campus_btn": "Continue to Marketplace",
-    "profile.campus_welcome_saved": "Campus saved! Welcome to CampusMarket."
+    "profile.campus_welcome_saved": "Campus saved! Welcome to CampusMarket.",
+    "campus_nudge.title": "Set your campus",
+    "campus_nudge.message": "Let other students know where you study — it helps you discover listings near your university.",
+    "campus_nudge.cta": "Add campus ›"
 }

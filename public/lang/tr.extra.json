@@ -553,5 +553,8 @@
     "profile.select_campus_title": "Hangi kampüstesiniz?",
     "profile.select_campus_subtitle": "Yakınınızdaki ilanları, öğrenci hizmetlerini ve buluşmaları keşfetmek için üniversitenizi seçin.",
     "profile.select_campus_btn": "Pazaryerine Devam Et",
-    "profile.campus_welcome_saved": "Kampüs kaydedildi! CampusMarket'e hoş geldiniz."
+    "profile.campus_welcome_saved": "Kampüs kaydedildi! CampusMarket'e hoş geldiniz.",
+    "campus_nudge.title": "Kampüsünü belirt",
+    "campus_nudge.message": "Diğer öğrencilerin seni nerede okuduğunu görmesine izin ver — üniversitene yakın ilanları keşfetmeni kolaylaştırır.",
+    "campus_nudge.cta": "Kampüs ekle ›"
 }
