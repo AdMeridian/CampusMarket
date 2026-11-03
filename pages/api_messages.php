@@ -45,7 +45,7 @@ if ($action === 'search_users') {
     if (strlen($query) < 1) {
         // Return recent contacts if available
         $stmt = $pdo->prepare("
-            SELECT DISTINCT u.id, u.username, u.avatar 
+            SELECT DISTINCT u.id, u.username, u.avatar
             FROM messages m
             JOIN users u ON u.id = (CASE WHEN m.sender_id = :uid1 THEN m.receiver_id ELSE m.sender_id END)
             WHERE (m.sender_id = :uid2 OR m.receiver_id = :uid3)
@@ -288,7 +288,7 @@ if ($action === 'fetch') {
             $pIdsList = array_values($mentionedProductIds);
             $placeholders = implode(',', array_fill(0, count($pIdsList), '?'));
             $metaStmt = $pdo->prepare("
-                SELECT p.id, p.title, p.price, p.price_currency, p.status,
+                SELECT p.id, p.title, p.price, p.price_currency, p.status, p.listing_type,
                        pi.image_path
                 FROM products p
                 LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
@@ -301,7 +301,7 @@ if ($action === 'fetch') {
                     'title' => htmlspecialchars($pRow['title'], ENT_QUOTES, 'UTF-8'),
                     'price' => (float)$pRow['price'],
                     'price_currency' => $pRow['price_currency'] ?: 'TRY',
-                    'image_url' => getProductImage($pRow['image_path']),
+                    'image_url' => (($pRow['listing_type'] ?? 'product') === 'service') ? getServiceImage($pRow['image_path'] ?? null, (int)$pRow['id']) : getProductImage($pRow['image_path']),
                     'status' => $pRow['status'],
                     'url' => rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$pRow['id'],
                 ];
@@ -420,10 +420,10 @@ if ($action === 'send') {
         
         // Auto-create order if a product is involved
         if ($productId > 0) {
-            $stmtProd = $pdo->prepare("SELECT user_id, price FROM products WHERE id = ?");
+            $stmtProd = $pdo->prepare("SELECT user_id, price, status, listing_type FROM products WHERE id = ?");
             $stmtProd->execute([$productId]);
             $prod = $stmtProd->fetch();
-            if ($prod) {
+            if ($prod && ($prod['listing_type'] ?? 'product') !== 'service' && ($prod['status'] ?? '') === 'active') {
                 $sellerId = (int)$prod['user_id'];
                 $buyerId = ($currentUserId === $sellerId) ? $receiverId : $currentUserId;
                 
@@ -437,6 +437,30 @@ if ($action === 'send') {
                         VALUES (?, ?, ?, 'pending', ?, " . pendingOrderExpiresAtExpression() . ")
                     ");
                     $stmtOrder->execute([$productId, $buyerId, $prod['price'], 'Auto-created from direct message inquiry.']);
+                }
+            }
+
+            // Track service inquiry events
+            if ($prod && ($prod['listing_type'] ?? 'product') === 'service' && $currentUserId !== (int)$prod['user_id']) {
+                $priorInqStmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE product_id = ? AND sender_id = ?");
+                $priorInqStmt->execute([$productId, $currentUserId]);
+                $countInquiries = (int)$priorInqStmt->fetchColumn();
+                $isFirst = ($countInquiries <= 1);
+
+                if (function_exists('queuePostHogEvent')) {
+                    if ($isFirst) {
+                        queuePostHogEvent('service_first_inquiry', [
+                            'product_id' => $productId,
+                            'provider_id' => (int)$prod['user_id'],
+                            'buyer_id' => $currentUserId
+                        ]);
+                    }
+                    queuePostHogEvent('service_inquiry_sent', [
+                        'product_id' => $productId,
+                        'provider_id' => (int)$prod['user_id'],
+                        'buyer_id' => $currentUserId,
+                        'is_first' => $isFirst
+                    ]);
                 }
             }
         }
@@ -476,12 +500,16 @@ if ($action === 'propose') {
     }
     
     // Get product details
-    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id FROM products WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id, listing_type FROM products WHERE id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
     
     if (!$product) {
         echo json_encode(['error' => 'Product not found']);
+        exit;
+    }
+    if (($product['listing_type'] ?? 'product') === 'service') {
+        echo json_encode(['error' => 'Service bookings are not available during the pilot. Message the provider directly.']);
         exit;
     }
     
@@ -529,12 +557,16 @@ if ($action === 'get_propose') {
     }
     
     // Get product details
-    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id FROM products WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT title, price, discount_percent, price_currency, user_id, listing_type FROM products WHERE id = :id");
     $stmt->execute([':id' => $productId]);
     $product = $stmt->fetch();
     
     if (!$product) {
         echo json_encode(['error' => 'Product not found']);
+        exit;
+    }
+    if (($product['listing_type'] ?? 'product') === 'service') {
+        echo json_encode(['error' => 'Service bookings are not available during the pilot. Message the provider directly.']);
         exit;
     }
     
@@ -563,6 +595,15 @@ if ($action === 'check_deal_status') {
         exit;
     }
 
+    if ($productId > 0) {
+        $typeStmt = $pdo->prepare("SELECT listing_type FROM products WHERE id = ?");
+        $typeStmt->execute([$productId]);
+        if ($typeStmt->fetchColumn() === 'service') {
+            echo json_encode(['show_handshake' => false]);
+            exit;
+        }
+    }
+
     if ($productId === 0) {
         // Special logic for product_id = 0
         $stmtBuyer = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE sender_id = :me AND receiver_id = :other AND (product_id = 0 OR product_id IS NULL)");
@@ -580,11 +621,12 @@ if ($action === 'check_deal_status') {
 
         // Check if there is an active buyer_confirmed deal
         $stmtDeal = $pdo->prepare("
-            SELECT d.*, p.title as product_title, p.user_id as seller_id, u.username as buyer_username
+            SELECT d.*, p.title as product_title, p.listing_type, p.pricing_model, p.user_id as seller_id, u.username as buyer_username
             FROM deal_confirmations d
             JOIN products p ON d.product_id = p.id
             JOIN users u ON d.buyer_id = u.id
-            WHERE ((d.buyer_id = :me AND d.seller_id = :other) OR (d.buyer_id = :other AND d.seller_id = :me))
+            WHERE p.listing_type <> 'service'
+            AND ((d.buyer_id = :me AND d.seller_id = :other) OR (d.buyer_id = :other AND d.seller_id = :me))
             AND d.status = 'buyer_confirmed'
             LIMIT 1
         ");
@@ -603,7 +645,9 @@ if ($action === 'check_deal_status') {
                     'is_seller' => $isSeller,
                     'buyer_username' => $deal['buyer_username'],
                     'product_title' => $deal['product_title'],
-                    'product_id' => $deal['product_id']
+                    'product_id' => $deal['product_id'],
+                    'listing_type' => $deal['listing_type'],
+                    'pricing_model' => $deal['pricing_model']
                 ]
             ]);
             exit;
@@ -683,10 +727,10 @@ if ($action === 'check_deal_status') {
     $stmtBuyerName->execute([':id' => $buyerId]);
     $buyerUsername = $stmtBuyerName->fetchColumn();
 
-    // Fetch product title for display
-    $stmtProd = $pdo->prepare("SELECT title FROM products WHERE id = :id");
+    // Fetch product info for display
+    $stmtProd = $pdo->prepare("SELECT title, listing_type, pricing_model FROM products WHERE id = :id");
     $stmtProd->execute([':id' => $productId]);
-    $productTitle = $stmtProd->fetchColumn();
+    $productInfo = $stmtProd->fetch(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'show_handshake' => true,
@@ -697,7 +741,9 @@ if ($action === 'check_deal_status') {
             'seller_confirmed_at' => $deal['seller_confirmed_at'],
             'is_seller' => $isSeller,
             'buyer_username' => $buyerUsername,
-            'product_title' => $productTitle,
+            'product_title' => $productInfo['title'] ?? '',
+            'listing_type' => $productInfo['listing_type'] ?? 'product',
+            'pricing_model' => $productInfo['pricing_model'] ?? 'flat'
         ]
     ]);
     exit;
@@ -714,9 +760,9 @@ if ($action === 'confirm_deal') {
         exit;
     }
 
-    // Determine seller
+    // Determine seller and product info
     $stmt = $pdo->prepare("
-        SELECT p.user_id, p.title, p.category_id, c.name AS category_name
+        SELECT p.user_id, p.title, p.category_id, p.listing_type, c.name AS category_name
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.id
         WHERE p.id = :pid
@@ -728,9 +774,14 @@ if ($action === 'confirm_deal') {
         echo json_encode(['error' => 'Product not found']);
         exit;
     }
+    if (($product['listing_type'] ?? 'product') === 'service') {
+        echo json_encode(['error' => 'Service bookings are not available during the pilot.']);
+        exit;
+    }
 
     $sellerId = (int)$product['user_id'];
     $productTitle = $product['title'];
+    $listingType = $product['listing_type'];
     $isSeller = ($currentUserId === $sellerId);
     $buyerId = $isSeller ? $otherUserId : $currentUserId;
 
@@ -769,17 +820,28 @@ if ($action === 'confirm_deal') {
                 $stmtIns->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
             }
 
+            // Capture scheduling data if provided
+            $schedStart = !empty($_POST['scheduled_start']) ? $_POST['scheduled_start'] : null;
+            $schedEnd = !empty($_POST['scheduled_end']) ? $_POST['scheduled_end'] : null;
+
             // Buyer confirms → awaiting seller
             $stmtUp = $pdo->prepare("
                 UPDATE deal_confirmations 
-                SET buyer_confirmed_at = NOW(), status = 'buyer_confirmed', updated_at = NOW()
+                SET buyer_confirmed_at = NOW(), status = 'buyer_confirmed', updated_at = NOW(),
+                    scheduled_start = :start, scheduled_end = :end
                 WHERE product_id = :pid AND buyer_id = :bid AND seller_id = :sid
             ");
-            $stmtUp->execute([':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId]);
+            $stmtUp->execute([
+                ':pid' => $productId, ':bid' => $buyerId, ':sid' => $sellerId,
+                ':start' => $schedStart, ':end' => $schedEnd
+            ]);
 
             // Notify seller
-            createNotification($pdo, $sellerId, 'order', 'Deal Confirmation Request',
-                "$myUsername says the deal for '$productTitle' is done. Open the chat to confirm and delist.", $productId);
+            $notificationTitle = ($listingType === 'service') ? 'Service Booking Request' : 'Deal Confirmation Request';
+            $notificationMsg = ($listingType === 'service')
+                ? "$myUsername wants to book your service '$productTitle'. Open the chat to confirm the schedule."
+                : "$myUsername says the deal for '$productTitle' is done. Open the chat to confirm and delist.";
+            createNotification($pdo, $sellerId, 'order', $notificationTitle, $notificationMsg, $productId);
 
             $pdo->commit();
             echo json_encode(['success' => true, 'action' => 'awaiting_seller']);
@@ -791,10 +853,16 @@ if ($action === 'confirm_deal') {
     exit;
 }
 
+if ($action === 'amend_service_booking') {
+    verifyCsrfTokenJson();
+    echo json_encode(['success' => false, 'error' => 'Service bookings are not available during the pilot.']);
+    exit;
+}
+
 // ─── Get Active Products ────────────────────────
 if ($action === 'get_active_products') {
     $otherUserId = (int)($_GET['other_user_id'] ?? 0);
-    $stmt = $pdo->prepare("SELECT id, title, user_id, price, price_currency FROM products WHERE user_id IN (:me, :other) AND status = 'active' ORDER BY created_at DESC");
+    $stmt = $pdo->prepare("SELECT id, title, user_id, price, price_currency FROM products WHERE user_id IN (:me, :other) AND status = 'active' AND listing_type <> 'service' AND price IS NOT NULL ORDER BY created_at DESC");
     $stmt->execute([':me' => $currentUserId, ':other' => $otherUserId]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     

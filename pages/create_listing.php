@@ -11,6 +11,11 @@ if (isAdmin()) {
     redirect(BASE_URL . 'admin/index.php');
 }
 
+// Redirect service requests to the dedicated Campus Services Pilot onboarding
+if ((isset($_GET['type']) && $_GET['type'] === 'service') || (isset($_POST['listing_type']) && $_POST['listing_type'] === 'service')) {
+    redirect(BASE_URL . 'pages/provider_onboard.php');
+}
+
 $success = false;
 $error = '';
 $createdProductId = 0;
@@ -21,30 +26,65 @@ $createdListingMeta = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
     $title          = sanitize($_POST['title']);
-    $categoryId     = (int)$_POST['category_id'];
+    $categoryId     = (int)($_POST['category_id'] ?? 0);
     $price          = (float)$_POST['price'];
     $priceCurrency  = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
     if (!array_key_exists($priceCurrency, PRODUCT_CURRENCIES)) {
         $priceCurrency = DEFAULT_PRODUCT_CURRENCY;
     }
-    $condition      = sanitize($_POST['condition']);
+    $condition      = sanitize($_POST['condition'] ?? '');
+    $listingType    = in_array($_POST['listing_type'] ?? 'product', ['product', 'service']) ? ($_POST['listing_type'] ?? 'product') : 'product';
+    $pricingModel   = in_array($_POST['pricing_model'] ?? 'flat', ['flat', 'hourly']) ? ($_POST['pricing_model'] ?? 'flat') : 'flat';
     $description    = sanitize($_POST['description']);
     $locationTown     = strtolower(trim((string)($_POST['location_town'] ?? '')));
     $customLocation   = trim(sanitize($_POST['custom_location'] ?? ''));
     $userId         = currentUserId();
     $ownerContact   = isAgent() ? parseManagedOwnerContactFromRequest($_POST) : null;
+    // ── Service-specific fields ──────────────────────────────────
+    $deliveryDays     = null;
+    $revisionCount    = null;
+    $availabilityStatus = 'available';
+    $availabilityResetAt = null;
+    $portfolioLink    = null;
+    if ($listingType === 'service') {
+        $rawDelivery = (int)($_POST['delivery_days'] ?? 0);
+        $deliveryDays = ($rawDelivery > 0 && $rawDelivery <= 365) ? $rawDelivery : null;
+        $rawRevisions = $_POST['revision_count'] ?? '';
+        if ($rawRevisions === 'unlimited') {
+            $revisionCount = 99;
+        } elseif (is_numeric($rawRevisions) && (int)$rawRevisions >= 0) {
+            $revisionCount = (int)$rawRevisions;
+        }
+        $availabilityStatus = in_array($_POST['availability_status'] ?? '', ['available','busy','unavailable'])
+            ? $_POST['availability_status']
+            : 'available';
+        $rawResetDays = (int)($_POST['availability_reset_days'] ?? 0);
+        if ($rawResetDays > 0) {
+            $availabilityResetAt = date('Y-m-d H:i:s', strtotime("+{$rawResetDays} days"));
+        }
+        $rawPortfolio = trim($_POST['portfolio_link'] ?? '');
+        if ($rawPortfolio !== '' && filter_var($rawPortfolio, FILTER_VALIDATE_URL)) {
+            $portfolioLink = mb_substr($rawPortfolio, 0, 500);
+        }
+    }
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
-    $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
-    $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
-    if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
-        $primaryCategoryId = (int)$selectedCategoryIds[0];
+    if ($listingType === 'service') {
+        $firstServiceCat = $pdo->query("SELECT id FROM categories WHERE type = 'service' ORDER BY id ASC LIMIT 1")->fetchColumn();
+        $categoryId = $firstServiceCat ? (int)$firstServiceCat : 11;
+        $selectedCategoryIds = [$categoryId];
+    } else {
+        $selectedCategoryIds = array_values(array_unique(array_filter(array_map('intval', $_POST['category_ids'] ?? []))));
+        $primaryCategoryId = (int)($_POST['category_id'] ?? 0);
+        if ($primaryCategoryId <= 0 && !empty($selectedCategoryIds)) {
+            $primaryCategoryId = (int)$selectedCategoryIds[0];
+        }
+        if ($primaryCategoryId > 0) {
+            $selectedCategoryIds[] = $primaryCategoryId;
+        }
+        $selectedCategoryIds = array_values(array_unique(array_filter($selectedCategoryIds)));
+        $categoryId = $primaryCategoryId > 0 ? $primaryCategoryId : ($selectedCategoryIds[0] ?? 0);
     }
-    if ($primaryCategoryId > 0) {
-        $selectedCategoryIds[] = $primaryCategoryId;
-    }
-    $selectedCategoryIds = array_values(array_unique(array_filter($selectedCategoryIds)));
-    $categoryId = $primaryCategoryId > 0 ? $primaryCategoryId : ($selectedCategoryIds[0] ?? 0);
 
     // Validate Title and Image Presence
     if (empty($title) || mb_strlen($title) < 3) {
@@ -53,13 +93,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = __('create_listing.title_too_long');
     } elseif (empty($_FILES['images']['name'][0]) || $_FILES['images']['error'][0] === UPLOAD_ERR_NO_FILE) {
         $error = __('create_listing.image_required');
-    } elseif ($categoryId <= 0 || empty($selectedCategoryIds)) {
+    } elseif ($listingType === 'product' && ($categoryId <= 0 || empty($selectedCategoryIds))) {
         $error = __('create_listing.select_category');
-    } elseif (!isValidLocationTown($locationTown)) {
+    }
+
+    if ($listingType === 'service' && ($locationTown === '' || !isValidLocationTown($locationTown))) {
+        // Default services to 'remote' when not specified — most student services are online-capable
+        $locationTown = 'remote';
+    }
+
+    if (!$error && $listingType === 'product' && !isValidLocationTown($locationTown)) {
         $error = __('create_listing.town_required');
-    } elseif ($locationTown === 'other' && empty($customLocation)) {
+    } elseif (!$error && $locationTown === 'other' && empty($customLocation)) {
         $error = __('create_listing.custom_location_required');
-    } elseif ($locationTown === 'other' && mb_strlen($customLocation) > 100) {
+    } elseif (!$error && $locationTown === 'other' && mb_strlen($customLocation) > 100) {
         $error = 'Custom location cannot exceed 100 characters.';
     }
 
@@ -110,15 +157,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // 1. Insert Product
                 $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                 $conditionQuote = ($driver === 'mysql') ? '`condition`' : '"condition"';
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, location_town, custom_location) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $condition, $locationTown, ($locationTown === 'other' ? $customLocation : null)]);
+                $conditionValue = ($listingType === 'service') ? null : $condition;
+                
+                $statusValue = 'active';
+
+                $sellerMarketplace = function_exists('getUserUniversityAndCountry') ? getUserUniversityAndCountry($pdo, $userId) : null;
+                $sellerCountry = $sellerMarketplace['country_code'] ?? 'TR';
+                $sellerUniversityId = $sellerMarketplace['university_id'] ?? null;
+
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location, country_code, university_id, delivery_days, revision_count, availability_status, availability_reset_at, portfolio_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null), $sellerCountry, $sellerUniversityId, $deliveryDays, $revisionCount, $availabilityStatus, $availabilityResetAt, $portfolioLink]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
                     $driverName = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
                     $categoryInsertSql = ($driverName === 'pgsql')
-                        ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT DO NOTHING'
-                        : 'INSERT IGNORE INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?)';
+                        ? 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = EXCLUDED.is_primary'
+                        : 'INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_primary = VALUES(is_primary)';
                     $categoryInsert = $pdo->prepare($categoryInsertSql);
                     foreach ($selectedCategoryIds as $catId) {
                         try {
@@ -177,19 +232,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmtUpdate = $pdo->prepare("UPDATE products SET status = :status WHERE id = :pid");
                     $stmtUpdate->execute([':status' => $status, ':pid' => $productId]);
                     listingModerationSaveNote($pdo, (int)$productId, $sellerNote);
-                    notifyAdminsPendingListing(
-                        $pdo,
-                        (int)$productId,
-                        $title,
-                        $sellerNote
-                    );
-                    notifySellerPendingListing(
-                        $pdo,
-                        (int)$userId,
-                        (int)$productId,
-                        $title,
-                        $sellerNote
-                    );
+                    notifyAdminsPendingListing($pdo, (int)$productId, $title, $sellerNote);
+                    notifySellerPendingListing($pdo, (int)$userId, (int)$productId, $title, $sellerNote);
                 }
 
                 // 3. Save tags — manual selection + custom created tags, then AI-generated as fallback
@@ -265,6 +309,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $pdo->commit();
+
+                // Contextual push opt-in: prompt after first listing posted
+                if (empty($_SESSION['cm_push_prompted_listing'])) {
+                    $_SESSION['prompt_push'] = true;
+                    $_SESSION['cm_push_prompted_listing'] = true;
+                }
+
                 redirect(BASE_URL . 'pages/create_listing.php?created=' . (int)$productId);
             }
 
@@ -293,8 +344,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch Categories & Tags
-$categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
+// Determine if this is a service listing (from URL or previous POST)
+$isServiceMode = ($_GET['type'] ?? '') === 'service' || ($_POST['listing_type'] ?? '') === 'service';
+
+// Fetch product categories only (services have their own category tree)
+$categories = $pdo->query("SELECT * FROM categories WHERE type = 'product' ORDER BY name ASC")->fetchAll();
+$serviceCategories = $pdo->query("SELECT * FROM categories WHERE type = 'service' ORDER BY name ASC")->fetchAll();
 $allTags    = $pdo->query("SELECT id, name, slug FROM tags ORDER BY name ASC")->fetchAll();
 $userHomeTownDetails = isLoggedIn() ? getUserHomeTownDetails((int)currentUserId()) : null;
 
@@ -319,7 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
     $createdId = (int)$_GET['created'];
     if ($createdId > 0) {
         $createdStmt = $pdo->prepare("
-            SELECT id, status, category_id, price, moderation_note
+            SELECT id, status, category_id, price, moderation_note, listing_type
             FROM products
             WHERE id = :id AND user_id = :uid
             LIMIT 1
@@ -329,7 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
             $createdRow = $createdStmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             $createdStmt = $pdo->prepare("
-                SELECT id, status, category_id, price
+                SELECT id, status, category_id, price, listing_type
                 FROM products
                 WHERE id = :id AND user_id = :uid
                 LIMIT 1
@@ -345,6 +400,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['created'])) {
                 'category_id' => (int)($createdRow['category_id'] ?? 0),
                 'price' => (float)($createdRow['price'] ?? 0),
                 'moderation_note' => trim((string)($createdRow['moderation_note'] ?? '')),
+                'listing_type' => (string)($createdRow['listing_type'] ?? 'product'),
             ];
         }
     }
@@ -365,43 +421,52 @@ include '../includes/header.php';
             }
         }
     }
+    $isCreatedService = ($createdListingMeta['listing_type'] ?? 'product') === 'service';
 ?>
 <script>
     if (typeof posthog !== 'undefined') {
         posthog.capture('listing_created', {
             listing_id: <?php echo json_encode((int)$createdProductId); ?>,
             category: <?php echo json_encode($createdCategoryName); ?>,
-            price: <?php echo json_encode((float)($createdListingMeta['price'] ?? 0)); ?>
+            price: <?php echo json_encode((float)($createdListingMeta['price'] ?? 0)); ?>,
+            type: <?php echo json_encode($createdListingMeta['listing_type'] ?? 'product'); ?>
         });
     }
 </script>
 <div class="container mt-24 mb-20">
-    <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2rem; border-radius: var(--radius-xl); text-align: center;">
+    <div class="glass-panel" style="max-width: 760px; margin: 0 auto; padding: 2.25rem 2rem; border-radius: var(--radius-xl); text-align: center;">
         <h1 class="page-hero-title mb-2"><?= __('create_listing.success_msg') ?></h1>
-        <?php if ($createdProductStatus === 'active'): ?>
-        <p class="text-muted mb-6">Your listing is live. Would you like to promote it now?</p>
-        <div class="flex justify-center gap-4 flex-wrap">
-            <a class="btn btn-primary" href="promotions.php?product_id=<?= (int)$createdProductId ?>&new_listing=1" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
-                Yes, promote it
-            </a>
-            <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
-                No, view my listing
-            </a>
-        </div>
+
+        <?php if ($createdProductStatus === 'pending_payment' && $isCreatedService): ?>
+            <p class="text-muted mb-6">Your service details are saved. Update your service profile to submit it for review.</p>
+            <a class="btn btn-primary" href="<?= BASE_URL ?>pages/provider_onboard.php">Update service profile</a>
+        <?php elseif ($createdProductStatus === 'active'): ?>
+            <?php if ($isCreatedService): ?>
+                <p class="text-muted mb-6" style="font-size: 1.05rem;">
+                    Your service listing is live in the services directory.
+                </p>
+                <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>">View service profile</a>
+            <?php else: ?>
+                <p class="text-muted mb-6">Your listing is live. Would you like to promote it now?</p>
+                <div class="flex justify-center gap-4 flex-wrap">
+                    <a class="btn btn-primary" href="promotions.php?product_id=<?= (int)$createdProductId ?>&new_listing=1" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">Promote listing</a>
+                    <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">View listing</a>
+                </div>
+            <?php endif; ?>
         <?php else: ?>
-        <?php $pendingNote = trim((string)($createdListingMeta['moderation_note'] ?? '')); ?>
-        <p class="text-muted mb-4" style="font-size: 1.05rem; line-height: 1.6;">
-            <?= __('create_listing.moderation_pending_intro') ?>
-        </p>
-        <?php if ($pendingNote !== ''): ?>
-        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; text-align: left;">
-            <p class="mb-1 font-bold" style="color: var(--text-main); font-size: 0.9rem;"><?= __('create_listing.moderation_pending_reason_label') ?></p>
-            <p class="mb-0 text-muted" style="line-height: 1.55;"><?= sanitize($pendingNote) ?></p>
-        </div>
-        <?php endif; ?>
-        <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
-            <?= __('create_listing.moderation_view_listing') ?>
-        </a>
+            <?php $pendingNote = trim((string)($createdListingMeta['moderation_note'] ?? '')); ?>
+            <p class="text-muted mb-4" style="font-size: 1.05rem; line-height: 1.6;">
+                <?= __('create_listing.moderation_pending_intro') ?>
+            </p>
+            <?php if ($pendingNote !== ''): ?>
+            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; text-align: left;">
+                <p class="mb-1 font-bold" style="color: var(--text-main); font-size: 0.9rem;"><?= __('create_listing.moderation_pending_reason_label') ?></p>
+                <p class="mb-0 text-muted" style="line-height: 1.55;"><?= sanitize($pendingNote) ?></p>
+            </div>
+            <?php endif; ?>
+            <a class="btn btn-secondary" href="product.php?id=<?= (int)$createdProductId ?>" style="padding: 0.8rem 1.4rem; border-radius: var(--radius-lg);">
+                <?= __('create_listing.moderation_view_listing') ?>
+            </a>
         <?php endif; ?>
     </div>
 </div>
@@ -430,8 +495,23 @@ include '../includes/header.php';
 
 
 
+                <!-- Campus Services Pilot Discovery Banner -->
+                <div class="mb-2 p-4 rounded-xl flex items-center justify-between gap-4 flex-wrap" style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25);">
+                    <div class="flex items-center gap-3">
+                        <span style="font-size: 1.6rem;">🛠️</span>
+                        <div>
+                            <strong style="color: var(--text-main); font-size: 0.95rem;">Offering a skill, tutoring, or campus service?</strong>
+                            <p class="text-muted mb-0" style="font-size: 0.83rem;">Create a profile to share the skills you offer.</p>
+                        </div>
+                    </div>
+                    <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-sm btn--service" style="padding: 0.5rem 1.1rem; font-weight: 700; white-space: nowrap; border-radius: var(--radius-lg);">
+                        Enroll in Pilot &rarr;
+                    </a>
+                </div>
+                <input type="hidden" name="listing_type" value="product">
+
                 <div class="form-group">
-                    <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
+                    <label id="title-label" for="titleInput" class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.sell_label') ?></label>
                     <input type="text" id="titleInput" name="title" value="<?= htmlspecialchars($_POST['title'] ?? ($_GET['title'] ?? '')) ?>" placeholder="<?= addslashes(__('create_listing.title_placeholder')) ?>" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                     <div id="ai-assist-bar" style="display:none; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-md); background: var(--primary-light); border: 1px solid rgba(99,102,241,0.25); font-size: 0.8rem; color: var(--primary); align-items: center; gap: 0.5rem;">
                         <svg id="ai-assist-spinner" style="width:13px;height:13px;display:none;animation:spin 1s linear infinite;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
@@ -442,9 +522,11 @@ include '../includes/header.php';
                 </div>
  
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Category Selector -->
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.category_label') ?></label>
                         <p class="text-muted small mb-3">Choose every category that fits. One will be used as the primary category.</p>
+                        
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <?php foreach ($categories as $cat): ?>
                                 <label class="flex items-center gap-2 rounded-lg border px-3 py-2" style="border-color: var(--border-light); background: color-mix(in srgb, var(--bg-surface) 85%, white);">
@@ -455,11 +537,19 @@ include '../includes/header.php';
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.town_label') ?></label>
-                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
-                            <option value=""><?= __('create_listing.select_town') ?></option>
-                            <?php foreach (locationTownSlugs() as $townSlug): ?>
-                                <option value="<?php echo $townSlug; ?>" <?php echo $selectedTown === $townSlug ? 'selected' : ''; ?>><?php echo formatLocationTown($townSlug); ?></option>
+                        <label class="font-bold mb-2 block" style="color: var(--text-main);">
+                            <?= __('create_listing.town_label') ?>
+                        </label>
+                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;">
+                            <?php
+                            $townSlugs = locationTownSlugs();
+                            $resolvedTown = $selectedTown;
+                            foreach ($townSlugs as $townSlug):
+                                if ($townSlug === 'remote') continue;
+                            ?>
+                                <option value="<?php echo $townSlug; ?>" <?php echo $resolvedTown === $townSlug ? 'selected' : ''; ?>>
+                                    <?php echo formatLocationTown($townSlug); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                         <div id="custom_location_container" class="mt-3 form-group" style="<?php echo ($selectedTown === 'other') ? '' : 'display: none;'; ?>">
@@ -493,10 +583,12 @@ include '../includes/header.php';
                     </div>
                 </div>
 
+                <!-- Condition (product only) -->
+                <!-- Condition (product) -->
                 <div class="form-group">
                     <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.condition_label') ?></label>
                     <div class="flex flex-wrap gap-3" style="gap: 0.5rem;">
-                        <?php 
+                        <?php
                         $opts = [
                             'new' => __('create_listing.cond_new'),
                             'like_new' => __('create_listing.cond_like_new'),
@@ -513,9 +605,10 @@ include '../includes/header.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
+
                 <div class="form-group">
                     <div class="flex items-center justify-between mb-2" style="flex-wrap: wrap; gap: 0.5rem;">
-                        <label class="font-bold" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
+                        <label for="descriptionTextarea" class="font-bold" style="color: var(--text-main);"><?= __('create_listing.description_label') ?></label>
                         <button type="button" id="aiDescBtn"
                             style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.9rem; border-radius: var(--radius-lg); border: 1px solid var(--primary); background: var(--primary-light); color: var(--primary); font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: var(--transition);">
                             <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
@@ -758,7 +851,13 @@ const createListingI18n = {
     compressing: <?= json_encode(__('create_listing.compressing_images')) ?>,
     maxFilesAlert: <?= json_encode(__('create_listing.max_files_alert', ['max' => MAX_IMAGES])) ?>,
     publishLabel: <?= json_encode(__('create_listing.publish')) ?>,
-    uploadHelp: <?= json_encode(__('create_listing.upload_desc')) ?>
+    uploadHelp: <?= json_encode(__('create_listing.upload_desc')) ?>,
+    sellLabel: <?= json_encode(__('create_listing.sell_label')) ?>,
+    offerLabel: <?= json_encode(__('create_listing.sell_label_service')) ?>,
+    titlePlaceholder: <?= json_encode(__('create_listing.title_placeholder')) ?>,
+    titlePlaceholderService: <?= json_encode(__('create_listing.title_placeholder_service')) ?>,
+    descPlaceholder: <?= json_encode(__('create_listing.desc_placeholder')) ?>,
+    descPlaceholderService: <?= json_encode(__('create_listing.desc_placeholder_service')) ?>
 };
 
 function updateFileInput() {
@@ -1111,7 +1210,7 @@ document.addEventListener('DOMContentLoaded', function () {
         pill.innerHTML = `
             <span>#${val}</span>
             <input type="hidden" name="new_tags[]" value="${val.replace(/"/g, '&quot;')}">
-            <button type="button" style="background: none; border: none; cursor: pointer; color: var(--primary); font-size: 14px; line-height: 1; padding: 0 2px; font-weight: bold;">&times;</button>
+            <button type="button" style="background: none; border: none; cursor: pointer; color: var(--primary); font-size: 14px; line-height: 1; padding: 0 2px; font-weight: bold;" title="Remove tag">&times;</button>
         `;
         pill.querySelector('button').addEventListener('click', function () {
             pill.remove();
@@ -1132,6 +1231,58 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Availability auto-reset toggle
+    const availResetToggle = document.getElementById('avail-reset-toggle');
+    const availResetWrapper = document.getElementById('avail-reset-days-wrapper');
+    if (availResetToggle && availResetWrapper) {
+        availResetToggle.addEventListener('change', function() {
+            availResetWrapper.style.display = this.checked ? 'flex' : 'none';
+        });
+    }
+
+    // Highlight selected availability label
+    document.querySelectorAll('.avail-radio').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.avail-label').forEach(function(lbl) {
+                lbl.style.borderColor = 'var(--border-light)';
+                lbl.style.background = 'var(--bg-surface)';
+            });
+            if (this.checked) {
+                const lbl = this.closest('.avail-label');
+                if (lbl) {
+                    lbl.style.borderColor = 'var(--service)';
+                    lbl.style.background = 'color-mix(in srgb, var(--service) 6%, var(--bg-surface))';
+                }
+            }
+        });
+        // Apply on load for pre-selected state
+        if (radio.checked) {
+            const lbl = radio.closest('.avail-label');
+            if (lbl) {
+                lbl.style.borderColor = 'var(--service)';
+                lbl.style.background = 'color-mix(in srgb, var(--service) 6%, var(--bg-surface))';
+            }
+        }
+    });
+
+    // Highlight selected delivery pill
+    document.querySelectorAll('input[name="delivery_days"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.js-delivery-pill').forEach(function(pill) {
+                pill.style.borderColor = 'var(--border-light)';
+                pill.style.background = 'var(--bg-main)';
+                pill.style.color = 'var(--text-muted)';
+            });
+            if (this.checked) {
+                const pill = this.nextElementSibling;
+                if (pill) {
+                    pill.style.borderColor = 'var(--service)';
+                    pill.style.background = 'var(--service-light)';
+                    pill.style.color = 'var(--service)';
+                }
+            }
+        });
+    });
     const townSelect = document.querySelector('select[name="location_town"]');
     const customLocContainer = document.getElementById('custom_location_container');
     const customLocInput = document.getElementById('custom_location_input');

@@ -11,6 +11,20 @@ $maxPrice = $_GET['max_price'] ?? '';
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, (int)($_GET['page'] ?? 1));
 
+// Country & University Marketplace Filters
+$selectedCountry = $_GET['country'] ?? '';
+$selectedUniversity = $_GET['university'] ?? '';
+
+$userMarketplace = isLoggedIn() && function_exists('getUserUniversityAndCountry') ? getUserUniversityAndCountry($pdo, (int)currentUserId()) : null;
+
+// Default country filter to logged-in user's country if not explicitly specified
+if ($selectedCountry === '' && !isset($_GET['country']) && $userMarketplace && !empty($userMarketplace['country_code'])) {
+    $selectedCountry = $userMarketplace['country_code'];
+}
+
+$availableCountries = function_exists('getAvailableCountries') ? getAvailableCountries($pdo) : [];
+$availableUniversities = function_exists('getAvailableUniversities') ? getAvailableUniversities($pdo, $selectedCountry ?: null) : [];
+
 if ($myTown && isLoggedIn()) {
     $userTown = getUserHomeTown((int)currentUserId());
     if ($userTown) {
@@ -24,6 +38,14 @@ $userHomeTown = isLoggedIn() ? getUserHomeTown((int)currentUserId()) : null;
 $params = [];
 $filterSql = '';
 
+if ($selectedCountry !== '') {
+    $filterSql .= " AND (p.country_code = ? OR p.country_code IS NULL)";
+    $params[] = strtoupper($selectedCountry);
+}
+if ($selectedUniversity !== '') {
+    $filterSql .= " AND p.university_id = ?";
+    $params[] = (int)$selectedUniversity;
+}
 if ($search !== '') {
     $filterSql .= productSearchFilterSql($search, $params);
 }
@@ -49,7 +71,7 @@ if ($maxPrice) {
 $fromSql = " FROM products p 
         JOIN categories c ON p.category_id = c.id 
         JOIN users u ON p.user_id = u.id 
-        WHERE p.status = 'active'" . $filterSql;
+        WHERE p.status = 'active' AND p.listing_type = 'product'" . $filterSql;
 
 $countStmt = $pdo->prepare("SELECT COUNT(DISTINCT p.id)" . $fromSql);
 $countStmt->execute($params);
@@ -61,7 +83,7 @@ $sql = "SELECT p.*, c.name as category_name, u.username as seller_name, i.image_
         JOIN categories c ON p.category_id = c.id 
         JOIN users u ON p.user_id = u.id 
         LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
-        WHERE p.status = 'active'" . $filterSql;
+        WHERE p.status = 'active' AND p.listing_type = 'product'" . $filterSql;
 
 $queryParams = $params;
 $sql .= " ORDER BY CASE WHEN p.is_featured = TRUE AND (p.featured_until IS NULL OR p.featured_until > NOW()) THEN 1 ELSE 0 END DESC, ";
@@ -121,6 +143,97 @@ include '../includes/header.php';
             </div>
         </div>
 
+        <!-- Services Discovery Banner -->
+        <style>
+        .services-browse-callout {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.25rem;
+            padding: 1rem 1.35rem;
+            border-radius: var(--radius-xl);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            text-decoration: none;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .services-browse-callout:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+            border-color: var(--service);
+        }
+        .services-browse-callout:hover .services-browse-arrow {
+            transform: translateX(3px);
+            background: var(--service);
+            color: #ffffff;
+        }
+        .services-browse-stripe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--service);
+        }
+        .services-browse-icon-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-lg);
+            background: var(--service-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            flex-shrink: 0;
+            border: 1px solid rgba(26, 127, 100, 0.15);
+        }
+        .services-browse-arrow {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-full);
+            background: var(--service-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--service);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        </style>
+        <a href="<?php echo BASE_URL; ?>pages/services.php" class="services-browse-callout">
+            <div class="services-browse-stripe"></div>
+            <div style="display: flex; align-items: center; gap: 1rem; min-width: 0;">
+                <div class="services-browse-icon-wrap">
+                    🛠️
+                </div>
+                <div style="min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span style="font-weight: 700; color: var(--text-main); font-size: 0.96rem; font-family: 'Outfit', sans-serif;">
+                            <?= __('nav.services') ?>
+                        </span>
+                        <span style="font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: var(--service-light); color: var(--service); padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid rgba(26, 127, 100, 0.2);">
+                            Pilot
+                        </span>
+                    </div>
+                    <p style="margin: 0.2rem 0 0 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.35;">
+                        Tutoring, repairs, photography, dorm moving &amp; freelance skills from fellow students
+                    </p>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;">
+                <span class="lg-flex hidden" style="font-size: 0.84rem; font-weight: 600; color: var(--service);">
+                    Explore Services
+                </span>
+                <div class="services-browse-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+            </div>
+        </a>
+
         <div class="grid grid-cols-1 lg-grid-cols-5 gap-8 items-start">
             
             <!-- Sidebar Filters -->
@@ -137,6 +250,48 @@ include '../includes/header.php';
                         <?php endif; ?>
                         <?php if($sort): ?>
                             <input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>">
+                        <?php endif; ?>
+
+                        <!-- Country Marketplace Block -->
+                        <?php if (!empty($availableCountries)): ?>
+                        <div class="filter-block mb-8">
+                            <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
+                                <span>Country Marketplace</span>
+                            </div>
+                            <div class="relative">
+                                <select name="country" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                    <option value="">All Countries 🌐</option>
+                                    <?php 
+                                    $countryFlags = ['GB' => '🇬🇧', 'US' => '🇺🇸', 'TR' => '🇹🇷', 'DE' => '🇩🇪', 'CA' => '🇨🇦'];
+                                    foreach ($availableCountries as $c): 
+                                        $flag = $countryFlags[$c['code']] ?? '🌐';
+                                    ?>
+                                        <option value="<?php echo $c['code']; ?>" <?php echo strtoupper($selectedCountry) === $c['code'] ? 'selected' : ''; ?>>
+                                            <?php echo $flag; ?> <?php echo sanitize($c['name']); ?> (<?php echo sanitize($c['default_currency']); ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- University Campus Block -->
+                        <?php if (!empty($availableUniversities)): ?>
+                        <div class="filter-block mb-8">
+                            <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
+                                <span>Campus / University</span>
+                            </div>
+                            <div class="relative">
+                                <select name="university" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                    <option value="">All Campuses 🎓</option>
+                                    <?php foreach ($availableUniversities as $uni): ?>
+                                        <option value="<?php echo $uni['id']; ?>" <?php echo (string)$selectedUniversity === (string)$uni['id'] ? 'selected' : ''; ?>>
+                                            🎓 <?php echo sanitize($uni['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                         <?php endif; ?>
                         
                         <!-- Category Block -->

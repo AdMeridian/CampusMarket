@@ -182,7 +182,19 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
 
         // If this verification has an active access_token (e.g. Google / Apple OAuth flow), log the user in immediately!
         if ($accessToken !== '' && !empty($existingUser['id'])) {
+            $hasUniversity = !empty($existingUser['university_id']) || !empty($existingUser['other_university_name']);
             if ($isNewLocalUser) {
+                // Auto-detect university from email if possible
+                $uniLookup = function_exists('lookupUniversityByEmail') ? lookupUniversityByEmail($pdo, $verifiedEmail) : null;
+                if ($uniLookup && !empty($uniLookup['university_id'])) {
+                    try {
+                        $updUni = $pdo->prepare('UPDATE users SET university_id = :uid WHERE id = :id');
+                        $updUni->execute([':uid' => (int)$uniLookup['university_id'], ':id' => (int)$existingUser['id']]);
+                        $existingUser['university_id'] = (int)$uniLookup['university_id'];
+                        $hasUniversity = true;
+                    } catch (Throwable $e) {}
+                }
+
                 try {
                     createNotification(
                         $pdo,
@@ -205,7 +217,12 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
             $_SESSION['supabase_refresh_token'] = $refreshToken;
             $_SESSION['posthog_event'] = ['name' => 'user_logged_in', 'properties' => ['method' => 'oauth']];
             setFlash('success', 'Welcome, ' . sanitize($existingUser['username']) . '!');
-            redirect(BASE_URL);
+
+            if ($isNewLocalUser && !$hasUniversity) {
+                redirect(BASE_URL . 'pages/select_campus.php');
+            } else {
+                redirect(BASE_URL);
+            }
         }
     } else {
         setFlash('error', 'Could not retrieve user email. Verification failed.');

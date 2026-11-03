@@ -960,8 +960,8 @@ require_once __DIR__ . '/../includes/header.php';
                     <a href="promotion_payments.php" class="module-card" style="--module-color: #d97706; --module-bg: #fffbeb;">
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
                         <div class="module-info">
-                            <div class="module-name">Payments & Donations</div>
-                            <div class="module-desc">Review promotion and donation requests</div>
+                            <div class="module-name">Pricing &amp; Payments</div>
+                            <div class="module-desc">Adjust service fees &amp; review transactions</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
@@ -978,6 +978,14 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="module-info">
                             <div class="module-name">System Error Logs</div>
                             <div class="module-desc">Monitor platform & database errors</div>
+                        </div>
+                        <span class="module-arrow">›</span>
+                    </a>
+                    <a href="services.php" class="module-card" style="--module-color: var(--secondary); --module-bg: var(--secondary-light);">
+                        <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg></div>
+                        <div class="module-info">
+                            <div class="module-name">Services</div>
+                            <div class="module-desc">Browse & edit</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
@@ -1010,11 +1018,11 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
                         <div class="module-info">
                             <div class="module-name">Tags</div>
-                            <div class="module-desc">Browse & edit</div>
+                            <div class="module-desc">Manage &amp; view suggestions</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                </div>
+                    </div>
 
                 <div class="txn-insight-card">
                     <div class="txn-insight-head">

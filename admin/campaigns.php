@@ -682,10 +682,14 @@ require_once __DIR__ . '/../includes/header.php';
             <!-- Quick Template Presets -->
             <div class="mb-6">
                 <label class="form-label" style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.04em;">Quick Presets</label>
-                <div>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
                     <button type="button" class="preset-chip" onclick="loadPreset('welcome')">🎓 Welcome & Semester Start</button>
+                    <button type="button" class="preset-chip" onclick="loadPreset('services')">🛠️ Campus Services Pilot</button>
                     <button type="button" class="preset-chip" onclick="loadPreset('moveout')">📦 Move-Out & Textbook Sale</button>
                     <button type="button" class="preset-chip" onclick="loadPreset('trending')">🔥 Weekly Hot Deals</button>
+                    <button type="button" class="preset-chip" onclick="loadPreset('verification')">🎓 Student Email Verification</button>
+                    <button type="button" class="preset-chip" onclick="loadPreset('safety')">🛡️ Campus Trading Safety</button>
+                    <button type="button" class="preset-chip" onclick="loadPreset('reactivation')">🎁 We Miss You / Reconnect</button>
                     <button type="button" class="preset-chip" onclick="loadPreset('announcement')">📢 Platform Announcement</button>
                 </div>
             </div>
@@ -1023,6 +1027,20 @@ Have items from last term you no longer need? List them in seconds and make cash
         theme: 'campus',
         image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80'
     },
+    services: {
+        preset: 'services',
+        subject: '🛠️ Discover Campus Services: Tutoring, Repairs, Moving & More!',
+        headline: 'Introducing Campus Services — Get Help or Offer Your Skills',
+        body: `Hi {{username}},
+
+Need a hand with calculus tutoring, phone screen repair, dorm moving, or freelance photography? Or do you have skills you would like to offer to fellow students?
+
+We just launched Campus Services! Now you can browse peer services, post job requests, or advertise your own skills to earn cash right on campus.`,
+        ctaText: 'Explore Campus Services',
+        ctaUrl: '<?php echo BASE_URL . 'pages/services.php'; ?>',
+        theme: 'campus',
+        image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80'
+    },
     moveout: {
         preset: 'moveout',
         subject: '📦 Moving Out? Turn Your Used Textbooks into Cash',
@@ -1050,6 +1068,51 @@ Check out what is trending today before items are claimed!`,
         ctaUrl: '<?php echo BASE_URL . 'pages/browse.php'; ?>',
         theme: 'deals',
         image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=800&auto=format&fit=crop&q=80'
+    },
+    verification: {
+        preset: 'verification',
+        subject: '🎓 Unlock Your Student Trust Badge — Verify Your University Email',
+        headline: 'Stand Out with a Verified Student Badge',
+        body: `Hi {{username}},
+
+Build instant trust across the campus marketplace! When you verify your official university (.edu) email address, a green Verified Student badge appears on your profile and listings.
+
+Verified students get 3x more inquiries and faster handoffs. Take 30 seconds to confirm your university email today!`,
+        ctaText: 'Verify Student Email',
+        ctaUrl: '<?php echo BASE_URL . 'pages/verify_email.php'; ?>',
+        theme: 'perk',
+        image: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800&auto=format&fit=crop&q=80'
+    },
+    safety: {
+        preset: 'safety',
+        subject: '🛡️ Campus Trading Tips: Safe Meetups & Scam Prevention',
+        headline: 'Essential Tips for Safe Campus Buying & Selling',
+        body: `Hi {{username}},
+
+Your safety is our top priority! Whenever you arrange a trade or service meetup on CampusMarket, keep these 4 golden rules in mind:
+
+1. Always meet in busy, well-lit campus spots (such as the Student Union, library lobby, or campus cafe).
+2. Inspect items thoroughly in person before releasing payment.
+3. Keep all communication inside the CampusMarket chat.
+4. If something looks suspicious or too good to be true, report it to our team immediately.`,
+        ctaText: 'Read Safety Guide',
+        ctaUrl: '<?php echo BASE_URL . 'pages/safety.php'; ?>',
+        theme: 'announcement',
+        image: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=800&auto=format&fit=crop&q=80'
+    },
+    reactivation: {
+        preset: 'reactivation',
+        subject: '👋 We miss you on CampusMarket! Here is what is new on campus',
+        headline: 'Fresh Deals & New Features Waiting for You',
+        body: `Hi {{username}},
+
+It has been a while since you stopped by CampusMarket! Your campus peers have posted dozens of new listings this week, from textbooks and dorm gear to tech accessories.
+
+We have also rolled out our brand-new Campus Services marketplace and real-time chat so you can get things done faster. Come see what is new!`,
+        ctaText: 'Explore New Listings',
+        ctaUrl: '<?php echo BASE_URL . 'pages/browse.php'; ?>',
+        theme: 'perk',
+        image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&auto=format&fit=crop&q=80'
     },
     announcement: {
         preset: 'announcement',
@@ -1089,8 +1152,9 @@ function loadPreset(key) {
     }
 
     document.querySelectorAll('.preset-chip').forEach(el => el.classList.remove('active'));
-    if (event && event.target) {
-        event.target.classList.add('active');
+    const targetBtn = (window.event && window.event.target) ? window.event.target.closest('.preset-chip') : null;
+    if (targetBtn) {
+        targetBtn.classList.add('active');
     }
 
     syncPreview();

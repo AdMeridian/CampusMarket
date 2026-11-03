@@ -325,9 +325,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
     } catch (Exception $e) {
         $pdo->rollBack();
         error_log('[product:update_categories] ' . $e->getMessage());
+        if (function_exists('logSystemError')) {
+            logSystemError($pdo, 'product_categories', $e->getMessage(), $e, (int)currentUserId());
+        }
         setFlash('error', __('product.update_categories_failed'));
     }
 
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+}
+
+// Handle Service Details Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_service_details') {
+    verifyCsrfToken();
+    $rawDelivery = (int)($_POST['delivery_days'] ?? 0);
+    $newDeliveryDays = ($rawDelivery > 0 && $rawDelivery <= 365) ? $rawDelivery : null;
+    
+    $rawRevisions = $_POST['revision_count'] ?? '';
+    if ($rawRevisions === 'unlimited') {
+        $newRevisionCount = 99;
+    } elseif (is_numeric($rawRevisions) && (int)$rawRevisions >= 0) {
+        $newRevisionCount = (int)$rawRevisions;
+    } else {
+        $newRevisionCount = null;
+    }
+
+    $newAvailStatus = in_array($_POST['availability_status'] ?? '', ['available','busy','unavailable'])
+        ? $_POST['availability_status']
+        : 'available';
+
+    $rawResetDays = (int)($_POST['availability_reset_days'] ?? 0);
+    $newResetAt = null;
+    if ($rawResetDays > 0) {
+        $newResetAt = date('Y-m-d H:i:s', strtotime("+{$rawResetDays} days"));
+    }
+
+    $rawPortfolio = trim($_POST['portfolio_link'] ?? '');
+    $newPortfolioLink = null;
+    if ($rawPortfolio !== '' && filter_var($rawPortfolio, FILTER_VALIDATE_URL)) {
+        $newPortfolioLink = mb_substr($rawPortfolio, 0, 500);
+    }
+
+    $stmtUp = $pdo->prepare("
+        UPDATE products 
+        SET delivery_days = :del_days,
+            revision_count = :rev_count,
+            availability_status = :avail_status,
+            availability_reset_at = :avail_reset,
+            portfolio_link = :port_link,
+            updated_at = NOW()
+        WHERE id = :id
+    ");
+    $stmtUp->execute([
+        ':del_days' => $newDeliveryDays,
+        ':rev_count' => $newRevisionCount,
+        ':avail_status' => $newAvailStatus,
+        ':avail_reset' => $newResetAt,
+        ':port_link' => $newPortfolioLink,
+        ':id' => $productId,
+    ]);
+
+    setFlash('success', 'Service details updated successfully.');
     redirect(BASE_URL . 'pages/product.php?id=' . $productId);
 }
 
@@ -352,6 +409,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             setFlash('success', __('product.primary_image_updated'));
         } catch (Exception $e) {
             $pdo->rollBack();
+            if (function_exists('logSystemError')) {
+                logSystemError($pdo, 'product_images', 'Set primary image failed: ' . $e->getMessage(), $e, (int)currentUserId());
+            }
             setFlash('error', __('product.db_error'));
         }
     } else {
@@ -396,6 +456,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action'])
             setFlash('success', __('product.image_deleted'));
         } catch (Exception $e) {
             $pdo->rollBack();
+            if (function_exists('logSystemError')) {
+                logSystemError($pdo, 'product_images', 'Delete image failed: ' . $e->getMessage(), $e, (int)currentUserId());
+            }
             setFlash('error', __('product.delete_image_failed'));
         }
     } else {
@@ -412,6 +475,25 @@ $images = $stmt->fetchAll();
 // Fetch Seller Stats (for SCC)
 $rating = getSellerRating($pdo, (int)$product['seller_id']);
 $trust  = getSellerTrustScore($pdo, (int)$product['seller_id']);
+
+// Fetch Service-Specific Reviews and Stats
+$stmtServiceStats = $pdo->prepare("SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as review_count FROM ratings WHERE product_id = ?");
+$stmtServiceStats->execute([$productId]);
+$serviceRatingStats = $stmtServiceStats->fetch();
+$serviceAvg = (float)$serviceRatingStats['avg_rating'];
+$serviceCount = (int)$serviceRatingStats['review_count'];
+
+$stmtServiceReviews = $pdo->prepare("
+    SELECT r.*, u.username as reviewer_name, p.title as product_title
+    FROM ratings r
+    JOIN users u ON u.id = r.reviewer_id
+    JOIN products p ON p.id = r.product_id
+    WHERE r.product_id = ?
+    ORDER BY r.created_at DESC
+    LIMIT 6
+");
+$stmtServiceReviews->execute([$productId]);
+$serviceReviews = $stmtServiceReviews->fetchAll();
 
 // Fetch REAL unique view count from product_views table (fallback when table is missing locally)
 if ($hasProductViewsTable) {
@@ -506,6 +588,7 @@ if (isLoggedIn()) {
 }
 
 $pageTitle = $product['title'];
+$isServiceProduct = ($product['listing_type'] ?? 'product') === 'service';
 $primaryImagePath = $images[0]['image_path'] ?? null;
 $rawDescription = trim(strip_tags((string)($product['description'] ?? '')));
 $pageDescription = $rawDescription !== ''
@@ -513,7 +596,7 @@ $pageDescription = $rawDescription !== ''
     : seoProductShareDescription($product);
 $seoOgTitle = $product['title'];
 $seoOgDescription = seoProductShareDescription($product);
-$seoOgImage = getProductImage($primaryImagePath);
+$seoOgImage = $isServiceProduct ? getServiceImage($primaryImagePath, $productId) : getProductImage($primaryImagePath);
 $seoOgType = 'product';
 $seoCanonical = rtrim(BASE_URL, '/') . '/pages/product?id=' . $productId;
 if (($product['status'] ?? '') !== 'active') {
@@ -524,6 +607,21 @@ $sharePageUrl = $seoCanonical;
 $shareText = seoProductShareDescription($product);
 require_once __DIR__ . '/../includes/header.php';
 ?>
+
+<?php if (
+    ($_GET['provider_enrollment'] ?? '') === 'success'
+    && $isOwner
+    && ($product['listing_type'] ?? '') === 'service'
+    && (int) currentUserId() === (int) $product['seller_id']
+): ?>
+<script>
+try {
+    localStorage.removeItem(<?= json_encode('campusmarket.providerOnboardDraft.' . (int) currentUserId()) ?>);
+} catch (error) {
+    console.warn('Unable to clear the saved service draft after enrollment.', error);
+}
+</script>
+<?php endif; ?>
 
 <script>
     if (typeof posthog !== 'undefined') {
@@ -1198,7 +1296,7 @@ body.dark-mode .scc-badge {
 }
 </style>
 
-<div class="container pt-24 mb-20 relative">
+<div class="container product-page-container pt-24 mb-20 relative">
     <?php if ($isOwner && ($product['status'] ?? '') === 'pending_approval'): ?>
         <?php $moderationNote = trim((string)($product['moderation_note'] ?? '')); ?>
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #3b82f6; color: #1e3a8a; padding: 1.25rem 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
@@ -1212,15 +1310,33 @@ body.dark-mode .scc-badge {
             </p>
         </div>
     <?php endif; ?>
-
+    <?php if ($isOwner && ($product['listing_type'] ?? '') === 'service'): ?>
+        <?php 
+            $isPendingPayment = ($product['status'] ?? '') === 'pending_payment';
+        ?>
+        <?php if ($isPendingPayment): ?>
+            <div class="glass-panel p-4 mb-6 flex flex-wrap items-center justify-between gap-4" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-lg);">
+                <span style="font-weight: 600; color: var(--text-main);">
+                    This service listing is not currently visible. Update your service profile or contact support if it should be active.
+                </span>
+                <a href="<?= BASE_URL ?>pages/provider_onboard.php" class="btn btn-primary btn-sm" style="font-weight: 700;">
+                    Update service profile
+                </a>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
 
     <!-- Breadcrumb -->
     <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
         <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors"><?= __('product.home') ?></a>
         <span class="opacity-50">/</span>
-        <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
-        <span class="opacity-50">/</span>
-        <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+        <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <a href="<?php echo BASE_URL; ?>pages/services.php" class="hover:text-primary transition-colors"><?= __('nav.services') ?></a>
+        <?php else: ?>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
+            <span class="opacity-50">/</span>
+            <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+        <?php endif; ?>
     </div>
 
     <div class="grid grid-cols-1 lg-grid-cols-2 gap-12 lg-gap-16">
@@ -1228,8 +1344,8 @@ body.dark-mode .scc-badge {
         <!-- Gallery -->
         <div class="gallery-container sticky top-24" style="align-self: start;">
             <div class="product-gallery-main relative group">
-                <?php if (!empty($images)): ?>
-                    <img src="<?php echo getProductImage($images[0]['image_path']); ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
+                <?php if (!empty($images) || $isServiceProduct): ?>
+                    <img src="<?php echo $isServiceProduct ? getServiceImage($images[0]['image_path'] ?? null, $productId) : getProductImage($images[0]['image_path']); ?>" id="main-image" alt="<?php echo sanitize($product['title']); ?>">
                 <?php else: ?>
                     <div class="flex flex-col items-center justify-center text-muted">
                         <svg class="w-24 h-24 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -1249,8 +1365,15 @@ body.dark-mode .scc-badge {
                 <?php endif; ?>
 
                 <div style="position: absolute; top: 1.5rem; right: 1.5rem;">
-                    <?php $badge = conditionBadge($product['condition']); ?>
-                    <span class="badge <?php echo $badge['class']; ?> shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px);"><?php echo $badge['label']; ?></span>
+                    <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+                        <?php $isHourly = ($product['pricing_model'] ?? 'flat') === 'hourly'; ?>
+                        <span class="badge shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px); background: var(--service); color: white;">
+                            <?= $isHourly ? __('product.hourly_badge') : __('product.service_badge') ?>
+                        </span>
+                    <?php else: ?>
+                        <?php $badge = conditionBadge($product['condition']); ?>
+                        <span class="badge <?php echo $badge['class']; ?> shadow-md px-4 py-2 font-bold" style="font-size: 0.95rem; backdrop-filter: blur(8px);"><?php echo $badge['label']; ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
             
@@ -1273,7 +1396,7 @@ body.dark-mode .scc-badge {
             <div class="mb-6 border-b border-gray-100 pb-6">
                 <p class="text-primary font-bold tracking-widest uppercase small mb-2" style="font-size: 0.8rem;"><?php echo sanitize(translateCategory($product['category_name'])); ?></p>
                 <h1 class="product-title mb-4 text-main font-bold"><?php echo sanitize($product['title']); ?></h1>
-                <?php if (!empty($productCategories)): ?>
+                <?php if (($product['listing_type'] ?? 'product') !== 'service' && !empty($productCategories)): ?>
                 <div class="flex flex-wrap gap-2 mb-4">
                     <?php foreach ($productCategories as $category): ?>
                         <a href="<?php echo BASE_URL; ?>pages/browse.php?category=<?php echo (int)$category['id']; ?>" class="inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold transition-colors hover:text-primary" style="border-color: var(--border-light); background: var(--bg-surface); color: var(--text-main); text-decoration: none;">
@@ -1297,7 +1420,15 @@ body.dark-mode .scc-badge {
                 <?php endif; ?>
                 <div class="product-meta-row">
                     <div>
-                        <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                        <?php if ($isServiceProduct): ?>
+                            <small class="block text-muted mb-1"><?= __('product.asking_rate') ?></small>
+                            <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;">
+                                <?php echo $product['price'] !== null ? renderProductPrice($product) : __('product.rate_not_listed'); ?>
+                            </span>
+                            <p class="text-muted small mt-2 mb-0"><?= __('product.service_payment_notice') ?></p>
+                        <?php else: ?>
+                            <span class="product-price" style="font-weight: 700; color: var(--text-main); font-family: 'Inter', sans-serif; letter-spacing: -1px;"><?php echo renderProductPrice($product); ?></span>
+                        <?php endif; ?>
                         <?php if (productCurrencyCode($product) !== 'TRY'): ?>
                         <div class="mt-1 flex items-center gap-1 text-muted small" style="font-size: 0.8rem;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; flex-shrink: 0; color: var(--primary);" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -1342,6 +1473,59 @@ body.dark-mode .scc-badge {
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <?php
+            $availColors = ['available' => '#22c55e', 'busy' => '#f59e0b', 'unavailable' => '#ef4444'];
+            $availLabels = ['available' => 'Available now', 'busy' => 'Busy — might be slow', 'unavailable' => 'Currently unavailable'];
+            $availStatus = $product['availability_status'] ?? 'available';
+            $availColor  = $availColors[$availStatus] ?? '#22c55e';
+            $availLabel  = $availLabels[$availStatus] ?? 'Available';
+            $deliveryDays  = (int)($product['delivery_days'] ?? 0);
+            $revisionCount = $product['revision_count'] ?? null;
+            $portfolioLink = trim((string)($product['portfolio_link'] ?? ''));
+            $deliveryLabel = match(true) {
+                $deliveryDays === 1 => 'Same day',
+                $deliveryDays > 1 && $deliveryDays < 7 => $deliveryDays . ' days',
+                $deliveryDays === 7 => '1 week',
+                $deliveryDays === 14 => '2 weeks',
+                $deliveryDays === 30 => '1 month',
+                $deliveryDays > 0 => $deliveryDays . ' days',
+                default => null,
+            };
+            $revisionLabel = match(true) {
+                $revisionCount === null => null,
+                $revisionCount === 0 => 'No revisions',
+                (int)$revisionCount === 99 => 'Unlimited revisions',
+                default => $revisionCount . ' revision' . ((int)$revisionCount > 1 ? 's' : '') . ' included',
+            };
+            ?>
+            <div style="margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-card); display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center;">
+                <!-- Availability -->
+                <div style="display:flex; align-items:center; gap:0.5rem; font-weight:600; font-size:0.9rem; color:var(--text-main);">
+                    <span style="width:9px;height:9px;border-radius:50%;background:<?= $availColor ?>;flex-shrink:0;"></span>
+                    <?= htmlspecialchars($availLabel) ?>
+                </div>
+                <?php if ($deliveryLabel): ?>
+                <div style="display:flex; align-items:center; gap:0.45rem; font-weight:600; font-size:0.88rem; color:var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Delivers in <?= htmlspecialchars($deliveryLabel) ?>
+                </div>
+                <?php endif; ?>
+                <?php if ($revisionLabel): ?>
+                <div style="display:flex; align-items:center; gap:0.45rem; font-weight:600; font-size:0.88rem; color:var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+                    <?= htmlspecialchars($revisionLabel) ?>
+                </div>
+                <?php endif; ?>
+                <?php if ($portfolioLink !== ''): ?>
+                <a href="<?= htmlspecialchars($portfolioLink) ?>" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:0.45rem; font-weight:700; font-size:0.88rem; color:var(--primary); text-decoration:none; padding:0.3rem 0.75rem; border-radius:var(--radius-full); border:1px solid var(--primary); transition:all 0.18s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    View Portfolio
+                </a>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
             <!-- SELLER PROFILE CARD (Visible to Everyone) -->
             <div class="scc-wrapper mt-8">
@@ -1401,13 +1585,32 @@ body.dark-mode .scc-badge {
             <?php elseif (isLoggedIn()): ?>
             <!-- Action Buttons for Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
-                <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>" 
-                   class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
-                   data-listing-id="<?php echo (int)$product['id']; ?>"
-                   data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                   data-contact-method="message">
-                    <?= __('product.message_seller') ?>
-                </a>
+                <?php $isServiceListing = $isServiceProduct; ?>
+                <?php if ($isServiceListing): ?>
+                    <!-- Service CTA: price display + request button -->
+                    <?php if ($product['price'] !== null): ?>
+                    <div style="display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.25rem;">
+                        <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($product); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
+                       class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                       data-listing-id="<?php echo (int)$product['id']; ?>"
+                       data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                       data-contact-method="message">
+                        <?= __('product.request_service') ?>
+                    </a>
+                    <p class="text-muted small text-center mb-0" style="font-size: 0.82rem;"><?= __('product.service_contact_hint') ?></p>
+                <?php else: ?>
+                    <!-- Product CTA: message seller -->
+                    <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
+                       class="btn flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                       data-listing-id="<?php echo (int)$product['id']; ?>"
+                       data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                       data-contact-method="message">
+                        <?= __('product.message_seller') ?>
+                    </a>
+                <?php endif; ?>
                 <button
                     type="button"
                     class="product-share-btn w-full justify-center py-3 text-lg"
@@ -1448,6 +1651,63 @@ body.dark-mode .scc-badge {
         </div>
 
     </div>
+
+    <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+    <!-- Service Provider Reviews Section -->
+    <div class="mt-16 border-t border-slate-100 pt-12" style="max-width: 1200px; margin-left: auto; margin-right: auto;">
+        <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+            <div>
+                <h2 class="page-section-title mb-1 text-main font-bold" style="font-size: 1.6rem; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
+                    Client Reviews
+                </h2>
+                <p class="text-muted small mb-0">What other students say about this specific service.</p>
+            </div>
+            <?php if ($serviceCount > 0): ?>
+            <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2" style="background: var(--bg-card);">
+                <div class="text-center">
+                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);"><?php echo number_format($serviceAvg, 1); ?></span>
+                    <span style="font-size: 0.85rem; color: var(--text-light); font-weight: 600;">/ 5</span>
+                </div>
+                <div style="border-left: 1px solid var(--border-light); padding-left: 1rem;">
+                    <div style="color: #f59e0b; line-height: 1;"><?php echo renderStars($serviceAvg); ?></div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;"><?php echo $serviceCount; ?> <?= $serviceCount === 1 ? __('product.review') : __('product.reviews') ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <?php if (empty($serviceReviews)): ?>
+            <div class="glass-panel p-12 text-center" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 2px dashed var(--border-light);">
+                <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.6;">💬</span>
+                <h4 class="mb-1 text-main" style="font-weight: 700;">No reviews for this service yet</h4>
+                <p class="text-muted mb-0">Be the first to hire @<?php echo sanitize($product['seller_name']); ?> for this service and leave a review!</p>
+            </div>
+        <?php else: ?>
+            <div class="grid grid-cols-1 md-grid-cols-2 gap-6">
+                <?php foreach ($serviceReviews as $review): ?>
+                    <div class="card p-5 hover-scale" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); transition: var(--transition);">
+                        <div class="flex justify-between items-start gap-4 mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 flex items-center justify-center rounded-lg" style="background: var(--bg-main); color: var(--text-main); font-weight: 700; border: 1px solid var(--border-light);">
+                                    <?php echo strtoupper(substr($review['reviewer_name'], 0, 1)); ?>
+                                </div>
+                                <div>
+                                    <h4 class="mb-0 text-main" style="font-size: 0.95rem; font-weight: 700;">@<?php echo sanitize($review['reviewer_name']); ?></h4>
+                                    <span style="font-size: 0.78rem; color: var(--text-light);"><?php echo timeAgo($review['created_at']); ?></span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
+                        </div>
+                        <?php if (trim((string)$review['comment']) !== ''): ?>
+                            <p class="mb-0 text-main" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
 </div>
 
 <script>

@@ -15,7 +15,7 @@ try {
     $params = [];
     $filterSql = productSearchFilterSql($query, $params, 'p', 'c');
     
-    $sql = "SELECT p.id, p.title, p.price, p.discount_percent, p.price_currency, c.name as category_name, i.image_path 
+    $sql = "SELECT p.id, p.title, p.price, p.discount_percent, p.price_currency, p.listing_type, c.name as category_name, i.image_path 
             FROM products p
             JOIN categories c ON p.category_id = c.id
             LEFT JOIN product_images i ON p.id = i.product_id AND i.is_primary = TRUE
@@ -30,7 +30,8 @@ try {
     
     // Format results to ensure URLs are absolute
     foreach ($results as &$row) {
-        $row['image_url'] = getProductImage($row['image_path'] ?? null);
+        $isService = (($row['listing_type'] ?? 'product') === 'service');
+        $row['image_url'] = $isService ? getServiceImage($row['image_path'] ?? null, $row['id']) : getProductImage($row['image_path'] ?? null);
         
         // calculate final price since discount could be applied
         $final_price = getDiscountedPrice($row);

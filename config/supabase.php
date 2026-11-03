@@ -14,7 +14,15 @@ function supabaseAnonKey(): string {
 }
 
 function isSupabaseConfigured(): bool {
-    return supabaseUrl() !== '' && supabaseAnonKey() !== '';
+    $url = supabaseUrl();
+    $key = supabaseAnonKey();
+    if ($url === '' || $key === '') {
+        return false;
+    }
+    if (str_contains($url, 'YOUR_PROJECT_REF') || str_contains($key, 'YOUR_LIVE_ANON_KEY') || str_contains($key, 'your_')) {
+        return false;
+    }
+    return true;
 }
 
 function supabaseAuthRequest(string $method, string $path, ?array $payload = null): array {

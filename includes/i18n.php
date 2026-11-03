@@ -197,6 +197,16 @@ function translateCategory(string $name): string {
         'transportation_bikes_scooters' => 'category.transportation',
         'arts_crafts_and_diy' => 'category.arts_crafts_diy',
         'arts_crafts_diy' => 'category.arts_crafts_diy',
+        'tutoring_and_academic_help' => 'category.tutoring_academic_help',
+        'tech_and_device_repair' => 'category.tech_device_repair',
+        'moving_and_hauling_assistance' => 'category.moving_hauling_assistance',
+        'graphic_design_and_creative' => 'category.graphic_design_creative',
+        'photography_and_videography' => 'category.photography_videography',
+        'cleaning_and_organization' => 'category.cleaning_organization',
+        'music_and_audio_services' => 'category.music_audio_services',
+        'hair_beauty_and_grooming' => 'category.hair_beauty_grooming',
+        'delivery_and_errand_running' => 'category.delivery_errand_running',
+        'fitness_and_personal_training' => 'category.fitness_personal_training',
     ];
     
     $key = $map[$clean] ?? 'category.' . $clean;

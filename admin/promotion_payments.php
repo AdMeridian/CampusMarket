@@ -7,7 +7,7 @@ requireAdmin();
 $pageTitle = 'Promotion & Donation Payments';
 $promoPaymentsTableExists = false;
 try {
-    $promoPaymentsTableExists = (bool)$pdo->query("SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'promotion_payments' LIMIT 1")->fetchColumn();
+    $promoPaymentsTableExists = databaseTableExists($pdo, 'promotion_payments');
 } catch (PDOException $e) {
     $promoPaymentsTableExists = false;
 }
@@ -35,6 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $adminNote = sanitize($_POST['admin_note'] ?? '');
 
     if ($paymentId > 0 && in_array($action, ['approve', 'reject'], true)) {
+        if ($action === 'approve') {
+            $typeStmt = $pdo->prepare("SELECT payment_type FROM promotion_payments WHERE id = ?");
+            $typeStmt->execute([$paymentId]);
+            if ($typeStmt->fetchColumn() === 'service_listing') {
+                setFlash('error', 'Service payments are disabled during the pilot.');
+                redirect(BASE_URL . 'admin/promotion_payments.php');
+            }
+        }
+
         $newStatus = ($action === 'approve') ? 'approved' : 'rejected';
         $pdo->beginTransaction();
         try {
@@ -59,18 +68,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 // Fetch the product_id, type, and amount for this payment
                 $pInfo = $pdo->prepare('SELECT product_id, payment_type, amount FROM promotion_payments WHERE id = ?');
                 $pInfo->execute([$paymentId]);
-                $payData = $pInfo->fetch();
+                $paymentRow = $pInfo->fetch(PDO::FETCH_ASSOC);
 
-                if ($payData && $payData['payment_type'] === 'promotion' && !empty($payData['product_id'])) {
-                    // Flat promotion pricing: 15 TL per day, minimum 1 day.
-                    $amount = (float)$payData['amount'];
-                    $days = max(1, (int) floor($amount / 15));
+                if ($paymentRow && $paymentRow['product_id']) {
+                    $pid = (int)$paymentRow['product_id'];
+                    $amount = (float)$paymentRow['amount'];
+                    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-                    // Automatically feature the product with expiration
-                    $updProd = $pdo->prepare("UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ? AND status = 'active'");
-                    $updProd->execute([$days, $payData['product_id']]);
-                    if ($updProd->rowCount() === 0) {
-                        throw new Exception('This listing is not active and cannot be promoted yet.');
+                    if ($paymentRow['payment_type'] === 'promotion') {
+                        $days = max(1, (int)floor($amount / 15));
+                        $updSql = ($driver === 'pgsql')
+                            ? "UPDATE products SET is_featured = TRUE, discount_set_at = NOW(), featured_until = NOW() + (CAST(? AS text) || ' days')::interval WHERE id = ?"
+                            : "UPDATE products SET is_featured = 1, discount_set_at = NOW(), featured_until = DATE_ADD(NOW(), INTERVAL ? DAY) WHERE id = ?";
+                        $upd = $pdo->prepare($updSql);
+                        $upd->execute([$days, $pid]);
                     }
                 }
             }
@@ -79,10 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($newStatus === 'verified' && !empty($payData['product_id'])) {
                 triggerFeaturedListingAlert($pdo, (int)$payData['product_id']);
             }
-            setFlash('success', 'Payment request ' . $newStatus . '.');
+            setFlash('success', "Payment #{$paymentId} marked as {$newStatus}.");
         } catch (Exception $e) {
             $pdo->rollBack();
-            setFlash('error', 'Error processing request: ' . $e->getMessage());
+            setFlash('error', 'Update failed: ' . $e->getMessage());
         }
     }
 
@@ -107,9 +118,9 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container mt-24 mb-16 admin-payments-page">
     <div class="flex justify-between items-end mb-6 admin-page-toolbar" style="gap: 1rem; flex-wrap: wrap;">
         <div>
-            <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Payment Reviews</div>
-            <h1 class="mb-0">Promotion & Donation Payments</h1>
-            <p class="text-muted mb-2">Donations support CampusMarket generally and do not become promotion credits. Promotion requests can later be consumed to feature an approved listing.</p>
+            <div class="admin-breadcrumb mb-2"><a href="index.php">Dashboard</a> › Payment & Pricing Management</div>
+            <h1 class="mb-0">Monetization & Payment Reviews</h1>
+            <p class="text-muted mb-2">Review promotion and donation payments.</p>
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <div class="badge" style="background: var(--bg-main); color: var(--text-muted); border: 1px solid var(--border-light); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: var(--radius-lg);"><?php echo count($rows); ?> Requests</div>
@@ -147,6 +158,9 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?php if (!empty($row['product_id'])): ?>
                                     <a href="../pages/product.php?id=<?php echo (int)$row['product_id']; ?>" target="_blank" class="text-muted" style="font-size: 0.78rem;">View listing #<?php echo (int)$row['product_id']; ?></a>
                                 <?php endif; ?>
+                            <?php elseif ($row['payment_type'] === 'service_listing' && $row['product_title']): ?>
+                                <div class="font-bold" style="line-height: 1.35;"><?php echo sanitize($row['product_title']); ?></div>
+                                <span class="text-muted" style="font-size: 0.78rem;">Service payments are disabled during the pilot.</span>
                             <?php else: ?>
                                 <span class="text-muted">General donation</span>
                             <?php endif; ?>
@@ -160,7 +174,9 @@ require_once __DIR__ . '/../includes/header.php';
                             <span class="badge badge-<?php echo sanitize($row['status']); ?>"><?php echo ucfirst(sanitize($row['status'])); ?></span>
                         </td>
                         <td class="p-4 text-right" style="border-bottom: 1px solid var(--border-light); min-width: 260px;">
-                            <?php if ($row['status'] === 'pending'): ?>
+                            <?php if ($row['status'] === 'pending' && $row['payment_type'] === 'service_listing'): ?>
+                                <span class="text-muted" style="font-size:0.8rem;">Service payments are disabled during the pilot.</span>
+                            <?php elseif ($row['status'] === 'pending'): ?>
                                 <form method="post" class="m-0 admin-payment-action-form">
                                     <?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="payment_id" value="<?php echo (int)$row['id']; ?>">

@@ -125,6 +125,7 @@ define('PRODUCT_CURRENCIES', [
     'USD' => ['symbol' => '$', 'position' => 'before'],
     'EUR' => ['symbol' => '€', 'position' => 'before'],
     'GBP' => ['symbol' => '£', 'position' => 'before'],
+    'CAD' => ['symbol' => '$', 'position' => 'before'],
 ]);
 define('DEFAULT_PRODUCT_CURRENCY', 'TRY');
 

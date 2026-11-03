@@ -40,10 +40,11 @@ if ($result['ok']) {
     if (!empty($result['already_processed'])) {
         setFlash('info', __('stripe.flash_already_processed'));
     } else {
-        setFlash(
-            'success',
-            $paymentType === 'promotion' ? __('stripe.flash_promo_success') : __('stripe.flash_donate_success')
-        );
+        if ($paymentType === 'promotion') {
+            setFlash('success', __('stripe.flash_promo_success'));
+        } else {
+            setFlash('success', __('stripe.flash_donate_success'));
+        }
     }
 } else {
     setFlash('error', __('stripe.flash_db_failed', ['session_id' => sanitize($sessionId)]));

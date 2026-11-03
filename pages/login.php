@@ -17,6 +17,8 @@ $unverified = false;
 $unverifiedEmail = '';
 $resendMessage = '';
 $resendError = '';
+$isAccountLocked = false;
+$lockoutRemainingMins = 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -57,39 +59,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $auth = supabaseAuthRequest('POST', 'token?grant_type=password', [
-            'email' => $loginEmail,
-            'password' => $password,
-        ]);
+        // Check application-level account lockout (5 trials / 15 mins) before hitting Supabase
+        $lockout = checkAccountLoginLockout($pdo, $loginEmail, 5, 15);
+        if ($lockout['is_locked']) {
+            $mins = max(1, (int)($lockout['retry_after_minutes'] ?? 15));
+            $isAccountLocked = true;
+            $lockoutRemainingMins = $mins;
+            $errors['form'] = __('auth.error_account_locked', ['minutes' => $mins]);
+        } else {
+            $auth = supabaseAuthRequest('POST', 'token?grant_type=password', [
+                'email' => $loginEmail,
+                'password' => $password,
+            ]);
 
-        if (!$auth['ok']) {
-            $msg = strtolower((string) ($auth['error'] ?? ''));
-            if (strpos($msg, 'email not confirmed') !== false) {
-                $unverified = true;
-                $unverifiedEmail = strtolower($loginEmail);
-                $errors['form'] = __('auth.error_verify_email');
-            } else {
-                if (!isSupabaseConfigured()) {
-                    // Legacy local auth only when Supabase is not configured (local dev).
-                    $stmt = $pdo->prepare('SELECT id, password_hash, is_verified FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1');
-                    $stmt->execute([':email' => $loginEmail]);
-                    $localUser = $stmt->fetch();
-                    if ($localUser && password_verify($password, $localUser['password_hash'])) {
-                        $auth['ok'] = true;
-                        $auth['data']['user'] = [
-                            'email' => $loginEmail,
-                            'email_confirmed_at' => $localUser['is_verified'] ? date('Y-m-d H:i:s') : null
-                        ];
-                    } else {
-                        $errors['form'] = __('auth.error_invalid');
-                    }
+            if (!$auth['ok']) {
+                $msg = strtolower((string) ($auth['error'] ?? ''));
+                $status = (int) ($auth['status'] ?? 0);
+                $isRateLimited = ($status === 429)
+                    || (strpos($msg, 'rate limit') !== false)
+                    || (strpos($msg, 'too many requests') !== false)
+                    || (strpos($msg, 'over_request_rate_limit') !== false);
+
+                if ($isRateLimited) {
+                    $errors['form'] = __('auth.error_rate_limit');
+                } elseif (strpos($msg, 'email not confirmed') !== false) {
+                    $unverified = true;
+                    $unverifiedEmail = strtolower($loginEmail);
+                    $errors['form'] = __('auth.error_verify_email');
                 } else {
-                    $errors['form'] = __('auth.error_invalid');
+                    if (!isSupabaseConfigured()) {
+                        // Legacy local auth only when Supabase is not configured (local dev).
+                        $stmt = $pdo->prepare('SELECT id, password_hash, is_verified FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1');
+                        $stmt->execute([':email' => $loginEmail]);
+                        $localUser = $stmt->fetch();
+                        if ($localUser && password_verify($password, $localUser['password_hash'])) {
+                            $auth['ok'] = true;
+                            $auth['data']['user'] = [
+                                'email' => $loginEmail,
+                                'email_confirmed_at' => $localUser['is_verified'] ? date('Y-m-d H:i:s') : null
+                            ];
+                        }
+                    }
+
+                    if (!$auth['ok']) {
+                        recordFailedLoginAttempt($pdo, $loginEmail);
+                        $updatedLockout = checkAccountLoginLockout($pdo, $loginEmail, 5, 15);
+                        if ($updatedLockout['is_locked']) {
+                            $mins = max(1, (int)($updatedLockout['retry_after_minutes'] ?? 15));
+                            $isAccountLocked = true;
+                            $lockoutRemainingMins = $mins;
+                            $errors['form'] = __('auth.error_account_locked', ['minutes' => $mins]);
+                        } elseif ($updatedLockout['remaining_attempts'] <= 2 && $updatedLockout['remaining_attempts'] > 0) {
+                            $errors['form'] = __('auth.error_invalid_with_attempts', ['remaining' => $updatedLockout['remaining_attempts']]);
+                        } else {
+                            $errors['form'] = __('auth.error_invalid');
+                        }
+                    }
                 }
             }
-        }
-        
-        if ($auth['ok']) {
+            
+            if ($auth['ok']) {
+                clearLoginAttempts($pdo, $loginEmail);
             $authUser = $auth['data']['user'] ?? [];
             $authEmail = strtolower((string) ($authUser['email'] ?? $loginEmail));
             $isVerified = !empty($authUser['email_confirmed_at']) ? 1 : 0;
@@ -176,6 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     }
+    }
 }
 
 $pageTitle = __('auth.login_page_title');
@@ -194,7 +225,14 @@ require_once '../includes/header.php';
 
         <?php if (!empty($errors['form'])): ?>
             <div class="flash <?php echo $unverified ? 'flash-warning' : 'flash-error'; ?> mb-8">
-                <?php echo sanitize($errors['form']); ?>
+                <div><?php echo sanitize($errors['form']); ?></div>
+                <?php if (!empty($isAccountLocked)): ?>
+                    <div style="margin-top: 0.5rem; font-size: 0.88rem; font-weight: 600;">
+                        <a href="<?php echo BASE_URL; ?>pages/forgot_password.php?email=<?php echo urlencode($loginEmail ?? ''); ?>" style="text-decoration: underline; color: inherit;">
+                            <?= __('auth.reset_password_prompt') ?> &rarr;
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
