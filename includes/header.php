@@ -479,16 +479,18 @@ $navCategories = getNavCategories($pdo);
 </nav>
 
 <?php
-// Platform Announcements Banner
+// Platform Announcements & Campus Nudge Banner
 require_once __DIR__ . '/announcements.php';
 $headerAnnouncements = [];
 try {
     $currentRole = isLoggedIn() ? (isAdmin() ? 'admin' : 'user') : 'guest';
     $headerAnnouncements = getActiveAnnouncements($pdo, $currentRole);
 } catch (Throwable $e) {}
+
+$showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id']));
 ?>
-<?php if (!empty($headerAnnouncements)): ?>
-<div class="platform-announcements-wrapper" id="platformAnnouncements">
+<?php if (!empty($headerAnnouncements) || $showCampusNudge): ?>
+<div class="platform-announcements-wrapper" id="platformAnnouncementsWrapper">
     <div class="container">
         <?php foreach ($headerAnnouncements as $ann): ?>
             <?php
@@ -526,14 +528,31 @@ try {
                 </button>
             </div>
         <?php endforeach; ?>
+
+        <?php if ($showCampusNudge): ?>
+            <div class="platform-announcement platform-announcement--info" id="campus-nudge-item" role="alert">
+                <div class="platform-announcement__icon">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                </div>
+                <div class="platform-announcement__body">
+                    <span class="platform-announcement__title"><?= __('campus_nudge.title') ?></span>
+                    <span class="platform-announcement__message"><?= __('campus_nudge.message') ?></span>
+                </div>
+                <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta">
+                    <?= __('campus_nudge.cta') ?>
+                </a>
+                <button type="button" class="platform-announcement__dismiss" onclick="dismissCampusNudge()" aria-label="Dismiss">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 <script>
 (function() {
     try {
-        var items = document.querySelectorAll('.platform-announcement[data-announcement-id]');
         var visible = 0;
-        items.forEach(function(el) {
+        document.querySelectorAll('.platform-announcement[data-announcement-id]').forEach(function(el) {
             var aid = el.getAttribute('data-announcement-id');
             if (localStorage.getItem('cm_announcement_dismissed_' + aid) === '1') {
                 el.style.display = 'none';
@@ -541,12 +560,28 @@ try {
                 visible++;
             }
         });
-        var wrap = document.getElementById('platformAnnouncements');
+        var nudge = document.getElementById('campus-nudge-item');
+        if (nudge) {
+            var val = localStorage.getItem('cm_campus_nudge_dismissed');
+            if (val && Date.now() < parseInt(val, 10)) {
+                nudge.style.display = 'none';
+            } else {
+                visible++;
+            }
+        }
+        var wrap = document.getElementById('platformAnnouncementsWrapper');
         if (wrap && visible === 0) {
             wrap.style.display = 'none';
         }
     } catch(e) {}
 })();
+function checkPlatformAnnouncementsWrapper() {
+    var remaining = document.querySelectorAll('.platform-announcement:not([style*="display: none"])');
+    if (remaining.length === 0) {
+        var wrap = document.getElementById('platformAnnouncementsWrapper');
+        if (wrap) wrap.style.display = 'none';
+    }
+}
 function dismissPlatformAnnouncement(id) {
     try {
         localStorage.setItem('cm_announcement_dismissed_' + id, '1');
@@ -558,63 +593,23 @@ function dismissPlatformAnnouncement(id) {
         el.style.transform = 'translateY(-6px)';
         setTimeout(function() {
             el.remove();
-            var remaining = document.querySelectorAll('.platform-announcement:not([style*="display: none"])');
-            if (remaining.length === 0) {
-                var wrap = document.getElementById('platformAnnouncements');
-                if (wrap) wrap.style.display = 'none';
-            }
+            checkPlatformAnnouncementsWrapper();
         }, 250);
     }
 }
-</script>
-<?php endif; ?>
-
-<?php if (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id'])): ?>
-<div class="platform-announcements-wrapper" id="campusNudgeBanner">
-    <div class="container">
-        <div class="platform-announcement platform-announcement--info" id="campus-nudge-item" role="alert">
-            <div class="platform-announcement__icon">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            </div>
-            <div class="platform-announcement__body">
-                <span class="platform-announcement__title"><?= __('campus_nudge.title') ?></span>
-                <span class="platform-announcement__message"><?= __('campus_nudge.message') ?></span>
-            </div>
-            <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta">
-                <?= __('campus_nudge.cta') ?>
-            </a>
-            <button type="button" class="platform-announcement__dismiss" onclick="dismissCampusNudge()" aria-label="Dismiss">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-        </div>
-    </div>
-</div>
-<script>
-(function() {
-    try {
-        var key = 'cm_campus_nudge_dismissed';
-        var val = localStorage.getItem(key);
-        if (val) {
-            var until = parseInt(val, 10);
-            if (Date.now() < until) {
-                var el = document.getElementById('campusNudgeBanner');
-                if (el) el.style.display = 'none';
-            } else {
-                localStorage.removeItem(key);
-            }
-        }
-    } catch(e) {}
-})();
 function dismissCampusNudge() {
     try {
         localStorage.setItem('cm_campus_nudge_dismissed', String(Date.now() + 86400000));
     } catch(e) {}
-    var el = document.getElementById('campusNudgeBanner');
+    var el = document.getElementById('campus-nudge-item');
     if (el) {
         el.style.transition = 'all 0.25s ease';
         el.style.opacity = '0';
         el.style.transform = 'translateY(-6px)';
-        setTimeout(function() { el.remove(); }, 250);
+        setTimeout(function() {
+            el.remove();
+            checkPlatformAnnouncementsWrapper();
+        }, 250);
     }
 }
 </script>
