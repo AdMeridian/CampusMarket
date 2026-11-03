@@ -608,6 +608,21 @@ $shareText = seoProductShareDescription($product);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
+<?php if (
+    ($_GET['provider_enrollment'] ?? '') === 'success'
+    && $isOwner
+    && ($product['listing_type'] ?? '') === 'service'
+    && (int) currentUserId() === (int) $product['seller_id']
+): ?>
+<script>
+try {
+    localStorage.removeItem(<?= json_encode('campusmarket.providerOnboardDraft.' . (int) currentUserId()) ?>);
+} catch (error) {
+    console.warn('Unable to clear the saved service draft after enrollment.', error);
+}
+</script>
+<?php endif; ?>
+
 <script>
     if (typeof posthog !== 'undefined') {
         posthog.capture('listing_viewed', {

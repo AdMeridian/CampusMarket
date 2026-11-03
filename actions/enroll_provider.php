@@ -278,7 +278,7 @@ try {
     }
 
     setFlash('success', '✅ Your pilot service listing has been submitted for review. We will notify you once it is approved and live on the campus directory. This usually takes up to 48 hours.');
-    redirect(BASE_URL . 'pages/product.php?id=' . $productId);
+    redirect(BASE_URL . 'pages/product.php?id=' . $productId . '&provider_enrollment=success');
 
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {

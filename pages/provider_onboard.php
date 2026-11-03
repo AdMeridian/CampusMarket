@@ -21,21 +21,7 @@ try {
     error_log("[provider_onboard] Error fetching categories: " . $e->getMessage());
 }
 
-// Fetch existing provider profile if user is logged in
 $currentUserId = isLoggedIn() ? currentUserId() : 0;
-$existingProfile = null;
-$existingListing = null;
-if ($currentUserId > 0) {
-    try {
-        $pStmt = $pdo->prepare("SELECT * FROM provider_profiles WHERE user_id = ? LIMIT 1");
-        $pStmt->execute([$currentUserId]);
-        $existingProfile = $pStmt->fetch(PDO::FETCH_ASSOC);
-
-        $lStmt = $pdo->prepare("SELECT * FROM products WHERE user_id = ? AND listing_type = 'service' AND status != 'deleted' ORDER BY id DESC LIMIT 1");
-        $lStmt->execute([$currentUserId]);
-        $existingListing = $lStmt->fetch(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {}
-}
 
 include '../includes/header.php';
 ?>
@@ -197,22 +183,19 @@ include '../includes/header.php';
             <form id="providerOnboardForm" method="POST" action="<?= BASE_URL ?>actions/enroll_provider.php" enctype="multipart/form-data">
                 <?= csrfTokenField() ?>
 
-                <?php if (!empty($existingListing)): ?>
-                    <!-- Optional Draft Loader for Returning Providers -->
-                    <div id="existingDraftBanner" class="mb-4 p-3.5 rounded-xl flex items-center justify-between gap-3 flex-wrap" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25);">
-                        <div class="flex items-center gap-2 text-sm text-main">
-                            <span>You have an existing service listing: <strong><?= sanitize($existingListing['title']) ?></strong>.</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" id="btnLoadExistingDraft" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.85rem; border-radius: var(--radius-md); font-weight: 600;">
-                                Load Previous Details
-                            </button>
-                            <button type="button" id="btnDismissDraft" class="btn btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);" title="Dismiss and start fresh">
-                                Dismiss
-                            </button>
-                        </div>
+                <div id="existingDraftBanner" class="mb-4 p-3.5 rounded-xl flex items-center justify-between gap-3 flex-wrap" style="display: none; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25);">
+                    <div class="flex items-center gap-2 text-sm text-main">
+                        <span>You have an unfinished service listing saved on this device. Would you like to continue?</span>
                     </div>
-                <?php endif; ?>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="btnLoadExistingDraft" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.85rem; border-radius: var(--radius-md); font-weight: 600;">
+                            Load Saved Details
+                        </button>
+                        <button type="button" id="btnDismissDraft" class="btn btn-sm" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);" title="Discard this saved draft">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Step 1: Tell Us What You Do -->
                 <div class="onboard-card">
@@ -227,13 +210,14 @@ include '../includes/header.php';
                         <label for="skills_input" class="block font-bold mb-2 text-main" style="font-size: 0.95rem;">
                             Skills & Services Description <span class="text-danger">*</span>
                         </label>
-                        <textarea id="skills_input" name="raw_skills_input" rows="4" class="premium-input w-full" style="padding: 1rem; font-size: 0.95rem; border-radius: var(--radius-md); line-height: 1.5;" placeholder="Example: I'm a 3rd-year CS student offering Python scripting, web scraping, and bug fixing. I also help fellow students set up coding environments and debug course projects..."></textarea>
+                        <textarea id="skills_input" name="raw_skills_input" rows="4" class="premium-input w-full" style="padding: 1rem; font-size: 0.95rem; border-radius: var(--radius-md); line-height: 1.5;" placeholder="Describe the services you offer, the skills you bring, and the kinds of tasks you can help with. For example: Python scripting, web scraping, and debugging support for coursework projects."></textarea>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                         <div>
-                            <label for="provider_bio" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Student Headline / Bio</label>
-                            <input type="text" id="provider_bio" name="bio" class="premium-input w-full" style="padding: 0.75rem 1rem;" placeholder="e.g. 3rd-year Architecture student & 3D visualizer" value="">
+                            <label for="provider_bio" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Headline / Bio</label>
+                            <small class="text-muted block mb-2">Add a short phrase that sums up your service.</small>
+                            <input type="text" id="provider_bio" name="bio" class="premium-input w-full" style="padding: 0.75rem 1rem;" placeholder="e.g. Statistics and probability tutor" value="">
                         </div>
                         <div>
                             <label for="portfolio_link" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Portfolio / Social Link <span class="text-muted font-normal">(Optional)</span></label>
@@ -403,36 +387,18 @@ include '../includes/header.php';
     </div>
 </div>
 
-<?php if (!empty($existingListing)): ?>
-<script>
-window.existingDraftData = <?= json_encode([
-    'skills_input'        => $existingProfile['raw_skills_input'] ?? '',
-    'bio'                 => $existingProfile['bio'] ?? '',
-    'portfolio_link'      => $existingProfile['portfolio_link'] ?? '',
-    'category_id'         => $existingListing['category_id'] ?? '',
-    'service_title'       => $existingListing['title'] ?? '',
-    'service_description' => $existingListing['description'] ?? '',
-    'location_town'       => $existingListing['location_town'] ?? '',
-    'pricing_model'       => $existingListing['pricing_model'] ?? '',
-    'price'               => $existingListing['price'] ?? '',
-    'delivery_days'       => $existingListing['delivery_days'] ?? '',
-    'availability_status' => $existingListing['availability_status'] ?? '',
-    'skills'              => is_array(json_decode($existingProfile['parsed_skills'] ?? '', true)) ? json_decode($existingProfile['parsed_skills'], true) : [],
-    'product_id'          => (int)$existingListing['id']
-], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
-</script>
-<?php endif; ?>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
     const csrfToken = <?= json_encode($csrfToken ?? ($_COOKIE['csrf_token'] ?? '')) ?>;
+    const draftStorageKey = <?= json_encode('campusmarket.providerOnboardDraft.' . $currentUserId) ?>;
 
     const btnLoadDraft    = document.getElementById('btnLoadExistingDraft');
     const btnDismissDraft = document.getElementById('btnDismissDraft');
     const draftBanner     = document.getElementById('existingDraftBanner');
     const resultsCard     = document.getElementById('aiResultsCard');
     const aiStatus        = document.getElementById('aiStatus');
+    let savedDraft = null;
 
     function setOnboardStatus(message, isError = false) {
         if (!aiStatus) return;
@@ -445,6 +411,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (resultsCard) {
             resultsCard.hidden = false;
         }
+        saveDraft();
+    }
+
+    try {
+        const storedDraft = localStorage.getItem(draftStorageKey);
+        if (storedDraft) {
+            savedDraft = JSON.parse(storedDraft);
+            if (savedDraft && typeof savedDraft === 'object' && draftBanner) {
+                draftBanner.style.display = 'flex';
+            }
+        }
+    } catch (error) {
+        console.warn('Unable to read the saved service draft from this browser.', error);
+        setOnboardStatus('Your saved draft could not be read from this browser.', true);
     }
 
     document.getElementById('btnManualEntry')?.addEventListener('click', () => {
@@ -456,46 +436,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnDismissDraft && draftBanner) {
         btnDismissDraft.addEventListener('click', () => {
+            try {
+                localStorage.removeItem(draftStorageKey);
+                savedDraft = null;
+            } catch (error) {
+                console.warn('Unable to remove the saved service draft from this browser.', error);
+                setOnboardStatus('The saved draft could not be removed from this browser.', true);
+            }
             draftBanner.style.transition = 'opacity 0.2s ease';
             draftBanner.style.opacity = '0';
             setTimeout(() => { draftBanner.style.display = 'none'; }, 200);
         });
     }
 
-    if (btnLoadDraft && window.existingDraftData) {
+    if (btnLoadDraft) {
         btnLoadDraft.addEventListener('click', () => {
-            const d = window.existingDraftData;
-            showListingDetails();
-            if (d.skills_input) document.getElementById('skills_input').value = d.skills_input;
-            if (d.bio) document.getElementById('provider_bio').value = d.bio;
-            if (d.portfolio_link) document.getElementById('portfolio_link').value = d.portfolio_link;
-            if (d.category_id) document.getElementById('category_id').value = d.category_id;
-            if (d.service_title) document.getElementById('service_title').value = d.service_title;
-            if (d.service_description) document.getElementById('service_description').value = d.service_description;
-            if (d.location_town) document.getElementById('location_town').value = d.location_town;
-            if (d.pricing_model) {
-                document.getElementById('pricing_model').value = d.pricing_model;
-                toggleDelivery();
-            }
-            if (d.price) {
-                document.getElementById('service_price').value = d.price;
-                toggleDelivery();
-            }
-            if (d.delivery_days) document.getElementById('delivery_days').value = d.delivery_days;
-            if (d.availability_status) document.getElementById('availability_status').value = d.availability_status;
-            if (d.product_id) {
-                const idEl = document.getElementById('existing_product_id');
-                if (idEl) idEl.value = d.product_id;
-            }
-            if (Array.isArray(d.skills) && d.skills.length > 0) {
-                currentTags = [...d.skills];
+            const d = savedDraft;
+            if (!d) return;
+            const draftFields = {
+                skills_input: 'skills_input',
+                bio: 'provider_bio',
+                portfolio_link: 'portfolio_link',
+                category_id: 'category_id',
+                service_title: 'service_title',
+                service_description: 'service_description',
+                location_town: 'location_town',
+                pricing_model: 'pricing_model',
+                price: 'service_price',
+                delivery_days: 'delivery_days',
+                availability_status: 'availability_status'
+            };
+            Object.entries(draftFields).forEach(([key, id]) => {
+                const field = document.getElementById(id);
+                if (field && typeof d[key] === 'string') field.value = d[key];
+            });
+            if (Array.isArray(d.skills)) {
+                currentTags = d.skills.filter(tag => typeof tag === 'string');
                 syncHiddenTags();
                 renderTags();
             }
-            btnLoadDraft.textContent = '✓ Details Loaded';
-            btnLoadDraft.disabled = true;
-            btnLoadDraft.style.opacity = '0.7';
-            if (btnDismissDraft) btnDismissDraft.style.display = 'none';
+            if (d.showDetails) showListingDetails();
+            toggleDelivery();
+            saveDraft();
+            draftBanner.style.display = 'none';
         });
     }
 
@@ -571,6 +554,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function saveDraft() {
+        const fields = {
+            skills_input: 'skills_input',
+            bio: 'provider_bio',
+            portfolio_link: 'portfolio_link',
+            category_id: 'category_id',
+            service_title: 'service_title',
+            service_description: 'service_description',
+            location_town: 'location_town',
+            pricing_model: 'pricing_model',
+            price: 'service_price',
+            delivery_days: 'delivery_days',
+            availability_status: 'availability_status'
+        };
+        const draft = { skills: [...currentTags], showDetails: !!resultsCard && !resultsCard.hidden };
+        let hasContent = currentTags.length > 0;
+        Object.entries(fields).forEach(([key, id]) => {
+            const field = document.getElementById(id);
+            draft[key] = field ? field.value : '';
+            if (draft[key].trim() !== '') hasContent = true;
+        });
+
+        try {
+            if (hasContent) {
+                localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+            } else {
+                localStorage.removeItem(draftStorageKey);
+            }
+        } catch (error) {
+            console.warn('Unable to save the service draft in this browser.', error);
+            setOnboardStatus('Your draft could not be saved in this browser. Keep this page open until you submit.', true);
+        }
+    }
+
     function renderTags() {
         if (!skillsBadgesContainer) return;
         skillsBadgesContainer.innerHTML = '';
@@ -599,6 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     userEdited.skills = true;
                     syncHiddenTags();
                     renderTags();
+                    saveDraft();
                 }
             });
         });
@@ -613,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
             userEdited.skills = true;
             syncHiddenTags();
             renderTags();
+            saveDraft();
         }
     }
 
@@ -624,6 +643,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial render
     renderTags();
+
+    document.getElementById('providerOnboardForm')?.addEventListener('input', saveDraft);
+    document.getElementById('providerOnboardForm')?.addEventListener('change', saveDraft);
 
     tagTextInput?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ',') {
@@ -787,6 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentTags = [...data.skills];
                         syncHiddenTags();
                         renderTags();
+                        saveDraft();
                     }
 
                     // 6. Inferred additions (Transparent opt-in chips)
@@ -829,6 +852,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             additions_count: (data.suggested_additions || []).length
                         });
                     }
+
+                    saveDraft();
 
                     // Smooth scroll to results
                     document.getElementById('aiResultsCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
