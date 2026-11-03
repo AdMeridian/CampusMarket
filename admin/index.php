@@ -1004,7 +1004,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </a>
                 </div>
 
-                <div class="section-label">Taxonomy &amp; Templates</div>
+                <div class="section-label">Taxonomy</div>
                 <div class="module-grid">
                     <a href="categories.php" class="module-card" style="--module-color: var(--primary); --module-bg: var(--primary-light);">
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
@@ -1022,15 +1022,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="service_templates.php" class="module-card" style="--module-color: #e53e3e; --module-bg: #fee2e2;">
-                        <div class="module-icon">🛠️</div>
-                        <div class="module-info">
-                            <div class="module-name">Service Templates</div>
-                            <div class="module-desc">Manage preset options</div>
-                        </div>
-                        <span class="module-arrow">›</span>
-                    </a>
-                </div>
+                    </div>
 
                 <div class="txn-insight-card">
                     <div class="txn-insight-head">
