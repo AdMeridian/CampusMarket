@@ -480,144 +480,281 @@ $navCategories = getNavCategories($pdo);
 </nav>
 
 <?php
-// Platform Announcements Banner
+// Platform Announcements & Campus Nudge Banner
 require_once __DIR__ . '/announcements.php';
 $headerAnnouncements = [];
 try {
     $currentRole = isLoggedIn() ? (isAdmin() ? 'admin' : 'user') : 'guest';
     $headerAnnouncements = getActiveAnnouncements($pdo, $currentRole);
+    if (!empty($headerAnnouncements)) {
+        // Sort announcements by urgency: urgent/alert > warning > success > info
+        usort($headerAnnouncements, function($a, $b) {
+            $weights = ['urgent' => 4, 'alert' => 4, 'warning' => 3, 'success' => 2, 'info' => 1];
+            $wa = $weights[$a['type'] ?? 'info'] ?? 1;
+            $wb = $weights[$b['type'] ?? 'info'] ?? 1;
+            return $wb <=> $wa;
+        });
+    }
 } catch (Throwable $e) {}
+
+$showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id']));
 ?>
-<?php if (!empty($headerAnnouncements)): ?>
-<div class="platform-announcements-wrapper" id="platformAnnouncements">
+<?php if (!empty($headerAnnouncements) || $showCampusNudge): ?>
+<div class="platform-announcements-wrapper" id="platformAnnouncementsWrapper">
     <div class="container">
-        <?php foreach ($headerAnnouncements as $ann): ?>
-            <?php
-                $annId = (int)$ann['id'];
-                $annType = htmlspecialchars($ann['type'] ?? 'info', ENT_QUOTES, 'UTF-8');
-                if ($annType === 'alert') $annType = 'urgent';
-                $annTitle = htmlspecialchars($ann['title'] ?? '', ENT_QUOTES, 'UTF-8');
-                $annMessage = htmlspecialchars($ann['message'] ?? '', ENT_QUOTES, 'UTF-8');
-                $annCtaText = !empty($ann['cta_text']) ? htmlspecialchars($ann['cta_text'], ENT_QUOTES, 'UTF-8') : '';
-                $annCtaUrl = !empty($ann['cta_url']) ? htmlspecialchars($ann['cta_url'], ENT_QUOTES, 'UTF-8') : '';
-            ?>
-            <div class="platform-announcement platform-announcement--<?php echo $annType; ?>" data-announcement-id="<?php echo $annId; ?>" id="announcement-item-<?php echo $annId; ?>" role="alert">
-                <div class="platform-announcement__icon">
-                    <?php if ($annType === 'warning'): ?>
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    <?php elseif ($annType === 'urgent'): ?>
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <?php elseif ($annType === 'success'): ?>
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                    <?php else: ?>
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                    <?php endif; ?>
-                </div>
-                <div class="platform-announcement__body">
-                    <span class="platform-announcement__title"><?php echo $annTitle; ?></span>
-                    <span class="platform-announcement__message"><?php echo $annMessage; ?></span>
-                </div>
-                <?php if ($annCtaUrl !== '' && $annCtaText !== ''): ?>
-                    <a href="<?php echo $annCtaUrl; ?>" class="platform-announcement__cta">
-                        <?php echo $annCtaText; ?> ›
-                    </a>
+        <div class="platform-announcements-carousel" id="platformAnnouncementsCarousel" role="region" aria-label="Platform announcements">
+            <div class="platform-announcements-slides" id="platformAnnouncementsSlides">
+                <?php foreach ($headerAnnouncements as $ann): ?>
+                    <?php
+                        $annId = (int)$ann['id'];
+                        $annType = htmlspecialchars($ann['type'] ?? 'info', ENT_QUOTES, 'UTF-8');
+                        if ($annType === 'alert') $annType = 'urgent';
+                        $annTitle = htmlspecialchars($ann['title'] ?? '', ENT_QUOTES, 'UTF-8');
+                        $annMessage = htmlspecialchars($ann['message'] ?? '', ENT_QUOTES, 'UTF-8');
+                        $annCtaText = !empty($ann['cta_text']) ? htmlspecialchars($ann['cta_text'], ENT_QUOTES, 'UTF-8') : '';
+                        $annCtaUrl = !empty($ann['cta_url']) ? htmlspecialchars($ann['cta_url'], ENT_QUOTES, 'UTF-8') : '';
+                    ?>
+                    <div class="platform-announcement platform-announcement--<?php echo $annType; ?>" data-announcement-id="<?php echo $annId; ?>" id="announcement-item-<?php echo $annId; ?>" role="alert">
+                        <div class="platform-announcement__icon">
+                            <?php if ($annType === 'warning'): ?>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            <?php elseif ($annType === 'urgent'): ?>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            <?php elseif ($annType === 'success'): ?>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <?php else: ?>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            <?php endif; ?>
+                        </div>
+                        <div class="platform-announcement__body">
+                            <span class="platform-announcement__title"><?php echo $annTitle; ?></span>
+                            <span class="platform-announcement__message"><?php echo $annMessage; ?></span>
+                        </div>
+                        <?php if ($annCtaUrl !== '' && $annCtaText !== ''): ?>
+                            <a href="<?php echo $annCtaUrl; ?>" class="platform-announcement__cta" onclick="dismissPlatformAnnouncement(<?php echo $annId; ?>)">
+                                <?php echo $annCtaText; ?> ›
+                            </a>
+                        <?php endif; ?>
+                        <button type="button" class="platform-announcement__dismiss" onclick="dismissPlatformAnnouncement(<?php echo $annId; ?>)" aria-label="Dismiss announcement">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                <?php endforeach; ?>
+
+                <?php if ($showCampusNudge): ?>
+                    <div class="platform-announcement platform-announcement--info" id="campus-nudge-item" role="alert">
+                        <div class="platform-announcement__icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </div>
+                        <div class="platform-announcement__body">
+                            <span class="platform-announcement__title"><?= __('campus_nudge.title') ?></span>
+                            <span class="platform-announcement__message"><?= __('campus_nudge.message') ?></span>
+                        </div>
+                        <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta" onclick="dismissCampusNudge()">
+                            <?= __('campus_nudge.cta') ?>
+                        </a>
+                        <button type="button" class="platform-announcement__dismiss" onclick="dismissCampusNudge()" aria-label="Dismiss">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
                 <?php endif; ?>
-                <button type="button" class="platform-announcement__dismiss" onclick="dismissPlatformAnnouncement(<?php echo $annId; ?>)" aria-label="Dismiss announcement">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+
+            <!-- Pager bar (visible only when 2+ active announcements exist) -->
+            <div class="platform-announcements-pager" id="platformAnnouncementsPager" style="display: none;">
+                <button type="button" class="announcement-pager-btn" onclick="prevPlatformAnnouncement()" aria-label="Previous announcement">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="announcement-pager-dots" id="announcementPagerDots"></div>
+                <span class="announcement-pager-count" id="announcementPagerCount"></span>
+                <button type="button" class="announcement-pager-btn" onclick="nextPlatformAnnouncement()" aria-label="Next announcement">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
             </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-<script>
-(function() {
-    try {
-        var items = document.querySelectorAll('.platform-announcement[data-announcement-id]');
-        var visible = 0;
-        items.forEach(function(el) {
-            var aid = el.getAttribute('data-announcement-id');
-            if (localStorage.getItem('cm_announcement_dismissed_' + aid) === '1') {
-                el.style.display = 'none';
-            } else {
-                visible++;
-            }
-        });
-        var wrap = document.getElementById('platformAnnouncements');
-        if (wrap && visible === 0) {
-            wrap.style.display = 'none';
-        }
-    } catch(e) {}
-})();
-function dismissPlatformAnnouncement(id) {
-    try {
-        localStorage.setItem('cm_announcement_dismissed_' + id, '1');
-    } catch(e) {}
-    var el = document.getElementById('announcement-item-' + id);
-    if (el) {
-        el.style.transition = 'all 0.25s ease';
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(-6px)';
-        setTimeout(function() {
-            el.remove();
-            var remaining = document.querySelectorAll('.platform-announcement:not([style*="display: none"])');
-            if (remaining.length === 0) {
-                var wrap = document.getElementById('platformAnnouncements');
-                if (wrap) wrap.style.display = 'none';
-            }
-        }, 250);
-    }
-}
-</script>
-<?php endif; ?>
-
-<?php if (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id'])): ?>
-<div class="platform-announcements-wrapper" id="campusNudgeBanner">
-    <div class="container">
-        <div class="platform-announcement platform-announcement--info" id="campus-nudge-item" role="alert">
-            <div class="platform-announcement__icon">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            </div>
-            <div class="platform-announcement__body">
-                <span class="platform-announcement__title"><?= __('campus_nudge.title') ?></span>
-                <span class="platform-announcement__message"><?= __('campus_nudge.message') ?></span>
-            </div>
-            <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta">
-                <?= __('campus_nudge.cta') ?>
-            </a>
-            <button type="button" class="platform-announcement__dismiss" onclick="dismissCampusNudge()" aria-label="Dismiss">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
         </div>
     </div>
 </div>
 <script>
 (function() {
-    try {
-        var key = 'cm_campus_nudge_dismissed';
-        var val = localStorage.getItem(key);
-        if (val) {
-            var until = parseInt(val, 10);
-            if (Date.now() < until) {
-                var el = document.getElementById('campusNudgeBanner');
-                if (el) el.style.display = 'none';
+    var autoTimer = null;
+    var touchStartX = 0;
+    var touchEndX = 0;
+
+    function getSlides() {
+        return Array.from(document.querySelectorAll('#platformAnnouncementsSlides .platform-announcement'));
+    }
+
+    function refreshCarousel(targetIndex) {
+        var slides = getSlides();
+        var wrap = document.getElementById('platformAnnouncementsWrapper');
+        var pager = document.getElementById('platformAnnouncementsPager');
+
+        if (!slides || slides.length === 0) {
+            stopAuto();
+            if (wrap) wrap.style.display = 'none';
+            document.body.classList.remove('has-announcement-banner');
+            return;
+        }
+
+        if (wrap) wrap.style.display = '';
+        document.body.classList.add('has-announcement-banner');
+
+        if (slides.length === 1) {
+            stopAuto();
+            if (pager) pager.style.display = 'none';
+            slides[0].classList.add('is-active');
+            return;
+        }
+
+        if (pager) pager.style.display = 'flex';
+
+        var currentIndex = slides.findIndex(function(s) { return s.classList.contains('is-active'); });
+        if (currentIndex === -1) currentIndex = 0;
+
+        if (typeof targetIndex === 'number') {
+            currentIndex = (targetIndex + slides.length) % slides.length;
+        } else if (currentIndex >= slides.length) {
+            currentIndex = 0;
+        }
+
+        slides.forEach(function(s, idx) {
+            if (idx === currentIndex) {
+                s.classList.add('is-active');
             } else {
-                localStorage.removeItem(key);
+                s.classList.remove('is-active');
             }
+        });
+
+        var countEl = document.getElementById('announcementPagerCount');
+        if (countEl) countEl.textContent = (currentIndex + 1) + ' / ' + slides.length;
+
+        var dotsContainer = document.getElementById('announcementPagerDots');
+        if (dotsContainer) {
+            dotsContainer.innerHTML = '';
+            slides.forEach(function(_, idx) {
+                var dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = 'announcement-pager-dot' + (idx === currentIndex ? ' is-active' : '');
+                dot.setAttribute('aria-label', 'Go to announcement ' + (idx + 1));
+                dot.onclick = function() {
+                    refreshCarousel(idx);
+                    startAuto();
+                };
+                dotsContainer.appendChild(dot);
+            });
+        }
+    }
+
+    function startAuto() {
+        stopAuto();
+        autoTimer = setInterval(function() {
+            var slides = getSlides();
+            if (slides.length > 1) {
+                var cur = slides.findIndex(function(s) { return s.classList.contains('is-active'); });
+                refreshCarousel(cur + 1);
+            }
+        }, 7000);
+    }
+
+    function stopAuto() {
+        if (autoTimer) {
+            clearInterval(autoTimer);
+            autoTimer = null;
+        }
+    }
+
+    window.nextPlatformAnnouncement = function() {
+        var slides = getSlides();
+        var cur = slides.findIndex(function(s) { return s.classList.contains('is-active'); });
+        refreshCarousel(cur + 1);
+        startAuto();
+    };
+
+    window.prevPlatformAnnouncement = function() {
+        var slides = getSlides();
+        var cur = slides.findIndex(function(s) { return s.classList.contains('is-active'); });
+        refreshCarousel(cur - 1);
+        startAuto();
+    };
+
+    window.dismissPlatformAnnouncement = function(id) {
+        try {
+            localStorage.setItem('cm_announcement_dismissed_' + id, '1');
+        } catch(e) {}
+        var el = document.getElementById('announcement-item-' + id);
+        if (el) {
+            el.style.transition = 'all 0.2s ease';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-6px)';
+            setTimeout(function() {
+                el.remove();
+                refreshCarousel();
+            }, 200);
+        }
+    };
+
+    window.dismissCampusNudge = function() {
+        try {
+            localStorage.setItem('cm_campus_nudge_dismissed', String(Date.now() + 86400000));
+        } catch(e) {}
+        var el = document.getElementById('campus-nudge-item');
+        if (el) {
+            el.style.transition = 'all 0.2s ease';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-6px)';
+            setTimeout(function() {
+                el.remove();
+                refreshCarousel();
+            }, 200);
+        }
+    };
+
+    try {
+        // Filter out previously dismissed items
+        document.querySelectorAll('#platformAnnouncementsSlides .platform-announcement[data-announcement-id]').forEach(function(el) {
+            var aid = el.getAttribute('data-announcement-id');
+            if (localStorage.getItem('cm_announcement_dismissed_' + aid) === '1') {
+                el.remove();
+            }
+        });
+        var nudge = document.getElementById('campus-nudge-item');
+        if (nudge) {
+            var val = localStorage.getItem('cm_campus_nudge_dismissed');
+            if (val && Date.now() < parseInt(val, 10)) {
+                nudge.remove();
+            }
+        }
+
+        refreshCarousel(0);
+
+        var initialSlides = getSlides();
+        if (initialSlides.length > 1) {
+            startAuto();
+        }
+
+        var carousel = document.getElementById('platformAnnouncementsCarousel');
+        if (carousel) {
+            carousel.addEventListener('mouseenter', stopAuto);
+            carousel.addEventListener('mouseleave', startAuto);
+            carousel.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+                stopAuto();
+            }, { passive: true });
+            carousel.addEventListener('touchend', function(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                var diff = touchStartX - touchEndX;
+                if (Math.abs(diff) > 40) {
+                    if (diff > 0) {
+                        window.nextPlatformAnnouncement();
+                    } else {
+                        window.prevPlatformAnnouncement();
+                    }
+                }
+                startAuto();
+            }, { passive: true });
         }
     } catch(e) {}
 })();
-function dismissCampusNudge() {
-    try {
-        localStorage.setItem('cm_campus_nudge_dismissed', String(Date.now() + 86400000));
-    } catch(e) {}
-    var el = document.getElementById('campusNudgeBanner');
-    if (el) {
-        el.style.transition = 'all 0.25s ease';
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(-6px)';
-        setTimeout(function() { el.remove(); }, 250);
-    }
-}
 </script>
 <?php endif; ?>
 
