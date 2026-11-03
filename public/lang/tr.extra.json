@@ -546,5 +546,12 @@
     "category.fitness_personal_training": "Fitness & Özel Antrenman",
     "auth.error_account_locked": "Bu hesap için çok fazla başarısız giriş denemesi yapıldı. Güvenliğiniz için bu hesap {minutes} dakika süreyle geçici olarak kilitlendi.",
     "auth.error_invalid_with_attempts": "E-posta/kullanıcı adı veya şifre hatalı. Geçici kilitlemeden önce {remaining} deneme hakkınız kaldı.",
-    "auth.reset_password_prompt": "Şifrenizi mi unuttunuz? Sıfırlamak için buraya tıklayın."
+    "auth.reset_password_prompt": "Şifrenizi mi unuttunuz? Sıfırlamak için buraya tıklayın.",
+    "profile.university_required": "Lütfen üniversitenizi seçin veya Diğer seçeneğini belirleyin.",
+    "profile.select_university_placeholder": "— Üniversitenizi / kampüsünüzü seçin —",
+    "profile.skip_for_now": "Şimdilik atla",
+    "profile.select_campus_title": "Hangi kampüstesiniz?",
+    "profile.select_campus_subtitle": "Yakınınızdaki ilanları, öğrenci hizmetlerini ve buluşmaları keşfetmek için üniversitenizi seçin.",
+    "profile.select_campus_btn": "Pazaryerine Devam Et",
+    "profile.campus_welcome_saved": "Kampüs kaydedildi! CampusMarket'e hoş geldiniz."
 }

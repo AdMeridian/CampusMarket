@@ -53,7 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $otherUniversityName = '';
     } else {
-        $otherUniversityName = '';
+        // If left empty, check if email domain auto-identifies a university
+        $uniLookup = function_exists('lookupUniversityByEmail') ? lookupUniversityByEmail($pdo, $email) : null;
+        if ($uniLookup && !empty($uniLookup['university_id'])) {
+            $universityId = (int)$uniLookup['university_id'];
+            $otherUniversityName = '';
+        } else {
+            $errors['university'] = __('profile.university_required');
+        }
     }
 
     if ($username === '') {
@@ -292,11 +299,11 @@ require_once '../includes/header.php';
     </div>
 
     <div class="form-row mb-5">
-      <label for="university_id" class="form-label"><?= __('profile.university_attended') ?> <span class="form-label--muted"><?= __('profile.optional') ?></span></label>
-      <select id="university_id" name="university_id" class="premium-input w-full">
-        <option value=""><?= __('profile.university_not_provided') ?></option>
+      <label for="university_id" class="form-label"><?= __('profile.university_attended') ?> <span style="color: var(--danger, #dc2626); font-weight: 700;">*</span></label>
+      <select id="university_id" name="university_id" class="premium-input w-full" required>
+        <option value="" disabled <?= empty($old['university_id']) ? 'selected' : '' ?>><?= __('profile.select_university_placeholder') ?></option>
         <?php foreach ($availableUniversities as $university): ?>
-          <option value="<?= (int)$university['id'] ?>" <?= (string)$old['university_id'] === (string)$university['id'] ? 'selected' : '' ?>>
+          <option value="<?= (int)$university['id'] ?>" data-domain="<?= htmlspecialchars(strtolower($university['domain_pattern']), ENT_QUOTES, 'UTF-8') ?>" <?= (string)$old['university_id'] === (string)$university['id'] ? 'selected' : '' ?>>
             <?= htmlspecialchars($university['name'] . (!empty($university['city']) ? ' — ' . $university['city'] : ''), ENT_QUOTES, 'UTF-8') ?>
           </option>
         <?php endforeach; ?>
@@ -420,10 +427,36 @@ require_once '../includes/header.php';
       otherUniversityContainer.style.display = universitySelect.value === 'other' ? 'block' : 'none';
       if (otherUniversityName) {
         otherUniversityName.required = universitySelect.value === 'other';
+        if (universitySelect.value === 'other') {
+          otherUniversityName.focus();
+        }
       }
     }
     universitySelect.addEventListener('change', updateOtherUniversityVisibility);
     updateOtherUniversityVisibility();
+
+    var emailInput = document.getElementById('email');
+    if (emailInput) {
+      function autoDetectUniversityFromEmail() {
+        var val = (emailInput.value || '').toLowerCase().trim();
+        if (!val || val.indexOf('@') === -1) return;
+        var domain = val.split('@')[1];
+        if (!domain) return;
+        if (!universitySelect.value || universitySelect.value === '') {
+          for (var i = 0; i < universitySelect.options.length; i++) {
+            var opt = universitySelect.options[i];
+            var optDomain = opt.getAttribute('data-domain');
+            if (optDomain && (domain === optDomain || domain.endsWith('.' + optDomain))) {
+              universitySelect.value = opt.value;
+              updateOtherUniversityVisibility();
+              break;
+            }
+          }
+        }
+      }
+      emailInput.addEventListener('blur', autoDetectUniversityFromEmail);
+      emailInput.addEventListener('change', autoDetectUniversityFromEmail);
+    }
   }
 
   document.querySelectorAll('.password-toggle').forEach(function (btn) {

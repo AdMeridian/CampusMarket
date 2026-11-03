@@ -550,9 +550,40 @@ if (!function_exists('getUserUniversityAndCountry')) {
 
 if (!function_exists('lookupUniversityByEmail')) {
     function lookupUniversityByEmail(PDO $pdo, string $email): ?array {
+        $email = strtolower(trim($email));
+        $atPos = strrpos($email, '@');
+        if ($atPos === false) {
+            return null;
+        }
+        $domain = substr($email, $atPos + 1);
+
         try {
-            $stmt = $pdo->prepare('SELECT * FROM get_university_by_email(:email)');
-            $stmt->execute([':email' => $email]);
+            $driver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $stmt = $pdo->prepare('SELECT * FROM get_university_by_email(:email)');
+                $stmt->execute([':email' => $email]);
+                $res = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($res && !empty($res['university_id'])) {
+                    return $res;
+                }
+            }
+        } catch (Throwable $e) {
+            // Fall back to direct SQL query
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+                SELECT id AS university_id, name AS university_name, country_code
+                FROM universities
+                WHERE is_active = TRUE
+                  AND (
+                      LOWER(domain_pattern) = :d
+                      OR :d LIKE CONCAT('%.', LOWER(domain_pattern))
+                  )
+                ORDER BY LENGTH(domain_pattern) DESC
+                LIMIT 1
+            ");
+            $stmt->execute([':d' => $domain]);
             $res = $stmt->fetch(PDO::FETCH_ASSOC);
             return $res ?: null;
         } catch (Throwable $e) {

@@ -546,5 +546,12 @@
     "category.fitness_personal_training": "Fitness & Personal Training",
     "auth.error_account_locked": "Too many failed login attempts for this account. For security, this account is temporarily locked for {minutes} minute(s).",
     "auth.error_invalid_with_attempts": "Incorrect email/username or password. {remaining} attempt(s) remaining before temporary lockout.",
-    "auth.reset_password_prompt": "Forgot your password? Click here to reset it."
+    "auth.reset_password_prompt": "Forgot your password? Click here to reset it.",
+    "profile.university_required": "Please select your university or choose Other.",
+    "profile.select_university_placeholder": "— Select your university / campus —",
+    "profile.skip_for_now": "Skip for now",
+    "profile.select_campus_title": "Which campus are you on?",
+    "profile.select_campus_subtitle": "Select your university to discover listings, student services, and meetups near you.",
+    "profile.select_campus_btn": "Continue to Marketplace",
+    "profile.campus_welcome_saved": "Campus saved! Welcome to CampusMarket."
 }
