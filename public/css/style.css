@@ -5861,3 +5861,11 @@ body.page-chat .chat-send-btn {
   min-width: 28px;
   text-align: center;
 }
+
+
+/* When announcement banner is active above mobile search row, collapse the 76px navbar clearance */
+@media (max-width: 1023px) {
+  body.has-announcement-banner .mobile-search-row {
+    margin-top: 0.5rem;
+  }
+}

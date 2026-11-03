@@ -591,10 +591,12 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
         if (!slides || slides.length === 0) {
             stopAuto();
             if (wrap) wrap.style.display = 'none';
+            document.body.classList.remove('has-announcement-banner');
             return;
         }
 
         if (wrap) wrap.style.display = '';
+        document.body.classList.add('has-announcement-banner');
 
         if (slides.length === 1) {
             stopAuto();
