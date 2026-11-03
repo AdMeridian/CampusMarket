@@ -401,6 +401,7 @@ require_once '../includes/header.php';
             'terms_url' => BASE_URL . 'pages/terms.php',
             'privacy_url' => BASE_URL . 'pages/privacy.php',
             'rules_url' => BASE_URL . 'pages/rules.php',
+            'cookies_url' => BASE_URL . 'pages/cookies.php',
         ]) ?>
       </label>
     </div>
