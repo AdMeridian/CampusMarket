@@ -5761,3 +5761,103 @@ body.page-chat .chat-send-btn {
     max-width: 100%;
   }
 }
+
+
+/* ── Platform Announcement Carousel & Pager ─────────────── */
+.platform-announcements-carousel {
+  position: relative;
+  width: 100%;
+}
+
+.platform-announcements-slides {
+  position: relative;
+  width: 100%;
+}
+
+.platform-announcements-slides .platform-announcement {
+  display: none;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+.platform-announcements-slides .platform-announcement.is-active {
+  display: flex;
+  opacity: 1;
+  animation: cmAnnouncementSlideIn 0.28s ease forwards;
+}
+
+@keyframes cmAnnouncementSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.platform-announcements-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.announcement-pager-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.announcement-pager-btn:hover {
+  background: var(--border-light);
+  color: var(--text-main);
+  border-color: var(--primary);
+  transform: scale(1.06);
+}
+
+.announcement-pager-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.announcement-pager-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-light);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.announcement-pager-dot.is-active {
+  width: 18px;
+  border-radius: 10px;
+  background: var(--primary);
+}
+
+.announcement-pager-count {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 28px;
+  text-align: center;
+}
