@@ -81,3 +81,66 @@ test('mobile search row sits comfortably below announcement banner without 80px 
   const artifactDir = "C:/Users/Carl/.gemini/antigravity/brain/0ab160d5-7208-4ffa-a4a2-04e56e0bb32d";
   await page.screenshot({ path: path.join(artifactDir, 'mobile_announcement_search_gap_preview.png'), fullPage: false });
 });
+
+test('clicking announcement CTA marks announcement as dismissed and closes it', async ({ page }) => {
+  await page.setViewportSize({ width: 384, height: 824 });
+
+  const css = fs.readFileSync('public/css/style.css', 'utf8');
+
+  await page.setContent(`
+    <!doctype html>
+    <html class="has-announcement-banner">
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>${css}</style>
+    </head>
+    <body class="has-announcement-banner">
+      <div class="platform-announcements-wrapper" id="platformAnnouncementsWrapper">
+        <div class="container">
+          <div class="platform-announcements-carousel" id="platformAnnouncementsCarousel">
+            <div class="platform-announcements-slides" id="platformAnnouncementsSlides">
+              <div class="platform-announcement platform-announcement--success is-active" id="announcement-item-1" role="alert">
+                <div class="platform-announcement__body">
+                  <span class="platform-announcement__title">Campus Services is Now Live!</span>
+                </div>
+                <a href="#services" class="platform-announcement__cta" onclick="dismissPlatformAnnouncement(1); return false;">Explore Services ›</a>
+                <button type="button" class="platform-announcement__dismiss" onclick="dismissPlatformAnnouncement(1)">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mobile-search-row">Search</div>
+      <script>
+        window.dismissedId = null;
+        window.dismissPlatformAnnouncement = function(id) {
+          window.dismissedId = id;
+          var el = document.getElementById('announcement-item-' + id);
+          if (el) {
+            el.remove();
+            document.getElementById('platformAnnouncementsWrapper').style.display = 'none';
+            document.body.classList.remove('has-announcement-banner');
+          }
+        };
+      </script>
+    </body>
+    </html>
+  `);
+
+  const card = page.locator('#announcement-item-1');
+  const cta = page.locator('.platform-announcement__cta');
+  const wrapper = page.locator('#platformAnnouncementsWrapper');
+
+  await expect(card).toBeVisible();
+
+  // Click CTA
+  await cta.click();
+
+  // Verify dismiss callback fired with id 1
+  const dismissedId = await page.evaluate(() => window.dismissedId);
+  expect(dismissedId).toBe(1);
+
+  // Verify the banner is closed
+  await expect(wrapper).toBeHidden();
+  await expect(page.locator('body')).not.toHaveClass(/has-announcement-banner/);
+});

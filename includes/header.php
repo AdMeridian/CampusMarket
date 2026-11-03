@@ -530,7 +530,7 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
                             <span class="platform-announcement__message"><?php echo $annMessage; ?></span>
                         </div>
                         <?php if ($annCtaUrl !== '' && $annCtaText !== ''): ?>
-                            <a href="<?php echo $annCtaUrl; ?>" class="platform-announcement__cta">
+                            <a href="<?php echo $annCtaUrl; ?>" class="platform-announcement__cta" onclick="dismissPlatformAnnouncement(<?php echo $annId; ?>)">
                                 <?php echo $annCtaText; ?> ›
                             </a>
                         <?php endif; ?>
@@ -549,7 +549,7 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
                             <span class="platform-announcement__title"><?= __('campus_nudge.title') ?></span>
                             <span class="platform-announcement__message"><?= __('campus_nudge.message') ?></span>
                         </div>
-                        <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta">
+                        <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta" onclick="dismissCampusNudge()">
                             <?= __('campus_nudge.cta') ?>
                         </a>
                         <button type="button" class="platform-announcement__dismiss" onclick="dismissCampusNudge()" aria-label="Dismiss">
