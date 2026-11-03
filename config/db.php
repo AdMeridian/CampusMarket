@@ -549,6 +549,50 @@ if (!function_exists('ensureRecentFallbackColumn')) {
     }
 }
 
+if (!function_exists('ensureLoginAttemptsTable')) {
+    function ensureLoginAttemptsTable(PDO $pdo): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $pdo->exec(
+                    "CREATE TABLE IF NOT EXISTS public.login_attempts (" .
+                    "id BIGSERIAL PRIMARY KEY, " .
+                    "email VARCHAR(255) NOT NULL, " .
+                    "ip_address VARCHAR(45) NULL, " .
+                    "attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()" .
+                    ")"
+                );
+                $pdo->exec("CREATE INDEX IF NOT EXISTS idx_login_attempts_email_time ON public.login_attempts(email, attempted_at DESC)");
+                $pdo->exec("ALTER TABLE public.login_attempts ENABLE ROW LEVEL SECURITY");
+                $pdo->exec("DROP POLICY IF EXISTS login_attempts_server_only ON public.login_attempts");
+                $pdo->exec("CREATE POLICY login_attempts_server_only ON public.login_attempts FOR ALL TO authenticated, anon USING (false) WITH CHECK (false)");
+            } else {
+                $check = $pdo->prepare(
+                    "SELECT COUNT(*) FROM information_schema.tables " .
+                    "WHERE table_schema = DATABASE() AND table_name = 'login_attempts'"
+                );
+                $check->execute();
+                if ((int) $check->fetchColumn() === 0) {
+                    $pdo->exec(
+                        "CREATE TABLE IF NOT EXISTS login_attempts (" .
+                        "id BIGINT AUTO_INCREMENT PRIMARY KEY, " .
+                        "email VARCHAR(255) NOT NULL, " .
+                        "ip_address VARCHAR(45) NULL, " .
+                        "attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, " .
+                        "INDEX idx_login_attempts_email_time (email, attempted_at)" .
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+                    );
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Login attempts bootstrap warning: ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('connectDatabase')) {
     function connectDatabase(): PDO {
         $config = resolveDatabaseConfig();
@@ -597,8 +641,8 @@ if (!function_exists('connectDatabase')) {
                     ensureMessageReplyColumn($pdo);
                     ensureOrderExpiryColumns($pdo);
                     ensureCustomLocationColumns($pdo);
-                    ensureMessageReplyColumn($pdo);
                     ensureRecentFallbackColumn($pdo);
+                    ensureLoginAttemptsTable($pdo);
                 } catch (Throwable $ensureError) {
                     error_log('Schema bootstrap failed: ' . $ensureError->getMessage());
                 }

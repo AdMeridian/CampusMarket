@@ -543,5 +543,8 @@
     "category.music_audio_services": "Müzik & Ses Hizmetleri",
     "category.hair_beauty_grooming": "Saç, Güzellik & Bakım",
     "category.delivery_errand_running": "Teslimat & Ayak İşleri",
-    "category.fitness_personal_training": "Fitness & Özel Antrenman"
+    "category.fitness_personal_training": "Fitness & Özel Antrenman",
+    "auth.error_account_locked": "Bu hesap için çok fazla başarısız giriş denemesi yapıldı. Güvenliğiniz için bu hesap {minutes} dakika süreyle geçici olarak kilitlendi.",
+    "auth.error_invalid_with_attempts": "E-posta/kullanıcı adı veya şifre hatalı. Geçici kilitlemeden önce {remaining} deneme hakkınız kaldı.",
+    "auth.reset_password_prompt": "Şifrenizi mi unuttunuz? Sıfırlamak için buraya tıklayın."
 }

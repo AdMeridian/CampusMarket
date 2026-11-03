@@ -543,5 +543,8 @@
     "category.music_audio_services": "Music & Audio Services",
     "category.hair_beauty_grooming": "Hair, Beauty & Grooming",
     "category.delivery_errand_running": "Delivery & Errand Running",
-    "category.fitness_personal_training": "Fitness & Personal Training"
+    "category.fitness_personal_training": "Fitness & Personal Training",
+    "auth.error_account_locked": "Too many failed login attempts for this account. For security, this account is temporarily locked for {minutes} minute(s).",
+    "auth.error_invalid_with_attempts": "Incorrect email/username or password. {remaining} attempt(s) remaining before temporary lockout.",
+    "auth.reset_password_prompt": "Forgot your password? Click here to reset it."
 }

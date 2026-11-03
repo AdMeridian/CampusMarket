@@ -802,3 +802,133 @@ if (!function_exists('verifyStudentEmailOtp')) {
         ];
     }
 }
+
+
+/* ─────────────────────────────────────────────────────────────
+ * Application-Level Account Login Throttling & Lockout
+ * Limits consecutive failed attempts per email to protect accounts
+ * from brute-force guessing without blocking shared campus Wi-Fi.
+ * ───────────────────────────────────────────────────────────── */
+
+if (!function_exists('checkAccountLoginLockout')) {
+    /**
+     * Check if an account is temporarily locked out due to excessive failed attempts.
+     *
+     * @param PDO $pdo
+     * @param string $email
+     * @param int $maxAttempts Default 5
+     * @param int $windowMinutes Default 15
+     * @return array{is_locked: bool, failed_attempts: int, remaining_attempts: int, retry_after_seconds: int, retry_after_minutes: int}
+     */
+    function checkAccountLoginLockout(PDO $pdo, string $email, int $maxAttempts = 5, int $windowMinutes = 15): array {
+        $normalizedEmail = strtolower(trim($email));
+        if ($normalizedEmail === '') {
+            return [
+                'is_locked' => false,
+                'failed_attempts' => 0,
+                'remaining_attempts' => $maxAttempts,
+                'retry_after_seconds' => 0,
+                'retry_after_minutes' => 0
+            ];
+        }
+
+        try {
+            $windowSeconds = $windowMinutes * 60;
+            $cutoff = date('Y-m-d H:i:s', time() - $windowSeconds);
+
+            $stmt = $pdo->prepare(
+                'SELECT COUNT(*) AS cnt, MAX(attempted_at) AS last_attempt ' .
+                'FROM login_attempts ' .
+                'WHERE LOWER(email) = LOWER(:email) AND attempted_at >= :cutoff'
+            );
+            $stmt->execute([':email' => $normalizedEmail, ':cutoff' => $cutoff]);
+            $row = $stmt->fetch();
+
+            $failedCount = (int)($row['cnt'] ?? 0);
+            $lastAttemptTime = !empty($row['last_attempt']) ? strtotime((string)$row['last_attempt']) : 0;
+
+            if ($failedCount >= $maxAttempts) {
+                $elapsed = time() - $lastAttemptTime;
+                $retryAfter = max(1, $windowSeconds - $elapsed);
+                if ($retryAfter > 0) {
+                    return [
+                        'is_locked' => true,
+                        'failed_attempts' => $failedCount,
+                        'remaining_attempts' => 0,
+                        'retry_after_seconds' => $retryAfter,
+                        'retry_after_minutes' => (int)ceil($retryAfter / 60)
+                    ];
+                }
+            }
+
+            return [
+                'is_locked' => false,
+                'failed_attempts' => $failedCount,
+                'remaining_attempts' => max(0, $maxAttempts - $failedCount),
+                'retry_after_seconds' => 0,
+                'retry_after_minutes' => 0
+            ];
+        } catch (Throwable $e) {
+            error_log('[auth_lockout] Check error: ' . $e->getMessage());
+            return [
+                'is_locked' => false,
+                'failed_attempts' => 0,
+                'remaining_attempts' => $maxAttempts,
+                'retry_after_seconds' => 0,
+                'retry_after_minutes' => 0
+            ];
+        }
+    }
+}
+
+if (!function_exists('recordFailedLoginAttempt')) {
+    /**
+     * Record a failed login attempt for an account.
+     */
+    function recordFailedLoginAttempt(PDO $pdo, string $email, ?string $ip = null): void {
+        $normalizedEmail = strtolower(trim($email));
+        if ($normalizedEmail === '') {
+            return;
+        }
+
+        try {
+            if ($ip === null) {
+                $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+                if ($ip && str_contains($ip, ',')) {
+                    $ip = trim(explode(',', $ip)[0]);
+                }
+                $ip = $ip ? substr($ip, 0, 45) : null;
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO login_attempts (email, ip_address, attempted_at) VALUES (:email, :ip, NOW())');
+            $stmt->execute([':email' => $normalizedEmail, ':ip' => $ip]);
+
+            // Opportunistic cleanup: keep table lean by deleting attempts older than 24h
+            if (mt_rand(1, 50) === 1) {
+                $cleanupCutoff = date('Y-m-d H:i:s', time() - 86400);
+                $pdo->prepare('DELETE FROM login_attempts WHERE attempted_at < :cutoff')->execute([':cutoff' => $cleanupCutoff]);
+            }
+        } catch (Throwable $e) {
+            error_log('[auth_lockout] Record error: ' . $e->getMessage());
+        }
+    }
+}
+
+if (!function_exists('clearLoginAttempts')) {
+    /**
+     * Clear failed login attempts after a successful authentication.
+     */
+    function clearLoginAttempts(PDO $pdo, string $email): void {
+        $normalizedEmail = strtolower(trim($email));
+        if ($normalizedEmail === '') {
+            return;
+        }
+
+        try {
+            $stmt = $pdo->prepare('DELETE FROM login_attempts WHERE LOWER(email) = LOWER(:email)');
+            $stmt->execute([':email' => $normalizedEmail]);
+        } catch (Throwable $e) {
+            error_log('[auth_lockout] Clear error: ' . $e->getMessage());
+        }
+    }
+}

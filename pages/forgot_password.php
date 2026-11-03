@@ -12,7 +12,7 @@ if (isLoggedIn()) {
 
 $errors = [];
 $successMessage = '';
-$email = '';
+$email = trim($_GET['email'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
