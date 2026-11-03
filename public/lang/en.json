@@ -154,7 +154,7 @@
     "profile.university_other_placeholder": "Enter your university name",
     "profile.university_other_required": "Enter the name of your university.",
     "profile.university_invalid": "Select a university from the list or choose Other.",
-    "profile.university_public_note": "This is optional and will appear on your public profile. Google does not provide this information.",
+    "profile.university_public_note": "Your campus will appear on your public profile and helps connect you with nearby students.",
     "profile.optional": "(Optional)",
     "profile.university_email": "Account email",
     "profile.email_note": "Your account email cannot be changed here. Contact support if you need help.",

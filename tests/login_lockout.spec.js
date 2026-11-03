@@ -36,3 +36,4 @@ test('Account lockout helpers and translations are properly configured', async (
   expect(migration).toContain('CREATE TABLE IF NOT EXISTS public.login_attempts');
   expect(migration).toContain('ENABLE ROW LEVEL SECURITY');
 });
+

@@ -154,7 +154,7 @@
     "profile.university_other_placeholder": "Üniversitenizin adını girin",
     "profile.university_other_required": "Üniversitenizin adını girin.",
     "profile.university_invalid": "Listeden bir üniversite seçin veya Diğer seçeneğini kullanın.",
-    "profile.university_public_note": "Bu alan isteğe bağlıdır ve herkese açık profilinizde görünür. Google bu bilgiyi sağlamaz.",
+    "profile.university_public_note": "Kampüsünüz herkese açık profilinizde görünür ve yakınlardaki öğrencilerle bağlantı kurmanıza yardımcı olur.",
     "profile.optional": "(İsteğe bağlı)",
     "profile.university_email": "Hesap e-postası",
     "profile.email_note": "Hesap e-posta adresiniz buradan değiştirilemez. Yardıma ihtiyacınız varsa destek ekibiyle iletişime geçin.",

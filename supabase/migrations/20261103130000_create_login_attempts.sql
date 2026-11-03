@@ -24,3 +24,4 @@ BEGIN
         CREATE POLICY "login_attempts_server_only" ON public.login_attempts FOR ALL TO authenticated, anon USING (false) WITH CHECK (false);
     END IF;
 END $$;
+
