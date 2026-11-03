@@ -27,6 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_service'])) {
         try {
             $stmt = $pdo->prepare("INSERT INTO services (name, description, icon, sort_order, is_active) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$name, $description !== '' ? $description : null, $icon !== '' ? $icon : 'service', $sortOrder, $isActive]);
+
+            // Sync with categories table
+            $catSlug = sanitize(strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-')));
+            $driver = strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $pdo->prepare("INSERT INTO categories (name, slug, type) VALUES (?, ?, 'service') ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name")->execute([$name, $catSlug]);
+            } else {
+                $pdo->prepare("INSERT INTO categories (name, slug, type) VALUES (?, ?, 'service') ON DUPLICATE KEY UPDATE name = VALUES(name)")->execute([$name, $catSlug]);
+            }
+            invalidateNavCategoriesCache();
+
             setFlash('success', "Service '$name' added successfully.");
             logAdminAction($pdo, 'add_service', 'service', (int)$pdo->lastInsertId(), ['name' => $name]);
         } catch (PDOException $e) {
@@ -49,8 +60,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_service'])) {
         setFlash('error', 'Service name cannot be empty.');
     } else {
         try {
+            // Get old name for category rename sync
+            $oldStmt = $pdo->prepare("SELECT name FROM services WHERE id = ?");
+            $oldStmt->execute([$id]);
+            $prevName = $oldStmt->fetchColumn();
+
             $stmt = $pdo->prepare("UPDATE services SET name = ?, description = ?, icon = ?, sort_order = ?, is_active = ? WHERE id = ?");
             $stmt->execute([$name, $description !== '' ? $description : null, $icon !== '' ? $icon : 'service', $sortOrder, $isActive, $id]);
+
+            // Sync with categories table
+            $catSlug = sanitize(strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-')));
+            $syncCat = $pdo->prepare("UPDATE categories SET name = ?, slug = ? WHERE name = ? AND type = 'service'");
+            $syncCat->execute([$name, $catSlug, $prevName ?: $name]);
+            invalidateNavCategoriesCache();
+
             setFlash('success', "Service '$name' updated successfully.");
             logAdminAction($pdo, 'edit_service', 'service', $id, ['name' => $name]);
         } catch (PDOException $e) {

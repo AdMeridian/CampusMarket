@@ -533,5 +533,15 @@
     "push.enabling_btn": "Enabling…",
     "product.listed_as": "Listed in {amount}",
     "product.currency_converted_hint": "Prices converted to ₺ at today's exchange rate",
-    "auth.error_rate_limit": "Too many failed login attempts. Please wait a few minutes before trying again."
+    "auth.error_rate_limit": "Too many failed login attempts. Please wait a few minutes before trying again.",
+    "category.tutoring_academic_help": "Tutoring & Academic Help",
+    "category.tech_device_repair": "Tech & Device Repair",
+    "category.moving_hauling_assistance": "Moving & Hauling Assistance",
+    "category.graphic_design_creative": "Graphic Design & Creative",
+    "category.photography_videography": "Photography & Videography",
+    "category.cleaning_organization": "Cleaning & Organization",
+    "category.music_audio_services": "Music & Audio Services",
+    "category.hair_beauty_grooming": "Hair, Beauty & Grooming",
+    "category.delivery_errand_running": "Delivery & Errand Running",
+    "category.fitness_personal_training": "Fitness & Personal Training"
 }

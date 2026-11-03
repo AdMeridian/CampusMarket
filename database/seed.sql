@@ -74,10 +74,16 @@ INSERT INTO categories (id, name, slug, `type`) VALUES
 (8,  'Stationery & Study Supplies', 'stationery-study-supplies', 'product'),
 (9,  'Dorm & Living Essentials', 'dorm-living-essentials', 'product'),
 (10, 'Transportation (Bikes & Scooters)', 'transportation', 'product'),
-(11, 'Tutoring & Academic Help', 'tutoring', 'service'),
-(12, 'Cleaning Services', 'cleaning', 'service'),
-(13, 'Moving & Packing', 'moving', 'service'),
-(14, 'Photography & Media', 'photography', 'service');
+(11, 'Tutoring & Academic Help', 'tutoring-academic-help', 'service'),
+(12, 'Tech & Device Repair', 'tech-device-repair', 'service'),
+(13, 'Moving & Hauling Assistance', 'moving-hauling-assistance', 'service'),
+(14, 'Graphic Design & Creative', 'graphic-design-creative', 'service'),
+(15, 'Photography & Videography', 'photography-videography', 'service'),
+(16, 'Cleaning & Organization', 'cleaning-organization', 'service'),
+(17, 'Music & Audio Services', 'music-audio-services', 'service'),
+(18, 'Hair, Beauty & Grooming', 'hair-beauty-grooming', 'service'),
+(19, 'Delivery & Errand Running', 'delivery-errand-running', 'service'),
+(20, 'Fitness & Personal Training', 'fitness-personal-training', 'service');
 
 -- Available services (local XAMPP seed data)
 INSERT INTO services (id, name, description, icon, sort_order, is_active) VALUES

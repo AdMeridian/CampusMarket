@@ -533,5 +533,15 @@
     "push.enabling_btn": "Etkinleştiriliyor…",
     "product.listed_as": "Listelenen fiyat: {amount}",
     "product.currency_converted_hint": "Fiyatlar bugünün kuruyla ₺ cinsine çevrilmiştir",
-    "auth.error_rate_limit": "Çok fazla başarısız giriş denemesi. Lütfen birkaç dakika bekleyip tekrar deneyin."
+    "auth.error_rate_limit": "Çok fazla başarısız giriş denemesi. Lütfen birkaç dakika bekleyip tekrar deneyin.",
+    "category.tutoring_academic_help": "Ders & Akademik Yardım",
+    "category.tech_device_repair": "Teknoloji & Cihaz Tamiri",
+    "category.moving_hauling_assistance": "Taşıma & Nakliye Yardımı",
+    "category.graphic_design_creative": "Grafik Tasarım & Yaratıcı",
+    "category.photography_videography": "Fotoğraf & Video Çekimi",
+    "category.cleaning_organization": "Temizlik & Düzenleme",
+    "category.music_audio_services": "Müzik & Ses Hizmetleri",
+    "category.hair_beauty_grooming": "Saç, Güzellik & Bakım",
+    "category.delivery_errand_running": "Teslimat & Ayak İşleri",
+    "category.fitness_personal_training": "Fitness & Özel Antrenman"
 }

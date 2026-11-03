@@ -2436,8 +2436,18 @@ function seedDefaultServices(PDO $pdo): int {
         }
         $stmt->execute([$name, $description, $icon, $sortOrder]);
         $added += $stmt->rowCount() > 0 ? 1 : 0;
+
+        // Keep main categories table synchronized
+        $catSlug = sanitize(strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-')));
+        if ($driver === 'pgsql') {
+            $catStmt = $pdo->prepare("INSERT INTO categories (name, slug, type) VALUES (?, ?, 'service') ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name");
+        } else {
+            $catStmt = $pdo->prepare("INSERT INTO categories (name, slug, type) VALUES (?, ?, 'service') ON DUPLICATE KEY UPDATE name = VALUES(name)");
+        }
+        $catStmt->execute([$name, $catSlug]);
     }
 
+    invalidateNavCategoriesCache();
     return $added;
 }
 
