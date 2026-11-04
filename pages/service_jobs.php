@@ -268,6 +268,9 @@ include __DIR__ . '/../includes/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="md:col-span-2">
+                        <p id="request-ai-status" class="text-muted small mt-2 mb-0" role="status" aria-live="polite"></p>
+                    </div>
                     <div>
                         <label class="block font-bold mb-2" for="job-location"><?= __('service_requests.location') ?> <span class="text-danger">*</span></label>
                         <select class="premium-input w-full" id="job-location" name="location_town" required>
@@ -399,5 +402,81 @@ include __DIR__ . '/../includes/header.php';
         <?php endif; ?>
     </div>
 </main>
+
+<script>
+(() => {
+    const form = document.querySelector('.service-jobs-post-panel form');
+    const title = document.getElementById('job-title');
+    const category = document.getElementById('job-category');
+    const status = document.getElementById('request-ai-status');
+
+    if (!form || !title || !category || !status) return;
+
+    let debounceTimer;
+    let activeRequest;
+    let requestSequence = 0;
+    let lastCategorizedTitle = '';
+
+    const categorizeTitle = async () => {
+        const requestTitle = title.value.trim();
+        if (requestTitle.length < 3 || requestTitle === lastCategorizedTitle) return;
+
+        activeRequest?.abort();
+        activeRequest = new AbortController();
+        const controller = activeRequest;
+        const currentSequence = ++requestSequence;
+        status.textContent = <?= json_encode(__('service_requests.ai_category_loading')) ?>;
+        try {
+            const response = await fetch(<?= json_encode(BASE_URL . 'api/ai_classify_service.php') ?>, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': form.querySelector('input[name="csrf_token"]')?.value || ''
+                },
+                body: JSON.stringify({
+                    action: 'request_category',
+                    title: requestTitle
+                }),
+                signal: controller.signal
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok || !result.data) {
+                throw new Error(result.error || <?= json_encode(__('service_requests.ai_category_failed')) ?>);
+            }
+            if (currentSequence !== requestSequence || title.value.trim() !== requestTitle) return;
+
+            const option = Array.from(category.options).find(item => item.value === String(result.data.category_id));
+            if (!option) {
+                throw new Error(<?= json_encode(__('service_requests.ai_category_invalid')) ?>);
+            }
+            category.value = option.value;
+            lastCategorizedTitle = requestTitle;
+            status.textContent = <?= json_encode(__('service_requests.ai_category_set')) ?>.replace(
+                '{category}',
+                option.textContent.trim()
+            );
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            if (currentSequence !== requestSequence) return;
+            status.textContent = error instanceof Error
+                ? error.message
+                : <?= json_encode(__('service_requests.ai_category_failed')) ?>;
+        }
+    };
+
+    title.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        activeRequest?.abort();
+        requestSequence++;
+        const requestTitle = title.value.trim();
+        if (requestTitle.length < 3) {
+            status.textContent = '';
+            lastCategorizedTitle = '';
+            return;
+        }
+        debounceTimer = setTimeout(categorizeTitle, 900);
+    });
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
