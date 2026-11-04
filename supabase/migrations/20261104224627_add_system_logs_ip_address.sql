@@ -1,0 +1,2 @@
+ALTER TABLE public.system_logs
+ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45) NULL;
