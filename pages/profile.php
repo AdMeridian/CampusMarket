@@ -51,6 +51,7 @@ if ($universityName === '' && !empty($user['university_id'])) {
 $isSelf  = isLoggedIn() && (int)currentUserId() === (int)$user['id'];
 $rating  = getSellerRating($pdo, (int)$user['id']);
 $trust   = getSellerTrustScore($pdo, (int)$user['id']);
+$hasTrustScore = $trust['tier'] !== 'New Seller';
 $pageTitle = sanitize($user['username']) . "'s Profile";
 $activeTab = in_array($_GET['tab'] ?? 'about', ['about', 'listings', 'services']) ? ($_GET['tab'] ?? 'about') : 'about';
 
@@ -289,6 +290,11 @@ include '../includes/header.php';
     color: #fff;
     border-bottom-color: #fff;
     background: rgba(255,255,255,0.07);
+}
+
+body.dark-mode .profile-tab.active {
+    color: #064e3b;
+    border-bottom-color: #064e3b;
 }
 
 .profile-tab .tab-count {
@@ -715,7 +721,9 @@ body.dark-mode .btn-white-solid:hover {
                     <span class="badge" style="background: rgba(255,255,255,0.22); color: #fff; font-size: 0.72rem; padding: 0.18rem 0.55rem; border: 1px solid rgba(255,255,255,0.35); border-radius: var(--radius-lg);">
                         <?php echo sanitize($trust['tier']); ?>
                     </span>
+                    <?php if ($hasTrustScore): ?>
                     <span style="font-size: 0.82rem; color: rgba(255,255,255,0.88);">Trust Score: <?php echo (int)$trust['score']; ?>/100</span>
+                    <?php endif; ?>
                     <?php if ($serviceCount > 0): ?>
                     <a href="<?php echo BASE_URL; ?>pages/services.php?seller=<?php echo (int)$user['id']; ?>" class="badge" style="background: var(--service); color: #fff; text-decoration: none; font-size: 0.72rem; padding: 0.18rem 0.55rem; border-radius: var(--radius-lg); font-weight: 700;">
                         Service Provider (<?php echo $serviceCount; ?>)
@@ -786,7 +794,7 @@ body.dark-mode .btn-white-solid:hover {
                         <div class="profile-stat-label">Rating</div>
                     </div>
                     <div class="profile-stat" style="border-right: none;">
-                        <div class="profile-stat-num"><?php echo (int)$trust['score']; ?></div>
+                        <div class="profile-stat-num"><?php echo $hasTrustScore ? (int)$trust['score'] : '—'; ?></div>
                         <div class="profile-stat-label">Trust</div>
                     </div>
                 </div>

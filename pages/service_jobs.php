@@ -213,7 +213,7 @@ include __DIR__ . '/../includes/header.php';
 }
 </style>
 
-<main class="min-h-screen pt-24 pb-16">
+<div class="min-h-screen pt-24 pb-16">
     <div class="container" style="max-width: 1120px;">
         <header class="service-jobs-hero">
             <div>
@@ -401,7 +401,7 @@ include __DIR__ . '/../includes/header.php';
             <?php endif; ?>
         <?php endif; ?>
     </div>
-</main>
+</div>
 
 <script>
 (() => {

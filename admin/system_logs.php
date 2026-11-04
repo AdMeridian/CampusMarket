@@ -348,13 +348,16 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="glass-panel mb-6 p-4" style="border-radius: var(--radius-lg);">
         <form method="GET" action="system_logs.php" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin: 0;">
             <div style="flex: 1; min-width: 200px;">
+                <label class="visually-hidden" for="system-log-search">Search system logs</label>
                 <input type="text" name="q" value="<?= htmlspecialchars($searchQuery, ENT_QUOTES, 'UTF-8') ?>"
+                       id="system-log-search"
                        placeholder="Search error messages, user email, URL..." 
                        class="w-full bg-surface border-light py-2 px-3 text-main"
                        style="border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.9rem;">
             </div>
             <div style="min-width: 160px;">
-                <select name="category" class="w-full bg-surface border-light py-2 px-3 text-main" style="border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.9rem;">
+                <label class="visually-hidden" for="system-log-category">Filter logs by category</label>
+                <select id="system-log-category" name="category" class="w-full bg-surface border-light py-2 px-3 text-main" style="border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 0.9rem;">
                     <option value="">All Categories</option>
                     <?php foreach ($allCategories as $cat): ?>
                         <option value="<?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?>" <?= $selectedCategory === $cat ? 'selected' : '' ?>>

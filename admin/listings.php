@@ -408,7 +408,9 @@ require_once __DIR__ . '/../includes/header.php';
                     <input type="hidden" name="type" value="<?= htmlspecialchars($typeFilter) ?>">
                 <?php endif; ?>
                 <div style="position: relative; flex: 1;">
+                    <label class="visually-hidden" for="admin-listings-search">Search listings by title, seller, or ID</label>
                     <input type="text"
+                           id="admin-listings-search"
                            name="q"
                            value="<?= htmlspecialchars($searchQuery) ?>"
                            placeholder="Search title, seller @username, or #ID..."

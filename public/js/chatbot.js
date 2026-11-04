@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const HISTORY_KEY = 'cm_chatbot_history_v2';
     let conversationHistory = loadHistory();
     let isSubmitting = false;
+    let updateFabOverlap = () => {};
 
     const strings = window.__chatbotStrings || {
         welcome: isTurkish
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isOpen) {
             chatbotWindow.classList.remove('open');
             chatbotFab.classList.remove('is-hidden');
+            updateFabOverlap();
         } else {
             chatbotWindow.classList.add('open');
             chatbotFab.classList.add('is-hidden');
@@ -59,7 +61,33 @@ document.addEventListener('DOMContentLoaded', () => {
     chatbotClose.addEventListener('click', () => {
         chatbotWindow.classList.remove('open');
         chatbotFab.classList.remove('is-hidden');
+        updateFabOverlap();
     });
+
+    const filterSidebar = document.getElementById('filter-sidebar');
+    if (filterSidebar && window.matchMedia('(max-width: 480px)').matches) {
+        let overlapCheckScheduled = false;
+        updateFabOverlap = () => {
+            if (overlapCheckScheduled) return;
+            overlapCheckScheduled = true;
+            requestAnimationFrame(() => {
+                overlapCheckScheduled = false;
+                if (chatbotWindow.classList.contains('open')) return;
+                const fabRect = chatbotFab.getBoundingClientRect();
+                const overlapsControl = [...filterSidebar.querySelectorAll('input:not([type="hidden"]), select, textarea, button')]
+                    .some(control => {
+                        const rect = control.getBoundingClientRect();
+                        return rect.width > 0 && rect.height > 0 &&
+                            fabRect.left < rect.right && fabRect.right > rect.left &&
+                            fabRect.top < rect.bottom && fabRect.bottom > rect.top;
+                    });
+                chatbotFab.classList.toggle('is-obscured', overlapsControl);
+            });
+        };
+        window.addEventListener('scroll', updateFabOverlap, { passive: true });
+        window.addEventListener('resize', updateFabOverlap);
+        updateFabOverlap();
+    }
 
     if (chatbotClear) {
         chatbotClear.addEventListener('click', () => {

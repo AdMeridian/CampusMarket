@@ -44,6 +44,7 @@
 }
 
 .cm-chatbot-fab.is-hidden,
+.cm-chatbot-fab.is-obscured,
 body:has(#cm-chatbot-window.open) #cm-chatbot-fab {
     opacity: 0 !important;
     pointer-events: none !important;
@@ -428,9 +429,15 @@ body.dark-mode .cm-chatbot-window {
     }
 
     .cm-chatbot-fab {
-        bottom: calc(5.5rem + env(safe-area-inset-bottom));
+        bottom: calc(7.5rem + env(safe-area-inset-bottom));
         right: 1.25rem;
         width: 52px;
         height: 52px;
+    }
+
+    body:has(#filter-sidebar) .cm-chatbot-fab {
+        bottom: calc(14rem + env(safe-area-inset-bottom));
+        left: 1rem;
+        right: auto;
     }
 }

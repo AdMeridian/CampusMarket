@@ -46,16 +46,38 @@ $displayCats = getHomepageCategorySections($pdo, HOME_CATEGORY_SECTION_LIMIT, HO
 // Hero Carousel Logic
 document.addEventListener('DOMContentLoaded', function() {
     const slides = document.querySelectorAll('.hero-slide');
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
     let currentSlide = 0;
+    let autoTimer = null;
     
     function nextSlide() {
         slides[currentSlide].classList.remove('active');
         currentSlide = (currentSlide + 1) % slides.length;
         slides[currentSlide].classList.add('active');
     }
-    
-    // Change slide every 5 seconds
-    setInterval(nextSlide, 5000);
+
+    function stopRotation() {
+        if (autoTimer !== null) {
+            clearInterval(autoTimer);
+            autoTimer = null;
+        }
+    }
+
+    function startRotation() {
+        stopRotation();
+        if (!motionPreference.matches && slides.length > 1) {
+            autoTimer = setInterval(nextSlide, 5000);
+        }
+    }
+
+    motionPreference.addEventListener('change', function() {
+        if (motionPreference.matches) {
+            stopRotation();
+        }
+        startRotation();
+    });
+
+    startRotation();
 });
 </script>
 

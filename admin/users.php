@@ -389,9 +389,11 @@ include '../includes/header.php';
         <!-- Search input & Filters -->
         <form method="GET" action="users.php" style="display: flex; gap: 0.6rem; margin-top: 1.25rem; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 220px; position: relative;">
-                <input type="text" name="q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Search by username or email..." class="premium-input" style="width: 100%; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
+                <label class="visually-hidden" for="user-search">Search users by username or email</label>
+                <input type="text" id="user-search" name="q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Search by username or email..." class="premium-input" style="width: 100%; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
             </div>
-            <select name="campus" class="premium-input" style="min-width: 180px; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
+            <label class="visually-hidden" for="users-campus">Filter users by campus</label>
+            <select id="users-campus" name="campus" class="premium-input" style="min-width: 180px; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
                 <option value="">All Campuses (<?php echo $totalUsersCount; ?>)</option>
                 <?php foreach ($campusDistribution as $dKey => $cStat): ?>
                     <option value="<?php echo htmlspecialchars($dKey); ?>" <?php echo (strtolower($selectedCampus) === strtolower($dKey) || strtolower($selectedCampus) === strtolower($cStat['code'])) ? 'selected' : ''; ?>>

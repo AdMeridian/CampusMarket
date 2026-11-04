@@ -324,7 +324,10 @@ if ($action === 'fetch') {
         }
 
         $sharedProduct = null;
-        if (preg_match('#(?:product\.php\?id=|/product/)(\d+)#i', $originalText, $singleMatch)) {
+        $messageProductId = (int)($msg['product_id'] ?? 0);
+        if ($messageProductId > 0 && isset($productMetaMap[$messageProductId])) {
+            $sharedProduct = $productMetaMap[$messageProductId];
+        } elseif (preg_match('#(?:product\.php\?id=|/product/)(\d+)#i', $originalText, $singleMatch)) {
             $targetPid = (int)$singleMatch[1];
             if (isset($productMetaMap[$targetPid])) {
                 $sharedProduct = $productMetaMap[$targetPid];
@@ -349,6 +352,7 @@ if ($action === 'fetch') {
             'is_mine' => $msg['sender_id'] == $currentUserId,
             'sender_name' => $msg['sender_name'],
             'created_at' => date('c', strtotime((string)($msg['created_at'] ?? ''))),
+            'product_id' => $messageProductId > 0 ? $messageProductId : null,
             'shared_product' => $sharedProduct,
         ];
     }

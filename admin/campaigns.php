@@ -441,14 +441,41 @@ require_once __DIR__ . '/../includes/header.php';
 <style>
 .campaign-studio-grid {
     display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
     gap: 1.75rem;
     align-items: start;
 }
 
 @media (max-width: 1024px) {
     .campaign-studio-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .campaign-studio-grid > *,
+    .campaign-composer {
+        min-width: 0;
+    }
+
+    .campaign-composer {
+        padding: 1rem !important;
+    }
+
+    .campaign-composer .grid-cols-2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .campaign-composer .channel-card {
+        min-width: min(180px, 100%);
+    }
+
+    .campaign-history-scroll {
+        max-width: 100%;
+    }
+
+    .campaign-history-scroll .table {
+        min-width: 620px;
     }
 }
 
@@ -670,7 +697,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="campaign-studio-grid">
         
         <!-- Left Column: Broadcast Composer -->
-        <div class="glass-panel" style="padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+        <div class="glass-panel campaign-composer" style="padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
             <h2 style="font-size: 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
                 <svg style="width: 20px; height: 20px; color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -795,7 +822,7 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <!-- Image / Banner Upload -->
                     <div class="form-group mb-4">
-                        <label class="form-label" style="font-weight: 600; font-size: 0.85rem;">
+                        <label for="showcaseImage" class="form-label" style="font-weight: 600; font-size: 0.85rem;">
                             Showcase Hero Banner (Optional)
                         </label>
                         <input type="file" id="showcaseImage" name="showcase_image" accept="image/png, image/jpeg, image/webp" class="form-control form-control-sm" onchange="handleImageSelected(this)">
@@ -832,7 +859,8 @@ require_once __DIR__ . '/../includes/header.php';
                 <!-- Dispatch Actions -->
                 <div style="border-top: 1px solid var(--border-light); padding-top: 1.5rem;" class="flex justify-between items-center flex-wrap gap-3">
                     <div class="flex items-center gap-2">
-                        <input type="email" name="test_email" class="form-control form-control-sm" style="width: 200px;" value="<?php echo htmlspecialchars($adminEmail); ?>" placeholder="Admin test email">
+                        <label class="visually-hidden" for="campaign-test-email">Test campaign email address</label>
+                        <input type="email" id="campaign-test-email" name="test_email" class="form-control form-control-sm" style="width: 200px;" value="<?php echo htmlspecialchars($adminEmail); ?>" placeholder="Admin test email">
                         <button type="submit" name="action" value="send_test" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-md);">
                             ✉ Send Test
                         </button>
@@ -951,9 +979,10 @@ List your items on CampusMarket today to find buyers right on your campus.
     </div>
 
     <!-- Past Campaigns History -->
-    <div class="glass-panel table-responsive mt-12" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); padding: 1.5rem;">
+    <div class="glass-panel mt-12" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); padding: 1.5rem;">
         <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Past Broadcast Campaigns</h2>
 
+        <div class="campaign-history-scroll" style="overflow-x: auto;">
         <table class="table w-full text-left" style="border-collapse: collapse; margin: 0;">
             <thead>
                 <tr style="background: var(--bg-surface);">
@@ -1008,6 +1037,7 @@ List your items on CampusMarket today to find buyers right on your campus.
                 <?php endif; ?>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

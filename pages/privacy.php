@@ -55,6 +55,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <li><?= __('policy.privacy.s6_li_payments') ?></li>
                 <li><?= __('policy.privacy.s6_li_email') ?></li>
                 <li><?= __('policy.privacy.s6_li_safety') ?></li>
+                <li><?= __('policy.privacy.s6_li_provider_ai') ?></li>
             </ul>
             <p><?= __('policy.privacy.s6_outro') ?></p>
 

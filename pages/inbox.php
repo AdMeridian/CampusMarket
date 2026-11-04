@@ -115,7 +115,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 .convo-card.unread {
     border-left: 3px solid var(--primary);
-    background: rgba(99,102,241,0.02);
+    background: color-mix(in srgb, var(--primary) 2%, transparent);
 }
 
 /* Avatar */
@@ -296,7 +296,7 @@ body.dark-mode .convo-avatar {
 
 /* Dark mode tweaks */
 body.dark-mode .convo-card.unread {
-    background: rgba(99,102,241,0.04);
+    background: color-mix(in srgb, var(--primary) 4%, transparent);
 }
 </style>
 
@@ -346,6 +346,7 @@ body.dark-mode .convo-card.unread {
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
             </span>
+            <label class="visually-hidden" for="user-search-input"><?= __('inbox.search_placeholder') ?></label>
             <input type="text" id="user-search-input" placeholder="<?= __('inbox.search_placeholder') ?>" 
                    class="w-full bg-surface border-light py-3 pl-10 pr-4 text-main transition-all duration-200" 
                    style="width: 100%; border-radius: var(--radius-md); font-size: 0.95rem; border: 1px solid var(--border-light); outline: none; background: var(--bg-surface); padding: 0.75rem 1rem 0.75rem 2.75rem; box-sizing: border-box;" 
@@ -363,7 +364,7 @@ body.dark-mode .convo-card.unread {
 
     <?php if ($adminId && $adminId != $currentUserId): ?>
     <div class="mb-6">
-        <a href="messages.php?other_user_id=<?= $adminId ?>&product_id=0" class="flex items-center gap-4 p-4 rounded-xl shadow-sm transition-all hover-scale" style="background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%); border: 1px solid rgba(99,102,241,0.2); text-decoration: none;">
+        <a href="messages.php?other_user_id=<?= $adminId ?>&product_id=0" class="flex items-center gap-4 p-4 rounded-xl shadow-sm transition-all hover-scale" style="background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, transparent) 0%, color-mix(in srgb, var(--primary) 5%, transparent) 100%); border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent); text-decoration: none;">
             <div class="flex items-center justify-center bg-white shadow-sm flex-shrink-0" style="width: 42px; height: 42px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border-light);">
                 <img src="<?= htmlspecialchars($appLogoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="CampusMarket" style="width: 100%; height: 100%; object-fit: contain; padding: 5px; box-sizing: border-box;">
             </div>
@@ -397,7 +398,7 @@ body.dark-mode .convo-card.unread {
                     $isAdminConvo = (($conv['other_role'] ?? '') === 'admin');
                     $hasAvatar = !$isAdminConvo && !empty($conv['other_avatar']);
                 ?>
-                <a href="<?= BASE_URL ?>/pages/messages.php?product_id=0&other_user_id=<?= $conv['other_user_id'] ?>"
+                <a href="<?= BASE_URL ?>/pages/messages.php?product_id=<?= (int)($conv['product_id'] ?? 0) ?>&other_user_id=<?= $conv['other_user_id'] ?>"
                    class="convo-card <?= $isUnread ? 'unread' : '' ?>">
 
                     <!-- Avatar -->
@@ -493,7 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Custom hover state utilizing active styles dynamically
             item.addEventListener('mouseenter', () => {
-                item.style.background = 'rgba(99,102,241,0.08)';
+                item.style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)';
             });
             item.addEventListener('mouseleave', () => {
                 item.style.background = 'transparent';

@@ -483,6 +483,7 @@ $images = $stmt->fetchAll();
 // Fetch Seller Stats (for SCC)
 $rating = getSellerRating($pdo, (int)$product['seller_id']);
 $trust  = getSellerTrustScore($pdo, (int)$product['seller_id']);
+$hasTrustScore = $trust['tier'] !== 'New Seller';
 
 // Fetch Service-Specific Reviews and Stats
 $stmtServiceStats = $pdo->prepare("SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as review_count FROM ratings WHERE product_id = ?");
@@ -1553,7 +1554,9 @@ body.dark-mode .scc-badge {
                                 <span class="scc-badge">
                                     <?= $rating['count'] > 5 ? __('product.trusted_seller') : __('product.new_seller') ?>
                                 </span>
+                                <?php if ($hasTrustScore): ?>
                                 <div style="color: var(--text-muted);"><?= __('product.trust_score') ?> <span style="font-weight: 700; color: var(--text-main);"><?php echo (int)$trust['score']; ?>/100</span> <span style="opacity: 0.4; cursor: help;" title="<?php echo sanitize($trust['tier']); ?>">&#9432;</span></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </a>
