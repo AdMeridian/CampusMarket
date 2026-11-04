@@ -7,6 +7,7 @@ $categoryId = $_GET['category'] ?? '';
 $town = $_GET['town'] ?? '';
 $page = max(1, (int)($_GET['page'] ?? 1));
 $pageTitle = __('search.page_title') . ($query ? ": " . $query : "");
+$bodyClass = 'page-search';
 $pageDescription = $query !== ''
     ? __('search.page_title') . ': ' . $query . ' — ' . __('seo.default_description')
     : __('seo.search_description');
@@ -128,7 +129,7 @@ require_once __DIR__ . '/../includes/header.php';
             </p>
         </div>
 
-        <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar" style="flex: 1; max-width: 450px; height: 48px;">
+        <form action="<?php echo BASE_URL; ?>pages/search.php" method="GET" class="search-bar search-results-form" style="flex: 1; max-width: 450px; height: 48px;">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -146,11 +147,11 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 
     <?php if (empty($results)): ?>
-        <div class="glass-panel p-20 text-center shadow-sm relative overflow-hidden" style="border-radius: var(--radius-xl); border: 2px dashed rgba(0,0,0,0.05);">
-            <div class="text-8xl mb-6 opacity-20" style="transform: rotate(-10deg);">🔦</div>
+        <div class="glass-panel search-empty-state text-center shadow-sm relative overflow-hidden" style="border-radius: var(--radius-xl); border: 2px dashed rgba(0,0,0,0.05);">
+            <div class="search-empty-state__icon opacity-20" style="transform: rotate(-10deg);">🔦</div>
             <h3 class="empty-state-title mb-3"><?= __('search.no_items_matched') ?></h3>
             <p class="page-subtitle max-w-lg mx-auto mb-8"><?= __('search.no_items_desc', ['query' => '<strong class="text-primary">' . sanitize($query) . '</strong>']) ?></p>
-            <div class="flex justify-center gap-4 flex-wrap">
+            <div class="search-empty-actions">
                 <a href="<?php echo BASE_URL; ?>pages/browse.php" class="btn btn-secondary shadow-md hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold;"><?= __('search.browse_all_items') ?></a>
                 <?php if ($query !== ''): ?>
                     <a href="<?php echo BASE_URL; ?>pages/services.php?q=<?php echo urlencode($query); ?>" class="btn hover-scale" style="border-radius: var(--radius-lg); padding: 0.8rem 2rem; font-weight: bold; background: #e53e3e; color: white; border: none;">
