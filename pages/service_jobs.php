@@ -40,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $budgetInput = trim((string) ($_POST['budget_max'] ?? ''));
     $organizationName = trim((string) ($_POST['organization_name'] ?? ''));
 
-    if (mb_strlen($title) < 8 || mb_strlen($title) > 120) {
-        setFlash('error', 'Use a title between 8 and 120 characters.');
+    if ($title === '' || mb_strlen($title) > 120) {
+        setFlash('error', 'Enter a request title of up to 120 characters.');
         redirect(BASE_URL . 'pages/service_jobs.php?post=1');
     }
     if (mb_strlen($description) < 20 || mb_strlen($description) > 5000) {
@@ -253,7 +253,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2">
                         <label class="block font-bold mb-2" for="job-title"><?= __('service_requests.what_needed') ?> <span class="text-danger">*</span></label>
-                        <input class="premium-input w-full" id="job-title" name="title" minlength="8" maxlength="120" required placeholder="<?= __('service_requests.title_placeholder') ?>">
+                        <input class="premium-input w-full" id="job-title" name="title" maxlength="120" required placeholder="<?= __('service_requests.title_placeholder') ?>">
                     </div>
                     <div class="md:col-span-2">
                         <label class="block font-bold mb-2" for="job-description"><?= __('service_requests.describe_work') ?> <span class="text-danger">*</span></label>

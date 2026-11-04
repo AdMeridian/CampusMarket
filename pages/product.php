@@ -89,6 +89,9 @@ if ($canCountView) {
 $isOwner = isLoggedIn() && ((int)currentUserId() === (int)$product['seller_id'] || isAdmin());
 $listingMessageProductId = ($product['listing_type'] ?? 'product') === 'service' ? 0 : $productId;
 $listingConversationPath = 'pages/messages.php?other_user_id=' . (int)$product['seller_id'] . '&product_id=' . $listingMessageProductId;
+if (($product['listing_type'] ?? 'product') === 'service') {
+    $listingConversationPath .= '&return_product_id=' . $productId;
+}
 $listingConversationUrl = isLoggedIn()
     ? BASE_URL . $listingConversationPath
     : BASE_URL . 'pages/login.php?redirect=' . rawurlencode($listingConversationPath);
