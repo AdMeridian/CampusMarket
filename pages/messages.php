@@ -9,6 +9,7 @@ $jobId = (int)($_GET['job_id'] ?? 0);
 $otherUserId = (int)($_GET['other_user_id'] ?? $_GET['to'] ?? 0);
 $currentUserId = (int) currentUserId();
 $serviceJobContext = null;
+$backUrl = BASE_URL . 'pages/inbox.php';
 
 if (!$otherUserId) {
     setFlash('error', 'Invalid conversation context.');
@@ -52,6 +53,7 @@ if ($productId > 0) {
         setFlash('error', 'Invalid chat context for this product.');
         redirect(BASE_URL . '/pages/inbox.php');
     }
+    $backUrl = BASE_URL . 'pages/product.php?id=' . $productId;
 } else {
     // Support or Direct Message Context
     $stmt = $pdo->prepare("SELECT username, avatar, role, last_seen_at FROM users WHERE id = :id");
@@ -61,6 +63,22 @@ if ($productId > 0) {
     if (!$otherUser) {
         setFlash('error', 'User no longer exists.');
         redirect(BASE_URL . '/pages/inbox.php');
+    }
+
+    $returnProductId = (int) ($_GET['return_product_id'] ?? 0);
+    if ($returnProductId > 0) {
+        $returnProductStmt = $pdo->prepare(
+            "SELECT id FROM products
+             WHERE id = :id AND user_id = :seller_id AND listing_type = 'service'
+             LIMIT 1"
+        );
+        $returnProductStmt->execute([
+            ':id' => $returnProductId,
+            ':seller_id' => $otherUserId,
+        ]);
+        if ($returnProductStmt->fetchColumn()) {
+            $backUrl = BASE_URL . 'pages/product.php?id=' . $returnProductId;
+        }
     }
     
     // Check if either current user or other user is admin
@@ -160,11 +178,11 @@ $presenceText = match($otherPresence['status']) {
 <div class="chat-page-shell main-content">
     <div class="chat-thread-panel glass-panel">
         <header class="chat-composer-header">
-            <button type="button" onclick="goBackOrInbox()" class="chat-back-btn" title="<?= htmlspecialchars(__('nav.mobile_menu_back')) ?>" aria-label="<?= htmlspecialchars(__('nav.mobile_menu_back')) ?>">
+            <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8') ?>" class="chat-back-btn" title="<?= htmlspecialchars(__('nav.mobile_menu_back')) ?>" aria-label="<?= htmlspecialchars(__('nav.mobile_menu_back')) ?>">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
-            </button>
+            </a>
 
             <?php if ($isOtherAdmin): ?>
             <div class="chat-peer">
@@ -394,19 +412,6 @@ $presenceText = match($otherPresence['status']) {
 </style>
 
 <script>
-function goBackOrInbox() {
-    if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
-        const ref = document.referrer;
-        if (ref.includes('login.php') || ref.includes('register.php') || ref.includes('messages.php')) {
-            window.location.href = 'inbox.php';
-        } else {
-            window.history.back();
-        }
-    } else {
-        window.location.href = 'inbox.php';
-    }
-}
-
 const productId = <?= $productId ?>;
 const otherUserId = <?= $otherUserId ?>;
 const isServiceListing = <?= (($product['listing_type'] ?? 'product') === 'service') ? 'true' : 'false' ?>;
@@ -1257,8 +1262,6 @@ function renderHandshakeBar(deal) {
                     ${deal.listing_type === 'service' ? '<button type="button" onclick="showSellerBookingAmend()" class="btn btn-secondary btn-md w-full">Amend Proposed Time</button>' : ''}
                     <button type="button" onclick="closeDealSheet()" class="btn btn-secondary btn-md w-full">${__('deal.not_done_yet')}</button>
                 </div>
-            </div>
-        `;
             </div>
         `;
     } else if (status === 'completed') {

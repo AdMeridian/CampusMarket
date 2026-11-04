@@ -40,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $budgetInput = trim((string) ($_POST['budget_max'] ?? ''));
     $organizationName = trim((string) ($_POST['organization_name'] ?? ''));
 
-    if (mb_strlen($title) < 8 || mb_strlen($title) > 120) {
-        setFlash('error', 'Use a title between 8 and 120 characters.');
+    if ($title === '' || mb_strlen($title) > 120) {
+        setFlash('error', 'Enter a request title of up to 120 characters.');
         redirect(BASE_URL . 'pages/service_jobs.php?post=1');
     }
     if (mb_strlen($description) < 20 || mb_strlen($description) > 5000) {
@@ -253,7 +253,7 @@ include __DIR__ . '/../includes/header.php';
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2">
                         <label class="block font-bold mb-2" for="job-title"><?= __('service_requests.what_needed') ?> <span class="text-danger">*</span></label>
-                        <input class="premium-input w-full" id="job-title" name="title" minlength="8" maxlength="120" required placeholder="<?= __('service_requests.title_placeholder') ?>">
+                        <input class="premium-input w-full" id="job-title" name="title" maxlength="120" required placeholder="<?= __('service_requests.title_placeholder') ?>">
                     </div>
                     <div class="md:col-span-2">
                         <label class="block font-bold mb-2" for="job-description"><?= __('service_requests.describe_work') ?> <span class="text-danger">*</span></label>
@@ -267,6 +267,9 @@ include __DIR__ . '/../includes/header.php';
                                 <option value="<?= (int) $category['id'] ?>"><?= htmlspecialchars(translateCategory($category['name']), ENT_QUOTES, 'UTF-8') ?></option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <p id="request-ai-status" class="text-muted small mt-2 mb-0" role="status" aria-live="polite"></p>
                     </div>
                     <div>
                         <label class="block font-bold mb-2" for="job-location"><?= __('service_requests.location') ?> <span class="text-danger">*</span></label>
@@ -399,5 +402,81 @@ include __DIR__ . '/../includes/header.php';
         <?php endif; ?>
     </div>
 </main>
+
+<script>
+(() => {
+    const form = document.querySelector('.service-jobs-post-panel form');
+    const title = document.getElementById('job-title');
+    const category = document.getElementById('job-category');
+    const status = document.getElementById('request-ai-status');
+
+    if (!form || !title || !category || !status) return;
+
+    let debounceTimer;
+    let activeRequest;
+    let requestSequence = 0;
+    let lastCategorizedTitle = '';
+
+    const categorizeTitle = async () => {
+        const requestTitle = title.value.trim();
+        if (requestTitle.length < 3 || requestTitle === lastCategorizedTitle) return;
+
+        activeRequest?.abort();
+        activeRequest = new AbortController();
+        const controller = activeRequest;
+        const currentSequence = ++requestSequence;
+        status.textContent = <?= json_encode(__('service_requests.ai_category_loading')) ?>;
+        try {
+            const response = await fetch(<?= json_encode(BASE_URL . 'api/ai_classify_service.php') ?>, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': form.querySelector('input[name="csrf_token"]')?.value || ''
+                },
+                body: JSON.stringify({
+                    action: 'request_category',
+                    title: requestTitle
+                }),
+                signal: controller.signal
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok || !result.data) {
+                throw new Error(result.error || <?= json_encode(__('service_requests.ai_category_failed')) ?>);
+            }
+            if (currentSequence !== requestSequence || title.value.trim() !== requestTitle) return;
+
+            const option = Array.from(category.options).find(item => item.value === String(result.data.category_id));
+            if (!option) {
+                throw new Error(<?= json_encode(__('service_requests.ai_category_invalid')) ?>);
+            }
+            category.value = option.value;
+            lastCategorizedTitle = requestTitle;
+            status.textContent = <?= json_encode(__('service_requests.ai_category_set')) ?>.replace(
+                '{category}',
+                option.textContent.trim()
+            );
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return;
+            if (currentSequence !== requestSequence) return;
+            status.textContent = error instanceof Error
+                ? error.message
+                : <?= json_encode(__('service_requests.ai_category_failed')) ?>;
+        }
+    };
+
+    title.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        activeRequest?.abort();
+        requestSequence++;
+        const requestTitle = title.value.trim();
+        if (requestTitle.length < 3) {
+            status.textContent = '';
+            lastCategorizedTitle = '';
+            return;
+        }
+        debounceTimer = setTimeout(categorizeTitle, 900);
+    });
+})();
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
