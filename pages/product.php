@@ -87,6 +87,11 @@ if ($canCountView) {
 }
 
 $isOwner = isLoggedIn() && ((int)currentUserId() === (int)$product['seller_id'] || isAdmin());
+$listingMessageProductId = ($product['listing_type'] ?? 'product') === 'service' ? 0 : $productId;
+$listingConversationPath = 'pages/messages.php?other_user_id=' . (int)$product['seller_id'] . '&product_id=' . $listingMessageProductId;
+$listingConversationUrl = isLoggedIn()
+    ? BASE_URL . $listingConversationPath
+    : BASE_URL . 'pages/login.php?redirect=' . rawurlencode($listingConversationPath);
 
 // Handle Price Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_price') {
@@ -1549,6 +1554,16 @@ body.dark-mode .scc-badge {
                             </div>
                         </div>
                     </a>
+                    <?php if (!$isOwner && ($product['listing_type'] ?? 'product') === 'service'): ?>
+                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn btn--service js-contact-seller"
+                       style="padding: 0.65rem 1rem; font-weight: 700; white-space: nowrap;"
+                       data-listing-id="<?= (int)$product['id'] ?>"
+                       data-category="<?= htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                       data-contact-method="message">
+                        <?= __('product.request_service') ?>
+                    </a>
+                    <?php endif; ?>
                     <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="scc-view-profile-btn">
                         <?= __('product.view_profile') ?> <span style="opacity: 0.45; font-size: 0.8rem; margin-left: 4px;">&#10095;</span>
                     </a>
@@ -1593,7 +1608,7 @@ body.dark-mode .scc-badge {
                         <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($product); ?></span>
                     </div>
                     <?php endif; ?>
-                    <a href="messages.php?other_user_id=<?php echo $product['seller_id']; ?>&product_id=<?php echo $product['id']; ?>"
+                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
                        class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
                        data-listing-id="<?php echo (int)$product['id']; ?>"
                        data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
@@ -1628,7 +1643,7 @@ body.dark-mode .scc-badge {
             <?php else: ?>
             <!-- Action Buttons for Guest Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
-                <a href="<?php echo BASE_URL; ?>pages/login.php?redirect=<?php echo urlencode('pages/messages.php?other_user_id=' . (int)$product['seller_id'] . '&product_id=' . (int)$product['id']); ?>" 
+                <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
                    class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
                    data-listing-id="<?php echo (int)$product['id']; ?>"
                    data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
