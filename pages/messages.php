@@ -1264,8 +1264,6 @@ function renderHandshakeBar(deal) {
                 </div>
             </div>
         `;
-            </div>
-        `;
     } else if (status === 'completed') {
         bannerHtml = `
             <div class="chat-deal-banner chat-deal-banner--completed" onclick="openDealSheet()">
