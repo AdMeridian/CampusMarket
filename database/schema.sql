@@ -312,7 +312,7 @@ CREATE TABLE messages (
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id)   REFERENCES users(id)    ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(id)    ON DELETE CASCADE,
-    FOREIGN KEY (product_id)  REFERENCES products(id) ON DELETE CASCADE
+    FOREIGN KEY (product_id)  REFERENCES products(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
