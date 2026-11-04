@@ -193,8 +193,8 @@ require_once '../includes/header.php';
                         <input type="hidden" name="category_id" value="<?php echo (int)$editingCategory['id']; ?>">
                         <?php endif; ?>
                         <div class="form-group">
-                            <label class="form-label">Category Name</label>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. Electronics, Books" required value="<?php echo $editingCategory ? sanitize($editingCategory['name']) : ''; ?>">
+                            <label class="form-label" for="category-name">Category Name</label>
+                            <input type="text" id="category-name" name="name" class="form-control" placeholder="e.g. Electronics, Books" required value="<?php echo $editingCategory ? sanitize($editingCategory['name']) : ''; ?>">
                         </div>
                         <?php if ($editingCategory): ?>
                         <button type="submit" name="edit_category" class="btn btn-primary" style="width: 100%; margin-bottom: 0.5rem;">Save Changes</button>

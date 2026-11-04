@@ -225,14 +225,6 @@ include '../includes/header.php';
                         </div>
                     </div>
 
-                    <!-- KVKK / AI Consent -->
-                    <div class="mb-4 p-3.5 rounded-xl" style="background: var(--bg-main); border: 1px solid var(--border-light);">
-                        <label class="flex items-start gap-3 cursor-pointer mb-0" style="font-size: 0.88rem;">
-                            <input type="checkbox" id="ai_consent" name="ai_consent" style="margin-top: 3px; flex-shrink: 0;">
-                            <span class="text-muted" style="line-height: 1.45;">I agree to send the skills and profile text I enter to an external AI service (Google Gemini or OpenRouter) for suggestions. <a href="<?= BASE_URL ?>pages/privacy.php" target="_blank" rel="noopener noreferrer" class="text-primary font-bold">Privacy Policy</a></span>
-                        </label>
-                    </div>
-
                     <!-- AI Trigger Button -->
                     <div class="flex items-center justify-between gap-4 flex-wrap pt-3 border-t" style="border-color: var(--border-light);">
                         <div class="flex items-center gap-2 flex-wrap">
@@ -243,9 +235,23 @@ include '../includes/header.php';
                                 Enter details myself
                             </button>
                         </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="aiConsentStatus" class="text-muted small" role="status" aria-live="polite" style="display: none;"></span>
+                            <button type="button" id="withdrawAiConsent" class="text-primary small font-bold" hidden style="background: none; border: 0; padding: 0.35rem; text-decoration: underline;">Turn off AI sharing</button>
+                        </div>
                         <span id="aiStatus" class="text-muted small font-medium" role="status" aria-live="polite" style="display: none;"></span>
                     </div>
                 </div>
+
+                <dialog id="providerAiConsentDialog" aria-labelledby="providerAiConsentTitle" style="position: fixed; top: 50%; left: 50vw; transform: translate(-50%, -50%); width: min(28rem, calc(100vw - 2rem)); max-width: calc(100vw - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; box-sizing: border-box; margin: 0; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; color: var(--text-main); background: var(--bg-surface);">
+                    <h2 id="providerAiConsentTitle" class="font-bold mb-3" style="font-size: 1.2rem;">Use AI suggestions?</h2>
+                    <p class="text-muted mb-4" style="line-height: 1.5;">Your skills description may be sent to Google Gemini or OpenRouter for suggestions. Your bio, portfolio link, and account details are not sent. This choice is saved in this browser until you turn it off.</p>
+                    <p class="text-sm mb-5"><a href="<?= BASE_URL ?>pages/privacy.php" target="_blank" rel="noopener noreferrer" class="text-primary font-bold">Read the Privacy Policy</a></p>
+                    <div class="flex justify-end gap-3 flex-wrap">
+                        <button type="button" id="declineAiConsent" class="btn btn-secondary">Not now</button>
+                        <button type="button" id="acceptAiConsent" class="btn btn-primary">Agree &amp; continue</button>
+                    </div>
+                </dialog>
 
                 <input type="hidden" id="edited_fields_input" name="edited_fields" value="[]">
                 <input type="hidden" id="existing_product_id" name="existing_product_id" value="">
@@ -392,6 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const csrfToken = <?= json_encode($csrfToken ?? ($_COOKIE['csrf_token'] ?? '')) ?>;
     const draftStorageKey = <?= json_encode('campusmarket.providerOnboardDraft.' . $currentUserId) ?>;
+    const aiConsentStorageKey = <?= json_encode('campusmarket.providerAiConsent.' . $currentUserId) ?>;
 
     const btnLoadDraft    = document.getElementById('btnLoadExistingDraft');
     const btnDismissDraft = document.getElementById('btnDismissDraft');
@@ -500,19 +507,56 @@ document.addEventListener('DOMContentLoaded', () => {
     servicePriceInput?.addEventListener('input', toggleDelivery);
     toggleDelivery(); // run on load
 
-    // ── KVKK consent gates the AI button ─────────────────────────────────
-    const consentCheckbox = document.getElementById('ai_consent');
+    // ── Remember optional consent for provider AI suggestions ────────────
     const btnAnalyzeOuter = document.getElementById('btnAnalyzeAi');
-    function syncAiBtn() {
-        if (!btnAnalyzeOuter) return;
-        const isConsentGiven = !!consentCheckbox?.checked;
-        btnAnalyzeOuter.disabled = !isConsentGiven;
-        btnAnalyzeOuter.style.opacity = isConsentGiven ? '1' : '0.45';
-        btnAnalyzeOuter.style.cursor = isConsentGiven ? 'pointer' : 'not-allowed';
-        btnAnalyzeOuter.title = isConsentGiven ? '' : 'Please check the consent box directly above first to enable AI analysis';
+    const consentDialog = document.getElementById('providerAiConsentDialog');
+    const acceptConsentButton = document.getElementById('acceptAiConsent');
+    const declineConsentButton = document.getElementById('declineAiConsent');
+    const withdrawConsentButton = document.getElementById('withdrawAiConsent');
+    const consentStatus = document.getElementById('aiConsentStatus');
+    let aiConsentGiven = false;
+    function updateAiConsentControls(message = '') {
+        if (withdrawConsentButton) withdrawConsentButton.hidden = !aiConsentGiven;
+        if (consentStatus) {
+            consentStatus.textContent = message || (aiConsentGiven ? 'AI sharing is on for this browser.' : '');
+            consentStatus.style.display = consentStatus.textContent ? 'inline' : 'none';
+        }
     }
-    consentCheckbox?.addEventListener('change', syncAiBtn);
-    syncAiBtn(); // run on load (unticked by default)
+    try {
+        aiConsentGiven = localStorage.getItem(aiConsentStorageKey) === 'accepted';
+    } catch (error) {
+        console.warn('Unable to read the provider AI consent from this browser.', error);
+    }
+    updateAiConsentControls();
+
+    acceptConsentButton?.addEventListener('click', () => {
+        try {
+            localStorage.setItem(aiConsentStorageKey, 'accepted');
+            aiConsentGiven = true;
+            updateAiConsentControls();
+        } catch (error) {
+            aiConsentGiven = true;
+            console.warn('Unable to save the provider AI consent in this browser.', error);
+            updateAiConsentControls('Consent applies for this visit; this browser could not save it.');
+        }
+        consentDialog?.close('accepted');
+        btnAnalyzeOuter?.click();
+    });
+    declineConsentButton?.addEventListener('click', () => consentDialog?.close('declined'));
+    withdrawConsentButton?.addEventListener('click', () => {
+        try {
+            localStorage.removeItem(aiConsentStorageKey);
+            aiConsentGiven = false;
+            updateAiConsentControls('AI sharing is off. You will be asked again if you request suggestions.');
+        } catch (error) {
+            aiConsentGiven = false;
+            console.warn('Unable to save the provider AI consent in this browser.', error);
+            updateAiConsentControls('AI sharing is off for this visit, but saved consent could not be removed. Clear this site’s browser data to prevent it being remembered after reloading.');
+        }
+    });
+    consentDialog?.addEventListener('click', event => {
+        if (event.target === consentDialog) consentDialog.close('declined');
+    });
 
     // ── Track user manual edits to report signals to PostHog ─────────────
     const userEdited = {
@@ -676,9 +720,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnAnalyze && skillsInput) {
         btnAnalyze.addEventListener('click', async () => {
-            if (!consentCheckbox?.checked) {
-                setOnboardStatus('To use AI suggestions, first agree to send your description to an external AI service, or enter your details yourself.', true);
-                consentCheckbox?.focus();
+            if (!aiConsentGiven) {
+                if (consentDialog && typeof consentDialog.showModal === 'function') {
+                    consentDialog.showModal();
+                } else {
+                    setOnboardStatus('Your browser cannot show the AI consent prompt. Update your browser or enter details yourself.', true);
+                }
                 return;
             }
 
@@ -722,8 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     body: JSON.stringify({
                         skills_text: text,
-                        bio: document.getElementById('provider_bio')?.value || '',
-                        ai_consent: consentCheckbox?.checked === true
+                        ai_consent: aiConsentGiven === true
                     })
                 });
 

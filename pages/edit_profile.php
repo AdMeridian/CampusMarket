@@ -243,9 +243,9 @@ require_once '../includes/header.php';
             <!-- Avatar Section -->
             <div class="flex flex-col gap-6 mb-8 p-6" style="background: rgba(255,255,255,0.5); border-radius: var(--radius-md); border: 1px dashed var(--border-focus);">
                 <div class="edit-profile-avatar-row">
-                    <img id="avatar-preview" src="<?php echo sanitize(avatarUrl($user['avatar'])); ?>" alt="Avatar" class="shadow-sm" style="width: 90px; height: 90px; border-radius: var(--radius-xl); object-fit: cover; border: 3px solid white; transition: var(--transition);">
+                    <img id="avatar-preview" src="<?php echo sanitize(avatarUrl($user['avatar'])); ?>" alt="Avatar" class="shadow-sm" style="width: 90px; height: 90px; border-radius: var(--radius-xl); object-fit: cover; border: 3px solid var(--bg-surface); transition: var(--transition);">
                     <div class="flex-grow">
-                        <label class="form-label font-bold mb-2"><?= __('profile.upload_picture') ?></label>
+                        <label for="avatar" class="form-label font-bold mb-2"><?= __('profile.upload_picture') ?></label>
                         <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control premium-input p-2 <?php echo isset($errors['avatar']) ? 'border-accent' : ''; ?>" style="font-size: 0.9rem;">
                         <?php if (isset($errors['avatar'])): ?>
                             <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['avatar']); ?></div>
@@ -272,13 +272,15 @@ require_once '../includes/header.php';
                         foreach ($presets as $preset):
                             $isActive = ($user['avatar'] === $preset['path']);
                         ?>
-                            <div class="avatar-preset-option flex flex-col items-center gap-2 <?php echo $isActive ? 'active' : ''; ?>" 
+                            <button type="button" class="avatar-preset-option flex flex-col items-center gap-2 <?php echo $isActive ? 'active' : ''; ?>"
+                                 aria-label="Select <?php echo htmlspecialchars($preset['name'], ENT_QUOTES, 'UTF-8'); ?> avatar"
+                                 aria-pressed="<?php echo $isActive ? 'true' : 'false'; ?>"
                                  data-path="<?php echo $preset['path']; ?>" 
                                  data-url="<?php echo avatarUrl($preset['path']); ?>"
-                                 style="cursor: pointer; border: 3px solid <?php echo $isActive ? 'var(--primary)' : 'transparent'; ?>; border-radius: var(--radius-lg); padding: 0.5rem; transition: all 0.3s ease; background: <?php echo $isActive ? 'white' : '#f8fafc'; ?>; text-align: center; box-shadow: <?php echo $isActive ? '0 4px 12px rgba(99, 102, 241, 0.15)' : 'none'; ?>;">
-                                <img src="<?php echo avatarUrl($preset['path']); ?>" alt="<?php echo $preset['name']; ?>" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                                 style="cursor: pointer; border: 3px solid <?php echo $isActive ? 'var(--primary)' : 'transparent'; ?>; border-radius: var(--radius-lg); padding: 0.5rem; transition: all 0.3s ease; background: <?php echo $isActive ? 'var(--bg-surface)' : 'var(--bg-main)'; ?>; text-align: center; box-shadow: <?php echo $isActive ? '0 4px 12px color-mix(in srgb, var(--primary) 15%, transparent)' : 'none'; ?>; color: inherit; font: inherit;">
+                                <img src="<?php echo avatarUrl($preset['path']); ?>" alt="" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
                                 <span class="font-bold text-main" style="font-size: 0.75rem;"><?php echo $preset['name']; ?></span>
-                            </div>
+                            </button>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -393,16 +395,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Remove active styles from all presets
             presetOptions.forEach(opt => {
                 opt.classList.remove('active');
+                opt.setAttribute('aria-pressed', 'false');
                 opt.style.borderColor = 'transparent';
-                opt.style.background = '#f8fafc';
+                opt.style.background = 'var(--bg-main)';
                 opt.style.boxShadow = 'none';
             });
 
             // Set active style for this preset
             this.classList.add('active');
+            this.setAttribute('aria-pressed', 'true');
             this.style.borderColor = 'var(--primary)';
-            this.style.background = 'white';
-            this.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.15)';
+            this.style.background = 'var(--bg-surface)';
+            this.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--primary) 15%, transparent)';
 
             // Update hidden input & preview
             const path = this.dataset.path;
@@ -420,8 +424,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.files && this.files[0]) {
             presetOptions.forEach(opt => {
                 opt.classList.remove('active');
+                opt.setAttribute('aria-pressed', 'false');
                 opt.style.borderColor = 'transparent';
-                opt.style.background = '#f8fafc';
+                opt.style.background = 'var(--bg-main)';
                 opt.style.boxShadow = 'none';
             });
             selectedPresetInput.value = '';

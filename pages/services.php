@@ -177,10 +177,10 @@ include '../includes/header.php';
                         <!-- Category -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span><?= __('services.category_label') ?></span>
+                                <label for="services-category"><?= __('services.category_label') ?></label>
                             </div>
                             <div class="relative">
-                                <select name="category" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="services-category" name="category" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <option value=""><?= __('services.all_categories') ?></option>
                                     <?php foreach ($serviceCategories as $cat): ?>
                                         <option value="<?php echo $cat['id']; ?>" <?php echo $category == $cat['id'] ? 'selected' : ''; ?>>
@@ -194,10 +194,10 @@ include '../includes/header.php';
                         <!-- Location -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span><?= __('services.location_label') ?></span>
+                                <label for="services-location"><?= __('services.location_label') ?></label>
                             </div>
                             <div class="relative">
-                                <select name="location" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="services-location" name="location" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <option value=""><?= __('services.all_locations') ?></option>
                                     <option value="remote" <?php echo $locationFilter === 'remote' ? 'selected' : ''; ?>>🌐 <?= __('location.town.remote') ?></option>
                                     <?php foreach (locationTownSlugs() as $townSlug): ?>
@@ -213,10 +213,10 @@ include '../includes/header.php';
                         <!-- Pricing Model -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span><?= __('services.pricing_label') ?></span>
+                                <label for="services-pricing"><?= __('services.pricing_label') ?></label>
                             </div>
                             <div class="relative">
-                                <select name="pricing" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="services-pricing" name="pricing" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <option value=""><?= __('services.all_pricing') ?></option>
                                     <option value="flat" <?php echo $pricingModel === 'flat' ? 'selected' : ''; ?>><?= __('services.flat_rate') ?></option>
                                     <option value="hourly" <?php echo $pricingModel === 'hourly' ? 'selected' : ''; ?>><?= __('services.hourly_rate') ?></option>
@@ -230,7 +230,7 @@ include '../includes/header.php';
             </aside>
 
             <!-- Results -->
-            <main class="lg-col-span-4">
+            <div class="lg-col-span-4">
                 <div class="mb-8 browse-results-header">
                     <!-- Item Count -->
                     <div class="item-count-badge" style="background: var(--bg-card); color: var(--text-main); padding: 0.45rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border-light); flex-shrink: 0; white-space: nowrap;">
@@ -246,7 +246,8 @@ include '../includes/header.php';
                         <?php if ($pricingModel): ?><input type="hidden" name="pricing" value="<?php echo sanitize($pricingModel); ?>"><?php endif; ?>
                         <?php if ($locationFilter): ?><input type="hidden" name="location" value="<?php echo sanitize($locationFilter); ?>"><?php endif; ?>
                         <?php if ($sort): ?><input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>"><?php endif; ?>
-                        <input type="text" name="q" value="<?php echo sanitize($search); ?>" placeholder="<?= __('services.search_placeholder') ?>" class="search-input">
+                        <label class="visually-hidden" for="services-search"><?= __('services.search_placeholder') ?></label>
+                        <input type="text" id="services-search" name="q" value="<?php echo sanitize($search); ?>" placeholder="<?= __('services.search_placeholder') ?>" class="search-input">
                         <button type="submit" class="search-btn btn--service"><?= __('services.search_btn') ?></button>
                     </form>
 
@@ -258,7 +259,8 @@ include '../includes/header.php';
                             <?php if ($category): ?><input type="hidden" name="category" value="<?php echo sanitize($category); ?>"><?php endif; ?>
                             <?php if ($pricingModel): ?><input type="hidden" name="pricing" value="<?php echo sanitize($pricingModel); ?>"><?php endif; ?>
                             <?php if ($locationFilter): ?><input type="hidden" name="location" value="<?php echo sanitize($locationFilter); ?>"><?php endif; ?>
-                            <select name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-lg); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
+                            <label class="visually-hidden" for="services-sort"><?= __('services.sort_label') ?></label>
+                            <select id="services-sort" name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-lg); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
                                 <option value="newest" <?php echo $sort === 'newest' ? 'selected' : ''; ?>>Newest</option>
                                 <option value="price_asc" <?php echo $sort === 'price_asc' ? 'selected' : ''; ?>>Price: Low to High</option>
                                 <option value="price_desc" <?php echo $sort === 'price_desc' ? 'selected' : ''; ?>>Price: High to Low</option>
@@ -290,11 +292,13 @@ include '../includes/header.php';
                 <?php else: ?>
                     <!-- Category pills strip -->
                     <?php if (!empty($serviceCategories)): ?>
-                    <div style="display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:1.5rem; scrollbar-width:none;" class="category-pill-strip">
+                    <div class="category-pill-strip-wrap">
+                    <div style="display:flex; gap:0.5rem; overflow-x:auto; padding:0 2.5rem 0.5rem 0; margin-bottom:1.5rem; scrollbar-width:none;" class="category-pill-strip">
                         <a href="services.php<?= $search ? '?q='.urlencode($search) : '' ?>" style="flex-shrink:0; padding:0.45rem 1rem; border-radius:99px; font-size:0.85rem; font-weight:700; text-decoration:none; white-space:nowrap; border:1.5px solid <?= !$category ? 'var(--service)' : 'var(--border-light)' ?>; background:<?= !$category ? 'var(--service-light)' : 'var(--bg-surface)' ?>; color:<?= !$category ? 'var(--service)' : 'var(--text-muted)' ?>; transition:all 0.18s;">All</a>
                         <?php foreach ($serviceCategories as $cat): ?>
                         <a href="services.php?category=<?= (int)$cat['id'] ?><?= $search ? '&q='.urlencode($search) : '' ?>" style="flex-shrink:0; padding:0.45rem 1rem; border-radius:99px; font-size:0.85rem; font-weight:700; text-decoration:none; white-space:nowrap; border:1.5px solid <?= $category == $cat['id'] ? 'var(--service)' : 'var(--border-light)' ?>; background:<?= $category == $cat['id'] ? 'var(--service-light)' : 'var(--bg-surface)' ?>; color:<?= $category == $cat['id'] ? 'var(--service)' : 'var(--text-muted)' ?>; transition:all 0.18s;"><?= sanitize(translateCategory($cat['name'])) ?></a>
                         <?php endforeach; ?>
+                    </div>
                     </div>
                     <?php endif; ?>
                     <div class="grid grid-cols-1 md-grid-cols-2 xl-grid-cols-3 gap-6">
@@ -412,7 +416,7 @@ include '../includes/header.php';
                     </div>
                     <?php echo paginationLinks($totalItems, $page, $paginationBase); ?>
                 <?php endif; ?>
-            </main>
+            </div>
         </div>
     </div>
 </div>

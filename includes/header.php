@@ -328,6 +328,7 @@ $navCategories = getNavCategories($pdo);
     
 </head>
 <body<?php echo !empty($bodyClass) ? ' class="' . htmlspecialchars((string) $bodyClass, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <?php
     $navRequestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
     $mobileBottomNavActive = function(string $needle, bool $exact = false) use ($navRequestPath): string {
@@ -362,7 +363,8 @@ $navCategories = getNavCategories($pdo);
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <?php $placeholder = (isLoggedIn() && isAdmin()) ? __('nav.search_placeholder_admin') : __('nav.search_placeholder'); ?>
-            <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
+            <label class="visually-hidden" for="desktop-search"><?= __('nav.search_placeholder') ?></label>
+            <input type="text" id="desktop-search" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
             <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
         </form>
 
@@ -579,6 +581,8 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
     var autoTimer = null;
     var touchStartX = 0;
     var touchEndX = 0;
+    var pointerInside = false;
+    var reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
     function getSlides() {
         return Array.from(document.querySelectorAll('#platformAnnouncementsSlides .platform-announcement'));
@@ -647,6 +651,11 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
 
     function startAuto() {
         stopAuto();
+        var carousel = document.getElementById('platformAnnouncementsCarousel');
+        if ((reducedMotionQuery && reducedMotionQuery.matches) || pointerInside ||
+            (carousel && carousel.contains(document.activeElement))) {
+            return;
+        }
         autoTimer = setInterval(function() {
             var slides = getSlides();
             if (slides.length > 1) {
@@ -734,8 +743,20 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
 
         var carousel = document.getElementById('platformAnnouncementsCarousel');
         if (carousel) {
-            carousel.addEventListener('mouseenter', stopAuto);
-            carousel.addEventListener('mouseleave', startAuto);
+            carousel.addEventListener('mouseenter', function() {
+                pointerInside = true;
+                stopAuto();
+            });
+            carousel.addEventListener('mouseleave', function() {
+                pointerInside = false;
+                startAuto();
+            });
+            carousel.addEventListener('focusin', stopAuto);
+            carousel.addEventListener('focusout', function(event) {
+                if (!carousel.contains(event.relatedTarget)) {
+                    startAuto();
+                }
+            });
             carousel.addEventListener('touchstart', function(e) {
                 touchStartX = e.changedTouches[0].screenX;
                 stopAuto();
@@ -753,6 +774,20 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
                 startAuto();
             }, { passive: true });
         }
+        if (reducedMotionQuery) {
+            var handleMotionPreferenceChange = function() {
+                if (reducedMotionQuery.matches) {
+                    stopAuto();
+                } else {
+                    startAuto();
+                }
+            };
+            if (reducedMotionQuery.addEventListener) {
+                reducedMotionQuery.addEventListener('change', handleMotionPreferenceChange);
+            } else if (reducedMotionQuery.addListener) {
+                reducedMotionQuery.addListener(handleMotionPreferenceChange);
+            }
+        }
     } catch(e) {}
 })();
 </script>
@@ -766,7 +801,8 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
         <?php $placeholder = (isLoggedIn() && isAdmin()) ? __('nav.search_placeholder_admin') : __('nav.search_placeholder'); ?>
-        <input type="text" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
+        <label class="visually-hidden" for="mobile-search"><?= __('nav.search_placeholder') ?></label>
+        <input type="text" id="mobile-search" name="q" value="<?php echo sanitize($_GET['q'] ?? ''); ?>" placeholder="<?php echo $placeholder; ?>" class="search-input" autocomplete="off">
         <button type="submit" class="search-btn"><?= __('nav.search_btn') ?></button>
     </form>
 </div>
@@ -843,7 +879,7 @@ window.__pushI18n = <?php echo json_encode([
             <?php endif; ?>
             <span><?php echo sanitize($flash['message']); ?></span>
         </div>
-        <button onclick="this.closest('.flash-toast-container').remove()" style="background: none; border: none; color: inherit; cursor: pointer; padding: 0.25rem; display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+        <button aria-label="Dismiss notification" onclick="this.closest('.flash-toast-container').remove()" style="background: none; border: none; color: inherit; cursor: pointer; padding: 0.25rem; display: flex; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
             <svg style="width: 18px; height: 18px;" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
         </button>
     </div>
@@ -853,3 +889,5 @@ window.__pushI18n = <?php echo json_encode([
 <?php if (isLoggedIn() && WEB_PUSH_PUBLIC_KEY !== ''): ?>
 <div id="cm-push-prompt" class="flash-toast-container cm-push-toast-container" hidden aria-hidden="true"></div>
 <?php endif; ?>
+
+<main id="main-content" tabindex="-1">

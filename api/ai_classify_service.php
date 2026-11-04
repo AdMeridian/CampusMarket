@@ -46,7 +46,6 @@ $action = trim((string)($body['action'] ?? 'provider'));
 $isRequestCategory = $action === 'request_category';
 $requestTitle = '';
 $skillsText = trim((string)($body['skills_text'] ?? $body['description'] ?? ''));
-$bioText    = trim((string)($body['bio'] ?? ''));
 
 if (!$isRequestCategory && $action !== 'provider') {
     http_response_code(400);

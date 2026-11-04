@@ -131,15 +131,14 @@ include '../includes/header.php';
 
     <div class="container">
         <!-- Browse Header -->
-        <div class="mb-10 flex justify-between items-end gap-6">
-            <div class="text-left">
+        <div class="mb-10 browse-page-heading">
+            <div class="browse-page-heading__title">
+                <div class="browse-page-heading__label">
+                    <span class="w-2 h-2 rounded-full" style="background: var(--primary);"></span>
+                    <?= __('browse.marketplace') ?>
+                </div>
                 <h1 class="page-hero-title mb-2 text-main"><?= __('browse.title') ?></h1>
                 <p class="page-subtitle"><?= __('browse.subtitle') ?></p>
-            </div>
-            
-            <div class="flex items-center gap-2 text-muted font-medium">
-                <span class="w-2 h-2 rounded-full" style="background: var(--primary);"></span>
-                <?= __('browse.marketplace') ?>
             </div>
         </div>
 
@@ -256,10 +255,10 @@ include '../includes/header.php';
                         <?php if (!empty($availableCountries)): ?>
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span>Country Marketplace</span>
+                                <label for="browse-country">Country Marketplace</label>
                             </div>
                             <div class="relative">
-                                <select name="country" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="browse-country" name="country" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <option value="">All Countries 🌐</option>
                                     <?php 
                                     $countryFlags = ['GB' => '🇬🇧', 'US' => '🇺🇸', 'TR' => '🇹🇷', 'DE' => '🇩🇪', 'CA' => '🇨🇦'];
@@ -279,10 +278,10 @@ include '../includes/header.php';
                         <?php if (!empty($availableUniversities)): ?>
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span>Campus / University</span>
+                                <label for="browse-university">Campus / University</label>
                             </div>
                             <div class="relative">
-                                <select name="university" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="browse-university" name="university" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <option value="">All Campuses 🎓</option>
                                     <?php foreach ($availableUniversities as $uni): ?>
                                         <option value="<?php echo $uni['id']; ?>" <?php echo (string)$selectedUniversity === (string)$uni['id'] ? 'selected' : ''; ?>>
@@ -297,10 +296,10 @@ include '../includes/header.php';
                         <!-- Category Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span><?= __('browse.category') ?></span>
+                                <label for="browse-category"><?= __('browse.category') ?></label>
                             </div>
                             <div class="relative">
-                                <select name="category" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="browse-category" name="category" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <option value=""><?= __('browse.all_categories') ?></option>
                                     <?php foreach ($categories as $cat): ?>
                                         <option value="<?php echo $cat['id']; ?>" <?php echo $category == $cat['id'] ? 'selected' : ''; ?>>
@@ -314,10 +313,10 @@ include '../includes/header.php';
                         <!-- Town Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span><?= __('browse.town') ?></span>
+                                <label for="browse-town"><?= __('browse.town') ?></label>
                             </div>
                             <div class="relative">
-                                <select name="town" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="browse-town" name="town" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <option value=""><?= __('browse.all_towns') ?></option>
                                     <?php foreach (locationTownSlugs() as $townSlug): ?>
                                         <option value="<?php echo $townSlug; ?>" <?php echo $town === $townSlug ? 'selected' : ''; ?>>
@@ -352,18 +351,20 @@ include '../includes/header.php';
                                 <span><?= __('browse.price_range') ?></span>
                             </div>
                             <div class="flex gap-2">
-                                <input type="number" name="min_price" placeholder="<?= addslashes(__('browse.price_min')) ?>" value="<?php echo sanitize($minPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
-                                <input type="number" name="max_price" placeholder="<?= addslashes(__('browse.price_max')) ?>" value="<?php echo sanitize($maxPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
+                                <label class="visually-hidden" for="browse-min-price"><?= __('browse.price_min') ?></label>
+                                <input type="number" id="browse-min-price" name="min_price" placeholder="<?= addslashes(__('browse.price_min')) ?>" value="<?php echo sanitize($minPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
+                                <label class="visually-hidden" for="browse-max-price"><?= __('browse.price_max') ?></label>
+                                <input type="number" id="browse-max-price" name="max_price" placeholder="<?= addslashes(__('browse.price_max')) ?>" value="<?php echo sanitize($maxPrice); ?>" class="w-full premium-input" style="padding: 0.6rem; font-size: 0.9rem;">
                             </div>
                         </div>
 
                         <!-- Condition Block -->
                         <div class="filter-block mb-8">
                             <div class="flex items-center gap-2 mb-3 text-main font-bold uppercase tracking-wider" style="font-size: 0.85rem;">
-                                <span><?= __('browse.condition') ?></span>
+                                <label for="browse-condition"><?= __('browse.condition') ?></label>
                             </div>
                             <div class="relative">
-                                <select name="condition" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
+                                <select id="browse-condition" name="condition" class="w-full premium-input" style="padding: 0.75rem 1rem; background: var(--bg-surface); cursor: pointer;" onchange="this.form.submit()">
                                     <?php 
                                     $conditions = [
                                         '' => __('browse.any_condition'),
@@ -388,7 +389,7 @@ include '../includes/header.php';
             </aside>
 
             <!-- Results -->
-            <main class="lg-col-span-4">
+            <div class="lg-col-span-4">
                 <style>
                 .browse-results-header {
                     display: flex;
@@ -463,7 +464,8 @@ include '../includes/header.php';
                         <?php if($maxPrice !== ''): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
                         <?php if($sort): ?><input type="hidden" name="sort" value="<?php echo sanitize($sort); ?>"><?php endif; ?>
                         
-                        <input type="text" name="q" value="<?php echo sanitize($search); ?>" placeholder="<?= addslashes(__('browse.search_placeholder')) ?>" class="search-input">
+                        <label class="visually-hidden" for="browse-search"><?= __('browse.search_placeholder') ?></label>
+                        <input type="text" id="browse-search" name="q" value="<?php echo sanitize($search); ?>" placeholder="<?= addslashes(__('browse.search_placeholder')) ?>" class="search-input">
                         <button type="submit" class="search-btn"><?= __('browse.find') ?></button>
                     </form>
 
@@ -478,7 +480,8 @@ include '../includes/header.php';
                             <?php if($minPrice !== ''): ?><input type="hidden" name="min_price" value="<?php echo sanitize($minPrice); ?>"><?php endif; ?>
                             <?php if($maxPrice !== ''): ?><input type="hidden" name="max_price" value="<?php echo sanitize($maxPrice); ?>"><?php endif; ?>
                             
-                            <select name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-lg); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
+                            <label class="visually-hidden" for="browse-sort"><?= __('browse.sort_by') ?></label>
+                            <select id="browse-sort" name="sort" class="premium-input" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-width: 160px; border-radius: var(--radius-lg); background: var(--bg-main); border: 1px solid var(--border-light); cursor: pointer;" onchange="this.form.submit()">
                                 <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>><?= __('browse.sort_newest') ?></option>
                                 <option value="price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>><?= __('browse.sort_price_asc') ?></option>
                                 <option value="price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>><?= __('browse.sort_price_desc') ?></option>
@@ -517,7 +520,7 @@ include '../includes/header.php';
                     </div>
                     <?php echo paginationLinks($totalItems, $page, $paginationBase); ?>
                 <?php endif; ?>
-            </main>
+            </div>
         </div>
     </div>
 </div>
@@ -543,5 +546,3 @@ include '../includes/header.php';
 </script>
 
 <?php include '../includes/footer.php'; ?>
-
-

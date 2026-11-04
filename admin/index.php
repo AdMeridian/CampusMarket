@@ -840,7 +840,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div class="telemetry-kpi-card">
                 <span class="telemetry-kpi-label">Deal Conversion</span>
-                <span class="telemetry-kpi-val" style="color: #8b5cf6;"><?php echo $conversionRate; ?>%</span>
+                <span class="telemetry-kpi-val" style="color: var(--primary);"><?php echo $conversionRate; ?>%</span>
                 <span class="telemetry-kpi-sub"><?php echo (int)$stats['completed_deals']; ?> verified transactions</span>
             </div>
         </div>
@@ -965,7 +965,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="campaigns.php" class="module-card" style="--module-color: #6366f1; --module-bg: rgba(99, 102, 241, 0.1);">
+                    <a href="campaigns.php" class="module-card" style="--module-color: var(--primary); --module-bg: var(--primary-light);">
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></div>
                         <div class="module-info">
                             <div class="module-name">Email Campaigns</div>
@@ -989,13 +989,13 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
                         <span class="module-arrow">›</span>
                     </a>
-                    <a href="announcements.php" class="module-card" style="--module-color: #8b5cf6; --module-bg: rgba(139, 92, 246, 0.1);">
+                    <a href="announcements.php" class="module-card" style="--module-color: var(--primary); --module-bg: var(--primary-light);">
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>
                         <div class="module-info">
                             <div class="module-name" style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
                                 <span>Announcements</span>
                                 <?php if ($activeAnnouncementsCount > 0): ?>
-                                    <span style="background: #8b5cf6; color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px;"><?php echo $activeAnnouncementsCount; ?> active</span>
+                                    <span style="background: var(--primary); color: #fff; font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px;"><?php echo $activeAnnouncementsCount; ?> active</span>
                                 <?php endif; ?>
                             </div>
                             <div class="module-desc">Broadcast site-wide banners & alerts</div>

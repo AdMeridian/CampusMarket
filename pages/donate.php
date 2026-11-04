@@ -20,7 +20,7 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
 
         <div class="flex flex-col lg:flex-row gap-10 items-stretch">
-            <div class="glass-panel" style="flex: 1.2; width: 100%; border-radius: 32px; border: 1px solid rgba(99, 102, 241, 0.15); box-shadow: 0 25px 60px rgba(0,0,0,0.08); background: white; padding: 2.5rem 2rem; display: flex; flex-direction: column; align-items: center;">
+            <div class="glass-panel" style="flex: 1.2; width: 100%; border-radius: 32px; border: 1px solid var(--border-light); box-shadow: 0 25px 60px rgba(0,0,0,0.08); background: var(--bg-surface); padding: 2.5rem 2rem; display: flex; flex-direction: column; align-items: center;">
                 <h3 class="mb-6 font-bold text-main uppercase tracking-widest text-center" style="font-size: 0.8rem; letter-spacing: 0.15em;"><?= __('donate.select_amount') ?></h3>
                 
                 <form action="create_stripe_session.php" method="POST" id="donation-form" style="width: 100%;">
@@ -39,7 +39,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-main); font-weight: 900; font-size: 1.1rem; opacity: 0.3;">₺</span>
                             <input type="number" id="custom-amount" name="amount" step="0.01" min="1" value="50" 
                                    class="premium-input w-full text-center" 
-                                   style="padding: 0.75rem 0.75rem 0.75rem 2.5rem; font-size: 1.35rem; font-weight: 900; border-radius: 14px; background: #f8fafc; border: 2px solid #e2e8f0; color: #0f172a;" 
+                                   style="padding: 0.75rem 0.75rem 0.75rem 2.5rem; font-size: 1.35rem; font-weight: 900; border-radius: 14px; background: var(--bg-main); border: 2px solid var(--border-light); color: var(--text-main);"
                                    placeholder="0.00" required>
                         </div>
                     </div>
@@ -67,7 +67,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
                     <div>
                         <h5 class="font-bold text-xl mb-1"><?= __('donate.perk_adfree_title') ?></h5>
-                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;"><?= __('donate.perk_adfree_body') ?></p>
+                        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;"><?= __('donate.perk_adfree_body') ?></p>
                     </div>
                 </div>
                 
@@ -75,7 +75,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></div>
                     <div>
                         <h5 class="font-bold text-xl mb-1"><?= __('donate.perk_safety_title') ?></h5>
-                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;"><?= __('donate.perk_safety_body') ?></p>
+                        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;"><?= __('donate.perk_safety_body') ?></p>
                     </div>
                 </div>
 
@@ -83,7 +83,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="perk-icon"><svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg></div>
                     <div>
                         <h5 class="font-bold text-xl mb-1"><?= __('donate.perk_supporter_title') ?></h5>
-                        <p style="font-size: 0.95rem; color: #374151; line-height: 1.6;"><?= __('donate.perk_supporter_body') ?></p>
+                        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;"><?= __('donate.perk_supporter_body') ?></p>
                     </div>
                 </div>
             </div>
@@ -103,8 +103,8 @@ if (!empty($donors)) {
 
 <style>
 .amount-pill {
-    background: #f8fafc;
-    border: 2px solid #e2e8f0;
+    background: var(--bg-main);
+    border: 2px solid var(--border-light);
     border-radius: 14px;
     padding: 1rem 0.4rem;
     text-align: center;
@@ -114,19 +114,19 @@ if (!empty($donors)) {
     flex-direction: column;
     gap: 0.2rem;
 }
-.amount-pill:hover { background: white; border-color: var(--primary-light); transform: translateY(-4px); }
-.amount-pill.active { 
-    background: white; 
+.amount-pill:hover { background: var(--bg-surface); border-color: var(--primary-light); transform: translateY(-4px); }
+.amount-pill.active {
+    background: var(--bg-surface);
     border-color: var(--primary); 
-    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.12);
+    box-shadow: var(--shadow-md);
     transform: scale(1.05);
 }
-.amount-pill span { font-size: 1.2rem; font-weight: 900; color: #0f172a; }
+.amount-pill span { font-size: 1.2rem; font-weight: 900; color: var(--text-main); }
 .amount-pill.active span { color: var(--primary); }
 
 .cta-button {
     background: var(--primary);
-    color: white;
+    color: var(--bg-surface);
     padding: 0.9rem 2rem;
     font-size: 1.05rem;
     font-weight: 800;
@@ -134,33 +134,33 @@ if (!empty($donors)) {
     border-radius: 16px;
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 10px 25px rgba(99, 91, 255, 0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+    box-shadow: 0 10px 25px color-mix(in srgb, var(--primary) 25%, transparent), inset 0 1px 0 rgba(255,255,255,0.15);
     width: auto;
     min-width: 220px;
     letter-spacing: 0.01em;
 }
 .cta-button:hover {
     transform: translateY(-5px);
-    box-shadow: 0 22px 45px rgba(99, 91, 255, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+    box-shadow: 0 22px 45px color-mix(in srgb, var(--primary) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.2);
     background: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .perk-icon {
     width: 60px;
     height: 60px;
-    background: white;
+    background: var(--bg-surface);
     border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.75rem;
     box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-    border: 1px solid rgba(0,0,0,0.03);
+    border: 1px solid var(--border-light);
     transition: all 0.3s ease;
 }
 .perk-icon:hover { transform: rotate(8deg) scale(1.1); }
 
-#custom-amount:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.1); }
+#custom-amount:focus { border-color: var(--primary); background: var(--bg-main); box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 15%, transparent); }
 input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 </style>
 

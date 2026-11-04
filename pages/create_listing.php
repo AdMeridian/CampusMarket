@@ -496,8 +496,8 @@ include '../includes/header.php';
 
 
                 <!-- Campus Services Pilot Discovery Banner -->
-                <div class="mb-2 p-4 rounded-xl flex items-center justify-between gap-4 flex-wrap" style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25);">
-                    <div class="flex items-center gap-3">
+                <div class="create-listing-services-promo mb-2 p-4 rounded-xl flex items-center justify-between gap-4 flex-wrap" style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25);">
+                    <div class="create-listing-services-promo__message flex items-center gap-3">
                         <span style="font-size: 1.6rem;">🛠️</span>
                         <div>
                             <strong style="color: var(--text-main); font-size: 0.95rem;">Offering a skill, tutoring, or campus service?</strong>
@@ -537,10 +537,10 @@ include '../includes/header.php';
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="font-bold mb-2 block" style="color: var(--text-main);">
+                        <label for="listing-town" class="font-bold mb-2 block" style="color: var(--text-main);">
                             <?= __('create_listing.town_label') ?>
                         </label>
-                        <select name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;">
+                        <select id="listing-town" name="location_town" class="w-full premium-input" style="padding: 0.8rem 1rem;">
                             <?php
                             $townSlugs = locationTownSlugs();
                             $resolvedTown = $selectedTown;
@@ -553,7 +553,7 @@ include '../includes/header.php';
                             <?php endforeach; ?>
                         </select>
                         <div id="custom_location_container" class="mt-3 form-group" style="<?php echo ($selectedTown === 'other') ? '' : 'display: none;'; ?>">
-                            <label class="font-bold mb-1 block text-sm" style="color: var(--text-main);"><?= __('create_listing.custom_location_label') ?></label>
+                            <label for="custom_location_input" class="font-bold mb-1 block text-sm" style="color: var(--text-main);"><?= __('create_listing.custom_location_label') ?></label>
                             <input type="text" name="custom_location" id="custom_location_input" value="<?= htmlspecialchars($selectedCustomLocation) ?>" placeholder="<?= htmlspecialchars(__('create_listing.custom_location_placeholder')) ?>" maxlength="100" class="w-full premium-input" style="padding: 0.8rem 1rem;">
                         </div>
                         <p class="text-muted small mt-2 mb-0"><?= __('create_listing.town_hint') ?></p>
@@ -562,8 +562,8 @@ include '../includes/header.php';
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="form-group">
-                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.currency_label') ?></label>
-                        <select name="price_currency" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                        <label for="listing-currency" class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.currency_label') ?></label>
+                        <select id="listing-currency" name="price_currency" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                             <?php
                             $selectedCurrency = strtoupper(trim((string)($_POST['price_currency'] ?? DEFAULT_PRODUCT_CURRENCY)));
                             foreach (PRODUCT_CURRENCIES as $code => $meta):
@@ -576,9 +576,9 @@ include '../includes/header.php';
                         <p class="text-muted small mt-2 mb-0"><?= __('create_listing.currency_hint') ?></p>
                     </div>
                     <div class="form-group">
-                        <label class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.price_label') ?></label>
+                        <label for="listing-price" class="font-bold mb-2 block" style="color: var(--text-main);"><?= __('create_listing.price_label') ?></label>
                         <div class="relative">
-                            <input type="number" name="price" step="0.01" min="0.01" value="<?= htmlspecialchars($_POST['price'] ?? '') ?>" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
+                            <input type="number" id="listing-price" name="price" step="0.01" min="0.01" value="<?= htmlspecialchars($_POST['price'] ?? '') ?>" placeholder="0.00" class="w-full premium-input" style="padding: 0.8rem 1rem;" required>
                         </div>
                     </div>
                 </div>
@@ -716,6 +716,34 @@ include '../includes/header.php';
 </div>
 
 <style>
+    @media (max-width: 600px) {
+        .create-listing-services-promo {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .create-listing-services-promo__message {
+            align-items: flex-start;
+            min-width: 0;
+        }
+
+        .create-listing-services-promo__message > div {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .create-listing-services-promo__message strong {
+            display: block;
+        }
+
+        .create-listing-services-promo > a {
+            width: 100%;
+            box-sizing: border-box;
+            white-space: normal !important;
+        }
+    }
+
     .hidden-radio { position: absolute; opacity: 0; width: 0; height: 0; }
     
     .custom-radio {

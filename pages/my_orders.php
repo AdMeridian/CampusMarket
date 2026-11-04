@@ -100,8 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     );
                     setFlash('success', __('orders.flash_confirmed'));
                 } elseif ($action === 'cancel' && ($isSeller || $isBuyer) && $order['status'] === 'pending') {
-                    $newStatus = $isBuyer ? 'not taken' : 'cancelled';
-                    $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?")->execute([$newStatus, $orderId]);
+                    $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?")->execute([$orderId]);
 
                     if ($isBuyer) {
                         $pdo->prepare("DELETE FROM deal_confirmations WHERE product_id = ? AND buyer_id = ?")->execute([$order['product_id'], $order['buyer_id']]);
