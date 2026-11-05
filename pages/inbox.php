@@ -398,7 +398,7 @@ body.dark-mode .convo-card.unread {
                     $isAdminConvo = (($conv['other_role'] ?? '') === 'admin');
                     $hasAvatar = !$isAdminConvo && !empty($conv['other_avatar']);
                 ?>
-                <a href="<?= BASE_URL ?>/pages/messages.php?product_id=<?= (int)($conv['product_id'] ?? 0) ?>&other_user_id=<?= $conv['other_user_id'] ?>"
+                <a href="<?= BASE_URL ?>/pages/messages.php?product_id=<?= (int)($conv['product_id'] ?? 0) ?>&other_user_id=<?= $conv['other_user_id'] ?><?= (int)($conv['product_id'] ?? 0) > 0 ? '&listing_context=continuation' : '' ?>"
                    class="convo-card <?= $isUnread ? 'unread' : '' ?>">
 
                     <!-- Avatar -->

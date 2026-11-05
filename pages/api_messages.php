@@ -311,6 +311,34 @@ if ($action === 'fetch') {
         }
     }
 
+    $mentionedServiceJobIds = [];
+    foreach ($messages as $mRow) {
+        if (!empty($mRow['service_job_post_id'])) {
+            $mentionedServiceJobIds[(int)$mRow['service_job_post_id']] = (int)$mRow['service_job_post_id'];
+        }
+    }
+
+    $serviceJobMetaMap = [];
+    if (!empty($mentionedServiceJobIds)) {
+        $jobIds = array_values($mentionedServiceJobIds);
+        $placeholders = implode(',', array_fill(0, count($jobIds), '?'));
+        $jobMetaStmt = $pdo->prepare("
+            SELECT id, title, location_town
+            FROM service_job_posts
+            WHERE id IN ($placeholders)
+        ");
+        $jobMetaStmt->execute($jobIds);
+        foreach ($jobMetaStmt->fetchAll(PDO::FETCH_ASSOC) as $jobRow) {
+            $jobId = (int)$jobRow['id'];
+            $serviceJobMetaMap[$jobId] = [
+                'id' => $jobId,
+                'title' => htmlspecialchars((string)$jobRow['title'], ENT_QUOTES, 'UTF-8'),
+                'location' => htmlspecialchars(formatLocationTown($jobRow['location_town']), ENT_QUOTES, 'UTF-8'),
+                'url' => rtrim(BASE_URL, '/') . '/pages/service_jobs.php',
+            ];
+        }
+    }
+
     // Format response (original text only; per-message translate is a separate action)
     $results = [];
     foreach ($messages as $msg) {
@@ -324,7 +352,9 @@ if ($action === 'fetch') {
         }
 
         $sharedProduct = null;
+        $sharedServiceRequest = null;
         $messageProductId = (int)($msg['product_id'] ?? 0);
+        $messageServiceJobId = (int)($msg['service_job_post_id'] ?? 0);
         if ($messageProductId > 0 && isset($productMetaMap[$messageProductId])) {
             $sharedProduct = $productMetaMap[$messageProductId];
         } elseif (preg_match('#(?:product\.php\?id=|/product/)(\d+)#i', $originalText, $singleMatch)) {
@@ -332,6 +362,9 @@ if ($action === 'fetch') {
             if (isset($productMetaMap[$targetPid])) {
                 $sharedProduct = $productMetaMap[$targetPid];
             }
+        }
+        if ($messageServiceJobId > 0 && isset($serviceJobMetaMap[$messageServiceJobId])) {
+            $sharedServiceRequest = $serviceJobMetaMap[$messageServiceJobId];
         }
 
         $results[] = [
@@ -354,6 +387,8 @@ if ($action === 'fetch') {
             'created_at' => date('c', strtotime((string)($msg['created_at'] ?? ''))),
             'product_id' => $messageProductId > 0 ? $messageProductId : null,
             'shared_product' => $sharedProduct,
+            'service_job_post_id' => $messageServiceJobId > 0 ? $messageServiceJobId : null,
+            'shared_service_request' => $sharedServiceRequest,
         ];
     }
 
@@ -376,6 +411,7 @@ if ($action === 'fetch') {
 if ($action === 'send') {
     verifyCsrfTokenJson();
     $productId = (int)($_POST['product_id'] ?? 0);
+    $serviceJobPostId = (int)($_POST['service_job_post_id'] ?? 0);
     $receiverId = (int)($_POST['receiver_id'] ?? 0);
     $replyToMessageId = (int)($_POST['reply_to_message_id'] ?? 0);
     $body = sanitize($_POST['body'] ?? '');
@@ -393,6 +429,28 @@ if ($action === 'send') {
     if (!isValidConversation($pdo, $productId, $currentUserId, $receiverId)) {
         echo json_encode(['success' => false, 'error' => 'Invalid conversation context']);
         exit;
+    }
+
+    if ($serviceJobPostId > 0) {
+        if ($productId > 0) {
+            echo json_encode(['success' => false, 'error' => 'Invalid service request context']);
+            exit;
+        }
+        $jobContextStmt = $pdo->prepare(
+            "SELECT poster_id
+             FROM service_job_posts
+             WHERE id = :job_id AND poster_id = :receiver_id
+               AND status = 'open' AND expires_at > NOW()
+             LIMIT 1"
+        );
+        $jobContextStmt->execute([
+            ':job_id' => $serviceJobPostId,
+            ':receiver_id' => $receiverId,
+        ]);
+        if (!$jobContextStmt->fetchColumn()) {
+            echo json_encode(['success' => false, 'error' => 'Invalid or expired service request']);
+            exit;
+        }
     }
 
     if ($replyToMessageId > 0) {
@@ -413,11 +471,12 @@ if ($action === 'send') {
     try {
         $pdo->beginTransaction();
         
-        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, product_id, body, reply_to_message_id) VALUES (:sid, :rid, :pid, :body, :reply_to_message_id)");
+        $stmt = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, product_id, service_job_post_id, body, reply_to_message_id) VALUES (:sid, :rid, :pid, :job_id, :body, :reply_to_message_id)");
         $stmt->execute([
             ':sid' => $currentUserId,
             ':rid' => $receiverId,
             ':pid' => $productId > 0 ? $productId : null,
+            ':job_id' => $serviceJobPostId > 0 ? $serviceJobPostId : null,
             ':body' => $body,
             ':reply_to_message_id' => $replyToMessageId > 0 ? $replyToMessageId : null,
         ]);

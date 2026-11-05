@@ -304,15 +304,18 @@ CREATE TABLE messages (
     sender_id   INT     NOT NULL,
     receiver_id INT     NOT NULL,
     product_id  INT     NULL,
+    service_job_post_id INT NULL,
     body        TEXT    NOT NULL,
     is_read     BOOLEAN NOT NULL DEFAULT 0,
     deleted_by_sender TINYINT(1) NOT NULL DEFAULT 0,
     deleted_by_receiver TINYINT(1) NOT NULL DEFAULT 0,
     reply_to_message_id INT NULL,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_messages_service_job_post_id (service_job_post_id),
     FOREIGN KEY (sender_id)   REFERENCES users(id)    ON DELETE CASCADE,
     FOREIGN KEY (receiver_id) REFERENCES users(id)    ON DELETE CASCADE,
-    FOREIGN KEY (product_id)  REFERENCES products(id) ON DELETE SET NULL
+    FOREIGN KEY (product_id)  REFERENCES products(id) ON DELETE SET NULL,
+    FOREIGN KEY (service_job_post_id) REFERENCES service_job_posts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
