@@ -52,7 +52,9 @@ To run this project locally, you will need to have [Vercel CLI](https://vercel.c
    For an existing local MySQL database, apply the SQL migrations in
    `database/migrations/` in timestamp order. In particular, apply
    `20261027120618_make_service_asking_rate_optional.mysql.sql` and
-   `20261029132500_align_local_mysql_schema.mysql.sql`.
+   `20261029132500_align_local_mysql_schema.mysql.sql`, then
+   `20261105150000_add_service_job_message_references.mysql.sql` to enable
+   service request references in messages.
 
 ## Deployment & Production
 

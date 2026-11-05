@@ -394,6 +394,36 @@ if (!function_exists('ensureMessageTranslationsTable')) {
     }
 }
 
+
+if (!function_exists('ensureMessageServiceJobColumn')) {
+    function ensureMessageServiceJobColumn(PDO $pdo): void {
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql') {
+            $pdo->exec("ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS service_job_post_id BIGINT NULL REFERENCES public.service_job_posts(id) ON DELETE SET NULL");
+            $pdo->exec("CREATE INDEX IF NOT EXISTS idx_messages_service_job_post_id ON public.messages(service_job_post_id)");
+            return;
+        }
+
+        $check = $pdo->prepare(
+            "SELECT COUNT(*) FROM information_schema.columns " .
+            "WHERE table_schema = DATABASE() AND table_name = 'messages' AND column_name = 'service_job_post_id'"
+        );
+        $check->execute();
+        if ((int) $check->fetchColumn() === 0) {
+            $checkTable = $pdo->prepare(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'service_job_posts'"
+            );
+            $checkTable->execute();
+            if ((int) $checkTable->fetchColumn() > 0) {
+                $pdo->exec("ALTER TABLE messages ADD COLUMN service_job_post_id INT NULL AFTER product_id, ADD CONSTRAINT fk_messages_service_job_post FOREIGN KEY (service_job_post_id) REFERENCES service_job_posts(id) ON DELETE SET NULL, ADD INDEX idx_messages_service_job_post_id (service_job_post_id)");
+            } else {
+                $pdo->exec("ALTER TABLE messages ADD COLUMN service_job_post_id INT NULL AFTER product_id");
+            }
+        }
+    }
+}
+
 if (!function_exists('ensureMessageReplyColumn')) {
     function ensureMessageReplyColumn(PDO $pdo): void {
         $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
@@ -639,6 +669,7 @@ if (!function_exists('connectDatabase')) {
                     ensureProviderProfilesTable($pdo);
                     ensureMessageTranslationsTable($pdo);
                     ensureMessageReplyColumn($pdo);
+                    ensureMessageServiceJobColumn($pdo);
                     ensureOrderExpiryColumns($pdo);
                     ensureCustomLocationColumns($pdo);
                     ensureRecentFallbackColumn($pdo);

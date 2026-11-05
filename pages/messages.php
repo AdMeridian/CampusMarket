@@ -5,7 +5,9 @@ $pageTitle = __('inbox.messages_tab');
 requireLogin();
 
 $productId = (int)($_GET['product_id'] ?? 0);
+$continueListingContext = ($_GET['listing_context'] ?? '') === 'continuation';
 $jobId = (int)($_GET['job_id'] ?? 0);
+$continueJobContext = ($_GET['job_context'] ?? '') === 'continuation';
 $otherUserId = (int)($_GET['other_user_id'] ?? $_GET['to'] ?? 0);
 $currentUserId = (int) currentUserId();
 $serviceJobContext = null;
@@ -118,6 +120,7 @@ if ($jobId > 0) {
 }
 
 $jobMessagePrefill = $serviceJobContext
+    && !$continueJobContext
     ? "Hi, I'm interested in your service request: " . $serviceJobContext['title']
     : '';
 
@@ -218,29 +221,7 @@ $presenceText = match($otherPresence['status']) {
             </div>
         </header>
 
-        <?php if ($productId > 0): ?>
-        <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="chat-product-strip">
-            <img src="<?= ($product['listing_type'] ?? 'product') === 'service' ? getServiceImage($product['image_path'] ?? null, $productId) : getProductImage($product['image_path'] ?? null) ?>" alt="" class="chat-product-strip__thumb">
-            <div class="chat-product-strip__body">
-                <span class="chat-product-strip__label"><?= __('chat.regarding_item') ?></span>
-                <span class="chat-product-strip__title"><?= htmlspecialchars($product['title']) ?></span>
-                <span class="chat-product-strip__price">
-                    <?php if (($product['listing_type'] ?? 'product') === 'service' && $product['price'] === null): ?>
-                        <?= __('product.rate_not_listed') ?>
-                    <?php else: ?>
-                        <?= renderProductPrice($product) ?>
-                    <?php endif; ?>
-                </span>
-            </div>
-            <svg class="chat-product-strip__chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </a>
-        <?php elseif ($serviceJobContext): ?>
-        <a href="<?= BASE_URL ?>pages/service_jobs.php" class="chat-context-strip" style="display:block;text-decoration:none;">
-            <span class="text-muted small">Regarding service request</span>
-            <strong class="block text-main"><?= htmlspecialchars($serviceJobContext['title'], ENT_QUOTES, 'UTF-8') ?></strong>
-            <span class="text-muted small"><?= htmlspecialchars(formatLocationTown($serviceJobContext['location_town']), ENT_QUOTES, 'UTF-8') ?></span>
-        </a>
-        <?php elseif ($product['title'] === 'CampusMarket Support'): ?>
+        <?php if (!$serviceJobContext && $product['title'] === 'CampusMarket Support'): ?>
         <div class="chat-context-strip chat-context-strip--support">
             <span><?= __('chat.official_help') ?></span>
         </div>
@@ -253,8 +234,8 @@ $presenceText = match($otherPresence['status']) {
             <!-- Messages loaded via JS -->
         </div>
 
-        <?php if ($productId > 0 && $currentUserId !== $sellerId && ($product['listing_type'] ?? 'product') !== 'service'): ?>
-            <div class="chat-action-bar purchase-cta-bar">
+        <?php if ($productId > 0 && !$continueListingContext && $currentUserId !== $sellerId && ($product['listing_type'] ?? 'product') !== 'service'): ?>
+            <div id="purchase-cta-bar" class="chat-action-bar purchase-cta-bar">
                 <div class="chat-action-bar__copy">
                     <strong><?= __('chat.ready_to_buy') ?></strong>
                     <span><?= __('chat.send_purchase_request') ?></span>
@@ -267,6 +248,9 @@ $presenceText = match($otherPresence['status']) {
                         <?= __('chat.propose_order') ?>
                     </button>
                 </form>
+                <button type="button" class="chat-purchase-dismiss" onclick="dismissPurchasePrompt()" aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__('common.close'), ENT_QUOTES, 'UTF-8') ?>">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>
+                </button>
             </div>
         <?php endif; ?>
 
@@ -279,6 +263,50 @@ $presenceText = match($otherPresence['status']) {
         </div>
 
         <div class="chat-input-bar">
+            <?php if ($serviceJobContext && !$continueJobContext): ?>
+            <div id="chat-compose-listing" class="chat-compose-listing">
+                <a href="<?= BASE_URL ?>pages/service_jobs.php" class="chat-compose-listing__link">
+                    <span class="chat-compose-listing__request-icon" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+                    </span>
+                    <span class="chat-compose-listing__details">
+                        <span class="chat-compose-listing__label"><?= htmlspecialchars(__('chat.attached_service_request'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="chat-compose-listing__title"><?= htmlspecialchars($serviceJobContext['title'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="chat-compose-listing__price"><?= htmlspecialchars(formatLocationTown($serviceJobContext['location_town']), ENT_QUOTES, 'UTF-8') ?></span>
+                    </span>
+                </a>
+                <button type="button" class="chat-compose-listing__remove" onclick="dismissListingAttachment()" aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__('common.close'), ENT_QUOTES, 'UTF-8') ?>">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <?php endif; ?>
+            <?php if ($productId > 0 && !$continueListingContext): ?>
+            <div id="chat-compose-listing" class="chat-compose-listing">
+                <a href="<?= BASE_URL ?>/pages/product.php?id=<?= $productId ?>" class="chat-compose-listing__link">
+                    <img
+                        src="<?= htmlspecialchars((($product['listing_type'] ?? 'product') === 'service'
+                            ? getServiceImage($product['image_path'] ?? null, $productId)
+                            : getProductImage($product['image_path'] ?? null)), ENT_QUOTES, 'UTF-8') ?>"
+                        alt=""
+                        class="chat-compose-listing__thumb"
+                    >
+                    <span class="chat-compose-listing__details">
+                        <span class="chat-compose-listing__label"><?= htmlspecialchars(__('chat.attached_listing'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="chat-compose-listing__title"><?= htmlspecialchars($product['title'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="chat-compose-listing__price">
+                            <?php if (($product['listing_type'] ?? 'product') === 'service' && $product['price'] === null): ?>
+                                <?= __('product.rate_not_listed') ?>
+                            <?php else: ?>
+                                <?= renderProductPrice($product) ?>
+                            <?php endif; ?>
+                        </span>
+                    </span>
+                </a>
+                <button type="button" class="chat-compose-listing__remove" onclick="dismissListingAttachment()" aria-label="<?= htmlspecialchars(__('common.close'), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__('common.close'), ENT_QUOTES, 'UTF-8') ?>">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <?php endif; ?>
             <form id="chat-form" class="chat-input-form m-0">
                 <input type="text" id="chat-input" class="chat-input-field premium-input" placeholder="<?= htmlspecialchars(__('chat.placeholder')) ?>" value="<?= htmlspecialchars($jobMessagePrefill, ENT_QUOTES, 'UTF-8') ?>" required autocomplete="off" maxlength="250">
                 <button type="submit" class="chat-send-btn btn btn-primary" title="<?= htmlspecialchars(__('chat.send')) ?>" aria-label="<?= htmlspecialchars(__('chat.send')) ?>">
@@ -368,6 +396,9 @@ $presenceText = match($otherPresence['status']) {
     height: 100%;
     object-fit: cover;
 }
+.cm-chat-service-request-icon {
+    color: var(--primary);
+}
 .cm-chat-product-details {
     flex: 1;
     min-width: 0;
@@ -414,9 +445,17 @@ $presenceText = match($otherPresence['status']) {
 <script>
 const productId = <?= $productId ?>;
 const otherUserId = <?= $otherUserId ?>;
+let activeProductId = <?= ($productId > 0 && !$continueListingContext) ? $productId : 0 ?>;
+let serviceRequestPending = <?= ($serviceJobContext && !$continueJobContext) ? 'true' : 'false' ?>;
 const isServiceListing = <?= (($product['listing_type'] ?? 'product') === 'service') ? 'true' : 'false' ?>;
 const productTitle = <?= json_encode((string)($product['title'] ?? 'this service')) ?>;
 const currentProductCategory = <?= json_encode((string)($product['category_name'] ?? '')) ?>;
+const serviceRequestPreview = <?= json_encode($serviceJobContext ? [
+    'id' => (int)$serviceJobContext['id'],
+    'title' => htmlspecialchars((string)$serviceJobContext['title'], ENT_QUOTES, 'UTF-8'),
+    'location' => htmlspecialchars(formatLocationTown($serviceJobContext['location_town']), ENT_QUOTES, 'UTF-8'),
+    'url' => rtrim(BASE_URL, '/') . '/pages/service_jobs.php',
+] : null) ?>;
 const dealExplainerHtml = <?= json_encode('<p class="chat-deal-bar__hint text-muted small mb-3">' . htmlspecialchars(__('chat.orders_deal_explainer'), ENT_QUOTES, 'UTF-8') . '</p>') ?>;
 const isAdmin = <?= isAdmin() ? 'true' : 'false' ?>;
 const chatBox = document.getElementById('chat-box');
@@ -474,6 +513,7 @@ let translationConfigured = <?= getTranslationService()->isConfigured() ? 'true'
 const translatedStorageKey = `cm_translated_${productId}_${otherUserId}`;
 let translatedMessageIds = new Set();
 let selectedReply = null;
+let listingReferencePending = false;
 
 try {
     const storedTranslated = sessionStorage.getItem(translatedStorageKey);
@@ -532,6 +572,25 @@ function renderSharedProductCard(prod) {
     `;
 }
 
+function renderSharedServiceRequestCard(request) {
+    if (!request) return '';
+    return `
+        <a href="${request.url}" class="cm-chat-product-card cm-chat-service-request-card">
+            <div class="cm-chat-product-thumb-container cm-chat-service-request-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+            </div>
+            <div class="cm-chat-product-details">
+                <span class="cm-chat-product-tag">${__('chat.shared_service_request')}</span>
+                <div class="cm-chat-product-title" title="${request.title}">${request.title}</div>
+                <div class="cm-chat-product-price">${request.location}</div>
+            </div>
+            <div class="cm-chat-product-arrow" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+        </a>
+    `;
+}
+
 function cleanMessageBodyText(text, hasProduct) {
     if (!hasProduct || !text) return text;
     // Strip raw product link so the card speaks for itself without an ugly link below it
@@ -542,11 +601,13 @@ function cleanMessageBodyText(text, hasProduct) {
 
 function buildIncomingBodyHtml(msg) {
     const showTranslated = translatedMessageIds.has(msg.id) && msg.cached_translation;
+    const sharedCard = msg.shared_product
+        ? renderSharedProductCard(msg.shared_product)
+        : renderSharedServiceRequestCard(msg.shared_service_request);
     if (showTranslated) {
-        return buildTranslatedBodyHtml(msg.cached_translation, msg.original_text, msg.cached_source_lang);
+        return sharedCard + buildTranslatedBodyHtml(msg.cached_translation, msg.original_text, msg.cached_source_lang);
     }
 
-    const cardHtml = msg.shared_product ? renderSharedProductCard(msg.shared_product) : '';
     const cleanBody = cleanMessageBodyText(msg.body, !!msg.shared_product);
 
     const translateBtn = translationConfigured && cleanBody
@@ -556,7 +617,7 @@ function buildIncomingBodyHtml(msg) {
         : '';
 
     return `
-        ${cardHtml}
+        ${sharedCard}
         ${cleanBody ? `<div class="message-text-content">${cleanBody}</div>` : ''}
         ${translateBtn}
     `;
@@ -668,10 +729,11 @@ function buildMessageBubbleHtml(msg, options = {}) {
     let bodyHtml;
     if (isMine) {
         const cardHtml = msg.shared_product ? renderSharedProductCard(msg.shared_product) : '';
+        const serviceRequestCardHtml = renderSharedServiceRequestCard(msg.shared_service_request);
         const cleanBody = cleanMessageBodyText(msg.body, !!msg.shared_product);
         bodyHtml = `
             <div class="message-body-wrap">
-                ${cardHtml}
+                ${cardHtml || serviceRequestCardHtml}
                 ${cleanBody ? `<div class="message-text-content">${cleanBody}</div>` : ''}
             </div>
         `;
@@ -901,17 +963,25 @@ chatForm.addEventListener('submit', (e) => {
         reply_to_message_id: selectedReply ? selectedReply.id : null,
         reply_body: selectedReply ? selectedReply.text : null,
         reply_sender_name: selectedReply ? 'message' : null,
+        shared_service_request: serviceRequestPending ? serviceRequestPreview : null,
         created_at: new Date().toISOString()
     };
     chatBox.appendChild(createMessageRow(optimisticMsg, { sending: true }));
     const pendingRow = chatBox.lastElementChild;
     chatBox.scrollTop = chatBox.scrollHeight;
 
+    const messageProductId = activeProductId > 0 && !listingReferencePending ? activeProductId : 0;
+    const messageHasServiceRequest = serviceRequestPending;
+    if (messageProductId > 0) listingReferencePending = true;
+
     const formData = new FormData();
     formData.append('action', 'send');
-    formData.append('product_id', productId);
+    formData.append('product_id', messageProductId);
     formData.append('receiver_id', otherUserId);
     formData.append('body', text);
+    if (messageHasServiceRequest) {
+        formData.append('service_job_post_id', serviceRequestPreview.id);
+    }
     if (selectedReply) {
         formData.append('reply_to_message_id', selectedReply.id);
     }
@@ -928,10 +998,23 @@ chatForm.addEventListener('submit', (e) => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            if (messageProductId > 0) {
+                activeProductId = 0;
+                listingReferencePending = false;
+                const listingPreview = document.getElementById('chat-compose-listing');
+                if (listingPreview) listingPreview.hidden = true;
+                markListingContextContinued();
+            }
+            if (messageHasServiceRequest) {
+                serviceRequestPending = false;
+                const listingPreview = document.getElementById('chat-compose-listing');
+                if (listingPreview) listingPreview.hidden = true;
+                markServiceRequestContinued();
+            }
             if (typeof posthog !== 'undefined' && posthog.capture) {
                 posthog.capture('message_sent', {
-                    listing_id: productId > 0 ? Number(productId) : null,
-                    category: currentProductCategory || null
+                    listing_id: messageProductId > 0 ? Number(messageProductId) : null,
+                    category: messageProductId > 0 ? (currentProductCategory || null) : null
                 });
             }
             if (realtimeChannel) {
@@ -948,12 +1031,14 @@ chatForm.addEventListener('submit', (e) => {
             }
             fetchMessages();
         } else {
+            if (messageProductId > 0) listingReferencePending = false;
             alert(__('chat.error_send') + data.error);
             pendingRow.remove();
             chatInput.value = text;
         }
     })
     .catch(err => {
+        if (messageProductId > 0) listingReferencePending = false;
         console.error('Send failed:', err);
         alert(__('chat.failed_send'));
         pendingRow.remove();
@@ -1023,6 +1108,53 @@ function clearChat() {
 const handshakeBar = document.getElementById('deal-handshake-bar');
 const dealSheetBackdrop = document.getElementById('deal-sheet-backdrop');
 const dealSheetBody = document.getElementById('deal-sheet-body');
+
+window.dismissPurchasePrompt = function() {
+    const purchaseCta = document.getElementById('purchase-cta-bar');
+    if (purchaseCta) purchaseCta.hidden = true;
+};
+
+function markListingContextContinued() {
+    try {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('listing_context', 'continuation');
+        history.replaceState(history.state, '', currentUrl);
+    } catch (error) {
+        console.warn('Unable to update chat listing context:', error);
+    }
+}
+
+function markServiceRequestContinued() {
+    try {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('job_context', 'continuation');
+        history.replaceState(history.state, '', currentUrl);
+    } catch (error) {
+        console.warn('Unable to update service request context:', error);
+    }
+}
+
+window.dismissListingAttachment = function() {
+    activeProductId = 0;
+    listingReferencePending = false;
+    serviceRequestPending = false;
+    const listingPreview = document.getElementById('chat-compose-listing');
+    const purchaseCta = document.getElementById('purchase-cta-bar');
+    if (listingPreview) listingPreview.hidden = true;
+    if (purchaseCta) purchaseCta.hidden = true;
+    if (productId > 0) {
+        markListingContextContinued();
+    } else if (<?= $jobId ?> > 0) {
+        markServiceRequestContinued();
+    }
+};
+
+window.dismissDealPrompt = function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    handshakeBar.hidden = true;
+    handshakeBar.style.display = 'none';
+};
 
 window.currentDeal = null;
 
@@ -1297,6 +1429,15 @@ function renderHandshakeBar(deal) {
     }
 
     handshakeBar.innerHTML = bannerHtml;
+    const dismissButton = document.createElement('button');
+    dismissButton.type = 'button';
+    dismissButton.className = 'chat-deal-banner__dismiss';
+    dismissButton.setAttribute('aria-label', <?= json_encode(__('common.close')) ?>);
+    dismissButton.title = <?= json_encode(__('common.close')) ?>;
+    dismissButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12"/></svg>';
+    dismissButton.addEventListener('click', window.dismissDealPrompt);
+    const dealBanner = handshakeBar.querySelector('.chat-deal-banner');
+    if (dealBanner) dealBanner.appendChild(dismissButton);
     dealSheetBody.innerHTML = sheetHtml;
 }
 

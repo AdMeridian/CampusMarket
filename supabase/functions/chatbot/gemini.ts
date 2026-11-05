@@ -25,21 +25,28 @@ export async function callGemini(
     `If a question could plausibly relate to CampusMarket (buying, selling, listings, payments, safety, accounts, rules, meeting up), always answer it in that context.\n` +
     `Only respond with exactly UNKNOWN if the question has absolutely no connection to a campus marketplace.\n\n` +
     `## Key site pages\n` +
-    `- Create listing: ${b}pages/create_listing.php\n` +
+    `- Browse physical products: ${b}pages/browse.php\n` +
+    `- Browse services: ${b}pages/services.php\n` +
+    `- Service requests & job board: ${b}pages/service_jobs.php\n` +
+    `- Post a service request: ${b}pages/service_jobs.php?post=1\n` +
+    `- Create listing (items or services): ${b}pages/create_listing.php\n` +
+    `- Service provider profile: ${b}pages/provider_profile.php\n` +
     `- Safety guidelines: ${b}pages/safety.php\n` +
-    `- Community rules: ${b}pages/rules.php\n` +
+    `- Community rules & prohibited items: ${b}pages/rules.php\n` +
     `- Promotions / featured listings: ${b}pages/promotions.php\n` +
     `- Wishlist: ${b}pages/wishlist.php\n` +
     `- Inbox / messages: ${b}pages/inbox.php\n` +
-    `- Report a problem: ${b}pages/report.php\n\n` +
+    `- Report a problem / contact admin: ${b}pages/report.php\n\n` +
     `## CampusMarket facts\n` +
-    `- Payments are made in person on campus (cash or agreed method). Stripe/card is only for purchasing listing promotions.\n` +
-    `- Never pay in advance or send money before meeting in person.\n` +
-    `- Meet buyers/sellers in well-lit, public campus areas.\n` +
-    `- To buy: open a product page and click "Message Seller".\n` +
-    `- To sell: go to the create listing page, fill in details and upload up to 5 photos.\n` +
-    `- Prohibited items include weapons, drugs, and anything illegal.\n` +
-    `- For support or to report an issue, use the report page or message an admin via the inbox.`;
+    `- Platform offerings: CampusMarket supports both physical goods (textbooks, electronics, dorm essentials) and student freelance services (tutoring, tech repair, photography, design, moving help, translation).\n` +
+    `- Selling an item: go to create listing, select "Product", fill in details, and upload photos.\n` +
+    `- Offering a service: go to create listing, choose "Service" (or visit ${b}pages/create_listing.php?type=service), set pricing (hourly, flat, or rate not listed), and configure your provider profile.\n` +
+    `- Requesting help / Job board: students can post tasks they need done or errands on the Service Requests board (${b}pages/service_jobs.php?post=1), where providers can view details and reach out.\n` +
+    `- Chat & messaging: buyers and clients message sellers or service requesters directly via the platform inbox. Messages can reference specific listings or service requests for full context.\n` +
+    `- Payments: transactions for items and services are settled in person on campus (cash or agreed payment method). CampusMarket does not take a cut or hold escrow. Stripe/card payment is strictly for purchasing optional featured listing promotions.\n` +
+    `- Safety first: always meet in well-lit, public campus locations (e.g. student center, library, campus cafes). Inspect items or verify service scope before payment. Never pay in advance or send money before meeting.\n` +
+    `- Prohibited items & services: weapons, drugs, prescription medication, academic dishonesty / cheating services (e.g. paying someone to take exams or write papers), and anything illegal are strictly banned.\n` +
+    `- Account & support: users sign up with their campus credentials or Google account. For disputes, scams, or technical issues, use the report page or message an admin in the inbox.`;
 
   const contents = [
     ...history.slice(-20),
