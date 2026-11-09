@@ -76,10 +76,6 @@ test('mobile search row sits comfortably below announcement banner without 80px 
   // Gap between bottom of announcement card and top of search row should be tight (<= 20px, not 80px+)
   const gap = searchBox.y - (cardBox.y + cardBox.height);
   expect(gap).toBeLessThanOrEqual(20);
-
-  // Take screenshot for visual inspection
-  const artifactDir = "C:/Users/Carl/.gemini/antigravity/brain/0ab160d5-7208-4ffa-a4a2-04e56e0bb32d";
-  await page.screenshot({ path: path.join(artifactDir, 'mobile_announcement_search_gap_preview.png'), fullPage: false });
 });
 
 test('clicking announcement CTA marks announcement as dismissed and closes it', async ({ page }) => {

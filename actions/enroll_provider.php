@@ -38,6 +38,10 @@ if ($priceInput !== '') {
     $price = round((float)$priceInput, 2);
 }
 
+$enableWhatsApp = !empty($_POST['enable_whatsapp']);
+$rawWhatsApp = trim((string)($_POST['whatsapp_number'] ?? ''));
+$whatsappNumber = ($enableWhatsApp && $rawWhatsApp !== '') ? mb_substr($rawWhatsApp, 0, 30) : null;
+
 $pricingModelInput = trim((string)($_POST['pricing_model'] ?? ''));
 if ($price !== null && !in_array($pricingModelInput, ['flat', 'hourly'], true)) {
     setFlash('error', 'Choose a rate basis or leave the rate blank.');
@@ -151,10 +155,10 @@ try {
     if ($existingProductId) {
         $productId = (int)$existingProductId;
         $updateSql = "UPDATE products SET category_id = ?, title = ?, description = ?, price = ?, pricing_model = ?, " .
-                     "delivery_days = ?, location_town = ?, availability_status = ?, portfolio_link = ?, status = 'pending_approval', " .
+                     "delivery_days = ?, location_town = ?, availability_status = ?, portfolio_link = ?, whatsapp_number = ?, status = 'pending_approval', " .
                      "service_expires_at = NULL, updated_at = NOW() WHERE id = ?";
         $updateStmt = $pdo->prepare($updateSql);
-        $updateStmt->execute([$categoryId, $serviceTitle, $serviceDescription, $price, $pricingModel, $deliveryDays, $locationTown, $availabilityStatus, $portfolioLink, $productId]);
+        $updateStmt->execute([$categoryId, $serviceTitle, $serviceDescription, $price, $pricingModel, $deliveryDays, $locationTown, $availabilityStatus, $portfolioLink, $whatsappNumber, $productId]);
     } else {
         $conditionVal = ($driver === 'mysql') ? 'new' : null;
         $cols = ["user_id", "category_id", "title", "description", "price", "price_currency", $conditionQuote, "status", "listing_type", "pricing_model", "location_town"];
@@ -182,6 +186,10 @@ try {
 
         $cols[] = "portfolio_link";
         $vals[] = $portfolioLink;
+        $placeholders[] = "?";
+
+        $cols[] = "whatsapp_number";
+        $vals[] = $whatsappNumber;
         $placeholders[] = "?";
 
         $cols[] = "service_expires_at";

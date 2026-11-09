@@ -579,6 +579,31 @@ if (!function_exists('ensureRecentFallbackColumn')) {
     }
 }
 
+if (!function_exists('ensureProductWhatsAppColumn')) {
+    function ensureProductWhatsAppColumn(PDO $pdo): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $pdo->exec("ALTER TABLE public.products ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(30) NULL");
+            } else {
+                $check = $pdo->prepare(
+                    "SELECT COUNT(*) FROM information_schema.columns " .
+                    "WHERE table_schema = DATABASE() AND table_name = 'products' AND column_name = 'whatsapp_number'"
+                );
+                $check->execute();
+                if ((int) $check->fetchColumn() === 0) {
+                    $pdo->exec("ALTER TABLE products ADD COLUMN whatsapp_number VARCHAR(30) NULL AFTER custom_location");
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Product WhatsApp column bootstrap warning: ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('ensureLoginAttemptsTable')) {
     function ensureLoginAttemptsTable(PDO $pdo): void {
         static $done = false;
@@ -673,6 +698,7 @@ if (!function_exists('connectDatabase')) {
                     ensureOrderExpiryColumns($pdo);
                     ensureCustomLocationColumns($pdo);
                     ensureRecentFallbackColumn($pdo);
+                    ensureProductWhatsAppColumn($pdo);
                     ensureLoginAttemptsTable($pdo);
                 } catch (Throwable $ensureError) {
                     error_log('Schema bootstrap failed: ' . $ensureError->getMessage());

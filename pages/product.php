@@ -13,7 +13,7 @@ if ($productId <= 0) {
 $viewerId = isLoggedIn() ? (int)currentUserId() : 0;
 $viewerIsAdmin = isAdmin() ? 1 : 0;
 $stmt = $pdo->prepare("
-    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since
+    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since, u.phone as seller_phone
     FROM products p
     JOIN categories c ON p.category_id = c.id
     JOIN users u ON p.user_id = u.id
@@ -95,6 +95,25 @@ if (($product['listing_type'] ?? 'product') === 'service') {
 $listingConversationUrl = isLoggedIn()
     ? BASE_URL . $listingConversationPath
     : BASE_URL . 'pages/login.php?redirect=' . rawurlencode($listingConversationPath);
+
+$serviceWhatsAppNumber = trim((string)($product['whatsapp_number'] ?? ''));
+$serviceWhatsAppUrl = null;
+if (($product['listing_type'] ?? 'product') === 'service' && $serviceWhatsAppNumber !== '') {
+    $sellerName = (string)($product['seller_name'] ?? 'Provider');
+    $serviceTitle = (string)($product['title'] ?? 'Service');
+    $listingUrl = rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$product['id'];
+    $prefillText = __('product.whatsapp_prefill', [
+        'seller' => $sellerName,
+        'title'  => $serviceTitle,
+        'url'    => $listingUrl,
+    ]);
+    $rawWaUrl = buildWhatsAppChatUrl($serviceWhatsAppNumber, $prefillText);
+    if ($rawWaUrl !== null) {
+        $serviceWhatsAppUrl = isLoggedIn()
+            ? $rawWaUrl
+            : BASE_URL . 'pages/login.php?redirect=' . rawurlencode('pages/product.php?id=' . $productId);
+    }
+}
 
 // Handle Price Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_price') {
@@ -1561,14 +1580,27 @@ body.dark-mode .scc-badge {
                         </div>
                     </a>
                     <?php if (!$isOwner && ($product['listing_type'] ?? 'product') === 'service'): ?>
-                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
-                       class="btn btn--service js-contact-seller"
-                       style="padding: 0.65rem 1rem; font-weight: 700; white-space: nowrap;"
-                       data-listing-id="<?= (int)$product['id'] ?>"
-                       data-category="<?= htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                       data-contact-method="message">
-                        <?= __('product.request_service') ?>
-                    </a>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           class="btn btn--service js-contact-seller"
+                           style="padding: 0.65rem 1rem; font-weight: 700; white-space: nowrap;"
+                           data-listing-id="<?= (int)$product['id'] ?>"
+                           data-category="<?= htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                           data-contact-method="message">
+                            <?= __('product.request_service') ?>
+                        </a>
+                        <?php if (!empty($serviceWhatsAppUrl)): ?>
+                        <a href="<?= htmlspecialchars($serviceWhatsAppUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           <?= isLoggedIn() ? 'target="_blank" rel="noopener noreferrer"' : '' ?>
+                           class="btn btn--whatsapp js-whatsapp-seller"
+                           style="padding: 0.65rem 1rem; font-weight: 700; white-space: nowrap;"
+                           data-listing-id="<?= (int)$product['id'] ?>"
+                           data-category="<?= htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 17px; height: 17px; flex-shrink: 0;" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.35C9.36 7.35 9.09 7.41 8.86 7.66C8.63 7.91 8 8.5 8 9.71C8 10.92 8.88 12.08 9 12.25C9.12 12.42 10.74 14.92 13.22 16C13.81 16.26 14.27 16.41 14.63 16.53C15.22 16.71 15.76 16.69 16.19 16.62C16.67 16.55 17.66 16.02 17.86 15.44C18.06 14.86 18.06 14.37 18 14.27C17.94 14.17 17.78 14.11 17.54 13.99C17.3 13.87 16.12 13.29 15.9 13.21C15.68 13.13 15.52 13.09 15.36 13.33C15.2 13.57 14.73 14.11 14.59 14.27C14.45 14.43 14.31 14.45 14.07 14.33C13.83 14.21 12.81 13.87 11.61 12.8C10.67 11.96 10.04 10.92 9.87 10.64C9.7 10.36 9.85 10.21 9.97 10.09C10.08 9.98 10.22 9.8 10.34 9.66C10.46 9.52 10.5 9.42 10.58 9.26C10.66 9.1 10.62 8.96 10.56 8.84C10.5 8.72 10.03 7.56 9.83 7.08C9.64 6.61 9.44 6.67 9.3 6.67C9.16 6.66 9 6.66 8.84 6.66"/></svg>
+                            <span><?= __('product.chat_whatsapp') ?></span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                     <?php endif; ?>
                     <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="scc-view-profile-btn">
                         <?= __('product.view_profile') ?> <span style="opacity: 0.45; font-size: 0.8rem; margin-left: 4px;">&#10095;</span>
@@ -1614,13 +1646,26 @@ body.dark-mode .scc-badge {
                         <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($product); ?></span>
                     </div>
                     <?php endif; ?>
-                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
-                       class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
-                       data-listing-id="<?php echo (int)$product['id']; ?>"
-                       data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                       data-contact-method="message">
-                        <?= __('product.request_service') ?>
-                    </a>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full">
+                        <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                           data-contact-method="message">
+                            <?= __('product.request_service') ?>
+                        </a>
+                        <?php if (!empty($serviceWhatsAppUrl)): ?>
+                        <a href="<?= htmlspecialchars($serviceWhatsAppUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="btn btn--whatsapp flex-grow justify-center py-4 text-lg hover-scale js-whatsapp-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; flex-shrink: 0;" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.35C9.36 7.35 9.09 7.41 8.86 7.66C8.63 7.91 8 8.5 8 9.71C8 10.92 8.88 12.08 9 12.25C9.12 12.42 10.74 14.92 13.22 16C13.81 16.26 14.27 16.41 14.63 16.53C15.22 16.71 15.76 16.69 16.19 16.62C16.67 16.55 17.66 16.02 17.86 15.44C18.06 14.86 18.06 14.37 18 14.27C17.94 14.17 17.78 14.11 17.54 13.99C17.3 13.87 16.12 13.29 15.9 13.21C15.68 13.13 15.52 13.09 15.36 13.33C15.2 13.57 14.73 14.11 14.59 14.27C14.45 14.43 14.31 14.45 14.07 14.33C13.83 14.21 12.81 13.87 11.61 12.8C10.67 11.96 10.04 10.92 9.87 10.64C9.7 10.36 9.85 10.21 9.97 10.09C10.08 9.98 10.22 9.8 10.34 9.66C10.46 9.52 10.5 9.42 10.58 9.26C10.66 9.1 10.62 8.96 10.56 8.84C10.5 8.72 10.03 7.56 9.83 7.08C9.64 6.61 9.44 6.67 9.3 6.67C9.16 6.66 9 6.66 8.84 6.66"/></svg>
+                            <span><?= __('product.chat_whatsapp') ?></span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                     <p class="text-muted small text-center mb-0" style="font-size: 0.82rem;"><?= __('product.service_contact_hint') ?></p>
                 <?php else: ?>
                     <!-- Product CTA: message seller -->
@@ -1649,13 +1694,34 @@ body.dark-mode .scc-badge {
             <?php else: ?>
             <!-- Action Buttons for Guest Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
-                <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
-                   class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
-                   data-listing-id="<?php echo (int)$product['id']; ?>"
-                   data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                   data-contact-method="message">
-                    <?= __('product.message_seller') ?>
-                </a>
+                <?php if ($isServiceProduct): ?>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full">
+                        <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                           data-contact-method="message">
+                            <?= __('product.request_service') ?>
+                        </a>
+                        <?php if (!empty($serviceWhatsAppUrl)): ?>
+                        <a href="<?= htmlspecialchars($serviceWhatsAppUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           class="btn btn--whatsapp flex-grow justify-center py-4 text-lg hover-scale js-whatsapp-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; flex-shrink: 0;" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.35C9.36 7.35 9.09 7.41 8.86 7.66C8.63 7.91 8 8.5 8 9.71C8 10.92 8.88 12.08 9 12.25C9.12 12.42 10.74 14.92 13.22 16C13.81 16.26 14.27 16.41 14.63 16.53C15.22 16.71 15.76 16.69 16.19 16.62C16.67 16.55 17.66 16.02 17.86 15.44C18.06 14.86 18.06 14.37 18 14.27C17.94 14.17 17.78 14.11 17.54 13.99C17.3 13.87 16.12 13.29 15.9 13.21C15.68 13.13 15.52 13.09 15.36 13.33C15.2 13.57 14.73 14.11 14.59 14.27C14.45 14.43 14.31 14.45 14.07 14.33C13.83 14.21 12.81 13.87 11.61 12.8C10.67 11.96 10.04 10.92 9.87 10.64C9.7 10.36 9.85 10.21 9.97 10.09C10.08 9.98 10.22 9.8 10.34 9.66C10.46 9.52 10.5 9.42 10.58 9.26C10.66 9.1 10.62 8.96 10.56 8.84C10.5 8.72 10.03 7.56 9.83 7.08C9.64 6.61 9.44 6.67 9.3 6.67C9.16 6.66 9 6.66 8.84 6.66"/></svg>
+                            <span><?= __('product.chat_whatsapp') ?></span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                       data-listing-id="<?php echo (int)$product['id']; ?>"
+                       data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                       data-contact-method="message">
+                        <?= __('product.message_seller') ?>
+                    </a>
+                <?php endif; ?>
                 <button
                     type="button"
                     class="product-share-btn w-full justify-center py-3 text-lg"
@@ -1988,6 +2054,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     listing_id: Number(this.dataset.listingId || 0),
                     category: this.dataset.category || '',
                     contact_method: this.dataset.contactMethod || 'message'
+                });
+            }
+        });
+    });
+
+    document.querySelectorAll('.js-whatsapp-seller').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (typeof posthog !== 'undefined' && posthog.capture) {
+                posthog.capture('seller_contact_clicked', {
+                    listing_id: Number(this.dataset.listingId || 0),
+                    category: this.dataset.category || '',
+                    contact_method: 'whatsapp'
                 });
             }
         });

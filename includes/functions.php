@@ -634,6 +634,31 @@ function getServiceImage(?string $path, int|string|null $seed = null): string {
 }
 
 /**
+ * Normalizes a phone number and builds a WhatsApp deep link with optional pre-filled text.
+ * Returns null if phone number cannot be resolved to a valid international number.
+ */
+function buildWhatsAppChatUrl(?string $phone, string $text = ''): ?string {
+    if ($phone === null || trim($phone) === '') {
+        return null;
+    }
+    $clean = preg_replace('/[^\d]/', '', $phone);
+    if (str_starts_with($clean, '00')) {
+        $clean = substr($clean, 2);
+    }
+    if (strlen($clean) === 11 && str_starts_with($clean, '05')) {
+        $clean = '9' . $clean;
+    }
+    if (strlen($clean) < 7 || strlen($clean) > 16) {
+        return null;
+    }
+    $url = 'https://wa.me/' . $clean;
+    if ($text !== '') {
+        $url .= '?text=' . rawurlencode($text);
+    }
+    return $url;
+}
+
+/**
  * Backward-compatible upload helper used by older pages.
  * Returns relative path string on success, false on failure.
  */

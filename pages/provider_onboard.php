@@ -22,6 +22,21 @@ try {
 }
 
 $currentUserId = isLoggedIn() ? currentUserId() : 0;
+$currentUserPhone = '';
+$existingListingWhatsApp = '';
+if ($currentUserId > 0) {
+    try {
+        $uStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
+        $uStmt->execute([$currentUserId]);
+        $currentUserPhone = (string)($uStmt->fetchColumn() ?: '');
+
+        $exStmt = $pdo->prepare("SELECT whatsapp_number FROM products WHERE user_id = ? AND listing_type = 'service' AND status != 'deleted' LIMIT 1");
+        $exStmt->execute([$currentUserId]);
+        $existingListingWhatsApp = (string)($exStmt->fetchColumn() ?: '');
+    } catch (Throwable $ePhone) {}
+}
+$defaultWhatsAppNumber = $existingListingWhatsApp !== '' ? $existingListingWhatsApp : $currentUserPhone;
+$hasWhatsAppEnabled = !empty($existingListingWhatsApp);
 
 include '../includes/header.php';
 ?>
@@ -376,6 +391,19 @@ include '../includes/header.php';
                         </div>
                     </div>
 
+                    <!-- WhatsApp Contact Option -->
+                    <div class="mb-6 p-4 rounded-xl" style="background: var(--bg-main); border: 1px solid var(--border-light);">
+                        <label class="flex items-center gap-2 mb-2 cursor-pointer">
+                            <input type="checkbox" id="enable_whatsapp" name="enable_whatsapp" value="1" <?= $hasWhatsAppEnabled ? 'checked' : '' ?>>
+                            <span class="font-bold text-main" style="font-size: 0.9rem;">Allow clients to contact me directly on WhatsApp</span>
+                        </label>
+                        <div id="whatsapp_input_wrap" style="<?= $hasWhatsAppEnabled ? '' : 'display: none;' ?>">
+                            <label for="whatsapp_number" class="block font-bold mb-1 text-main" style="font-size: 0.84rem;">WhatsApp Number</label>
+                            <input type="tel" id="whatsapp_number" name="whatsapp_number" class="premium-input w-full" style="padding: 0.65rem 0.85rem;" placeholder="e.g. +90 533 123 4567 or 0533 123 4567" value="<?= htmlspecialchars($defaultWhatsAppNumber) ?>">
+                            <small class="text-muted block mt-1" style="font-size: 0.78rem;">Clients on CampusMarket will see a direct WhatsApp chat button with pre-filled details about your service.</small>
+                        </div>
+                    </div>
+
                     <!-- Final Submission -->
                     <div class="provider-submit-bar pt-6 border-t flex items-center justify-between gap-4 flex-wrap" style="border-color: var(--border-light);">
                         <div class="flex items-center gap-2 text-muted" style="font-size: 0.85rem;">
@@ -432,6 +460,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
         console.warn('Unable to read the saved service draft from this browser.', error);
         setOnboardStatus('Your saved draft could not be read from this browser.', true);
+    }
+
+    const enableWa = document.getElementById('enable_whatsapp');
+    const waWrap = document.getElementById('whatsapp_input_wrap');
+    if (enableWa && waWrap) {
+        enableWa.addEventListener('change', () => {
+            waWrap.style.display = enableWa.checked ? 'block' : 'none';
+        });
     }
 
     document.getElementById('btnManualEntry')?.addEventListener('click', () => {

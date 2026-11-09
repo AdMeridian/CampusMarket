@@ -168,6 +168,7 @@ CREATE TABLE products (
     moderation_note TEXT        NULL,
     location_town VARCHAR(32)  NULL,
     custom_location VARCHAR(100) NULL,
+    whatsapp_number VARCHAR(30) NULL,
     country_code CHAR(2) NULL,
     university_id BIGINT NULL,
     deleted_at DATETIME NULL,
