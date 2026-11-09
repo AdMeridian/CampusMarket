@@ -1598,6 +1598,82 @@ body.dark-mode .scc-badge {
                 </div>
             </div>
 
+            <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <!-- CLIENT REVIEWS CARD (Services Only) -->
+            <div class="product-desc-card mt-8">
+                <div class="flex items-center justify-between mb-5 gap-3" style="flex-wrap: wrap;">
+                    <div class="flex items-center gap-3" style="min-width: 0;">
+                        <div style="width: 40px; height: 40px; min-width: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary); border: 1px solid var(--border-light); flex-shrink: 0;">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;" aria-hidden="true">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                            </svg>
+                        </div>
+                        <div style="min-width: 0;">
+                            <h3 class="m-0 font-bold text-main" style="font-size: 1.25rem; line-height: 1.2; color: var(--text-main);">
+                                <?= __('product.client_reviews') ?>
+                            </h3>
+                            <p class="text-muted small mb-0 mt-0.5" style="font-size: 0.85rem;">
+                                <?= __('product.client_reviews_sub') ?>
+                            </p>
+                        </div>
+                    </div>
+
+                    <?php if ($serviceCount > 0): ?>
+                    <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl" style="background: var(--bg-main); border: 1px solid var(--border-light); white-space: nowrap; flex-shrink: 0;">
+                        <div class="flex items-center gap-1">
+                            <span style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo number_format($serviceAvg, 1); ?></span>
+                            <div style="color: #f59e0b; display: inline-flex; font-size: 0.8rem; line-height: 1;"><?php echo renderStars($serviceAvg); ?></div>
+                        </div>
+                        <span style="color: var(--border-light);">|</span>
+                        <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">
+                            <?php echo $serviceCount; ?> <?= $serviceCount === 1 ? __('product.review') : __('product.reviews') ?>
+                        </span>
+                    </div>
+                    <?php else: ?>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted); white-space: nowrap; flex-shrink: 0;">
+                        <?= __('product.no_reviews_title') ?>
+                    </span>
+                    <?php endif; ?>
+                </div>
+
+                <?php if (empty($serviceReviews)): ?>
+                    <div class="text-center" style="border-radius: var(--radius-md); background: var(--bg-main); border: 1px solid var(--border-light); padding: 1.75rem 1.25rem;">
+                        <div style="width: 48px; height: 48px; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: var(--primary-light); color: var(--primary);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;" aria-hidden="true">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                            </svg>
+                        </div>
+                        <h4 class="mb-1 text-main font-bold" style="font-size: 1rem;"><?= __('product.no_reviews_title') ?></h4>
+                        <p class="text-muted mb-0 mx-auto" style="max-width: 380px; font-size: 0.88rem; line-height: 1.55;">
+                            <?= __('product.no_reviews_desc', ['seller' => sanitize($product['seller_name'])]) ?>
+                        </p>
+                    </div>
+                <?php else: ?>
+                    <div class="flex flex-col gap-3">
+                        <?php foreach ($serviceReviews as $review): ?>
+                            <div class="p-3.5" style="border-radius: var(--radius-md); border: 1px solid var(--border-light); background: var(--bg-main); transition: var(--transition);">
+                                <div class="flex justify-between items-start gap-3 mb-2">
+                                    <div class="flex items-center gap-2.5">
+                                        <div style="width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); font-size: 0.82rem; font-weight: 700; background: var(--primary-light); color: var(--primary); border: 1px solid rgba(26, 127, 100, 0.15);">
+                                            <?php echo strtoupper(substr($review['reviewer_name'], 0, 1)); ?>
+                                        </div>
+                                        <div>
+                                            <h4 class="mb-0 text-main font-bold" style="font-size: 0.9rem; line-height: 1.2;">@<?php echo sanitize($review['reviewer_name']); ?></h4>
+                                            <span style="font-size: 0.72rem; color: var(--text-light);"><?php echo timeAgo($review['created_at']); ?></span>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
+                                </div>
+                                <?php if (trim((string)$review['comment']) !== ''): ?>
+                                    <p class="mb-0 text-main" style="font-size: 0.88rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; word-break: break-word;"><?php echo sanitize($review['comment']); ?></p>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
             <?php if ($isOwner): ?>
             <!-- Owner Floating Management Action -->
             <div class="flex flex-col gap-3 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1.5px solid var(--primary); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
@@ -1715,62 +1791,6 @@ body.dark-mode .scc-badge {
         </div>
 
     </div>
-
-    <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
-    <!-- Service Provider Reviews Section -->
-    <div class="mt-16 border-t border-slate-100 pt-12" style="max-width: 1200px; margin-left: auto; margin-right: auto;">
-        <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
-            <div>
-                <h2 class="page-section-title mb-1 text-main font-bold" style="font-size: 1.6rem; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
-                    Client Reviews
-                </h2>
-                <p class="text-muted small mb-0">What other students say about this specific service.</p>
-            </div>
-            <?php if ($serviceCount > 0): ?>
-            <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2" style="background: var(--bg-card);">
-                <div class="text-center">
-                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);"><?php echo number_format($serviceAvg, 1); ?></span>
-                    <span style="font-size: 0.85rem; color: var(--text-light); font-weight: 600;">/ 5</span>
-                </div>
-                <div style="border-left: 1px solid var(--border-light); padding-left: 1rem;">
-                    <div style="color: #f59e0b; line-height: 1;"><?php echo renderStars($serviceAvg); ?></div>
-                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;"><?php echo $serviceCount; ?> <?= $serviceCount === 1 ? __('product.review') : __('product.reviews') ?></span>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-
-        <?php if (empty($serviceReviews)): ?>
-            <div class="glass-panel p-12 text-center" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 2px dashed var(--border-light);">
-                <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.6;">💬</span>
-                <h4 class="mb-1 text-main" style="font-weight: 700;">No reviews for this service yet</h4>
-                <p class="text-muted mb-0">Be the first to hire @<?php echo sanitize($product['seller_name']); ?> for this service and leave a review!</p>
-            </div>
-        <?php else: ?>
-            <div class="grid grid-cols-1 md-grid-cols-2 gap-6">
-                <?php foreach ($serviceReviews as $review): ?>
-                    <div class="card p-5 hover-scale" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); transition: var(--transition);">
-                        <div class="flex justify-between items-start gap-4 mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 flex items-center justify-center rounded-lg" style="background: var(--bg-main); color: var(--text-main); font-weight: 700; border: 1px solid var(--border-light);">
-                                    <?php echo strtoupper(substr($review['reviewer_name'], 0, 1)); ?>
-                                </div>
-                                <div>
-                                    <h4 class="mb-0 text-main" style="font-size: 0.95rem; font-weight: 700;">@<?php echo sanitize($review['reviewer_name']); ?></h4>
-                                    <span style="font-size: 0.78rem; color: var(--text-light);"><?php echo timeAgo($review['created_at']); ?></span>
-                                </div>
-                            </div>
-                            <div style="font-size: 0.85rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
-                        </div>
-                        <?php if (trim((string)$review['comment']) !== ''): ?>
-                            <p class="mb-0 text-main" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
 
 </div>
 

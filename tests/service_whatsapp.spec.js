@@ -12,12 +12,24 @@ test('WhatsApp contact feature is properly integrated across services', async ()
   expect(en['product.whatsapp_prefill']).toContain('{title}');
   expect(en['product.whatsapp_prefill']).toContain('{url}');
   expect(en['product.whatsapp_enable_label']).toBeTruthy();
+  expect(en['product.client_reviews']).toBe('Client Reviews');
+  expect(en['product.no_reviews_title']).toBe('No reviews yet');
 
   expect(tr['product.chat_whatsapp']).toBe('WhatsApp ile Sohbet Et');
   expect(tr['product.whatsapp_prefill']).toContain('{seller}');
   expect(tr['product.whatsapp_prefill']).toContain('{title}');
   expect(tr['product.whatsapp_prefill']).toContain('{url}');
   expect(tr['product.whatsapp_enable_label']).toBeTruthy();
+  expect(tr['product.client_reviews']).toBe('Müşteri Değerlendirmeleri');
+  expect(tr['product.no_reviews_title']).toBe('Henüz değerlendirme yok');
+
+  // Service requests translations check
+  expect(en['service_requests.whatsapp_enable_label']).toBeTruthy();
+  expect(en['service_requests.whatsapp_prefill']).toContain('{poster}');
+  expect(en['service_requests.whatsapp_prefill']).toContain('{title}');
+  expect(tr['service_requests.whatsapp_enable_label']).toBeTruthy();
+  expect(tr['service_requests.whatsapp_prefill']).toContain('{poster}');
+  expect(tr['service_requests.whatsapp_prefill']).toContain('{title}');
 
   // 2. Helper functions check
   const functionsPhp = fs.readFileSync(path.join(__dirname, '../includes/functions.php'), 'utf8');
@@ -67,4 +79,26 @@ test('WhatsApp contact feature is properly integrated across services', async ()
     'utf8'
   );
   expect(pgMigration).toContain('ADD COLUMN IF NOT EXISTS whatsapp_number');
+
+  // 8. Service Requests check
+  const serviceJobsPhp = fs.readFileSync(path.join(__dirname, '../pages/service_jobs.php'), 'utf8');
+  expect(serviceJobsPhp).toContain('whatsapp_number');
+  expect(serviceJobsPhp).toContain('buildWhatsAppChatUrl');
+  expect(serviceJobsPhp).toContain('job-enable-whatsapp');
+  expect(serviceJobsPhp).toContain('btn--whatsapp');
+
+  const jobMysqlMigration = fs.readFileSync(
+    path.join(__dirname, '../database/migrations/20261109123000_add_service_job_whatsapp_number.mysql.sql'),
+    'utf8'
+  );
+  expect(jobMysqlMigration).toContain('service_job_posts');
+  expect(jobMysqlMigration).toContain('ADD COLUMN whatsapp_number');
+
+  const jobPgMigration = fs.readFileSync(
+    path.join(__dirname, '../supabase/migrations/20261109123000_add_service_job_whatsapp_number.sql'),
+    'utf8'
+  );
+  expect(jobPgMigration).toContain('service_job_posts');
+  expect(jobPgMigration).toContain('ADD COLUMN IF NOT EXISTS whatsapp_number');
 });
+

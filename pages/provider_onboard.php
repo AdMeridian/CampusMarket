@@ -167,6 +167,17 @@ include '../includes/header.php';
     .onboard-card {
         padding: 1.25rem;
     }
+    .provider-hero {
+        text-align: left;
+        margin-bottom: 1.5rem;
+    }
+    .provider-hero .page-hero-title {
+        font-size: 1.75rem !important;
+    }
+    #btnAnalyzeAi, #btnManualEntry {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 

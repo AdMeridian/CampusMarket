@@ -129,6 +129,7 @@ CREATE TABLE service_job_posts (
     description TEXT NOT NULL,
     location_town VARCHAR(32) NOT NULL,
     budget_max  DECIMAL(10,2) NULL,
+    whatsapp_number VARCHAR(30) NULL,
     status      ENUM('open', 'closed') NOT NULL DEFAULT 'open',
     expires_at  DATETIME NOT NULL,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

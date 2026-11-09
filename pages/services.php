@@ -128,20 +128,20 @@ include '../includes/header.php';
 
     <div class="container">
         <!-- Unified Services Header -->
-        <div class="mb-10 flex justify-between items-end gap-6 flex-wrap pb-6 border-b" style="border-color: var(--border-light);">
-            <div class="text-left" style="max-width: 680px;">
+        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-6 pb-6 border-b" style="border-color: var(--border-light);">
+            <div class="text-left w-full md:w-auto" style="max-width: 680px;">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="badge" style="background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 0.76rem; letter-spacing: 0.5px; border: 1px solid rgba(26, 127, 100, 0.25);">
                         SERVICES
                     </span>
                 </div>
-                <h1 class="page-hero-title mb-2 text-main"><?= __('services.hero_title') ?></h1>
-                <p class="page-subtitle mb-0"><?= __('services.hero_subtitle') ?></p>
+                <h1 class="page-hero-title mb-2 text-main" style="font-size: clamp(1.6rem, 3vw + 1rem, 2.5rem);"><?= __('services.hero_title') ?></h1>
+                <p class="page-subtitle mb-0" style="font-size: 0.95rem; line-height: 1.5;"><?= __('services.hero_subtitle') ?></p>
             </div>
             
-            <div class="flex gap-2 flex-wrap">
-                <a href="<?= BASE_URL ?>pages/service_jobs.php" class="btn btn-secondary" style="padding: 0.8rem 1.2rem;">Service requests</a>
-                <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn--service" style="padding: 0.8rem 1.6rem; display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+            <div class="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto flex-shrink-0">
+                <a href="<?= BASE_URL ?>pages/service_jobs.php" class="btn btn-secondary justify-center text-center py-3 px-4 font-bold" style="border-radius: var(--radius-lg);"><?= __('service_requests.title') ?></a>
+                <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn--service justify-center text-center py-3 px-5 font-bold" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); white-space: nowrap;">
                     <span><?= __('services.offer_service') ?></span>
                 </a>
             </div>
@@ -160,7 +160,21 @@ include '../includes/header.php';
 
             <!-- Sidebar Filters -->
             <aside class="lg-col-span-1">
-                <div class="glass-panel p-5 sticky-desktop" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
+                <!-- Mobile Filter Toggle Button -->
+                <div class="services-filter-toggle-wrap">
+                    <button type="button" id="services-filter-toggle" class="btn btn-secondary w-full flex items-center justify-between py-3 px-4" style="border-radius: var(--radius-lg); font-weight: 700;">
+                        <span class="flex items-center gap-2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            <span><?= __('services.filters_title') ?></span>
+                            <?php if ($hasFilters): ?>
+                                <span class="badge" style="background: var(--primary); color: white; font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: var(--radius-full);">Active</span>
+                            <?php endif; ?>
+                        </span>
+                        <svg id="services-filter-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 16px; height: 16px; transition: transform 0.2s; <?= $hasFilters ? 'transform: rotate(180deg);' : '' ?>" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                </div>
+
+                <div id="filter-sidebar" class="glass-panel p-5 sticky-desktop <?= $hasFilters ? '' : 'is-mobile-collapsed' ?>" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
                     <div class="flex justify-between items-center mb-8 pb-4 border-b">
                         <h2 class="page-section-title mb-0"><?= __('services.filters_title') ?></h2>
                         <a href="services.php" class="text-muted small font-bold uppercase tracking-wider hover:text-primary"><?= __('services.clear_filters') ?></a>
@@ -420,5 +434,26 @@ include '../includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const filterToggle = document.getElementById('services-filter-toggle');
+    const filterSidebar = document.getElementById('filter-sidebar');
+    const filterChevron = document.getElementById('services-filter-chevron');
+
+    if (filterToggle && filterSidebar) {
+        filterToggle.addEventListener('click', () => {
+            const isCollapsed = filterSidebar.classList.contains('is-mobile-collapsed');
+            if (isCollapsed) {
+                filterSidebar.classList.remove('is-mobile-collapsed');
+                if (filterChevron) filterChevron.style.transform = 'rotate(180deg)';
+            } else {
+                filterSidebar.classList.add('is-mobile-collapsed');
+                if (filterChevron) filterChevron.style.transform = 'rotate(0deg)';
+            }
+        });
+    }
+});
+</script>
 
 <?php include '../includes/footer.php'; ?>

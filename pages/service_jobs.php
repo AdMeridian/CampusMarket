@@ -73,11 +73,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $budgetMax = round((float) $budgetInput, 2);
     }
 
+    $enableWhatsApp = !empty($_POST['enable_whatsapp']);
+    $whatsappNumber = null;
+    if ($enableWhatsApp) {
+        $rawWa = trim((string)($_POST['whatsapp_number'] ?? ''));
+        if ($rawWa !== '') {
+            $digits = preg_replace('/[^\d+]/', '', $rawWa);
+            if (strlen(preg_replace('/\D/', '', $digits)) >= 7) {
+                $whatsappNumber = mb_substr($digits, 0, 30);
+            }
+        }
+    }
+
     $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
     $insertStmt = $pdo->prepare(
         "INSERT INTO service_job_posts
-            (poster_id, category_id, organization_name, title, description, location_town, budget_max, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            (poster_id, category_id, organization_name, title, description, location_town, budget_max, whatsapp_number, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     $insertStmt->execute([
         $currentUserId,
@@ -87,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description,
         $locationTown,
         $budgetMax,
+        $whatsappNumber,
         $expiresAt,
     ]);
 
@@ -134,7 +147,7 @@ $pageSize = defined('ITEMS_PER_PAGE') ? ITEMS_PER_PAGE : 12;
 $offset = ($page - 1) * $pageSize;
 $jobsStmt = $pdo->prepare(
     "SELECT j.id, j.poster_id, j.category_id, j.organization_name, j.title, j.description, j.location_town,
-            j.budget_max, j.status, j.expires_at, j.created_at,
+            j.budget_max, j.whatsapp_number, j.status, j.expires_at, j.created_at,
             c.name AS category_name, u.username AS poster_name, u.avatar AS poster_avatar
      FROM service_job_posts j
      JOIN categories c ON c.id = j.category_id
@@ -146,6 +159,13 @@ $jobsStmt = $pdo->prepare(
 );
 $jobsStmt->execute($params);
 $jobs = $jobsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$currentUserPhone = '';
+if ($currentUserId > 0) {
+    $userPhoneStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
+    $userPhoneStmt->execute([$currentUserId]);
+    $currentUserPhone = (string)($userPhoneStmt->fetchColumn() ?: '');
+}
 
 $serviceCategories = $pdo->query(
     "SELECT id, name FROM categories WHERE type = 'service' ORDER BY name ASC"
@@ -190,6 +210,10 @@ include __DIR__ . '/../includes/header.php';
     overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
+    .service-jobs-hero > div:first-child,
+    .service-jobs-hero > div:last-child {
+        width: 100%;
+    }
     .service-job-card { padding: 1rem; }
     .service-jobs-hero .btn { width: 100%; justify-content: center; }
     .service-jobs-market-nav .btn { flex: 1 1 100%; justify-content: center; }
@@ -288,6 +312,19 @@ include __DIR__ . '/../includes/header.php';
                         <label class="block font-bold mb-2" for="job-budget"><?= __('service_requests.budget') ?> <span class="text-muted font-normal">(<?= __('common.optional') ?>)</span></label>
                         <input class="premium-input w-full" id="job-budget" name="budget_max" type="number" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="e.g. 500">
                     </div>
+                    <div class="md:col-span-2 pt-2">
+                        <label class="flex items-center gap-2 cursor-pointer font-bold mb-1" style="color: var(--text-main);">
+                            <input type="checkbox" name="enable_whatsapp" id="job-enable-whatsapp" value="1" style="accent-color: #25D366; width: 18px; height: 18px;">
+                            <span><?= __('service_requests.whatsapp_enable_label') ?></span>
+                        </label>
+                        <p class="text-muted small mb-2"><?= __('service_requests.whatsapp_hint') ?></p>
+                        <div id="job-whatsapp-wrap" style="display: none;" class="mt-2">
+                            <label class="block font-bold mb-1 text-sm" for="job-whatsapp-number"><?= __('service_requests.whatsapp_number_label') ?></label>
+                            <input type="tel" name="whatsapp_number" id="job-whatsapp-number" class="premium-input w-full"
+                                   value="<?= htmlspecialchars($currentUserPhone, ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="<?= __('service_requests.whatsapp_placeholder') ?>" maxlength="30">
+                        </div>
+                    </div>
                 </div>
                 <div class="flex justify-end mt-5 service-jobs-post-actions">
                     <button class="btn btn-primary" type="submit"><?= __('service_requests.post_request') ?></button>
@@ -371,12 +408,31 @@ include __DIR__ . '/../includes/header.php';
                             <span>·</span>
                             <span><?= htmlspecialchars(date('M j, Y', strtotime((string) $job['created_at'])), ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
-                        <div class="flex gap-2 flex-wrap service-job-card__actions">
+                        <div class="flex gap-2 flex-wrap items-center service-job-card__actions">
                             <?php if ($isOpen && !$isOwner): ?>
                                 <?php if (isLoggedIn()): ?>
-                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/messages.php?other_user_id=<?= (int) $job['poster_id'] ?>&amp;product_id=0&amp;job_id=<?= (int) $job['id'] ?>">Message about this request</a>
+                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/messages.php?other_user_id=<?= (int) $job['poster_id'] ?>&amp;product_id=0&amp;job_id=<?= (int) $job['id'] ?>"><?= __('service_requests.message_poster') ?></a>
+                                    <?php
+                                    $jobWhatsAppUrl = null;
+                                    if (!empty($job['whatsapp_number'])) {
+                                        $jobPrefill = __('service_requests.whatsapp_prefill', [
+                                            'poster' => $job['poster_name'],
+                                            'title' => $job['title'],
+                                            'url' => rtrim(BASE_URL, '/') . '/pages/service_jobs.php'
+                                        ]);
+                                        $jobWhatsAppUrl = buildWhatsAppChatUrl($job['whatsapp_number'], $jobPrefill);
+                                    }
+                                    ?>
+                                    <?php if (!empty($jobWhatsAppUrl)): ?>
+                                        <a class="btn btn--whatsapp btn-sm flex items-center gap-1.5"
+                                           href="<?= htmlspecialchars($jobWhatsAppUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                           target="_blank" rel="noopener noreferrer">
+                                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; flex-shrink: 0;" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.35C9.36 7.35 9.09 7.41 8.86 7.66C8.63 7.91 8 8.5 8 9.71C8 10.92 8.88 12.08 9 12.25C9.12 12.42 10.74 14.92 13.22 16C13.81 16.26 14.27 16.41 14.63 16.53C15.22 16.71 15.76 16.69 16.19 16.62C16.67 16.55 17.66 16.02 17.86 15.44C18.06 14.86 18.06 14.37 18 14.27C17.94 14.17 17.78 14.11 17.54 13.99C17.3 13.87 16.12 13.29 15.9 13.21C15.68 13.13 15.52 13.09 15.36 13.33C15.2 13.57 14.73 14.11 14.59 14.27C14.45 14.43 14.31 14.45 14.07 14.33C13.83 14.21 12.81 13.87 11.61 12.8C10.67 11.96 10.04 10.92 9.87 10.64C9.7 10.36 9.85 10.21 9.97 10.09C10.08 9.98 10.22 9.8 10.34 9.66C10.46 9.52 10.5 9.42 10.58 9.26C10.66 9.1 10.62 8.96 10.56 8.84C10.5 8.72 10.03 7.56 9.83 7.08C9.64 6.61 9.44 6.67 9.3 6.67C9.16 6.66 9 6.66 8.84 6.66"/></svg>
+                                            <span><?= __('product.chat_whatsapp') ?></span>
+                                        </a>
+                                    <?php endif; ?>
                                 <?php else: ?>
-                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/login.php?redirect=<?= rawurlencode('pages/messages.php?other_user_id=' . (int) $job['poster_id'] . '&product_id=0&job_id=' . (int) $job['id']) ?>">Sign in to contact</a>
+                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/login.php?redirect=<?= rawurlencode('pages/messages.php?other_user_id=' . (int) $job['poster_id'] . '&product_id=0&job_id=' . (int) $job['id']) ?>"><?= __('service_requests.sign_in_to_contact') ?></a>
                                 <?php endif; ?>
                             <?php elseif ($isOpen && $isOwner): ?>
                                 <form method="POST" action="<?= BASE_URL ?>pages/service_jobs.php?mine=1" onsubmit="return confirm('Close this service request?');">
@@ -476,6 +532,18 @@ include __DIR__ . '/../includes/header.php';
         }
         debounceTimer = setTimeout(categorizeTitle, 900);
     });
+
+    const enableWaCheckbox = document.getElementById('job-enable-whatsapp');
+    const waWrap = document.getElementById('job-whatsapp-wrap');
+    if (enableWaCheckbox && waWrap) {
+        enableWaCheckbox.addEventListener('change', () => {
+            waWrap.style.display = enableWaCheckbox.checked ? 'block' : 'none';
+            if (enableWaCheckbox.checked) {
+                const input = document.getElementById('job-whatsapp-number');
+                if (input) input.focus();
+            }
+        });
+    }
 })();
 </script>
 
