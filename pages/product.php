@@ -1680,14 +1680,14 @@ body.dark-mode .scc-badge {
                 </div>
 
                 <?php if (empty($serviceReviews)): ?>
-                    <div class="text-center py-8 pb-3 px-4">
+                    <div class="text-center py-8 pb-3 px-4" style="text-align: center;">
                         <div style="width: 52px; height: 52px; margin: 0 auto 0.85rem auto; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--primary-light); color: var(--primary);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;" aria-hidden="true">
                                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
                             </svg>
                         </div>
-                        <h4 class="mb-1 text-main font-bold" style="font-size: 1.02rem;"><?= __('product.no_reviews_title') ?></h4>
-                        <p class="text-muted mb-0 mx-auto" style="max-width: 400px; font-size: 0.88rem; line-height: 1.6;">
+                        <h4 class="mb-1 text-main font-bold" style="font-size: 1.02rem; text-align: center;"><?= __('product.no_reviews_title') ?></h4>
+                        <p class="text-muted mb-0 mx-auto" style="max-width: 440px; margin: 0 auto; text-align: center; font-size: 0.9rem; line-height: 1.6;">
                             <?= __('product.no_reviews_desc', ['seller' => sanitize($product['seller_name'])]) ?>
                         </p>
                     </div>
