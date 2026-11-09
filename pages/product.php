@@ -1322,6 +1322,51 @@ body.dark-mode .scc-badge {
     background: var(--bg-surface);
     border-color: var(--border-light) !important;
 }
+
+.product-page-container {
+    padding-top: calc(76px + 1.25rem + env(safe-area-inset-top, 0px)) !important;
+}
+@media (min-width: 1024px) {
+    .product-page-container {
+        padding-top: calc(80px + 2rem) !important;
+    }
+}
+
+.product-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+}
+.product-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+}
+.product-breadcrumb a:hover {
+    color: var(--primary);
+}
+.product-breadcrumb__sep {
+    width: 13px;
+    height: 13px;
+    opacity: 0.4;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.product-breadcrumb__current {
+    color: var(--text-main);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+}
 </style>
 
 <div class="container product-page-container pt-24 mb-20 relative">
@@ -1355,17 +1400,19 @@ body.dark-mode .scc-badge {
     <?php endif; ?>
 
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
-        <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors"><?= __('product.home') ?></a>
-        <span class="opacity-50">/</span>
+    <nav class="product-breadcrumb" aria-label="Breadcrumb">
+        <a href="<?= BASE_URL ?>/"><?= __('product.home') ?></a>
+        <svg class="product-breadcrumb__sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
         <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
-            <a href="<?php echo BASE_URL; ?>pages/services.php" class="hover:text-primary transition-colors"><?= __('nav.services') ?></a>
+            <a href="<?= BASE_URL ?>pages/services.php"><?= __('nav.services') ?></a>
         <?php else: ?>
-            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
-            <span class="opacity-50">/</span>
-            <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+            <a href="<?= BASE_URL ?>pages/browse.php"><?= __('product.browse') ?></a>
+            <svg class="product-breadcrumb__sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            <a href="<?= BASE_URL ?>pages/browse.php?category=<?= (int)$product['category_id'] ?>"><?= sanitize(translateCategory($product['category_name'])) ?></a>
         <?php endif; ?>
-    </div>
+        <svg class="product-breadcrumb__sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        <span class="product-breadcrumb__current" aria-current="page"><?= sanitize($product['title']) ?></span>
+    </nav>
 
     <div class="grid grid-cols-1 lg-grid-cols-2 gap-12 lg-gap-16">
         
@@ -1630,21 +1677,22 @@ body.dark-mode .scc-badge {
                         </span>
                     </div>
                     <?php else: ?>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-muted); white-space: nowrap; flex-shrink: 0;">
-                        <?= __('product.no_reviews_title') ?>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold" style="display: inline-flex; border-radius: 9999px; background: rgba(148, 163, 184, 0.12); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.2); white-space: nowrap; flex-shrink: 0;">
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
+                        <span><?= __('product.no_reviews_title') ?></span>
                     </span>
                     <?php endif; ?>
                 </div>
 
                 <?php if (empty($serviceReviews)): ?>
-                    <div class="text-center" style="border-radius: var(--radius-md); background: var(--bg-main); border: 1px solid var(--border-light); padding: 1.75rem 1.25rem;">
-                        <div style="width: 48px; height: 48px; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: var(--primary-light); color: var(--primary);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;" aria-hidden="true">
+                    <div class="text-center py-7 px-4" style="border-radius: var(--radius-lg); border: 1px dashed var(--border-light); background: color-mix(in srgb, var(--bg-main) 45%, transparent);">
+                        <div style="width: 48px; height: 48px; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--primary-light); color: var(--primary);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px;" aria-hidden="true">
                                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
                             </svg>
                         </div>
-                        <h4 class="mb-1 text-main font-bold" style="font-size: 1rem;"><?= __('product.no_reviews_title') ?></h4>
-                        <p class="text-muted mb-0 mx-auto" style="max-width: 380px; font-size: 0.88rem; line-height: 1.55;">
+                        <h4 class="mb-1 text-main font-bold" style="font-size: 0.98rem;"><?= __('product.no_reviews_title') ?></h4>
+                        <p class="text-muted mb-0 mx-auto" style="max-width: 380px; font-size: 0.86rem; line-height: 1.55;">
                             <?= __('product.no_reviews_desc', ['seller' => sanitize($product['seller_name'])]) ?>
                         </p>
                     </div>
