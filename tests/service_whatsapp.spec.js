@@ -27,9 +27,13 @@ test('WhatsApp contact feature is properly integrated across services', async ()
   expect(en['service_requests.whatsapp_enable_label']).toBeTruthy();
   expect(en['service_requests.whatsapp_prefill']).toContain('{poster}');
   expect(en['service_requests.whatsapp_prefill']).toContain('{title}');
+  expect(en['service_requests.edit_heading']).toBeTruthy();
+  expect(en['service_requests.update_request']).toBeTruthy();
   expect(tr['service_requests.whatsapp_enable_label']).toBeTruthy();
   expect(tr['service_requests.whatsapp_prefill']).toContain('{poster}');
   expect(tr['service_requests.whatsapp_prefill']).toContain('{title}');
+  expect(tr['service_requests.edit_heading']).toBeTruthy();
+  expect(tr['service_requests.update_request']).toBeTruthy();
 
   // 2. Helper functions check
   const functionsPhp = fs.readFileSync(path.join(__dirname, '../includes/functions.php'), 'utf8');
@@ -100,5 +104,10 @@ test('WhatsApp contact feature is properly integrated across services', async ()
   );
   expect(jobPgMigration).toContain('service_job_posts');
   expect(jobPgMigration).toContain('ADD COLUMN IF NOT EXISTS whatsapp_number');
+  // 9. Service Requests Edit check
+  expect(serviceJobsPhp).toContain("action === 'update'");
+  expect(serviceJobsPhp).toContain("UPDATE service_job_posts");
+  expect(serviceJobsPhp).toContain("service_jobs.php?edit=");
+  expect(serviceJobsPhp).toContain("$isEditing");
 });
 
