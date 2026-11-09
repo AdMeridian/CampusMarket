@@ -194,6 +194,7 @@ p {
 .justify-between { justify-content: space-between; }
 .justify-center { justify-content: center; }
 .gap-2 { gap: 0.5rem; }
+.gap-2\.5 { gap: 0.625rem; }
 .gap-3 { gap: 0.75rem; }
 .gap-4 { gap: 1rem; }
 .gap-5 { gap: 1.25rem; }

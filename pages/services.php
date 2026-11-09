@@ -139,7 +139,7 @@ include '../includes/header.php';
                 <p class="page-subtitle mb-0" style="font-size: 0.95rem; line-height: 1.5;"><?= __('services.hero_subtitle') ?></p>
             </div>
             
-            <div class="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto flex-shrink-0">
+            <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto flex-shrink-0" style="gap: 0.75rem;">
                 <a href="<?= BASE_URL ?>pages/service_jobs.php" class="btn btn-secondary justify-center text-center py-3 px-4 font-bold" style="border-radius: var(--radius-lg);"><?= __('service_requests.title') ?></a>
                 <a href="<?php echo BASE_URL; ?>pages/provider_onboard.php" class="btn btn--service justify-center text-center py-3 px-5 font-bold" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); white-space: nowrap;">
                     <span><?= __('services.offer_service') ?></span>

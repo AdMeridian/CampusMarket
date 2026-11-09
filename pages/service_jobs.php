@@ -338,7 +338,7 @@ include __DIR__ . '/../includes/header.php';
                     <?= __('service_requests.description') ?>
                 </p>
             </div>
-            <div class="flex gap-2 flex-wrap">
+            <div class="flex flex-col sm:flex-row gap-3 flex-wrap" style="gap: 0.75rem;">
                 <?php if (isLoggedIn()): ?>
                     <a class="btn btn-secondary" href="<?= BASE_URL ?>pages/service_jobs.php?mine=1"><?= __('service_requests.my_requests') ?></a>
                     <a class="btn btn-primary" href="<?= BASE_URL ?>pages/service_jobs.php?post=1"><?= __('service_requests.post_request') ?></a>
