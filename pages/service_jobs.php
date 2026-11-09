@@ -5,6 +5,15 @@ $currentUserId = isLoggedIn() ? (int) currentUserId() : 0;
 $jobTowns = array_values(array_filter(locationTownSlugs(), static fn (string $town): bool => $town !== 'other'));
 $showMine = isset($_GET['mine']) && $currentUserId > 0;
 $showPostForm = isset($_GET['post']) && $currentUserId > 0;
+$editJobId = isset($_GET['edit']) ? (int) $_GET['edit'] : 0;
+$editingJob = null;
+if ($editJobId > 0 && $currentUserId > 0) {
+    $editStmt = $pdo->prepare("SELECT * FROM service_job_posts WHERE id = ? AND poster_id = ? AND status = 'open'");
+    $editStmt->execute([$editJobId, $currentUserId]);
+    $editingJob = $editStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+$isEditing = !empty($editingJob);
+$showForm = $showPostForm || $isEditing;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireLogin();
@@ -26,6 +35,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlash('success', 'Your service request is now closed.');
         }
         redirect($returnTo);
+    }
+
+    if ($action === 'update') {
+        $jobId = (int) ($_POST['job_id'] ?? 0);
+        $checkStmt = $pdo->prepare("SELECT id FROM service_job_posts WHERE id = ? AND poster_id = ? AND status = 'open'");
+        $checkStmt->execute([$jobId, $currentUserId]);
+        if (!$checkStmt->fetchColumn()) {
+            setFlash('error', 'That request could not be found or is no longer open for editing.');
+            redirect(BASE_URL . 'pages/service_jobs.php?mine=1');
+        }
+
+        $title = trim((string) ($_POST['title'] ?? ''));
+        $description = trim((string) ($_POST['description'] ?? ''));
+        $categoryId = (int) ($_POST['category_id'] ?? 0);
+        $locationTown = strtolower(trim((string) ($_POST['location_town'] ?? '')));
+        $budgetInput = trim((string) ($_POST['budget_max'] ?? ''));
+        $organizationName = trim((string) ($_POST['organization_name'] ?? ''));
+
+        if ($title === '' || mb_strlen($title) > 120) {
+            setFlash('error', 'Enter a request title of up to 120 characters.');
+            redirect(BASE_URL . 'pages/service_jobs.php?edit=' . $jobId);
+        }
+        if (mb_strlen($description) < 20 || mb_strlen($description) > 5000) {
+            setFlash('error', 'Describe the work in 20 to 5,000 characters.');
+            redirect(BASE_URL . 'pages/service_jobs.php?edit=' . $jobId);
+        }
+        if (mb_strlen($organizationName) > 120) {
+            setFlash('error', 'Keep the business or team name under 120 characters.');
+            redirect(BASE_URL . 'pages/service_jobs.php?edit=' . $jobId);
+        }
+        if (!in_array($locationTown, $jobTowns, true)) {
+            setFlash('error', 'Please choose a valid town or Remote / Online.');
+            redirect(BASE_URL . 'pages/service_jobs.php?edit=' . $jobId);
+        }
+
+        $categoryStmt = $pdo->prepare("SELECT id FROM categories WHERE id = ? AND type = 'service' LIMIT 1");
+        $categoryStmt->execute([$categoryId]);
+        if (!$categoryStmt->fetchColumn()) {
+            setFlash('error', 'Please select a valid service category.');
+            redirect(BASE_URL . 'pages/service_jobs.php?edit=' . $jobId);
+        }
+
+        $budgetMax = null;
+        if ($budgetInput !== '') {
+            if (!is_numeric($budgetInput) || !is_finite((float) $budgetInput) || (float) $budgetInput <= 0 || (float) $budgetInput > 1000000) {
+                setFlash('error', 'Enter a budget greater than zero and no more than ₺1,000,000, or leave it blank.');
+                redirect(BASE_URL . 'pages/service_jobs.php?edit=' . $jobId);
+            }
+            $budgetMax = round((float) $budgetInput, 2);
+        }
+
+        $enableWhatsApp = !empty($_POST['enable_whatsapp']);
+        $whatsappNumber = null;
+        if ($enableWhatsApp) {
+            $rawWa = trim((string)($_POST['whatsapp_number'] ?? ''));
+            if ($rawWa !== '') {
+                $digits = preg_replace('/[^\d+]/', '', $rawWa);
+                if (strlen(preg_replace('/\D/', '', $digits)) >= 7) {
+                    $whatsappNumber = mb_substr($digits, 0, 30);
+                }
+            }
+        }
+
+        $updateStmt = $pdo->prepare(
+            "UPDATE service_job_posts
+             SET title = ?, description = ?, category_id = ?, organization_name = ?, location_town = ?, budget_max = ?, whatsapp_number = ?
+             WHERE id = ? AND poster_id = ? AND status = 'open'"
+        );
+        $updateStmt->execute([
+            $title,
+            $description,
+            $categoryId,
+            $organizationName !== '' ? $organizationName : null,
+            $locationTown,
+            $budgetMax,
+            $whatsappNumber,
+            $jobId,
+            $currentUserId
+        ]);
+
+        setFlash('success', __('service_requests.updated_success'));
+        redirect(BASE_URL . 'pages/service_jobs.php?mine=1');
     }
 
     if ($action !== 'create') {
@@ -73,11 +164,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $budgetMax = round((float) $budgetInput, 2);
     }
 
+    $enableWhatsApp = !empty($_POST['enable_whatsapp']);
+    $whatsappNumber = null;
+    if ($enableWhatsApp) {
+        $rawWa = trim((string)($_POST['whatsapp_number'] ?? ''));
+        if ($rawWa !== '') {
+            $digits = preg_replace('/[^\d+]/', '', $rawWa);
+            if (strlen(preg_replace('/\D/', '', $digits)) >= 7) {
+                $whatsappNumber = mb_substr($digits, 0, 30);
+            }
+        }
+    }
+
     $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
     $insertStmt = $pdo->prepare(
         "INSERT INTO service_job_posts
-            (poster_id, category_id, organization_name, title, description, location_town, budget_max, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            (poster_id, category_id, organization_name, title, description, location_town, budget_max, whatsapp_number, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
     $insertStmt->execute([
         $currentUserId,
@@ -87,6 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description,
         $locationTown,
         $budgetMax,
+        $whatsappNumber,
         $expiresAt,
     ]);
 
@@ -134,7 +238,7 @@ $pageSize = defined('ITEMS_PER_PAGE') ? ITEMS_PER_PAGE : 12;
 $offset = ($page - 1) * $pageSize;
 $jobsStmt = $pdo->prepare(
     "SELECT j.id, j.poster_id, j.category_id, j.organization_name, j.title, j.description, j.location_town,
-            j.budget_max, j.status, j.expires_at, j.created_at,
+            j.budget_max, j.whatsapp_number, j.status, j.expires_at, j.created_at,
             c.name AS category_name, u.username AS poster_name, u.avatar AS poster_avatar
      FROM service_job_posts j
      JOIN categories c ON c.id = j.category_id
@@ -146,6 +250,13 @@ $jobsStmt = $pdo->prepare(
 );
 $jobsStmt->execute($params);
 $jobs = $jobsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$currentUserPhone = '';
+if ($currentUserId > 0) {
+    $userPhoneStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
+    $userPhoneStmt->execute([$currentUserId]);
+    $currentUserPhone = (string)($userPhoneStmt->fetchColumn() ?: '');
+}
 
 $serviceCategories = $pdo->query(
     "SELECT id, name FROM categories WHERE type = 'service' ORDER BY name ASC"
@@ -190,6 +301,10 @@ include __DIR__ . '/../includes/header.php';
     overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
+    .service-jobs-hero > div:first-child,
+    .service-jobs-hero > div:last-child {
+        width: 100%;
+    }
     .service-job-card { padding: 1rem; }
     .service-jobs-hero .btn { width: 100%; justify-content: center; }
     .service-jobs-market-nav .btn { flex: 1 1 100%; justify-content: center; }
@@ -223,7 +338,7 @@ include __DIR__ . '/../includes/header.php';
                     <?= __('service_requests.description') ?>
                 </p>
             </div>
-            <div class="flex gap-2 flex-wrap">
+            <div class="flex flex-col sm:flex-row gap-3 flex-wrap" style="gap: 0.75rem;">
                 <?php if (isLoggedIn()): ?>
                     <a class="btn btn-secondary" href="<?= BASE_URL ?>pages/service_jobs.php?mine=1"><?= __('service_requests.my_requests') ?></a>
                     <a class="btn btn-primary" href="<?= BASE_URL ?>pages/service_jobs.php?post=1"><?= __('service_requests.post_request') ?></a>
@@ -238,33 +353,36 @@ include __DIR__ . '/../includes/header.php';
             <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/service_jobs.php"><?= __('service_requests.title') ?></a>
         </nav>
 
-        <?php if ($showPostForm): ?>
+        <?php if ($showForm): ?>
         <section class="card p-6 mb-8 service-jobs-post-panel" aria-labelledby="post-service-job-title">
             <div class="flex justify-between items-start gap-4 mb-5">
                 <div>
-                    <h2 id="post-service-job-title" class="page-section-title mb-1"><?= __('service_requests.post_heading') ?></h2>
-                    <p class="text-muted mb-0"><?= __('service_requests.post_description') ?></p>
+                    <h2 id="post-service-job-title" class="page-section-title mb-1"><?= $isEditing ? __('service_requests.edit_heading') : __('service_requests.post_heading') ?></h2>
+                    <p class="text-muted mb-0"><?= $isEditing ? __('service_requests.edit_description') : __('service_requests.post_description') ?></p>
                 </div>
-                <a class="text-muted" href="<?= BASE_URL ?>pages/service_jobs.php" aria-label="Cancel">Cancel</a>
+                <a class="text-muted text-sm font-semibold hover:underline" href="<?= BASE_URL ?>pages/service_jobs.php<?= $showMine || $isEditing ? '?mine=1' : '' ?>" aria-label="<?= __('common.cancel') ?>"><?= __('common.cancel') ?></a>
             </div>
-            <form method="POST" action="<?= BASE_URL ?>pages/service_jobs.php?post=1">
+            <form method="POST" action="<?= BASE_URL ?>pages/service_jobs.php<?= $isEditing ? '?edit=' . (int)$editingJob['id'] : '?post=1' ?>">
                 <?= csrfTokenField() ?>
-                <input type="hidden" name="action" value="create">
+                <input type="hidden" name="action" value="<?= $isEditing ? 'update' : 'create' ?>">
+                <?php if ($isEditing): ?>
+                    <input type="hidden" name="job_id" value="<?= (int)$editingJob['id'] ?>">
+                <?php endif; ?>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2">
                         <label class="block font-bold mb-2" for="job-title"><?= __('service_requests.what_needed') ?> <span class="text-danger">*</span></label>
-                        <input class="premium-input w-full" id="job-title" name="title" maxlength="120" required placeholder="<?= __('service_requests.title_placeholder') ?>">
+                        <input class="premium-input w-full" id="job-title" name="title" maxlength="120" required placeholder="<?= __('service_requests.title_placeholder') ?>" value="<?= htmlspecialchars($editingJob['title'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                     <div class="md:col-span-2">
                         <label class="block font-bold mb-2" for="job-description"><?= __('service_requests.describe_work') ?> <span class="text-danger">*</span></label>
-                        <textarea class="premium-input w-full" id="job-description" name="description" rows="5" minlength="20" maxlength="5000" required placeholder="<?= __('service_requests.description_placeholder') ?>"></textarea>
+                        <textarea class="premium-input w-full" id="job-description" name="description" rows="5" minlength="20" maxlength="5000" required placeholder="<?= __('service_requests.description_placeholder') ?>"><?= htmlspecialchars($editingJob['description'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                     </div>
                     <div>
                         <label class="block font-bold mb-2" for="job-category"><?= __('service_requests.category') ?> <span class="text-danger">*</span></label>
                         <select class="premium-input w-full" id="job-category" name="category_id" required>
                             <option value="">Choose a category</option>
                             <?php foreach ($serviceCategories as $category): ?>
-                                <option value="<?= (int) $category['id'] ?>"><?= htmlspecialchars(translateCategory($category['name']), ENT_QUOTES, 'UTF-8') ?></option>
+                                <option value="<?= (int) $category['id'] ?>" <?= ($editingJob['category_id'] ?? 0) === (int)$category['id'] ? 'selected' : '' ?>><?= htmlspecialchars(translateCategory($category['name']), ENT_QUOTES, 'UTF-8') ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -276,21 +394,39 @@ include __DIR__ . '/../includes/header.php';
                         <select class="premium-input w-full" id="job-location" name="location_town" required>
                             <option value="">Choose a town</option>
                             <?php foreach ($jobTowns as $town): ?>
-                                <option value="<?= htmlspecialchars($town, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(formatLocationTown($town), ENT_QUOTES, 'UTF-8') ?></option>
+                                <option value="<?= htmlspecialchars($town, ENT_QUOTES, 'UTF-8') ?>" <?= ($editingJob['location_town'] ?? '') === $town ? 'selected' : '' ?>><?= htmlspecialchars(formatLocationTown($town), ENT_QUOTES, 'UTF-8') ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div>
                         <label class="block font-bold mb-2" for="job-organization"><?= __('service_requests.organization') ?> <span class="text-muted font-normal">(<?= __('common.optional') ?>)</span></label>
-                        <input class="premium-input w-full" id="job-organization" name="organization_name" maxlength="120">
+                        <input class="premium-input w-full" id="job-organization" name="organization_name" maxlength="120" value="<?= htmlspecialchars($editingJob['organization_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </div>
                     <div>
                         <label class="block font-bold mb-2" for="job-budget"><?= __('service_requests.budget') ?> <span class="text-muted font-normal">(<?= __('common.optional') ?>)</span></label>
-                        <input class="premium-input w-full" id="job-budget" name="budget_max" type="number" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="e.g. 500">
+                        <input class="premium-input w-full" id="job-budget" name="budget_max" type="number" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="e.g. 500" value="<?= ($editingJob && $editingJob['budget_max'] !== null) ? htmlspecialchars((string)$editingJob['budget_max'], ENT_QUOTES, 'UTF-8') : '' ?>">
+                    </div>
+                    <?php
+                    $hasJobWhatsApp = !empty($editingJob['whatsapp_number']);
+                    $savedWhatsAppNumber = $hasJobWhatsApp ? (string)$editingJob['whatsapp_number'] : $currentUserPhone;
+                    ?>
+                    <div class="md:col-span-2 pt-2">
+                        <label class="flex items-center gap-2 cursor-pointer font-bold mb-1" style="color: var(--text-main);">
+                            <input type="checkbox" name="enable_whatsapp" id="job-enable-whatsapp" value="1" <?= $hasJobWhatsApp ? 'checked' : '' ?> style="accent-color: #25D366; width: 18px; height: 18px;">
+                            <span><?= __('service_requests.whatsapp_enable_label') ?></span>
+                        </label>
+                        <p class="text-muted small mb-2"><?= __('service_requests.whatsapp_hint') ?></p>
+                        <div id="job-whatsapp-wrap" style="display: <?= $hasJobWhatsApp ? 'block' : 'none' ?>;" class="mt-2">
+                            <label class="block font-bold mb-1 text-sm" for="job-whatsapp-number"><?= __('service_requests.whatsapp_number_label') ?></label>
+                            <input type="tel" name="whatsapp_number" id="job-whatsapp-number" class="premium-input w-full"
+                                   value="<?= htmlspecialchars($savedWhatsAppNumber, ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="<?= __('service_requests.whatsapp_placeholder') ?>" maxlength="30">
+                        </div>
                     </div>
                 </div>
-                <div class="flex justify-end mt-5 service-jobs-post-actions">
-                    <button class="btn btn-primary" type="submit"><?= __('service_requests.post_request') ?></button>
+                <div class="flex justify-end gap-3 mt-5 service-jobs-post-actions">
+                    <a class="btn btn-secondary" href="<?= BASE_URL ?>pages/service_jobs.php<?= $showMine || $isEditing ? '?mine=1' : '' ?>"><?= __('common.cancel') ?></a>
+                    <button class="btn btn-primary" type="submit"><?= $isEditing ? __('service_requests.update_request') : __('service_requests.post_request') ?></button>
                 </div>
             </form>
         </section>
@@ -371,21 +507,43 @@ include __DIR__ . '/../includes/header.php';
                             <span>·</span>
                             <span><?= htmlspecialchars(date('M j, Y', strtotime((string) $job['created_at'])), ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
-                        <div class="flex gap-2 flex-wrap service-job-card__actions">
+                        <div class="flex gap-2 flex-wrap items-center service-job-card__actions">
                             <?php if ($isOpen && !$isOwner): ?>
                                 <?php if (isLoggedIn()): ?>
-                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/messages.php?other_user_id=<?= (int) $job['poster_id'] ?>&amp;product_id=0&amp;job_id=<?= (int) $job['id'] ?>">Message about this request</a>
+                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/messages.php?other_user_id=<?= (int) $job['poster_id'] ?>&amp;product_id=0&amp;job_id=<?= (int) $job['id'] ?>"><?= __('service_requests.message_poster') ?></a>
+                                    <?php
+                                    $jobWhatsAppUrl = null;
+                                    if (!empty($job['whatsapp_number'])) {
+                                        $jobPrefill = __('service_requests.whatsapp_prefill', [
+                                            'poster' => $job['poster_name'],
+                                            'title' => $job['title'],
+                                            'url' => rtrim(BASE_URL, '/') . '/pages/service_jobs.php'
+                                        ]);
+                                        $jobWhatsAppUrl = buildWhatsAppChatUrl($job['whatsapp_number'], $jobPrefill);
+                                    }
+                                    ?>
+                                    <?php if (!empty($jobWhatsAppUrl)): ?>
+                                        <a class="btn btn--whatsapp btn-sm flex items-center gap-1.5"
+                                           href="<?= htmlspecialchars($jobWhatsAppUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                           target="_blank" rel="noopener noreferrer">
+                                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; flex-shrink: 0;" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.35C9.36 7.35 9.09 7.41 8.86 7.66C8.63 7.91 8 8.5 8 9.71C8 10.92 8.88 12.08 9 12.25C9.12 12.42 10.74 14.92 13.22 16C13.81 16.26 14.27 16.41 14.63 16.53C15.22 16.71 15.76 16.69 16.19 16.62C16.67 16.55 17.66 16.02 17.86 15.44C18.06 14.86 18.06 14.37 18 14.27C17.94 14.17 17.78 14.11 17.54 13.99C17.3 13.87 16.12 13.29 15.9 13.21C15.68 13.13 15.52 13.09 15.36 13.33C15.2 13.57 14.73 14.11 14.59 14.27C14.45 14.43 14.31 14.45 14.07 14.33C13.83 14.21 12.81 13.87 11.61 12.8C10.67 11.96 10.04 10.92 9.87 10.64C9.7 10.36 9.85 10.21 9.97 10.09C10.08 9.98 10.22 9.8 10.34 9.66C10.46 9.52 10.5 9.42 10.58 9.26C10.66 9.1 10.62 8.96 10.56 8.84C10.5 8.72 10.03 7.56 9.83 7.08C9.64 6.61 9.44 6.67 9.3 6.67C9.16 6.66 9 6.66 8.84 6.66"/></svg>
+                                            <span><?= __('product.chat_whatsapp') ?></span>
+                                        </a>
+                                    <?php endif; ?>
                                 <?php else: ?>
-                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/login.php?redirect=<?= rawurlencode('pages/messages.php?other_user_id=' . (int) $job['poster_id'] . '&product_id=0&job_id=' . (int) $job['id']) ?>">Sign in to contact</a>
+                                    <a class="btn btn-primary btn-sm" href="<?= BASE_URL ?>pages/login.php?redirect=<?= rawurlencode('pages/messages.php?other_user_id=' . (int) $job['poster_id'] . '&product_id=0&job_id=' . (int) $job['id']) ?>"><?= __('service_requests.sign_in_to_contact') ?></a>
                                 <?php endif; ?>
                             <?php elseif ($isOpen && $isOwner): ?>
-                                <form method="POST" action="<?= BASE_URL ?>pages/service_jobs.php?mine=1" onsubmit="return confirm('Close this service request?');">
-                                    <?= csrfTokenField() ?>
-                                    <input type="hidden" name="action" value="close">
-                                    <input type="hidden" name="job_id" value="<?= (int) $job['id'] ?>">
-                                    <input type="hidden" name="mine" value="1">
-                                    <button class="btn btn-secondary btn-sm" type="submit">Close request</button>
-                                </form>
+                                <div class="flex gap-2 flex-wrap items-center">
+                                    <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>pages/service_jobs.php?edit=<?= (int) $job['id'] ?>"><?= __('common.edit') ?></a>
+                                    <form method="POST" action="<?= BASE_URL ?>pages/service_jobs.php?mine=1" onsubmit="return confirm('Close this service request?');" style="margin: 0;">
+                                        <?= csrfTokenField() ?>
+                                        <input type="hidden" name="action" value="close">
+                                        <input type="hidden" name="job_id" value="<?= (int) $job['id'] ?>">
+                                        <input type="hidden" name="mine" value="1">
+                                        <button class="btn btn-secondary btn-sm" type="submit">Close request</button>
+                                    </form>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </article>
@@ -476,6 +634,18 @@ include __DIR__ . '/../includes/header.php';
         }
         debounceTimer = setTimeout(categorizeTitle, 900);
     });
+
+    const enableWaCheckbox = document.getElementById('job-enable-whatsapp');
+    const waWrap = document.getElementById('job-whatsapp-wrap');
+    if (enableWaCheckbox && waWrap) {
+        enableWaCheckbox.addEventListener('change', () => {
+            waWrap.style.display = enableWaCheckbox.checked ? 'block' : 'none';
+            if (enableWaCheckbox.checked) {
+                const input = document.getElementById('job-whatsapp-number');
+                if (input) input.focus();
+            }
+        });
+    }
 })();
 </script>
 

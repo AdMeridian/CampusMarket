@@ -13,7 +13,7 @@ if ($productId <= 0) {
 $viewerId = isLoggedIn() ? (int)currentUserId() : 0;
 $viewerIsAdmin = isAdmin() ? 1 : 0;
 $stmt = $pdo->prepare("
-    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since
+    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since, u.phone as seller_phone
     FROM products p
     JOIN categories c ON p.category_id = c.id
     JOIN users u ON p.user_id = u.id
@@ -95,6 +95,25 @@ if (($product['listing_type'] ?? 'product') === 'service') {
 $listingConversationUrl = isLoggedIn()
     ? BASE_URL . $listingConversationPath
     : BASE_URL . 'pages/login.php?redirect=' . rawurlencode($listingConversationPath);
+
+$serviceWhatsAppNumber = trim((string)($product['whatsapp_number'] ?? ''));
+$serviceWhatsAppUrl = null;
+if (($product['listing_type'] ?? 'product') === 'service' && $serviceWhatsAppNumber !== '') {
+    $sellerName = (string)($product['seller_name'] ?? 'Provider');
+    $serviceTitle = (string)($product['title'] ?? 'Service');
+    $listingUrl = rtrim(BASE_URL, '/') . '/pages/product.php?id=' . (int)$product['id'];
+    $prefillText = __('product.whatsapp_prefill', [
+        'seller' => $sellerName,
+        'title'  => $serviceTitle,
+        'url'    => $listingUrl,
+    ]);
+    $rawWaUrl = buildWhatsAppChatUrl($serviceWhatsAppNumber, $prefillText);
+    if ($rawWaUrl !== null) {
+        $serviceWhatsAppUrl = isLoggedIn()
+            ? $rawWaUrl
+            : BASE_URL . 'pages/login.php?redirect=' . rawurlencode('pages/product.php?id=' . $productId);
+    }
+}
 
 // Handle Price Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner && isset($_POST['action']) && $_POST['action'] === 'update_price') {
@@ -1303,6 +1322,51 @@ body.dark-mode .scc-badge {
     background: var(--bg-surface);
     border-color: var(--border-light) !important;
 }
+
+.product-page-container {
+    padding-top: calc(76px + 1.25rem + env(safe-area-inset-top, 0px)) !important;
+}
+@media (min-width: 1024px) {
+    .product-page-container {
+        padding-top: calc(80px + 2rem) !important;
+    }
+}
+
+.product-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+}
+.product-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+}
+.product-breadcrumb a:hover {
+    color: var(--primary);
+}
+.product-breadcrumb__sep {
+    width: 13px;
+    height: 13px;
+    opacity: 0.4;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.product-breadcrumb__current {
+    color: var(--text-main);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+}
 </style>
 
 <div class="container product-page-container pt-24 mb-20 relative">
@@ -1336,17 +1400,19 @@ body.dark-mode .scc-badge {
     <?php endif; ?>
 
     <!-- Breadcrumb -->
-    <div class="flex items-center gap-2 text-muted small mb-6 font-medium inline-flex px-4 py-2 rounded-xl backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-surface) 70%, transparent); border: 1px solid var(--border-light);">
-        <a href="<?php echo BASE_URL; ?>/" class="hover:text-primary transition-colors"><?= __('product.home') ?></a>
-        <span class="opacity-50">/</span>
+    <nav class="product-breadcrumb" aria-label="Breadcrumb">
+        <a href="<?= BASE_URL ?>/"><?= __('product.home') ?></a>
+        <svg class="product-breadcrumb__sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
         <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
-            <a href="<?php echo BASE_URL; ?>pages/services.php" class="hover:text-primary transition-colors"><?= __('nav.services') ?></a>
+            <a href="<?= BASE_URL ?>pages/services.php"><?= __('nav.services') ?></a>
         <?php else: ?>
-            <a href="<?php echo BASE_URL; ?>/pages/browse.php" class="hover:text-primary transition-colors"><?= __('product.browse') ?></a>
-            <span class="opacity-50">/</span>
-            <a href="<?php echo BASE_URL; ?>/pages/browse.php?category=<?php echo $product['category_id']; ?>" class="hover:text-primary transition-colors"><?php echo sanitize(translateCategory($product['category_name'])); ?></a>
+            <a href="<?= BASE_URL ?>pages/browse.php"><?= __('product.browse') ?></a>
+            <svg class="product-breadcrumb__sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            <a href="<?= BASE_URL ?>pages/browse.php?category=<?= (int)$product['category_id'] ?>"><?= sanitize(translateCategory($product['category_name'])) ?></a>
         <?php endif; ?>
-    </div>
+        <svg class="product-breadcrumb__sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        <span class="product-breadcrumb__current" aria-current="page"><?= sanitize($product['title']) ?></span>
+    </nav>
 
     <div class="grid grid-cols-1 lg-grid-cols-2 gap-12 lg-gap-16">
         
@@ -1560,16 +1626,6 @@ body.dark-mode .scc-badge {
                             </div>
                         </div>
                     </a>
-                    <?php if (!$isOwner && ($product['listing_type'] ?? 'product') === 'service'): ?>
-                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
-                       class="btn btn--service js-contact-seller"
-                       style="padding: 0.65rem 1rem; font-weight: 700; white-space: nowrap;"
-                       data-listing-id="<?= (int)$product['id'] ?>"
-                       data-category="<?= htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                       data-contact-method="message">
-                        <?= __('product.request_service') ?>
-                    </a>
-                    <?php endif; ?>
                     <a href="<?php echo BASE_URL; ?>pages/profile.php?id=<?php echo $product['seller_id']; ?>" class="scc-view-profile-btn">
                         <?= __('product.view_profile') ?> <span style="opacity: 0.45; font-size: 0.8rem; margin-left: 4px;">&#10095;</span>
                     </a>
@@ -1588,6 +1644,78 @@ body.dark-mode .scc-badge {
                     <?php echo nl2br(sanitize($product['description'])); ?>
                 </div>
             </div>
+
+            <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
+            <!-- CLIENT REVIEWS CARD (Services Only) -->
+            <div class="product-desc-card mt-8">
+                <div class="flex items-center justify-between mb-5 gap-3" style="flex-wrap: wrap;">
+                    <div class="flex items-center gap-3" style="min-width: 0;">
+                        <div style="width: 40px; height: 40px; min-width: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--bg-main); color: var(--primary); border: 1px solid var(--border-light); flex-shrink: 0;">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;" aria-hidden="true">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                            </svg>
+                        </div>
+                        <div style="min-width: 0;">
+                            <h3 class="m-0 font-bold text-main" style="font-size: 1.25rem; line-height: 1.2; color: var(--text-main);">
+                                <?= __('product.client_reviews') ?>
+                            </h3>
+                            <p class="text-muted small mb-0 mt-0.5" style="font-size: 0.85rem;">
+                                <?= __('product.client_reviews_sub') ?>
+                            </p>
+                        </div>
+                    </div>
+
+                    <?php if ($serviceCount > 0): ?>
+                    <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl" style="background: var(--bg-main); border: 1px solid var(--border-light); white-space: nowrap; flex-shrink: 0;">
+                        <div class="flex items-center gap-1">
+                            <span style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo number_format($serviceAvg, 1); ?></span>
+                            <div style="color: #f59e0b; display: inline-flex; font-size: 0.8rem; line-height: 1;"><?php echo renderStars($serviceAvg); ?></div>
+                        </div>
+                        <span style="color: var(--border-light);">|</span>
+                        <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">
+                            <?php echo $serviceCount; ?> <?= $serviceCount === 1 ? __('product.review') : __('product.reviews') ?>
+                        </span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <?php if (empty($serviceReviews)): ?>
+                    <div class="text-center py-8 pb-3 px-4" style="text-align: center;">
+                        <div style="width: 52px; height: 52px; margin: 0 auto 0.85rem auto; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--primary-light); color: var(--primary);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;" aria-hidden="true">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                            </svg>
+                        </div>
+                        <h4 class="mb-1 text-main font-bold" style="font-size: 1.02rem; text-align: center;"><?= __('product.no_reviews_title') ?></h4>
+                        <p class="text-muted mb-0 mx-auto" style="max-width: 440px; margin: 0 auto; text-align: center; font-size: 0.9rem; line-height: 1.6;">
+                            <?= __('product.no_reviews_desc', ['seller' => sanitize($product['seller_name'])]) ?>
+                        </p>
+                    </div>
+                <?php else: ?>
+                    <div class="flex flex-col gap-3">
+                        <?php foreach ($serviceReviews as $review): ?>
+                            <div class="p-3.5" style="border-radius: var(--radius-md); border: 1px solid var(--border-light); background: var(--bg-main); transition: var(--transition);">
+                                <div class="flex justify-between items-start gap-3 mb-2">
+                                    <div class="flex items-center gap-2.5">
+                                        <div style="width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); font-size: 0.82rem; font-weight: 700; background: var(--primary-light); color: var(--primary); border: 1px solid rgba(26, 127, 100, 0.15);">
+                                            <?php echo strtoupper(substr($review['reviewer_name'], 0, 1)); ?>
+                                        </div>
+                                        <div>
+                                            <h4 class="mb-0 text-main font-bold" style="font-size: 0.9rem; line-height: 1.2;">@<?php echo sanitize($review['reviewer_name']); ?></h4>
+                                            <span style="font-size: 0.72rem; color: var(--text-light);"><?php echo timeAgo($review['created_at']); ?></span>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
+                                </div>
+                                <?php if (trim((string)$review['comment']) !== ''): ?>
+                                    <p class="mb-0 text-main" style="font-size: 0.88rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap; word-break: break-word;"><?php echo sanitize($review['comment']); ?></p>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
             <?php if ($isOwner): ?>
             <!-- Owner Floating Management Action -->
@@ -1614,13 +1742,26 @@ body.dark-mode .scc-badge {
                         <span style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); font-family: 'Inter', sans-serif;"><?php echo renderProductPrice($product); ?></span>
                     </div>
                     <?php endif; ?>
-                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
-                       class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
-                       data-listing-id="<?php echo (int)$product['id']; ?>"
-                       data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                       data-contact-method="message">
-                        <?= __('product.request_service') ?>
-                    </a>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full">
+                        <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                           data-contact-method="message">
+                            <?= __('product.request_service') ?>
+                        </a>
+                        <?php if (!empty($serviceWhatsAppUrl)): ?>
+                        <a href="<?= htmlspecialchars($serviceWhatsAppUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="btn btn--whatsapp flex-grow justify-center py-4 text-lg hover-scale js-whatsapp-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; flex-shrink: 0;" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.35C9.36 7.35 9.09 7.41 8.86 7.66C8.63 7.91 8 8.5 8 9.71C8 10.92 8.88 12.08 9 12.25C9.12 12.42 10.74 14.92 13.22 16C13.81 16.26 14.27 16.41 14.63 16.53C15.22 16.71 15.76 16.69 16.19 16.62C16.67 16.55 17.66 16.02 17.86 15.44C18.06 14.86 18.06 14.37 18 14.27C17.94 14.17 17.78 14.11 17.54 13.99C17.3 13.87 16.12 13.29 15.9 13.21C15.68 13.13 15.52 13.09 15.36 13.33C15.2 13.57 14.73 14.11 14.59 14.27C14.45 14.43 14.31 14.45 14.07 14.33C13.83 14.21 12.81 13.87 11.61 12.8C10.67 11.96 10.04 10.92 9.87 10.64C9.7 10.36 9.85 10.21 9.97 10.09C10.08 9.98 10.22 9.8 10.34 9.66C10.46 9.52 10.5 9.42 10.58 9.26C10.66 9.1 10.62 8.96 10.56 8.84C10.5 8.72 10.03 7.56 9.83 7.08C9.64 6.61 9.44 6.67 9.3 6.67C9.16 6.66 9 6.66 8.84 6.66"/></svg>
+                            <span><?= __('product.chat_whatsapp') ?></span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                     <p class="text-muted small text-center mb-0" style="font-size: 0.82rem;"><?= __('product.service_contact_hint') ?></p>
                 <?php else: ?>
                     <!-- Product CTA: message seller -->
@@ -1649,13 +1790,34 @@ body.dark-mode .scc-badge {
             <?php else: ?>
             <!-- Action Buttons for Guest Buyer -->
             <div class="flex flex-col gap-4 sticky bottom-4 z-10 p-4 mt-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: color-mix(in srgb, var(--bg-card) 95%, transparent); backdrop-filter: blur(10px);">
-                <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
-                   class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
-                   data-listing-id="<?php echo (int)$product['id']; ?>"
-                   data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                   data-contact-method="message">
-                    <?= __('product.message_seller') ?>
-                </a>
+                <?php if ($isServiceProduct): ?>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full">
+                        <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           class="btn btn--service flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                           data-contact-method="message">
+                            <?= __('product.request_service') ?>
+                        </a>
+                        <?php if (!empty($serviceWhatsAppUrl)): ?>
+                        <a href="<?= htmlspecialchars($serviceWhatsAppUrl, ENT_QUOTES, 'UTF-8') ?>"
+                           class="btn btn--whatsapp flex-grow justify-center py-4 text-lg hover-scale js-whatsapp-seller"
+                           data-listing-id="<?php echo (int)$product['id']; ?>"
+                           data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; flex-shrink: 0;" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.35C9.36 7.35 9.09 7.41 8.86 7.66C8.63 7.91 8 8.5 8 9.71C8 10.92 8.88 12.08 9 12.25C9.12 12.42 10.74 14.92 13.22 16C13.81 16.26 14.27 16.41 14.63 16.53C15.22 16.71 15.76 16.69 16.19 16.62C16.67 16.55 17.66 16.02 17.86 15.44C18.06 14.86 18.06 14.37 18 14.27C17.94 14.17 17.78 14.11 17.54 13.99C17.3 13.87 16.12 13.29 15.9 13.21C15.68 13.13 15.52 13.09 15.36 13.33C15.2 13.57 14.73 14.11 14.59 14.27C14.45 14.43 14.31 14.45 14.07 14.33C13.83 14.21 12.81 13.87 11.61 12.8C10.67 11.96 10.04 10.92 9.87 10.64C9.7 10.36 9.85 10.21 9.97 10.09C10.08 9.98 10.22 9.8 10.34 9.66C10.46 9.52 10.5 9.42 10.58 9.26C10.66 9.1 10.62 8.96 10.56 8.84C10.5 8.72 10.03 7.56 9.83 7.08C9.64 6.61 9.44 6.67 9.3 6.67C9.16 6.66 9 6.66 8.84 6.66"/></svg>
+                            <span><?= __('product.chat_whatsapp') ?></span>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <a href="<?= htmlspecialchars($listingConversationUrl, ENT_QUOTES, 'UTF-8') ?>"
+                       class="btn btn-primary flex-grow justify-center py-4 text-lg hover-scale js-contact-seller"
+                       data-listing-id="<?php echo (int)$product['id']; ?>"
+                       data-category="<?php echo htmlspecialchars((string)($product['category_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                       data-contact-method="message">
+                        <?= __('product.message_seller') ?>
+                    </a>
+                <?php endif; ?>
                 <button
                     type="button"
                     class="product-share-btn w-full justify-center py-3 text-lg"
@@ -1672,62 +1834,6 @@ body.dark-mode .scc-badge {
         </div>
 
     </div>
-
-    <?php if (($product['listing_type'] ?? 'product') === 'service'): ?>
-    <!-- Service Provider Reviews Section -->
-    <div class="mt-16 border-t border-slate-100 pt-12" style="max-width: 1200px; margin-left: auto; margin-right: auto;">
-        <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
-            <div>
-                <h2 class="page-section-title mb-1 text-main font-bold" style="font-size: 1.6rem; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
-                    Client Reviews
-                </h2>
-                <p class="text-muted small mb-0">What other students say about this specific service.</p>
-            </div>
-            <?php if ($serviceCount > 0): ?>
-            <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2" style="background: var(--bg-card);">
-                <div class="text-center">
-                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);"><?php echo number_format($serviceAvg, 1); ?></span>
-                    <span style="font-size: 0.85rem; color: var(--text-light); font-weight: 600;">/ 5</span>
-                </div>
-                <div style="border-left: 1px solid var(--border-light); padding-left: 1rem;">
-                    <div style="color: #f59e0b; line-height: 1;"><?php echo renderStars($serviceAvg); ?></div>
-                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;"><?php echo $serviceCount; ?> <?= $serviceCount === 1 ? __('product.review') : __('product.reviews') ?></span>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-
-        <?php if (empty($serviceReviews)): ?>
-            <div class="glass-panel p-12 text-center" style="border-radius: var(--radius-lg); background: var(--bg-card); border: 2px dashed var(--border-light);">
-                <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: 0.6;">💬</span>
-                <h4 class="mb-1 text-main" style="font-weight: 700;">No reviews for this service yet</h4>
-                <p class="text-muted mb-0">Be the first to hire @<?php echo sanitize($product['seller_name']); ?> for this service and leave a review!</p>
-            </div>
-        <?php else: ?>
-            <div class="grid grid-cols-1 md-grid-cols-2 gap-6">
-                <?php foreach ($serviceReviews as $review): ?>
-                    <div class="card p-5 hover-scale" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light); background: var(--bg-surface); transition: var(--transition);">
-                        <div class="flex justify-between items-start gap-4 mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 flex items-center justify-center rounded-lg" style="background: var(--bg-main); color: var(--text-main); font-weight: 700; border: 1px solid var(--border-light);">
-                                    <?php echo strtoupper(substr($review['reviewer_name'], 0, 1)); ?>
-                                </div>
-                                <div>
-                                    <h4 class="mb-0 text-main" style="font-size: 0.95rem; font-weight: 700;">@<?php echo sanitize($review['reviewer_name']); ?></h4>
-                                    <span style="font-size: 0.78rem; color: var(--text-light);"><?php echo timeAgo($review['created_at']); ?></span>
-                                </div>
-                            </div>
-                            <div style="font-size: 0.85rem; color: #f59e0b; line-height: 1;"><?php echo renderStars((float)$review['rating']); ?></div>
-                        </div>
-                        <?php if (trim((string)$review['comment']) !== ''): ?>
-                            <p class="mb-0 text-main" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); white-space: pre-wrap;"><?php echo sanitize($review['comment']); ?></p>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
 
 </div>
 
@@ -1988,6 +2094,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     listing_id: Number(this.dataset.listingId || 0),
                     category: this.dataset.category || '',
                     contact_method: this.dataset.contactMethod || 'message'
+                });
+            }
+        });
+    });
+
+    document.querySelectorAll('.js-whatsapp-seller').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (typeof posthog !== 'undefined' && posthog.capture) {
+                posthog.capture('seller_contact_clicked', {
+                    listing_id: Number(this.dataset.listingId || 0),
+                    category: this.dataset.category || '',
+                    contact_method: 'whatsapp'
                 });
             }
         });

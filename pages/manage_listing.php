@@ -15,7 +15,7 @@ $viewerIsAdmin = isAdmin();
 
 // Fetch product details
 $stmt = $pdo->prepare("
-    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar
+    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.phone as seller_phone
     FROM products p
     JOIN categories c ON p.category_id = c.id
     JOIN users u ON p.user_id = u.id
@@ -168,6 +168,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $newPortfolioLink = mb_substr($rawPortfolio, 0, 500);
     }
 
+    $enableWhatsApp = !empty($_POST['enable_whatsapp']);
+    $rawWhatsApp = trim((string)($_POST['whatsapp_number'] ?? ''));
+    $newWhatsAppNumber = ($enableWhatsApp && $rawWhatsApp !== '') ? mb_substr($rawWhatsApp, 0, 30) : null;
+
     $stmtUp = $pdo->prepare("
         UPDATE products 
         SET delivery_days = :del_days,
@@ -175,6 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             availability_status = :avail_status,
             availability_reset_at = :avail_reset,
             portfolio_link = :port_link,
+            whatsapp_number = :wa_num,
             updated_at = NOW()
         WHERE id = :id
     ");
@@ -184,6 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ':avail_status' => $newAvailStatus,
         ':avail_reset' => $newResetAt,
         ':port_link' => $newPortfolioLink,
+        ':wa_num' => $newWhatsAppNumber,
         ':id' => $productId,
     ]);
 
@@ -1002,6 +1008,18 @@ require_once __DIR__ . '/../includes/header.php';
                         <input type="url" name="portfolio_link" value="<?= htmlspecialchars($product['portfolio_link'] ?? '') ?>" placeholder="https://instagram.com/yourhandle" class="premium-input w-full" style="padding: 0.75rem 1rem;" maxlength="500">
                     </div>
 
+                    <div class="form-group mb-4 p-3 rounded-lg" style="background: var(--bg-main); border: 1px solid var(--border-light);">
+                        <label class="flex items-center gap-2 mb-2 cursor-pointer">
+                            <input type="checkbox" name="enable_whatsapp" id="manage_enable_whatsapp" value="1" <?= !empty($product['whatsapp_number']) ? 'checked' : '' ?>>
+                            <span class="font-bold text-sm text-main"><?= __('product.whatsapp_enable_label') ?></span>
+                        </label>
+                        <div id="manage_whatsapp_wrap" style="<?= empty($product['whatsapp_number']) ? 'display: none;' : '' ?>">
+                            <label for="manage_whatsapp_input" class="font-bold mb-1 block small text-muted"><?= __('product.whatsapp_number_label') ?></label>
+                            <input type="tel" id="manage_whatsapp_input" name="whatsapp_number" value="<?= htmlspecialchars($product['whatsapp_number'] ?? ($product['seller_phone'] ?? '')) ?>" placeholder="e.g. +90 533 123 4567 or 0533 123 4567" class="premium-input w-full" style="padding: 0.65rem 0.85rem;" maxlength="30">
+                            <small class="text-muted block mt-1"><?= __('product.whatsapp_hint') ?></small>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn--service" style="padding: 0.65rem 1.4rem; border-radius: var(--radius-md);">
                         Save Service Settings
                     </button>
@@ -1248,6 +1266,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (townSelect && customBox) {
         townSelect.addEventListener('change', function() {
             customBox.style.display = (this.value === 'other') ? 'block' : 'none';
+        });
+    }
+
+    const mgmtWaCheck = document.getElementById('manage_enable_whatsapp');
+    const mgmtWaWrap = document.getElementById('manage_whatsapp_wrap');
+    if (mgmtWaCheck && mgmtWaWrap) {
+        mgmtWaCheck.addEventListener('change', function() {
+            mgmtWaWrap.style.display = this.checked ? 'block' : 'none';
         });
     }
 });
