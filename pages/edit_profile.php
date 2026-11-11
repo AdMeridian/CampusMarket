@@ -329,14 +329,6 @@ require_once '../includes/header.php';
                     <?php endif; ?>
                 </div>
 
-                <div class="p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-light);">
-                    <label class="flex items-center gap-2 mb-1 cursor-pointer">
-                        <input type="checkbox" name="whatsapp_opt_in_default" id="whatsapp_opt_in_default" value="1" <?= !empty($user['whatsapp_opt_in_default']) ? 'checked' : '' ?> style="accent-color: #25D366; width: 18px; height: 18px;">
-                        <span class="font-bold text-sm" style="color: var(--text-main);"><?= __('profile.whatsapp_default_label') ?></span>
-                    </label>
-                    <p class="text-muted small mb-0"><?= __('profile.whatsapp_default_hint') ?></p>
-                </div>
-
                 <div>
                     <label for="phone" class="form-label font-bold"><?= __('profile.contact_number') ?></label>
                     <input type="tel" id="phone" name="phone" value="<?php echo sanitize($user['phone'] ?? ''); ?>" maxlength="20" class="form-control premium-input <?php echo isset($errors['phone']) ? 'border-accent' : ''; ?>">
