@@ -252,10 +252,19 @@ $jobsStmt->execute($params);
 $jobs = $jobsStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $currentUserPhone = '';
+$userWhatsAppDefault = false;
 if ($currentUserId > 0) {
-    $userPhoneStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
-    $userPhoneStmt->execute([$currentUserId]);
-    $currentUserPhone = (string)($userPhoneStmt->fetchColumn() ?: '');
+    try {
+        $userPhoneStmt = $pdo->prepare("SELECT phone, whatsapp_opt_in_default FROM users WHERE id = ?");
+        $userPhoneStmt->execute([$currentUserId]);
+        $uRow = $userPhoneStmt->fetch(PDO::FETCH_ASSOC);
+        $currentUserPhone = (string)($uRow['phone'] ?? '');
+        $userWhatsAppDefault = !empty($uRow['whatsapp_opt_in_default']);
+    } catch (PDOException $e) {
+        $userPhoneStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
+        $userPhoneStmt->execute([$currentUserId]);
+        $currentUserPhone = (string)($userPhoneStmt->fetchColumn() ?: '');
+    }
 }
 
 $serviceCategories = $pdo->query(
@@ -407,8 +416,8 @@ include __DIR__ . '/../includes/header.php';
                         <input class="premium-input w-full" id="job-budget" name="budget_max" type="number" min="1" max="1000000" step="0.01" inputmode="decimal" placeholder="e.g. 500" value="<?= ($editingJob && $editingJob['budget_max'] !== null) ? htmlspecialchars((string)$editingJob['budget_max'], ENT_QUOTES, 'UTF-8') : '' ?>">
                     </div>
                     <?php
-                    $hasJobWhatsApp = !empty($editingJob['whatsapp_number']);
-                    $savedWhatsAppNumber = $hasJobWhatsApp ? (string)$editingJob['whatsapp_number'] : $currentUserPhone;
+                    $hasJobWhatsApp = $editingJob ? !empty($editingJob['whatsapp_number']) : (!empty($_POST) ? !empty($_POST['enable_whatsapp']) : ($userWhatsAppDefault && !empty($currentUserPhone)));
+                    $savedWhatsAppNumber = $editingJob ? (string)($editingJob['whatsapp_number'] ?? $currentUserPhone) : $currentUserPhone;
                     ?>
                     <div class="md:col-span-2 pt-2">
                         <label class="flex items-center gap-2 cursor-pointer font-bold mb-1" style="color: var(--text-main);">

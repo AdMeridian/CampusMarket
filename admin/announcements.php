@@ -57,6 +57,19 @@ $currentAdminId = currentUserId();
 
 $announcementTemplates = [
     [
+        'id' => 'campus_nudge',
+        'icon' => '🎓',
+        'category' => 'System Nudge',
+        'badge' => 'Campus Info',
+        'type' => 'info',
+        'title' => 'Select Your Campus',
+        'message' => 'Set your campus affiliation to discover items and services closest to you.',
+        'cta_text' => 'Set My Campus',
+        'cta_url' => BASE_URL . 'pages/select_campus.php',
+        'target_role' => 'no_campus',
+        'desc' => 'Prompt students who have not chosen a university campus yet.'
+    ],
+    [
         'id' => 'services_pilot',
         'icon' => '🛠️',
         'category' => 'Feature Launch',
@@ -173,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim(sanitize($_POST['title'] ?? ''));
         $message = trim($_POST['message'] ?? '');
         $type = in_array($_POST['type'] ?? '', ['info', 'warning', 'success', 'alert'], true) ? $_POST['type'] : 'info';
-        $targetRole = in_array($_POST['target_role'] ?? '', ['all', 'user', 'guest', 'admin'], true) ? $_POST['target_role'] : 'all';
+        $targetRole = in_array($_POST['target_role'] ?? '', ['all', 'user', 'guest', 'no_campus', 'admin'], true) ? $_POST['target_role'] : 'all';
         $ctaText = trim(sanitize($_POST['cta_text'] ?? ''));
         $ctaUrl = trim($_POST['cta_url'] ?? '');
         $isActive = isset($_POST['is_active']) ? 1 : 0;
@@ -349,6 +362,47 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
+    <!-- Live on Platform Now -->
+    <?php
+    $liveAnnouncements = array_filter($announcements, function($a) { return !empty($a['is_active']); });
+    $liveCount = count($liveAnnouncements);
+    ?>
+    <?php if ($liveCount > 0): ?>
+    <div class="card mb-6" style="padding: 1.5rem; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid #10b981; box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.1); margin-bottom: 2rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+            <span style="display: inline-flex; width: 10px; height: 10px; border-radius: 50%; background: #10b981; animation: pulse-dot 2s infinite;"></span>
+            <h2 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-main);">Live on Platform Now</h2>
+            <span style="font-size: 0.75rem; font-weight: 700; background: #ecfdf5; border: 1px solid #10b981; padding: 0.15rem 0.5rem; border-radius: 99px; color: #047857;"><?= $liveCount ?> active</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.75rem;">
+            <?php foreach ($liveAnnouncements as $live):
+                $liveTypeColors = ['info' => '#3b82f6', 'warning' => '#f59e0b', 'success' => '#10b981', 'alert' => '#ef4444'];
+                $liveTypeIcons = ['info' => 'ℹ️', 'warning' => '⚠️', 'success' => '✅', 'alert' => '🚨'];
+                $liveColor = $liveTypeColors[$live['type']] ?? '#3b82f6';
+            ?>
+            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-md); background: var(--bg-main); border: 1px solid var(--border-light);">
+                <span style="font-size: 1.1rem;"><?= $liveTypeIcons[$live['type']] ?? 'ℹ️' ?></span>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= htmlspecialchars($live['title']) ?></div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        <?= ucfirst($live['target_role']) === 'No_campus' ? 'No Campus Set' : ucfirst($live['target_role']) ?> · <?= strtoupper($live['type']) ?>
+                    </div>
+                </div>
+                <form method="POST" style="margin: 0;">
+                    <?= csrfTokenField() ?>
+                    <input type="hidden" name="action" value="toggle">
+                    <input type="hidden" name="id" value="<?= (int)$live['id'] ?>">
+                    <button type="submit" class="btn btn-sm" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; cursor: pointer; font-weight: 700;" onclick="return confirm('Deactivate this banner?')">Deactivate</button>
+                </form>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <style>
+            @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        </style>
+    </div>
+    <?php endif; ?>
+
     <!-- Quick Preset Templates Gallery -->
     <div id="templatesGallerySection" class="card mb-6" style="padding: 1.5rem; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
@@ -462,8 +516,8 @@ require_once __DIR__ . '/../includes/header.php';
                                 </div>
                             </td>
                             <td style="padding: 1rem 0.5rem; white-space: nowrap;">
-                                <span style="font-size: 0.8rem; background: var(--bg-main); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-light); color: var(--text-muted);">
-                                    <?= ucfirst($a['target_role']) ?>
+                                <span style="font-size: 0.8rem; background: <?= $a['target_role'] === 'no_campus' ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-main)' ?>; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid <?= $a['target_role'] === 'no_campus' ? '#3b82f6' : 'var(--border-light)' ?>; color: <?= $a['target_role'] === 'no_campus' ? '#2563eb' : 'var(--text-muted)' ?>; font-weight: <?= $a['target_role'] === 'no_campus' ? '700' : 'normal' ?>;">
+                                    <?= $a['target_role'] === 'no_campus' ? 'No Campus Set' : ucfirst($a['target_role']) ?>
                                 </span>
                             </td>
                             <td style="padding: 1rem 0.5rem; white-space: nowrap; font-size: 0.82rem;">
@@ -587,6 +641,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <option value="all">Everyone (All Visitors)</option>
                         <option value="user">Logged-in Students Only</option>
                         <option value="guest">Guests Only (Not logged in)</option>
+                        <option value="no_campus">Students Without Campus Set</option>
                         <option value="admin">Admins Only (Internal)</option>
                     </select>
                 </div>

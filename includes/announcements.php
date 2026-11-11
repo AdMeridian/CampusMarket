@@ -72,6 +72,29 @@ if (!function_exists('ensureAnnouncementsTable')) {
                     $$;
                 ");
             }
+
+            // Seed default campus nudge announcement if missing so admins can manage it
+            try {
+                $chkNudge = $pdo->query("SELECT COUNT(*) FROM announcements WHERE target_role = 'no_campus' OR cta_url LIKE '%select_campus.php%'");
+                if ((int)$chkNudge->fetchColumn() === 0) {
+                    $baseUrl = defined('BASE_URL') ? BASE_URL : '/';
+                    $activeVal = $driver === 'mysql' ? '1' : 'TRUE';
+                    $pdo->exec("
+                        INSERT INTO announcements (title, message, type, cta_text, cta_url, target_role, is_active)
+                        VALUES (
+                            'Select Your Campus',
+                            'Set your campus affiliation to discover items and services closest to you.',
+                            'info',
+                            'Set My Campus',
+                            '{$baseUrl}pages/select_campus.php',
+                            'no_campus',
+                            {$activeVal}
+                        )
+                    ");
+                }
+            } catch (Throwable $se) {
+                // Non-fatal if table not ready or already seeded
+            }
         } catch (Throwable $e) {
             error_log('[ensureAnnouncementsTable] Error creating table: ' . $e->getMessage());
         }
@@ -95,10 +118,16 @@ if (!function_exists('getActiveAnnouncements')) {
                   AND (ends_at IS NULL OR ends_at >= {$nowSql})
             ";
 
+            $userHasNoCampus = (function_exists('isLoggedIn') && isLoggedIn() && function_exists('isAdmin') && !isAdmin() && empty($_SESSION['university_id']));
+
             if ($userRole === 'admin') {
                 $sql .= " AND target_role IN ('all', 'admin', 'user')";
             } elseif ($userRole === 'user') {
-                $sql .= " AND target_role IN ('all', 'user')";
+                if ($userHasNoCampus) {
+                    $sql .= " AND target_role IN ('all', 'user', 'no_campus')";
+                } else {
+                    $sql .= " AND target_role IN ('all', 'user')";
+                }
             } else {
                 $sql .= " AND target_role IN ('all', 'guest')";
             }

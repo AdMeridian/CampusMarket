@@ -372,10 +372,19 @@ try {
 $defaultTown = $userHomeTownDetails['town'] ?? '';
 $defaultCustomLocation = $userHomeTownDetails['custom'] ?? '';
 $currentUserPhone = '';
+$userWhatsAppDefault = false;
 if (isLoggedIn()) {
-    $uStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
-    $uStmt->execute([currentUserId()]);
-    $currentUserPhone = (string)($uStmt->fetchColumn() ?: '');
+    try {
+        $uStmt = $pdo->prepare("SELECT phone, whatsapp_opt_in_default FROM users WHERE id = ?");
+        $uStmt->execute([currentUserId()]);
+        $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+        $currentUserPhone = (string)($uRow['phone'] ?? '');
+        $userWhatsAppDefault = !empty($uRow['whatsapp_opt_in_default']);
+    } catch (PDOException $e) {
+        $uStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
+        $uStmt->execute([currentUserId()]);
+        $currentUserPhone = (string)($uStmt->fetchColumn() ?: '');
+    }
 }
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
 $selectedCustomLocation = $_POST['custom_location'] ?? $defaultCustomLocation;
@@ -638,11 +647,11 @@ include '../includes/header.php';
                 <!-- Direct WhatsApp Contact (Optional) -->
                 <div class="form-group mb-6 p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-light);">
                     <label class="flex items-center gap-2 mb-1 cursor-pointer">
-                        <input type="checkbox" name="enable_whatsapp" id="create_enable_whatsapp" value="1" <?= !empty($_POST['enable_whatsapp']) ? 'checked' : '' ?> style="accent-color: #25D366; width: 18px; height: 18px;">
+                        <input type="checkbox" name="enable_whatsapp" id="create_enable_whatsapp" value="1" <?= (!empty($_POST['enable_whatsapp']) || ($_SERVER['REQUEST_METHOD'] !== 'POST' && $userWhatsAppDefault)) ? 'checked' : '' ?> style="accent-color: #25D366; width: 18px; height: 18px;">
                         <span class="font-bold text-sm" style="color: var(--text-main);"><?= __('product.whatsapp_product_enable_label') ?></span>
                     </label>
                     <p class="text-muted small mb-2"><?= __('product.whatsapp_product_hint') ?></p>
-                    <div id="create_whatsapp_wrap" style="<?= empty($_POST['enable_whatsapp']) ? 'display: none;' : '' ?>" class="mt-2">
+                    <div id="create_whatsapp_wrap" style="<?= (empty($_POST['enable_whatsapp']) && !($_SERVER['REQUEST_METHOD'] !== 'POST' && $userWhatsAppDefault)) ? 'display: none;' : '' ?>" class="mt-2">
                         <label for="create_whatsapp_input" class="font-bold mb-1 block small text-muted"><?= __('product.whatsapp_number_label') ?></label>
                         <input type="tel" id="create_whatsapp_input" name="whatsapp_number"
                                value="<?= htmlspecialchars($_POST['whatsapp_number'] ?? $currentUserPhone) ?>"
