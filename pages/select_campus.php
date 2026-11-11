@@ -24,6 +24,8 @@ if (isset($_GET['skip']) && $_GET['skip'] === '1') {
 
 // If user already has a university assigned, send them to home
 if (!empty($currentUser['university_id']) || !empty($currentUser['other_university_name'])) {
+    $_SESSION['university_id'] = $currentUser['university_id'] ? (int)$currentUser['university_id'] : null;
+    $_SESSION['other_university_name'] = !empty($currentUser['other_university_name']) ? (string)$currentUser['other_university_name'] : null;
     redirect(BASE_URL);
 }
 
@@ -61,6 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':other' => $otherUniversityName !== '' ? $otherUniversityName : null,
             ':id' => $userId
         ]);
+        $_SESSION['university_id'] = $uniId;
+        $_SESSION['other_university_name'] = $otherUniversityName !== '' ? $otherUniversityName : null;
         setFlash('success', __('profile.campus_welcome_saved'));
         redirect(BASE_URL);
     }

@@ -21,6 +21,8 @@ if (!function_exists('getWebPushSubscriberUserIds')) {
                 $sql .= " AND u.role = 'admin'";
             } elseif ($targetRole === 'user') {
                 $sql .= " AND u.role = 'user'";
+            } elseif ($targetRole === 'no_campus') {
+                $sql .= " AND u.role = 'user' AND u.university_id IS NULL AND (u.other_university_name IS NULL OR u.other_university_name = '')";
             }
             $stmt = $pdo->query($sql);
             return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
@@ -38,6 +40,8 @@ if (!function_exists('getAnnouncementTargetUserIds')) {
                 $sql .= " AND role = 'admin'";
             } elseif ($targetRole === 'user') {
                 $sql .= " AND role = 'user'";
+            } elseif ($targetRole === 'no_campus') {
+                $sql .= " AND role = 'user' AND university_id IS NULL AND (other_university_name IS NULL OR other_university_name = '')";
             } elseif ($targetRole === 'guest') {
                 return [];
             }

@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isVerified = !empty($authUser['email_confirmed_at']) ? 1 : 0;
 
             $stmt = $pdo->prepare('
-                SELECT id, username, email, role, is_verified, phone
+                SELECT id, username, email, role, is_verified, phone, university_id, other_university_name
                 FROM users
                 WHERE LOWER(email) = LOWER(:email)
                 LIMIT 1
@@ -187,6 +187,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['role']     = $user['role'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['user_email'] = $user['email'];
+                $_SESSION['university_id'] = !empty($user['university_id']) ? (int)$user['university_id'] : null;
+                $_SESSION['other_university_name'] = !empty($user['other_university_name']) ? (string)$user['other_university_name'] : null;
                 $_SESSION['supabase_access_token'] = (string) ($auth['data']['access_token'] ?? '');
                 $_SESSION['supabase_refresh_token'] = (string) ($auth['data']['refresh_token'] ?? '');
 

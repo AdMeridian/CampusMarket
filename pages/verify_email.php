@@ -121,7 +121,7 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
 
     if ($verifiedEmail !== '') {
         // Fetch or create user in local users table
-        $stmt = $pdo->prepare('SELECT id, username, email, role, is_verified, phone FROM users WHERE LOWER(email) = LOWER(:e) LIMIT 1');
+        $stmt = $pdo->prepare('SELECT id, username, email, role, is_verified, phone, university_id, other_university_name FROM users WHERE LOWER(email) = LOWER(:e) LIMIT 1');
         $stmt->execute([':e' => $verifiedEmail]);
         $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
         $isNewLocalUser = false;
@@ -213,6 +213,8 @@ if (($_GET['source'] ?? $_POST['source'] ?? '') === 'supabase') {
             $_SESSION['role'] = $existingUser['role'];
             $_SESSION['username'] = $existingUser['username'];
             $_SESSION['user_email'] = $existingUser['email'];
+            $_SESSION['university_id'] = !empty($existingUser['university_id']) ? (int)$existingUser['university_id'] : null;
+            $_SESSION['other_university_name'] = !empty($existingUser['other_university_name']) ? (string)$existingUser['other_university_name'] : null;
             $_SESSION['supabase_access_token'] = $accessToken;
             $_SESSION['supabase_refresh_token'] = $refreshToken;
             $_SESSION['posthog_event'] = ['name' => 'user_logged_in', 'properties' => ['method' => 'oauth']];

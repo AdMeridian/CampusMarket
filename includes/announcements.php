@@ -118,7 +118,7 @@ if (!function_exists('getActiveAnnouncements')) {
                   AND (ends_at IS NULL OR ends_at >= {$nowSql})
             ";
 
-            $userHasNoCampus = (function_exists('isLoggedIn') && isLoggedIn() && function_exists('isAdmin') && !isAdmin() && empty($_SESSION['university_id']));
+            $userHasNoCampus = (function_exists('isLoggedIn') && isLoggedIn() && function_exists('isAdmin') && !isAdmin() && function_exists('userHasCampusAffiliation') && !userHasCampusAffiliation($pdo));
 
             if ($userRole === 'admin') {
                 $sql .= " AND target_role IN ('all', 'admin', 'user')";

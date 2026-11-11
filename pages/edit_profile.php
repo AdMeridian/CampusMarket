@@ -231,9 +231,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Keep session in sync with the new username and language preference.
+        // Keep session in sync with the new username, university, and language preference.
         $_SESSION['username'] = $username;
         $_SESSION['preferred_language'] = $preferredLanguage;
+        $_SESSION['university_id'] = $universityId;
+        $_SESSION['other_university_name'] = $universitySelection === 'other' ? $otherUniversityName : null;
         i18nInit($preferredLanguage);
 
         setFlash('success', __('profile.updated_success'));

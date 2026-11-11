@@ -134,6 +134,36 @@ function currentUser(): ?array {
 }
 
 /**
+ * Check if the user has set their university campus affiliation.
+ * Checks session first; falls back to database and synchronizes session.
+ */
+function userHasCampusAffiliation(PDO $pdo, ?int $userId = null): bool {
+    if ($userId === null) {
+        $userId = currentUserId();
+    }
+    if (!$userId) {
+        return false;
+    }
+
+    if (!empty($_SESSION['university_id']) || !empty($_SESSION['other_university_name'])) {
+        return true;
+    }
+
+    try {
+        $stmt = $pdo->prepare('SELECT university_id, other_university_name FROM users WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $_SESSION['university_id'] = $row['university_id'] ? (int)$row['university_id'] : null;
+            $_SESSION['other_university_name'] = !empty($row['other_university_name']) ? (string)$row['other_university_name'] : null;
+            return (!empty($row['university_id']) || !empty($row['other_university_name']));
+        }
+    } catch (Throwable $e) {}
+
+    return false;
+}
+
+/**
  * Require login — redirect to login page if not authenticated
  */
 function requireLogin(): void {
