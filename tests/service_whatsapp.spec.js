@@ -12,6 +12,9 @@ test('WhatsApp contact feature is properly integrated across services', async ()
   expect(en['product.whatsapp_prefill']).toContain('{title}');
   expect(en['product.whatsapp_prefill']).toContain('{url}');
   expect(en['product.whatsapp_enable_label']).toBeTruthy();
+  expect(en['product.whatsapp_product_prefill']).toContain('{seller}');
+  expect(en['product.whatsapp_product_prefill']).toContain('{title}');
+  expect(en['product.whatsapp_product_enable_label']).toBeTruthy();
   expect(en['product.client_reviews']).toBe('Client Reviews');
   expect(en['product.no_reviews_title']).toBe('No reviews yet');
 
@@ -20,6 +23,9 @@ test('WhatsApp contact feature is properly integrated across services', async ()
   expect(tr['product.whatsapp_prefill']).toContain('{title}');
   expect(tr['product.whatsapp_prefill']).toContain('{url}');
   expect(tr['product.whatsapp_enable_label']).toBeTruthy();
+  expect(tr['product.whatsapp_product_prefill']).toContain('{seller}');
+  expect(tr['product.whatsapp_product_prefill']).toContain('{title}');
+  expect(tr['product.whatsapp_product_enable_label']).toBeTruthy();
   expect(tr['product.client_reviews']).toBe('Müşteri Değerlendirmeleri');
   expect(tr['product.no_reviews_title']).toBe('Henüz değerlendirme yok');
 
@@ -109,5 +115,14 @@ test('WhatsApp contact feature is properly integrated across services', async ()
   expect(serviceJobsPhp).toContain("UPDATE service_job_posts");
   expect(serviceJobsPhp).toContain("service_jobs.php?edit=");
   expect(serviceJobsPhp).toContain("$isEditing");
+  // 10. Physical Products WhatsApp check
+  const createListingPhp = fs.readFileSync(path.join(__dirname, '../pages/create_listing.php'), 'utf8');
+  expect(createListingPhp).toContain('name="enable_whatsapp"');
+  expect(createListingPhp).toContain('name="whatsapp_number"');
+  expect(createListingPhp).toContain('whatsapp_number');
+  expect(createListingPhp).toContain('create_enable_whatsapp');
+
+  expect(managePhp).toContain('update_whatsapp_contact');
+  expect(managePhp).toContain('product_enable_whatsapp');
 });
 
