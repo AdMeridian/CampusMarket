@@ -124,5 +124,31 @@ test('WhatsApp contact feature is properly integrated across services', async ()
 
   expect(managePhp).toContain('update_whatsapp_contact');
   expect(managePhp).toContain('product_enable_whatsapp');
+
+  // 11. Profile WhatsApp Default Opt-in & Cascade check
+  expect(en['profile.whatsapp_default_label']).toBeTruthy();
+  expect(en['profile.whatsapp_apply_existing_label']).toBeTruthy();
+  expect(tr['profile.whatsapp_default_label']).toBeTruthy();
+  expect(tr['profile.whatsapp_apply_existing_label']).toBeTruthy();
+
+  const editProfilePhp = fs.readFileSync(path.join(__dirname, '../pages/edit_profile.php'), 'utf8');
+  expect(editProfilePhp).toContain('whatsapp_opt_in_default');
+  expect(editProfilePhp).toContain('apply_whatsapp_to_existing_listings');
+
+  const userPgMigration = fs.readFileSync(
+    path.join(__dirname, '../supabase/migrations/20261111150000_add_user_whatsapp_opt_in_default.sql'),
+    'utf8'
+  );
+  expect(userPgMigration).toContain('ALTER TABLE public.users');
+  expect(userPgMigration).toContain('ADD COLUMN IF NOT EXISTS whatsapp_opt_in_default');
+
+  // 12. Admin Announcement Unified Banner Controls check
+  const announcementsPhp = fs.readFileSync(path.join(__dirname, '../includes/announcements.php'), 'utf8');
+  expect(announcementsPhp).toContain('no_campus');
+
+  const adminAnnouncementsPhp = fs.readFileSync(path.join(__dirname, '../admin/announcements.php'), 'utf8');
+  expect(adminAnnouncementsPhp).toContain('no_campus');
+  expect(adminAnnouncementsPhp).toContain('Live on Platform Now');
+  expect(adminAnnouncementsPhp).toContain('campus_nudge');
 });
 

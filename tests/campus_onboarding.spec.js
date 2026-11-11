@@ -30,6 +30,17 @@ test('Campus selection and OAuth onboarding are properly integrated', async () =
   expect(selectCampus).toContain('getNorthernCyprusUniversities($pdo)');
   expect(selectCampus).toContain('other_university_name');
   expect(selectCampus).toContain('skip=1');
+  expect(selectCampus).toContain("\$_SESSION['university_id'] = \$uniId;");
+
+  const functionsPhp = fs.readFileSync(path.join(__dirname, '../includes/functions.php'), 'utf8');
+  expect(functionsPhp).toContain('function userHasCampusAffiliation');
+
+  const announcementsPhp = fs.readFileSync(path.join(__dirname, '../includes/announcements.php'), 'utf8');
+  expect(announcementsPhp).toContain('userHasCampusAffiliation');
+
+  const adminAnnouncements = fs.readFileSync(path.join(__dirname, '../admin/announcements.php'), 'utf8');
+  expect(adminAnnouncements).toContain("targetRole === 'no_campus'");
+  expect(adminAnnouncements).toContain('university_id IS NULL');
 
   const migration = fs.readFileSync(
     path.join(__dirname, '../supabase/migrations/20261103140000_fix_get_university_and_backfill.sql'),

@@ -629,6 +629,31 @@ if (!function_exists('ensureServiceJobWhatsAppColumn')) {
     }
 }
 
+if (!function_exists('ensureUserWhatsAppDefaultColumn')) {
+    function ensureUserWhatsAppDefaultColumn(PDO $pdo): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        try {
+            $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+            if ($driver === 'pgsql') {
+                $pdo->exec("ALTER TABLE public.users ADD COLUMN IF NOT EXISTS whatsapp_opt_in_default BOOLEAN NOT NULL DEFAULT FALSE");
+            } else {
+                $check = $pdo->prepare(
+                    "SELECT COUNT(*) FROM information_schema.columns " .
+                    "WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'whatsapp_opt_in_default'"
+                );
+                $check->execute();
+                if ((int) $check->fetchColumn() === 0) {
+                    $pdo->exec("ALTER TABLE users ADD COLUMN whatsapp_opt_in_default TINYINT(1) NOT NULL DEFAULT 0");
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('User WhatsApp default column bootstrap warning: ' . $e->getMessage());
+        }
+    }
+}
+
 if (!function_exists('ensureLoginAttemptsTable')) {
     function ensureLoginAttemptsTable(PDO $pdo): void {
         static $done = false;
@@ -725,6 +750,7 @@ if (!function_exists('connectDatabase')) {
                     ensureRecentFallbackColumn($pdo);
                     ensureProductWhatsAppColumn($pdo);
                     ensureServiceJobWhatsAppColumn($pdo);
+                    ensureUserWhatsAppDefaultColumn($pdo);
                     ensureLoginAttemptsTable($pdo);
                 } catch (Throwable $ensureError) {
                     error_log('Schema bootstrap failed: ' . $ensureError->getMessage());

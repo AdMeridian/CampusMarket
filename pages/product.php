@@ -12,23 +12,43 @@ if ($productId <= 0) {
 // Fetch Product Details
 $viewerId = isLoggedIn() ? (int)currentUserId() : 0;
 $viewerIsAdmin = isAdmin() ? 1 : 0;
-$stmt = $pdo->prepare("
-    SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since, u.phone as seller_phone
-    FROM products p
-    JOIN categories c ON p.category_id = c.id
-    JOIN users u ON p.user_id = u.id
-    WHERE p.id = :id
-      AND (
-          p.status = 'active'
-          OR (p.status <> 'deleted' AND (p.user_id = :viewer_id OR :viewer_is_admin = 1))
-      )
-");
-$stmt->execute([
-    ':id' => $productId,
-    ':viewer_id' => $viewerId,
-    ':viewer_is_admin' => $viewerIsAdmin,
-]);
-$product = $stmt->fetch();
+try {
+    $stmt = $pdo->prepare("
+        SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since, u.phone as seller_phone, u.whatsapp_opt_in_default as seller_whatsapp_opt_in_default
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        WHERE p.id = :id
+          AND (
+              p.status = 'active'
+              OR (p.status <> 'deleted' AND (p.user_id = :viewer_id OR :viewer_is_admin = 1))
+          )
+    ");
+    $stmt->execute([
+        ':id' => $productId,
+        ':viewer_id' => $viewerId,
+        ':viewer_is_admin' => $viewerIsAdmin,
+    ]);
+    $product = $stmt->fetch();
+} catch (PDOException $e) {
+    $stmt = $pdo->prepare("
+        SELECT p.*, c.name as category_name, u.username as seller_name, u.id as seller_id, u.avatar as seller_avatar, u.created_at as seller_since, u.phone as seller_phone
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        WHERE p.id = :id
+          AND (
+              p.status = 'active'
+              OR (p.status <> 'deleted' AND (p.user_id = :viewer_id OR :viewer_is_admin = 1))
+          )
+    ");
+    $stmt->execute([
+        ':id' => $productId,
+        ':viewer_id' => $viewerId,
+        ':viewer_is_admin' => $viewerIsAdmin,
+    ]);
+    $product = $stmt->fetch();
+}
 $productCategories = [];
 
 if ($product) {
@@ -97,6 +117,12 @@ $listingConversationUrl = isLoggedIn()
     : BASE_URL . 'pages/login.php?redirect=' . rawurlencode($listingConversationPath);
 
 $listingWhatsAppNumber = trim((string)($product['whatsapp_number'] ?? ''));
+if ($listingWhatsAppNumber === '' && !empty($product['seller_whatsapp_opt_in_default']) && !empty($product['seller_phone'])) {
+    $sellerDigits = preg_replace('/[^\d\+]/', '', (string)$product['seller_phone']);
+    if (strlen(preg_replace('/\D/', '', $sellerDigits)) >= 7) {
+        $listingWhatsAppNumber = $sellerDigits;
+    }
+}
 $listingWhatsAppUrl = null;
 if ($listingWhatsAppNumber !== '') {
     $sellerName = (string)($product['seller_name'] ?? 'Seller');

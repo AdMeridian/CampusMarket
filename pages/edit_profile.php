@@ -19,7 +19,7 @@ $uid = (int) currentUserId();
 
 // Load current user (support older local schemas that may not yet have preferred_language).
 try {
-    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language, home_town, custom_home_town, university_id, other_university_name FROM users WHERE id = :id');
+    $stmt = $pdo->prepare('SELECT id, username, email, phone, avatar, preferred_language, home_town, custom_home_town, university_id, other_university_name, whatsapp_opt_in_default FROM users WHERE id = :id');
     $stmt->execute([':id' => $uid]);
     $user = $stmt->fetch();
 } catch (PDOException $e) {
@@ -95,6 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['phone'] = 'Phone number looks invalid.';
     }
 
+    // WhatsApp default opt-in
+    $whatsappOptInDefault = !empty($_POST['whatsapp_opt_in_default']) ? 1 : 0;
+
     // Language validation
     if (empty($preferredLanguage) || !array_key_exists($preferredLanguage, SUPPORTED_LANGUAGES)) {
         $preferredLanguage = DEFAULT_LANGUAGE;
@@ -136,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $upd = $pdo->prepare('
                     UPDATE users
                     SET username = :u, phone = :p, avatar = :a, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town,
-                        university_id = :university_id, other_university_name = :other_university_name
+                        university_id = :university_id, other_university_name = :other_university_name, whatsapp_opt_in_default = :wa_default
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -148,12 +151,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':custom_town' => ($homeTown === 'other' && $customHomeTown !== '') ? $customHomeTown : null,
                     ':university_id' => $universityId,
                     ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
+                    ':wa_default' => $whatsappOptInDefault,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, avatar = :a, university_id = :university_id, other_university_name = :other_university_name
+                    SET username = :u, phone = :p, avatar = :a, university_id = :university_id, other_university_name = :other_university_name, whatsapp_opt_in_default = :wa_default
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -162,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':a'  => $newAvatar,
                     ':university_id' => $universityId,
                     ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
+                    ':wa_default' => $whatsappOptInDefault,
                     ':id' => $uid,
                 ]);
             }
@@ -170,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $upd = $pdo->prepare('
                     UPDATE users
                     SET username = :u, phone = :p, preferred_language = :lang, home_town = :town, custom_home_town = :custom_town,
-                        university_id = :university_id, other_university_name = :other_university_name
+                        university_id = :university_id, other_university_name = :other_university_name, whatsapp_opt_in_default = :wa_default
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -181,12 +186,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':custom_town' => ($homeTown === 'other' && $customHomeTown !== '') ? $customHomeTown : null,
                     ':university_id' => $universityId,
                     ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
+                    ':wa_default' => $whatsappOptInDefault,
                     ':id' => $uid,
                 ]);
             } catch (PDOException $e) {
                 $upd = $pdo->prepare('
                     UPDATE users
-                    SET username = :u, phone = :p, university_id = :university_id, other_university_name = :other_university_name
+                    SET username = :u, phone = :p, university_id = :university_id, other_university_name = :other_university_name, whatsapp_opt_in_default = :wa_default
                     WHERE id = :id
                 ');
                 $upd->execute([
@@ -194,14 +200,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':p'  => $phone !== '' ? $phone : null,
                     ':university_id' => $universityId,
                     ':other_university_name' => $universitySelection === 'other' ? $otherUniversityName : null,
+                    ':wa_default' => $whatsappOptInDefault,
                     ':id' => $uid,
                 ]);
             }
         }
 
-        // Keep session in sync with the new username and language preference.
+        // Optionally cascade WhatsApp preference to all active listings
+        $applyToExisting = !empty($_POST['apply_whatsapp_to_existing_listings']);
+        if ($applyToExisting) {
+            if ($whatsappOptInDefault === 1 && $phone !== '') {
+                $digits = preg_replace('/[^\d\+]/', '', $phone);
+                $cleanDigits = preg_replace('/\D/', '', $digits);
+                if (strlen($cleanDigits) >= 7) {
+                    $waNum = mb_substr($digits, 0, 30);
+                    $updProds = $pdo->prepare("UPDATE products SET whatsapp_number = :wa, updated_at = NOW() WHERE user_id = :uid AND status = 'active'");
+                    $updProds->execute([':wa' => $waNum, ':uid' => $uid]);
+                    try {
+                        $updJobs = $pdo->prepare("UPDATE service_job_posts SET whatsapp_number = :wa WHERE poster_id = :uid AND status = 'open'");
+                        $updJobs->execute([':wa' => $waNum, ':uid' => $uid]);
+                    } catch (Throwable $eJob) {}
+                }
+            } elseif ($whatsappOptInDefault === 0) {
+                $updProds = $pdo->prepare("UPDATE products SET whatsapp_number = NULL, updated_at = NOW() WHERE user_id = :uid AND status = 'active'");
+                $updProds->execute([':uid' => $uid]);
+                try {
+                    $updJobs = $pdo->prepare("UPDATE service_job_posts SET whatsapp_number = NULL WHERE poster_id = :uid AND status = 'open'");
+                    $updJobs->execute([':uid' => $uid]);
+                } catch (Throwable $eJob) {}
+            }
+        }
+
+        // Keep session in sync with the new username, university, and language preference.
         $_SESSION['username'] = $username;
         $_SESSION['preferred_language'] = $preferredLanguage;
+        $_SESSION['university_id'] = $universityId;
+        $_SESSION['other_university_name'] = $universitySelection === 'other' ? $otherUniversityName : null;
         i18nInit($preferredLanguage);
 
         setFlash('success', __('profile.updated_success'));
@@ -216,6 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user['custom_home_town'] = $customHomeTown !== '' ? $customHomeTown : null;
     $user['university_id'] = $universityId;
     $user['other_university_name'] = $universitySelection === 'other' ? $otherUniversityName : null;
+    $user['whatsapp_opt_in_default'] = $whatsappOptInDefault;
 }
 
 $pageTitle = __('profile.edit_title');
@@ -302,6 +337,21 @@ require_once '../includes/header.php';
                     <?php if (isset($errors['phone'])): ?>
                         <div class="text-sm mt-2 font-medium" style="color: #dc2626;"><?php echo sanitize($errors['phone']); ?></div>
                     <?php endif; ?>
+                </div>
+
+                <div class="p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-light);">
+                    <label class="flex items-center gap-2 mb-1 cursor-pointer">
+                        <input type="checkbox" name="whatsapp_opt_in_default" id="whatsapp_opt_in_default" value="1" <?= !empty($user['whatsapp_opt_in_default']) ? 'checked' : '' ?> style="accent-color: #25D366; width: 18px; height: 18px;">
+                        <span class="font-bold text-sm" style="color: var(--text-main);"><?= __('profile.whatsapp_default_label') ?></span>
+                    </label>
+                    <p class="text-muted small mb-2"><?= __('profile.whatsapp_default_hint') ?></p>
+                    <div class="pt-2 mt-2" style="border-top: 1px dashed var(--border-light);">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="apply_whatsapp_to_existing_listings" id="apply_whatsapp_to_existing" value="1" style="accent-color: #25D366; width: 16px; height: 16px;">
+                            <span class="text-sm font-semibold text-main"><?= __('profile.whatsapp_apply_existing_label') ?></span>
+                        </label>
+                        <p class="text-muted small mb-0 mt-0.5"><?= __('profile.whatsapp_apply_existing_hint') ?></p>
+                    </div>
                 </div>
 
                 <div>

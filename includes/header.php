@@ -498,10 +498,8 @@ try {
         });
     }
 } catch (Throwable $e) {}
-
-$showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id']));
 ?>
-<?php if (!empty($headerAnnouncements) || $showCampusNudge): ?>
+<?php if (!empty($headerAnnouncements)): ?>
 <div class="platform-announcements-wrapper" id="platformAnnouncementsWrapper">
     <div class="container">
         <div class="platform-announcements-carousel" id="platformAnnouncementsCarousel" role="region" aria-label="Platform announcements">
@@ -542,24 +540,6 @@ $showCampusNudge = (isLoggedIn() && !isAdmin() && empty($_SESSION['university_id
                         </button>
                     </div>
                 <?php endforeach; ?>
-
-                <?php if ($showCampusNudge): ?>
-                    <div class="platform-announcement platform-announcement--info" id="campus-nudge-item" role="alert">
-                        <div class="platform-announcement__icon">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                        </div>
-                        <div class="platform-announcement__body">
-                            <span class="platform-announcement__title"><?= __('campus_nudge.title') ?></span>
-                            <span class="platform-announcement__message"><?= __('campus_nudge.message') ?></span>
-                        </div>
-                        <a href="<?= BASE_URL ?>pages/select_campus.php" class="platform-announcement__cta" onclick="dismissCampusNudge()">
-                            <?= __('campus_nudge.cta') ?>
-                        </a>
-                        <button type="button" class="platform-announcement__dismiss" onclick="dismissCampusNudge()" aria-label="Dismiss">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                    </div>
-                <?php endif; ?>
             </div>
 
             <!-- Pager bar (visible only when 2+ active announcements exist) -->
