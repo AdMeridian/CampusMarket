@@ -244,6 +244,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
 }
 
+// 4b. Update WhatsApp Contact (Product)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_whatsapp_contact') {
+    verifyCsrfToken();
+    $enableWhatsApp = !empty($_POST['enable_whatsapp']);
+    $rawWhatsApp = trim((string)($_POST['whatsapp_number'] ?? ''));
+    $newWhatsAppNumber = null;
+    if ($enableWhatsApp && $rawWhatsApp !== '') {
+        $digits = preg_replace('/[^\d+]/', '', $rawWhatsApp);
+        if (strlen(preg_replace('/\D/', '', $digits)) >= 7) {
+            $newWhatsAppNumber = mb_substr($digits, 0, 30);
+        }
+    }
+
+    $stmtUp = $pdo->prepare("UPDATE products SET whatsapp_number = :wa_num, updated_at = NOW() WHERE id = :id");
+    $stmtUp->execute([
+        ':wa_num' => $newWhatsAppNumber,
+        ':id' => $productId,
+    ]);
+
+    setFlash('success', 'Contact settings updated successfully.');
+    redirect(BASE_URL . 'pages/manage_listing.php?id=' . $productId);
+}
+
 // 5. Add Images
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_images') {
     verifyCsrfToken();
@@ -1050,6 +1073,29 @@ require_once __DIR__ . '/../includes/header.php';
                     </button>
                 </form>
             </div>
+
+            <!-- Contact Options (WhatsApp) for Products -->
+            <div class="mgmt-card">
+                <h3 class="font-bold text-lg text-main mb-4"><?= __('product.whatsapp_number_label') ?></h3>
+                <form method="post">
+                    <?php echo csrfTokenField(); ?>
+                    <input type="hidden" name="action" value="update_whatsapp_contact">
+                    <div class="form-group mb-4 p-3 rounded-lg" style="background: var(--bg-main); border: 1px solid var(--border-light);">
+                        <label class="flex items-center gap-2 mb-2 cursor-pointer">
+                            <input type="checkbox" name="enable_whatsapp" id="product_enable_whatsapp" value="1" <?= !empty($product['whatsapp_number']) ? 'checked' : '' ?> style="accent-color: #25D366; width: 18px; height: 18px;">
+                            <span class="font-bold text-sm text-main"><?= __('product.whatsapp_product_enable_label') ?></span>
+                        </label>
+                        <div id="product_whatsapp_wrap" style="<?= empty($product['whatsapp_number']) ? 'display: none;' : '' ?>">
+                            <label for="product_whatsapp_input" class="font-bold mb-1 block small text-muted"><?= __('product.whatsapp_number_label') ?></label>
+                            <input type="tel" id="product_whatsapp_input" name="whatsapp_number" value="<?= htmlspecialchars($product['whatsapp_number'] ?? ($product['seller_phone'] ?? '')) ?>" placeholder="e.g. +90 533 123 4567 or 0533 123 4567" class="premium-input w-full" style="padding: 0.65rem 0.85rem;" maxlength="30">
+                            <small class="text-muted block mt-1"><?= __('product.whatsapp_product_hint') ?></small>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-secondary" style="padding: 0.65rem 1.4rem; border-radius: var(--radius-md);">
+                        Save Contact Settings
+                    </button>
+                </form>
+            </div>
             <?php endif; ?>
         </div>
 
@@ -1274,6 +1320,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mgmtWaCheck && mgmtWaWrap) {
         mgmtWaCheck.addEventListener('change', function() {
             mgmtWaWrap.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    const prodWaCheck = document.getElementById('product_enable_whatsapp');
+    const prodWaWrap = document.getElementById('product_whatsapp_wrap');
+    if (prodWaCheck && prodWaWrap) {
+        prodWaCheck.addEventListener('change', function() {
+            prodWaWrap.style.display = this.checked ? 'block' : 'none';
         });
     }
 });

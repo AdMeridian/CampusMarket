@@ -67,6 +67,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $portfolioLink = mb_substr($rawPortfolio, 0, 500);
         }
     }
+
+    $enableWhatsApp = !empty($_POST['enable_whatsapp']);
+    $rawWhatsApp = trim((string)($_POST['whatsapp_number'] ?? ''));
+    $whatsappNumber = null;
+    if ($enableWhatsApp && $rawWhatsApp !== '') {
+        $digits = preg_replace('/[^\d+]/', '', $rawWhatsApp);
+        if (strlen(preg_replace('/\D/', '', $digits)) >= 7) {
+            $whatsappNumber = mb_substr($digits, 0, 30);
+        }
+    }
     // Collect manually-selected tag IDs from the pill UI
     $selectedTagIds = array_unique(array_filter(array_map('intval', $_POST['tags'] ?? [])));
     if ($listingType === 'service') {
@@ -165,8 +175,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sellerCountry = $sellerMarketplace['country_code'] ?? 'TR';
                 $sellerUniversityId = $sellerMarketplace['university_id'] ?? null;
 
-                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location, country_code, university_id, delivery_days, revision_count, availability_status, availability_reset_at, portfolio_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null), $sellerCountry, $sellerUniversityId, $deliveryDays, $revisionCount, $availabilityStatus, $availabilityResetAt, $portfolioLink]);
+                $stmt = $pdo->prepare("INSERT INTO products (user_id, category_id, title, description, price, price_currency, {$conditionQuote}, status, listing_type, pricing_model, location_town, custom_location, country_code, university_id, delivery_days, revision_count, availability_status, availability_reset_at, portfolio_link, whatsapp_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$userId, $categoryId, $title, $description, $price, $priceCurrency, $conditionValue, $statusValue, $listingType, $pricingModel, $locationTown, ($locationTown === 'other' ? $customLocation : null), $sellerCountry, $sellerUniversityId, $deliveryDays, $revisionCount, $availabilityStatus, $availabilityResetAt, $portfolioLink, $whatsappNumber]);
                 $productId = $pdo->lastInsertId();
 
                 if (!empty($selectedCategoryIds)) {
@@ -361,6 +371,12 @@ try {
 } catch (Throwable $dbIgnore) {}
 $defaultTown = $userHomeTownDetails['town'] ?? '';
 $defaultCustomLocation = $userHomeTownDetails['custom'] ?? '';
+$currentUserPhone = '';
+if (isLoggedIn()) {
+    $uStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
+    $uStmt->execute([currentUserId()]);
+    $currentUserPhone = (string)($uStmt->fetchColumn() ?: '');
+}
 $selectedTown = $_POST['location_town'] ?? $defaultTown;
 $selectedCustomLocation = $_POST['custom_location'] ?? $defaultCustomLocation;
 $prevTags   = array_map('intval', $_POST['tags'] ?? []);
@@ -617,6 +633,22 @@ include '../includes/header.php';
                     </div>
                     <div id="ai-desc-status" style="font-size: 0.78rem; color: var(--text-muted); min-height: 1.1em; margin-bottom: 0.4rem;"></div>
                     <textarea name="description" id="descriptionTextarea" rows="5" placeholder="<?= addslashes(__('create_listing.desc_placeholder')) ?>" class="w-full premium-input" style="padding: 1rem; border-radius: var(--radius-lg);" required><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                </div>
+
+                <!-- Direct WhatsApp Contact (Optional) -->
+                <div class="form-group mb-6 p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-light);">
+                    <label class="flex items-center gap-2 mb-1 cursor-pointer">
+                        <input type="checkbox" name="enable_whatsapp" id="create_enable_whatsapp" value="1" <?= !empty($_POST['enable_whatsapp']) ? 'checked' : '' ?> style="accent-color: #25D366; width: 18px; height: 18px;">
+                        <span class="font-bold text-sm" style="color: var(--text-main);"><?= __('product.whatsapp_product_enable_label') ?></span>
+                    </label>
+                    <p class="text-muted small mb-2"><?= __('product.whatsapp_product_hint') ?></p>
+                    <div id="create_whatsapp_wrap" style="<?= empty($_POST['enable_whatsapp']) ? 'display: none;' : '' ?>" class="mt-2">
+                        <label for="create_whatsapp_input" class="font-bold mb-1 block small text-muted"><?= __('product.whatsapp_number_label') ?></label>
+                        <input type="tel" id="create_whatsapp_input" name="whatsapp_number"
+                               value="<?= htmlspecialchars($_POST['whatsapp_number'] ?? $currentUserPhone) ?>"
+                               placeholder="e.g. +90 533 123 4567 or 0533 123 4567"
+                               class="premium-input w-full" style="padding: 0.75rem 1rem;" maxlength="30">
+                    </div>
                 </div>
 
                 <?php if (isAgent()): ?>
@@ -1568,6 +1600,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     descBtn.disabled = false;
                     descBtn.innerHTML = '<svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Write description';
                 });
+        });
+    }
+    // ── WhatsApp toggle ───────────────────────────────────────
+    var createWaCheck = document.getElementById('create_enable_whatsapp');
+    var createWaWrap = document.getElementById('create_whatsapp_wrap');
+    if (createWaCheck && createWaWrap) {
+        createWaCheck.addEventListener('change', function () {
+            createWaWrap.style.display = this.checked ? 'block' : 'none';
         });
     }
 })();
