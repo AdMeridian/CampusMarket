@@ -234,7 +234,7 @@ body.dark-mode .convo-card.unread {
 <div class="inbox-wrap">
     <!-- Inbox Tabs -->
     <div class="flex gap-4 mb-8" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
-        <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" style="font-weight: 500;">
+        <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" data-inbox-tab="messages" style="font-weight: 500;">
             <span><?= __('inbox.messages_tab') ?></span>
             <?php 
                 $navUnreadMessages = countUnreadMessages($pdo, $currentUserId);
@@ -243,7 +243,7 @@ body.dark-mode .convo-card.unread {
                 <span class="badge badge-primary"><?= $navUnreadMessages ?></span>
             <?php endif; ?>
         </a>
-        <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2" style="font-weight: 700; border-bottom: 2px solid var(--accent); color: var(--accent);">
+        <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2" data-inbox-tab="activity" style="font-weight: 700; border-bottom: 2px solid var(--accent); color: var(--accent);">
             <span><?= __('inbox.activity_tab') ?></span>
             <?php 
                 $navUnreadNotifs = countUnreadNotifications($pdo, $currentUserId);
