@@ -430,6 +430,7 @@
     "auth.register_error_email_local_empty": "E-postanızdaki @ işaretinden önceki kısmı girin.",
     "auth.register_error_email_local_format": "Üniversite e-postasında @ öncesi yalnızca harf, rakam, nokta, tire ve alt çizgi kullanılabilir.",
     "auth.register_error_phone": "Telefon numarası geçersiz görünüyor.",
+    "auth.register_error_phone_required": "Telefon numarası gereklidir.",
     "auth.register_error_password_length": "Şifre en az 8 karakter olmalıdır.",
     "auth.register_error_password_format": "Şifre en az bir harf ve bir rakam içermelidir.",
     "auth.register_error_password_mismatch": "Şifreler eşleşmiyor.",

@@ -891,6 +891,24 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 
+    <?php if (empty($product['whatsapp_number'])): ?>
+    <div id="wa-seller-nudge" class="mb-6 p-4 rounded-xl flex items-center justify-between gap-4 flex-wrap" style="background: linear-gradient(135deg, rgba(37,211,102,0.08), rgba(16,185,129,0.06)); border: 1.5px solid rgba(37,211,102,0.3); border-radius: var(--radius-lg);">
+        <div class="flex items-center gap-3">
+            <span style="font-size: 1.6rem; line-height: 1;">💬</span>
+            <div>
+                <strong class="text-main block" style="font-size: 0.95rem;">Faster deals with direct WhatsApp messaging</strong>
+                <span class="text-muted text-sm">Buyers can now message you on WhatsApp. Enable it below or apply it to all your listings in your profile.</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="<?= BASE_URL ?>pages/edit_profile.php" class="btn btn-sm" style="background: #25D366; color: white; font-weight: 700; border: none; border-radius: var(--radius-md); padding: 0.45rem 0.9rem;">
+                Enable in Profile &rarr;
+            </a>
+            <button type="button" onclick="document.getElementById('wa-seller-nudge').remove();" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-md);" aria-label="Dismiss">&times;</button>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <?php if ($isService && $product['status'] === 'pending_payment'): ?>
     <div class="glass-panel p-5 mb-8" style="border-radius: var(--radius-lg); border: 1px solid var(--border-light);">
         <p class="text-muted mb-3">This service listing is not currently visible.</p>

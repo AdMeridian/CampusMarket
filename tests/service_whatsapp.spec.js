@@ -150,5 +150,24 @@ test('WhatsApp contact feature is properly integrated across services', async ()
   expect(adminAnnouncementsPhp).toContain('no_campus');
   expect(adminAnnouncementsPhp).toContain('Live on Platform Now');
   expect(adminAnnouncementsPhp).toContain('campus_nudge');
+  expect(adminAnnouncementsPhp).toContain('whatsapp_chat_launch');
+
+  const manageListingPhp = fs.readFileSync(path.join(__dirname, '../pages/manage_listing.php'), 'utf8');
+  expect(manageListingPhp).toContain('wa-seller-nudge');
+
+  // 13. Registration required phone check
+  const registerPhp = fs.readFileSync(path.join(__dirname, '../pages/register.php'), 'utf8');
+  expect(registerPhp).toContain('auth.register_error_phone_required');
+  expect(registerPhp).toContain('required');
+
+  const enExtra = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/lang/en.extra.json'), 'utf8'));
+  const trExtra = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/lang/tr.extra.json'), 'utf8'));
+  expect(enExtra['auth.register_error_phone_required']).toBeTruthy();
+  expect(trExtra['auth.register_error_phone_required']).toBeTruthy();
+
+  // 14. Admin Users phone display check
+  const adminUsersPhp = fs.readFileSync(path.join(__dirname, '../admin/users.php'), 'utf8');
+  expect(adminUsersPhp).toContain('Phone Number');
+  expect(adminUsersPhp).toContain('matchesPhone');
 });
 

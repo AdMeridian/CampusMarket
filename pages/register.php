@@ -78,7 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($phone !== '' && !preg_match('/^[\d\s\-\+\(\)]{7,20}$/', $phone)) {
+    if ($phone === '') {
+        $errors['phone'] = __('auth.register_error_phone_required');
+    } elseif (!preg_match('/^[\d\s\-\+\(\)]{7,20}$/', $phone)) {
         $errors['phone'] = __('auth.register_error_phone');
     }
 
@@ -323,11 +325,11 @@ require_once '../includes/header.php';
     </div>
 
     <div class="form-row mb-5">
-      <label for="phone" class="form-label"><?= __('auth.register_phone_label') ?> <span class="form-label--muted"><?= __('auth.register_phone_optional') ?></span></label>
+      <label for="phone" class="form-label"><?= __('auth.register_phone_label') ?> <span class="form-label--required" style="color: #ef4444;">*</span></label>
       <input type="tel" id="phone" name="phone"
              value="<?php echo sanitize($old['phone']); ?>"
              placeholder="+90 555 123 4567"
-             maxlength="20" autocomplete="tel"
+             maxlength="20" autocomplete="tel" required
              class="premium-input <?php echo isset($errors['phone']) ? 'input-invalid' : ''; ?>">
       <?php if (isset($errors['phone'])): ?>
         <div class="error"><?php echo sanitize($errors['phone']); ?></div>
