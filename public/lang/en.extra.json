@@ -430,6 +430,7 @@
     "auth.register_error_email_local_empty": "Enter the part before the @ in your email.",
     "auth.register_error_email_local_format": "University email can only use letters, numbers, dots, hyphens, and underscores before the @.",
     "auth.register_error_phone": "Phone number looks invalid.",
+    "auth.register_error_phone_required": "Phone number is required.",
     "auth.register_error_password_length": "Password must be at least 8 characters.",
     "auth.register_error_password_format": "Password must contain at least one letter and one number.",
     "auth.register_error_password_mismatch": "Passwords do not match.",

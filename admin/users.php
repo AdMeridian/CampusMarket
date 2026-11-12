@@ -246,7 +246,8 @@ foreach ($allUsers as $u) {
         $qLower = strtolower($searchQuery);
         $matchesUser = str_contains(strtolower((string)($u['username'] ?? '')), $qLower);
         $matchesEmail = str_contains(strtolower((string)($u['email'] ?? '')), $qLower);
-        if (!$matchesUser && !$matchesEmail) {
+        $matchesPhone = str_contains(strtolower((string)($u['phone'] ?? '')), $qLower);
+        if (!$matchesUser && !$matchesEmail && !$matchesPhone) {
             continue;
         }
     }
@@ -389,8 +390,8 @@ include '../includes/header.php';
         <!-- Search input & Filters -->
         <form method="GET" action="users.php" style="display: flex; gap: 0.6rem; margin-top: 1.25rem; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 220px; position: relative;">
-                <label class="visually-hidden" for="user-search">Search users by username or email</label>
-                <input type="text" id="user-search" name="q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Search by username or email..." class="premium-input" style="width: 100%; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
+                <label class="visually-hidden" for="user-search">Search users by username, email, or phone</label>
+                <input type="text" id="user-search" name="q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Search by username, email, or phone..." class="premium-input" style="width: 100%; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
             </div>
             <label class="visually-hidden" for="users-campus">Filter users by campus</label>
             <select id="users-campus" name="campus" class="premium-input" style="min-width: 180px; padding: 0.55rem 0.85rem; font-size: 0.88rem; border-radius: var(--radius-md);">
@@ -441,6 +442,7 @@ include '../includes/header.php';
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">User Identity</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Campus / University</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Email Address</th>
+                    <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Phone Number</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Role</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider" style="border-bottom: 2px solid var(--border-light);">Join Date</th>
                     <th class="p-4 uppercase text-xs text-muted font-bold tracking-wider text-right" style="border-bottom: 2px solid var(--border-light);">Administrative Actions</th>
@@ -486,6 +488,16 @@ include '../includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light); font-weight: 500; font-size: 0.88rem;"><?php echo sanitize($u['email']); ?></td>
+                        <td class="p-4" style="border-bottom: 1px solid var(--border-light); font-size: 0.88rem;">
+                            <?php if (!empty($u['phone'])): ?>
+                                <span style="font-weight: 500; color: var(--text-main); font-family: monospace;"><?php echo htmlspecialchars($u['phone']); ?></span>
+                                <?php if (!empty($u['whatsapp_opt_in_default'])): ?>
+                                    <span class="badge" title="WhatsApp contact enabled by default" style="margin-left: 0.35rem; background: rgba(37,211,102,0.12); color: #059669; border: 1px solid rgba(37,211,102,0.3); font-size: 0.7rem; font-weight: 700;">WA Default</span>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span class="text-muted" style="font-size: 0.8rem; color: #94a3b8;">Not set</span>
+                            <?php endif; ?>
+                        </td>
                         <td class="p-4" style="border-bottom: 1px solid var(--border-light);">
                             <?php if ($u['role'] === 'admin'): ?>
                                 <span class="badge badge-primary shadow-sm">Admin</span>

@@ -61,6 +61,19 @@ $currentAdminId = currentUserId();
 
 $announcementTemplates = [
     [
+        'id' => 'whatsapp_chat_launch',
+        'icon' => '💬',
+        'category' => 'New Feature',
+        'badge' => 'Direct Contact',
+        'type' => 'success',
+        'title' => 'Chat on WhatsApp is Now Available!',
+        'message' => 'Sellers can now allow buyers to message them directly on WhatsApp for faster deals and replies. Enable it globally in your profile settings.',
+        'cta_text' => 'Enable WhatsApp',
+        'cta_url' => BASE_URL . 'pages/edit_profile.php',
+        'target_role' => 'user',
+        'desc' => 'Notify active sellers and students about direct WhatsApp chat options.'
+    ],
+    [
         'id' => 'campus_nudge',
         'icon' => '🎓',
         'category' => 'System Nudge',

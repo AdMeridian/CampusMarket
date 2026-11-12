@@ -9,7 +9,7 @@ require_once '../includes/functions_member2.php';
 requireLogin();
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
-$stmt = $pdo->prepare('SELECT id, username, email, university_id, other_university_name FROM users WHERE id = :id LIMIT 1');
+$stmt = $pdo->prepare('SELECT id, username, email, phone, university_id, other_university_name FROM users WHERE id = :id LIMIT 1');
 $stmt->execute([':id' => $userId]);
 $currentUser = $stmt->fetch();
 
@@ -36,6 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
     $universitySelection = trim((string)($_POST['university_id'] ?? ''));
     $otherUniversityName = trim((string)($_POST['other_university_name'] ?? ''));
+    $phone = trim((string)($_POST['phone'] ?? ''));
+
+    if (empty($currentUser['phone'])) {
+        if ($phone === '') {
+            $errors['phone'] = __('auth.register_error_phone_required');
+        } elseif (!preg_match('/^[\d\s\-\+\(\)]{7,20}$/', $phone)) {
+            $errors['phone'] = __('auth.register_error_phone');
+        }
+    }
 
     $uniId = null;
     if ($universitySelection === 'other') {
@@ -57,10 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $upd = $pdo->prepare('UPDATE users SET university_id = :uid, other_university_name = :other WHERE id = :id');
+        $savedPhone = !empty($currentUser['phone']) ? $currentUser['phone'] : ($phone !== '' ? $phone : null);
+        $upd = $pdo->prepare('UPDATE users SET university_id = :uid, other_university_name = :other, phone = :phone WHERE id = :id');
         $upd->execute([
             ':uid' => $uniId,
             ':other' => $otherUniversityName !== '' ? $otherUniversityName : null,
+            ':phone' => $savedPhone,
             ':id' => $userId
         ]);
         $_SESSION['university_id'] = $uniId;
@@ -94,6 +105,20 @@ require_once '../includes/header.php';
 
         <form method="post" novalidate>
             <?= csrfTokenField() ?>
+
+            <?php if (empty($currentUser['phone'])): ?>
+                <div class="form-row mb-6">
+                    <label for="phone" class="form-label" style="font-weight: 600;">
+                        <?= __('auth.register_phone_label') ?> <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="tel" id="phone" name="phone" class="premium-input w-full"
+                           value="<?= htmlspecialchars($_POST['phone'] ?? '') ?>"
+                           placeholder="+90 555 123 4567" maxlength="20" autocomplete="tel" required>
+                    <?php if (!empty($errors['phone'])): ?>
+                        <div class="text-sm mt-1" style="color: #ef4444;"><?= sanitize($errors['phone']) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
             <div class="form-row mb-6">
                 <label for="university_id" class="form-label" style="font-weight: 600;">
