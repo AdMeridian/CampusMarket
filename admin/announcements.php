@@ -256,7 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $bellUrl = !empty($ctaUrl) ? $ctaUrl : (rtrim(BASE_URL, '/') . '/pages/home.php');
                     $bellCount = 0;
                     foreach ($targetUsers as $bUid) {
-                        createNotification($pdo, (int)$bUid, 'system', "📢 " . $title, $message, null);
+                        createNotification($pdo, (int)$bUid, 'system', "📢 " . $title, $message, $newId);
                         $bellCount++;
                     }
                     if ($bellCount > 0) {
@@ -314,6 +314,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             logAdminAction($pdo, 'broadcast_announcement_push', 'announcement', $id, ['push_recipients' => $pushCount]);
             setFlash('success', "🚀 Dispatched web push notification to {$pushCount} subscribed device(s).");
+        } else {
+            setFlash('error', 'Announcement not found.');
+        }
+        redirect(BASE_URL . 'admin/announcements.php');
+    }
+
+    if ($action === 'broadcast_bell') {
+        $id = (int)($_POST['id'] ?? 0);
+        $annStmt = $pdo->prepare("SELECT * FROM announcements WHERE id = ? LIMIT 1");
+        $annStmt->execute([$id]);
+        $targetAnn = $annStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($targetAnn) {
+            $targetUsers = getAnnouncementTargetUserIds($pdo, $targetAnn['target_role']);
+            $bellCount = 0;
+            foreach ($targetUsers as $bUid) {
+                createNotification($pdo, (int)$bUid, 'system', "📢 " . $targetAnn['title'], $targetAnn['message'], $id);
+                $bellCount++;
+            }
+            logAdminAction($pdo, 'broadcast_announcement_bell', 'announcement', $id, ['bell_recipients' => $bellCount]);
+            setFlash('success', "🔔 Delivered in-app bell notification to {$bellCount} user(s).");
         } else {
             setFlash('error', 'Announcement not found.');
         }
@@ -547,6 +568,14 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td style="padding: 1rem 0.5rem; text-align: right; white-space: nowrap;">
+                                <form method="POST" style="display: inline; margin: 0 0.25rem 0 0;" onsubmit="return confirm('Deliver in-app bell notification for this announcement to target users?');">
+                                    <?php echo csrfTokenField(); ?>
+                                    <input type="hidden" name="action" value="broadcast_bell">
+                                    <input type="hidden" name="id" value="<?= (int)$a['id'] ?>">
+                                    <button type="submit" class="btn btn-sm" title="Deliver in-app bell notification" style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-main); padding: 0.35rem 0.55rem; border-radius: var(--radius-sm); font-size: 0.78rem;">
+                                        📢 Alert
+                                    </button>
+                                </form>
                                 <form method="POST" style="display: inline; margin: 0 0.25rem 0 0;" onsubmit="return confirm('Send push notification for this announcement to all subscribed devices?');">
                                     <?php echo csrfTokenField(); ?>
                                     <input type="hidden" name="action" value="broadcast_push">

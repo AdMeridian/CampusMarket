@@ -304,7 +304,7 @@ body.dark-mode .convo-card.unread {
 
     <!-- Inbox Tabs -->
     <div class="flex gap-4 mb-8" style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">
-        <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2" style="font-weight: 700; border-bottom: 2px solid var(--primary); color: var(--primary);">
+        <a href="<?= BASE_URL ?>/pages/inbox.php" class="flex items-center gap-2 px-4 py-2" data-inbox-tab="messages" style="font-weight: 700; border-bottom: 2px solid var(--primary); color: var(--primary);">
             <span><?= __('inbox.messages_tab') ?></span>
             <?php 
                 $tabUnreadMessages = countUnreadMessages($pdo, $currentUserId);
@@ -313,7 +313,7 @@ body.dark-mode .convo-card.unread {
                 <span class="badge badge-primary"><?= $tabUnreadMessages ?></span>
             <?php endif; ?>
         </a>
-        <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" style="font-weight: 500;">
+        <a href="<?= BASE_URL ?>/pages/notifications.php" class="flex items-center gap-2 px-4 py-2 text-muted hover-text-main" data-inbox-tab="activity" style="font-weight: 500;">
             <span><?= __('inbox.activity_tab') ?></span>
             <?php 
                 $navUnreadNotifs = countUnreadNotifications($pdo, $currentUserId);
@@ -336,6 +336,18 @@ body.dark-mode .convo-card.unread {
             <span style="font-size: 0.82rem; color: var(--text-muted);"><?= count($conversations) ?> <?= count($conversations) === 1 ? __('inbox.conversation') : __('inbox.conversations') ?></span>
         <?php endif; ?>
     </div>
+
+    <?php if ($unreadCount === 0 && $navUnreadNotifs > 0): ?>
+        <div class="glass-panel p-3 mb-6" style="border-radius: var(--radius-md); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; color: var(--text-main);">
+                <span style="font-size: 1.15rem;">🔔</span>
+                <span>You have <strong><?= $navUnreadNotifs ?></strong> unread <?= $navUnreadNotifs === 1 ? 'activity notification' : 'activity notifications' ?> in your Activity tab.</span>
+            </div>
+            <a href="<?= BASE_URL ?>/pages/notifications.php" class="btn btn-sm" style="background: var(--accent); color: #fff; font-weight: 600; padding: 0.35rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.8rem; text-decoration: none;">
+                View Activity &rarr;
+            </a>
+        </div>
+    <?php endif; ?>
 
     <!-- Direct Message User Search Bar -->
     <div class="glass-panel mb-6 p-4" style="border-radius: var(--radius-lg); position: relative; z-index: 10;">

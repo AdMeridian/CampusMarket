@@ -851,7 +851,10 @@ function notificationActivityLabel(string $type, string $title): string {
     if (str_starts_with($title, '⭐') || str_contains($title, 'Featured') || str_contains($title, 'featured')) {
         return 'Featured Deal';
     }
-    if (str_starts_with($title, '📢') || str_contains($title, 'Campaign') || str_contains($title, 'Announcement')) {
+    if (str_starts_with($title, '📢') || str_contains($title, 'Announcement')) {
+        return 'Announcement';
+    }
+    if (str_contains($title, 'Campaign')) {
         return 'Campaign';
     }
     if ($title === 'Listing pending approval') {
@@ -979,6 +982,106 @@ function notificationTargetUrl(PDO $pdo, array $notification, int $currentUserId
             }
         } catch (Throwable $e) {
             // ignore
+        }
+    }
+
+    // Announcements & Campaigns handling (admin bell alerts, push notifications, broadcasts)
+    $isAnnouncementCandidate = (
+        $type === 'system'
+        || $type === 'announcement'
+        || str_starts_with($title, '📢')
+        || str_contains($title, 'WhatsApp')
+        || str_contains($title, 'Campus')
+        || str_contains($title, 'Service')
+    );
+
+    if ($isAnnouncementCandidate) {
+        $normalizeUrl = function (string $rawUrl) use ($base): string {
+            $rawUrl = trim($rawUrl);
+            if ($rawUrl === '') {
+                return $base . 'pages/home.php';
+            }
+            if (preg_match('#^https?://#i', $rawUrl)) {
+                return $rawUrl;
+            }
+            return rtrim($base, '/') . '/' . ltrim($rawUrl, '/');
+        };
+
+        // 1. Direct ID lookup in announcements table
+        if ($refId > 0) {
+            try {
+                $annStmt = $pdo->prepare('SELECT cta_url FROM announcements WHERE id = ? LIMIT 1');
+                $annStmt->execute([$refId]);
+                $cta = $annStmt->fetchColumn();
+                if (!empty($cta)) {
+                    return $normalizeUrl((string)$cta);
+                }
+            } catch (Throwable $e) {}
+
+            try {
+                $campStmt = $pdo->prepare('SELECT cta_url FROM email_campaigns WHERE id = ? LIMIT 1');
+                $campStmt->execute([$refId]);
+                $cta = $campStmt->fetchColumn();
+                if (!empty($cta)) {
+                    return $normalizeUrl((string)$cta);
+                }
+            } catch (Throwable $e) {}
+        }
+
+        // 2. Title lookup in announcements table (handles older notifications where reference_id was null)
+        $cleanTitle = trim((string)preg_replace('/^📢\s*(\[TEST\]\s*)?/u', '', $title));
+        if ($cleanTitle !== '') {
+            try {
+                $annStmt = $pdo->prepare('SELECT cta_url FROM announcements WHERE title = ? ORDER BY id DESC LIMIT 1');
+                $annStmt->execute([$cleanTitle]);
+                $cta = $annStmt->fetchColumn();
+                if (!empty($cta)) {
+                    return $normalizeUrl((string)$cta);
+                }
+
+                $annStmt = $pdo->prepare('SELECT cta_url FROM announcements WHERE title LIKE ? ORDER BY id DESC LIMIT 1');
+                $annStmt->execute(['%' . $cleanTitle . '%']);
+                $cta = $annStmt->fetchColumn();
+                if (!empty($cta)) {
+                    return $normalizeUrl((string)$cta);
+                }
+            } catch (Throwable $e) {}
+
+            try {
+                $campStmt = $pdo->prepare('SELECT cta_url FROM email_campaigns WHERE subject = ? ORDER BY id DESC LIMIT 1');
+                $campStmt->execute([$cleanTitle]);
+                $cta = $campStmt->fetchColumn();
+                if (!empty($cta)) {
+                    return $normalizeUrl((string)$cta);
+                }
+            } catch (Throwable $e) {}
+        }
+
+        // 3. Fallback keywords for standard announcement templates & presets
+        $body = (string)($notification['body'] ?? '');
+        $combinedText = mb_strtolower($title . ' ' . $body);
+
+        if (str_contains($combinedText, 'whatsapp')) {
+            return $base . 'pages/edit_profile.php';
+        }
+        if (str_contains($combinedText, 'campus') && (str_contains($combinedText, 'select') || str_contains($combinedText, 'affiliation') || str_contains($combinedText, 'community') || str_contains($combinedText, 'reminder'))) {
+            return $base . 'pages/select_campus.php';
+        }
+        if (str_contains($combinedText, 'service') && (str_contains($combinedText, 'request') || str_contains($combinedText, 'gig') || str_contains($combinedText, 'post'))) {
+            return $base . 'pages/service_jobs.php?post=1';
+        }
+        if (str_contains($combinedText, 'service') || str_contains($combinedText, 'tutoring') || str_contains($combinedText, 'skills')) {
+            return $base . 'pages/services.php';
+        }
+        if (str_contains($combinedText, 'maintenance') || str_contains($combinedText, 'health')) {
+            return $base . 'pages/health.php';
+        }
+        if (str_contains($combinedText, 'safety')) {
+            return $base . 'pages/safety.php';
+        }
+
+        if (str_starts_with($title, '📢')) {
+            return $base . 'pages/home.php';
         }
     }
 

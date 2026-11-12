@@ -241,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'system',
                 "📢 [TEST] " . $subject,
                 $personalizedHeadline . " — " . mb_substr(strip_tags($personalizedBody), 0, 120),
-                $ctaUrl
+                null
             );
             $testResults[] = "Test bell alert delivered to your notifications";
         }
@@ -382,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'system',
                     "📢 " . $subject,
                     $personalizedHeadline . " — " . mb_substr(strip_tags($personalizedBody), 0, 120),
-                    $ctaUrl
+                    $campaignId
                 );
                 $bellCount++;
             }
