@@ -351,9 +351,9 @@ include '../includes/header.php';
                         <div>
                             <label for="location_town" class="block font-bold mb-2 text-main" style="font-size: 0.88rem;">Location / Town <span class="text-danger">*</span></label>
                             <select id="location_town" name="location_town" class="premium-input w-full" style="padding: 0.75rem 1rem; cursor: pointer;" required>
-                                <option value="" disabled selected>Select your campus town...</option>
+                                <option value="remote" selected>Remote / Online (All Campuses)</option>
                                 <?php
-                                $allowedTowns = ['remote', 'lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele'];
+                                $allowedTowns = ['lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele'];
                                 foreach ($allowedTowns as $tSlug):
                                 ?>
                                     <option value="<?= $tSlug ?>">
@@ -777,6 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const text = skillsInput.value.trim();
+            const role = document.getElementById('provider_bio')?.value.trim() || '';
             if (text.length < 5) {
                 setOnboardStatus('Add a few details about the services you offer before requesting AI suggestions.', true);
                 skillsInput.focus();
@@ -816,6 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     body: JSON.stringify({
                         skills_text: text,
+                        role: role,
                         ai_consent: aiConsentGiven === true
                     })
                 });

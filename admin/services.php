@@ -122,6 +122,13 @@ if ($editId > 0) {
     }
 }
 
+$pendingServicesCount = 0;
+$activeServicesCount = 0;
+try {
+    $pendingServicesCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE listing_type = 'service' AND status = 'pending_approval'")->fetchColumn();
+    $activeServicesCount = (int)$pdo->query("SELECT COUNT(*) FROM products WHERE listing_type = 'service' AND status = 'active'")->fetchColumn();
+} catch (Throwable $eCount) {}
+
 require_once '../includes/header.php';
 ?>
 
@@ -129,9 +136,9 @@ require_once '../includes/header.php';
     <div class="admin-page-header">
         <div>
             <div class="admin-breadcrumb"><a href="<?php echo BASE_URL; ?>admin/index.php">Dashboard</a> &gt; Services</div>
-            <h1>Service Categories</h1>
+            <h1>Services &amp; Categories</h1>
             <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
-                Manage the categories providers can choose when submitting a service listing.
+                Manage service categories, review pending provider submissions, and monitor campus services.
             </p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -146,6 +153,38 @@ require_once '../includes/header.php';
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Quick Navigation Tabs for Services -->
+    <div class="flex items-center gap-2 mb-6 flex-wrap">
+        <a href="<?= BASE_URL ?>admin/services.php" class="btn btn-sm btn-primary" style="border-radius: var(--radius-full); font-size: 0.82rem; padding: 0.4rem 0.95rem; font-weight: 600; text-decoration: none;">
+            🏷️ Service Categories (<?= count($services) ?>)
+        </a>
+        <a href="<?= BASE_URL ?>admin/listings.php?type=service&status=pending_approval" class="btn btn-sm <?= $pendingServicesCount > 0 ? 'btn-warning' : 'btn-secondary' ?>" style="border-radius: var(--radius-full); font-size: 0.82rem; padding: 0.4rem 0.95rem; font-weight: 600; text-decoration: none; <?= $pendingServicesCount > 0 ? 'background: #f59e0b; color: white;' : '' ?>">
+            ⏳ Pending Approvals (<?= $pendingServicesCount ?>)
+        </a>
+        <a href="<?= BASE_URL ?>admin/listings.php?type=service" class="btn btn-sm btn-secondary" style="border-radius: var(--radius-full); font-size: 0.82rem; padding: 0.4rem 0.95rem; font-weight: 600; text-decoration: none;">
+            🛠️ All Directory Services (<?= $activeServicesCount ?>)
+        </a>
+    </div>
+
+    <?php if ($pendingServicesCount > 0): ?>
+    <div class="mb-6 p-4 rounded-xl flex items-center justify-between gap-4 flex-wrap" style="background: rgba(245, 158, 11, 0.12); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-lg);">
+        <div class="flex items-center gap-3">
+            <span style="font-size: 1.5rem;">🔔</span>
+            <div>
+                <div style="font-weight: 700; color: #b45309; font-size: 0.95rem;">
+                    <?= $pendingServicesCount ?> Student Service <?= $pendingServicesCount === 1 ? 'Listing' : 'Listings' ?> Awaiting Moderation
+                </div>
+                <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem;">
+                    Students have enrolled services that need administrative approval before appearing in the campus directory.
+                </div>
+            </div>
+        </div>
+        <a href="<?= BASE_URL ?>admin/listings.php?type=service&status=pending_approval" class="btn btn-sm btn-primary" style="font-weight: 700; padding: 0.5rem 1.1rem; border-radius: var(--radius-md); text-decoration: none;">
+            Review Services Queue &rarr;
+        </a>
+    </div>
+    <?php endif; ?>
 
     <div class="admin-two-col">
         <div class="card">

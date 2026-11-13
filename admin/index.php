@@ -41,6 +41,7 @@ $stats = [
     'verified_users'            => $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'user' AND is_verified = TRUE")->fetchColumn(),
     'orders'                    => $pdo->query("SELECT COUNT(*) FROM orders")->fetchColumn(),
     'pending_orders'            => $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn(),
+    'pending_services'          => $pdo->query("SELECT COUNT(*) FROM products WHERE listing_type = 'service' AND status = 'pending_approval'")->fetchColumn(),
     'reports'                   => $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'")->fetchColumn(),
     'completed_deals'           => $pdo->query("SELECT COUNT(*) FROM deal_confirmations WHERE status = 'completed'")->fetchColumn(),
 ];
@@ -984,8 +985,13 @@ require_once __DIR__ . '/../includes/header.php';
                     <a href="services.php" class="module-card" style="--module-color: var(--secondary); --module-bg: var(--secondary-light);">
                         <div class="module-icon"><svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 13.255A23.931 23.931 0 0 1 12 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2m4 6h.01M5 20h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg></div>
                         <div class="module-info">
-                            <div class="module-name">Services</div>
-                            <div class="module-desc">Browse & edit</div>
+                            <div class="module-name" style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+                                <span>Services Directory</span>
+                                <?php if (!empty($stats['pending_services']) && (int)$stats['pending_services'] > 0): ?>
+                                    <span style="background: #fef08a; color: #854d0e; font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px;"><?php echo (int)$stats['pending_services']; ?> pending</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="module-desc">Categories, providers & approvals</div>
                         </div>
                         <span class="module-arrow">›</span>
                     </a>

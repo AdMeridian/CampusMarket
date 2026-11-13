@@ -24,8 +24,8 @@ $serviceDescription = trim((string)($_POST['service_description'] ?? ''));
 $validTowns = ['remote', 'lefkosa', 'girne', 'gazimagusa', 'guzelyurt', 'lefke', 'iskele'];
 $locationTown = strtolower(trim((string)($_POST['location_town'] ?? '')));
 if (!in_array($locationTown, $validTowns, true)) {
-    setFlash('error', 'Please select a valid campus town or "Remote / Online".');
-    redirect(BASE_URL . 'pages/provider_onboard.php');
+    // Default student services to 'remote' when not selected — online-friendly campus gigs
+    $locationTown = 'remote';
 }
 
 $priceInput = trim((string)($_POST['price'] ?? ''));
@@ -199,17 +199,24 @@ try {
         $cols[] = "updated_at";
         $placeholders[] = "NOW()";
 
-        $insertSql = "INSERT INTO products (" . implode(", ", $cols) . ") VALUES (" . implode(", ", $placeholders) . ")";
-        $insertStmt = $pdo->prepare($insertSql);
-        $insertStmt->execute($vals);
-        $productId = (int)$pdo->lastInsertId();
+        if ($driver === 'pgsql') {
+            $insertSql = "INSERT INTO products (" . implode(", ", $cols) . ") VALUES (" . implode(", ", $placeholders) . ") RETURNING id";
+            $insertStmt = $pdo->prepare($insertSql);
+            $insertStmt->execute($vals);
+            $productId = (int)$insertStmt->fetchColumn();
+        } else {
+            $insertSql = "INSERT INTO products (" . implode(", ", $cols) . ") VALUES (" . implode(", ", $placeholders) . ")";
+            $insertStmt = $pdo->prepare($insertSql);
+            $insertStmt->execute($vals);
+            $productId = (int)$pdo->lastInsertId();
+        }
     }
 
     // 4. Update product_categories junction table
     try {
         if ($driver === 'pgsql') {
-            $catJuncSql = "INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, 1) " .
-                          "ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = 1";
+            $catJuncSql = "INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, TRUE) " .
+                          "ON CONFLICT (product_id, category_id) DO UPDATE SET is_primary = TRUE";
         } else {
             $catJuncSql = "INSERT INTO product_categories (product_id, category_id, is_primary) VALUES (?, ?, 1) " .
                           "ON DUPLICATE KEY UPDATE is_primary = 1";
@@ -231,7 +238,10 @@ try {
             throw new Exception("Cover photo error: " . $upload['error']);
         }
         $pdo->prepare("DELETE FROM product_images WHERE product_id = ?")->execute([$productId]);
-        $stmtImg = $pdo->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (?, ?, 1)");
+        $primaryImgSql = ($driver === 'pgsql')
+            ? "INSERT INTO product_images (product_id, image_path, is_primary) VALUES (?, ?, TRUE)"
+            : "INSERT INTO product_images (product_id, image_path, is_primary) VALUES (?, ?, 1)";
+        $stmtImg = $pdo->prepare($primaryImgSql);
         $stmtImg->execute([$productId, $upload['path']]);
     }
 
@@ -270,6 +280,16 @@ try {
     }
 
     $pdo->commit();
+
+    // Notify administrators about the pending service listing
+    try {
+        require_once __DIR__ . '/../includes/listing_moderation.php';
+        if (function_exists('listingModerationNotifyAdmins')) {
+            listingModerationNotifyAdmins($pdo, $serviceTitle, 'New student service provider enrolled: ' . $serviceTitle, $productId);
+        }
+    } catch (Throwable $eNotif) {
+        error_log("[enroll_provider] Admin notification failed: " . $eNotif->getMessage());
+    }
 
     if (function_exists('queuePostHogEvent')) {
         queuePostHogEvent('provider_enrolled', [

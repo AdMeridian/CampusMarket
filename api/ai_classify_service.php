@@ -46,6 +46,7 @@ $action = trim((string)($body['action'] ?? 'provider'));
 $isRequestCategory = $action === 'request_category';
 $requestTitle = '';
 $skillsText = trim((string)($body['skills_text'] ?? $body['description'] ?? ''));
+$role = trim((string)($body['role'] ?? $body['bio'] ?? ''));
 
 if (!$isRequestCategory && $action !== 'provider') {
     http_response_code(400);
@@ -115,53 +116,167 @@ foreach (['GEMINI_API_KEY', 'CHATBOT_GEMINI_API_KEY'] as $envKey) {
 }
 
 // Fallback generator if AI is disabled or fails
-$buildFallback = function(string $text, array $cats): array {
-    $lower = mb_strtolower($text);
-    $selectedCat = $cats[0];
+$buildFallback = function(string $text, string $userRole, array $cats): array {
+    $combined = trim($userRole . ' ' . $text);
+    $lower = mb_strtolower($combined);
     
-    // Simple keyword mapping
-    if (preg_match('/(code|web|app|program|python|react|tech|fix|pc|laptop|software|setup)/i', $lower)) {
-        foreach ($cats as $c) { if (stripos($c['name'], 'tech') !== false || stripos($c['name'], 'software') !== false) { $selectedCat = $c; break; } }
-    } elseif (preg_match('/(design|photo|video|logo|edit|camera|draw|art|figma|photoshop)/i', $lower)) {
-        foreach ($cats as $c) { if (stripos($c['name'], 'design') !== false || stripos($c['name'], 'photo') !== false) { $selectedCat = $c; break; } }
-    } elseif (preg_match('/(tutor|math|physics|exam|teach|lesson|homework|course|calculus)/i', $lower)) {
-        foreach ($cats as $c) { if (stripos($c['name'], 'tutor') !== false || stripos($c['name'], 'education') !== false) { $selectedCat = $c; break; } }
-    } elseif (preg_match('/(write|essay|translate|proofread|paper|turkish|english)/i', $lower)) {
-        foreach ($cats as $c) { if (stripos($c['name'], 'writing') !== false || stripos($c['name'], 'translation') !== false) { $selectedCat = $c; break; } }
-    } elseif (preg_match('/(move|haul|furniture|handyman|assemble|dorm|repair)/i', $lower)) {
-        foreach ($cats as $c) { if (stripos($c['name'], 'moving') !== false || stripos($c['name'], 'handyman') !== false) { $selectedCat = $c; break; } }
-    }
-
-    // Extract basic tags
-    $words = preg_split('/[\s,\.\-]+/', $text);
-    $skills = [];
-    foreach ($words as $w) {
-        $clean = trim($w);
-        if (mb_strlen($clean) >= 3 && !in_array(mb_strtolower($clean), ['and', 'the', 'for', 'with', 'can', 'help', 'you', 'service', 'offer'])) {
-            $skills[] = ucfirst(mb_strtolower($clean));
-            if (count($skills) >= 5) break;
+    $findCat = function(array $needles) use ($cats): array {
+        foreach ($needles as $needle) {
+            foreach ($cats as $c) {
+                if (stripos($c['name'], $needle) !== false || stripos($c['slug'] ?? '', $needle) !== false) {
+                    return $c;
+                }
+            }
         }
+        return $cats[0];
+    };
+
+    $selectedCat = $cats[0];
+    $title = '';
+    $skills = [];
+    $pricingModel = 'hourly';
+    $suggestedPrice = 250;
+    $deliveryDays = null;
+    $cleanRole = trim(preg_replace('/[^a-zA-Z0-9\s&+-]/', '', $userRole));
+
+    // 1. Video & Videography
+    if (preg_match('/(video|videograph|film|footage|reels|tiktok|youtube|premiere|after effects|capcut|davinci|final cut|clip|cinematograph|vlog)/i', $lower)) {
+        $selectedCat = $findCat(['videography', 'photo', 'design']);
+        $title = $cleanRole !== '' ? ucwords($cleanRole) . ' & Video Editing' : 'Professional Video Editing & Content Creation';
+        $skills = ['Video Editing', 'Content Creation', 'Reels & Shorts', 'Video Production'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 350;
+        $deliveryDays = 2;
     }
-    if (empty($skills)) {
-        $skills = ['Campus Services', 'Student Skills'];
+    // 2. Photography
+    elseif (preg_match('/(photo|portrait|headshot|photoshoot|lens|photographer)/i', $lower)) {
+        $selectedCat = $findCat(['photography', 'photo', 'design']);
+        $title = $cleanRole !== '' ? ucwords($cleanRole) . ' & Campus Photography' : 'Campus Photography & Portrait Shoots';
+        $skills = ['Photography', 'Portraits', 'Campus Shoots', 'Photo Editing'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 400;
+        $deliveryDays = 3;
+    }
+    // 3. Graphic Design & Creative
+    elseif (preg_match('/(graphic|logo|flyer|poster|banner|illustrat|figma|photoshop|canva|branding|ui\/ux|drawing|vector|thumbnail)/i', $lower)) {
+        $selectedCat = $findCat(['graphic', 'design']);
+        $title = $cleanRole !== '' ? ucwords($cleanRole) . ' & Graphic Design' : 'Custom Graphic Design & Creative Visuals';
+        $skills = ['Graphic Design', 'Logo Design', 'Branding', 'Poster Design'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 300;
+        $deliveryDays = 2;
+    }
+    // 4. Web, Software & Coding
+    elseif (preg_match('/(code|web|app|program|python|react|javascript|html|css|php|sql|developer|software|script|bot|scraping|fullstack|frontend|backend)/i', $lower)) {
+        $selectedCat = $findCat(['software', 'tech', 'web']);
+        $title = $cleanRole !== '' ? ucwords($cleanRole) . ' & Programming Support' : 'Web, Software & Coding Support';
+        $skills = ['Web Development', 'Coding', 'Python', 'Scripting'];
+        $pricingModel = 'hourly';
+        $suggestedPrice = 250;
+    }
+    // 5. Tech & Device Repair
+    elseif (preg_match('/(repair|fix|screen|pc|laptop|hardware|install|setup|device|phone|battery|macbook|windows|format)/i', $lower)) {
+        $selectedCat = $findCat(['repair', 'device', 'tech']);
+        $title = 'Laptop, Phone & Device Repair Support';
+        $skills = ['Device Repair', 'Troubleshooting', 'Laptop Setup', 'Hardware Fix'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 250;
+        $deliveryDays = 1;
+    }
+    // 6. Tutoring & Academic
+    elseif (preg_match('/(tutor|math|physics|chem|exam|teach|lesson|homework|course|calculus|biology|study|stats|algebra|accounting)/i', $lower)) {
+        $selectedCat = $findCat(['tutor', 'academic', 'education']);
+        $title = $cleanRole !== '' ? ucwords($cleanRole) . ' & Academic Tutoring' : 'Coursework Tutoring & Exam Preparation';
+        $skills = ['Tutoring', 'Exam Prep', 'Course Help', 'Study Sessions'];
+        $pricingModel = 'hourly';
+        $suggestedPrice = 200;
+    }
+    // 7. Writing & Translation
+    elseif (preg_match('/(write|essay|translat|proofread|paper|turkish|english|resume|cv|transcrib|grammar|article)/i', $lower)) {
+        $selectedCat = $findCat(['writing', 'translation']);
+        $title = 'Proofreading, Translation & Writing Help';
+        $skills = ['Proofreading', 'Translation', 'Academic Writing', 'CV Review'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 200;
+        $deliveryDays = 2;
+    }
+    // 8. Moving & Hauling
+    elseif (preg_match('/(move|hauling|furniture|handyman|assemble|dorm|luggage|transport)/i', $lower)) {
+        $selectedCat = $findCat(['moving', 'hauling', 'handyman']);
+        $title = 'Campus Moving & Hauling Help';
+        $skills = ['Dorm Moving', 'Heavy Lifting', 'Luggage Hauling', 'Transport'];
+        $pricingModel = 'hourly';
+        $suggestedPrice = 300;
+    }
+    // 9. Cleaning
+    elseif (preg_match('/(clean|laundry|organize|tidy|ironing|room clean|deep clean)/i', $lower)) {
+        $selectedCat = $findCat(['cleaning', 'domestic', 'organization']);
+        $title = 'Dorm Room Cleaning & Organization';
+        $skills = ['Cleaning', 'Room Tidying', 'Laundry', 'Organization'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 250;
+        $deliveryDays = 1;
+    }
+    // 10. Music & Audio
+    elseif (preg_match('/(music|beat|audio|mix|master|song|guitar|piano|dj|vocal|record|sound)/i', $lower)) {
+        $selectedCat = $findCat(['music', 'audio']);
+        $title = 'Music Production & Audio Engineering';
+        $skills = ['Music Production', 'Audio Mixing', 'Beat Making', 'Sound Design'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 300;
+        $deliveryDays = 3;
+    }
+    // 11. Delivery & Errands
+    elseif (preg_match('/(delivery|errand|grocery|pickup|run errand)/i', $lower)) {
+        $selectedCat = $findCat(['delivery', 'errand']);
+        $title = 'Campus Errands & Delivery Assistance';
+        $skills = ['Delivery', 'Errands', 'Grocery Pickup', 'Campus Help'];
+        $pricingModel = 'hourly';
+        $suggestedPrice = 150;
+    }
+    // 12. Fitness & Training
+    elseif (preg_match('/(fitness|gym|workout|train|coach|exercise|sport|diet)/i', $lower)) {
+        $selectedCat = $findCat(['fitness', 'training']);
+        $title = 'Personal Fitness & Gym Coaching';
+        $skills = ['Fitness Coaching', 'Gym Routine', 'Workout Plans', 'Personal Training'];
+        $pricingModel = 'hourly';
+        $suggestedPrice = 200;
+    }
+    // 13. Beauty & Grooming
+    elseif (preg_match('/(hair|braid|barber|fade|nail|makeup|lash|grooming|skincare|haircut)/i', $lower)) {
+        $selectedCat = $findCat(['hair', 'beauty', 'grooming']);
+        $title = 'Hair Styling, Barbering & Grooming Services';
+        $skills = ['Hair Styling', 'Barber', 'Braiding', 'Beauty & Grooming'];
+        $pricingModel = 'flat';
+        $suggestedPrice = 250;
+        $deliveryDays = 1;
+    }
+    else {
+        $selectedCat = $cats[0];
+        $title = $cleanRole !== '' ? ucwords($cleanRole) . ' — Campus Services' : 'Student Freelance & Campus Services';
+        $skills = ['Campus Services', 'Student Skills', 'Freelance'];
     }
 
-    $title = mb_substr($text, 0, 60);
-    if (mb_strlen($title) < 15) {
-        $title = "Campus " . $selectedCat['name'] . " Assistance";
+    $description = $text;
+    if (mb_strlen($description) < 25) {
+        $description = "Experienced student provider offering reliable " . mb_strtolower($title) . " across campus. Flexible student-friendly turnaround and direct communication.";
     }
+
+    $suggestedBio = $cleanRole !== ''
+        ? "Student {$cleanRole} offering dependable services to the campus community."
+        : "Student provider offering reliable " . mb_strtolower($selectedCat['name']) . " on campus.";
 
     return [
         'skills' => array_values(array_unique($skills)),
         'suggested_additions' => [],
         'category_id' => (int)$selectedCat['id'],
         'category_name' => $selectedCat['name'],
-        'title' => $title,
-        'description' => $text,
-        'pricing_model' => 'hourly',
-        'suggested_price' => 200,
-        'delivery_days' => null,
-        'suggested_bio' => 'Student provider offering reliable ' . strtolower($selectedCat['name']) . ' on campus.',
+        'title' => mb_substr($title, 0, 70),
+        'description' => $description,
+        'pricing_model' => $pricingModel,
+        'suggested_price' => $suggestedPrice,
+        'delivery_days' => $deliveryDays,
+        'suggested_bio' => $suggestedBio,
         'engine' => 'fallback'
     ];
 };
@@ -174,7 +289,7 @@ if ($isRequestCategory && empty($apiKey) && empty($openRouterKey)) {
 }
 
 if (!$isRequestCategory && empty($apiKey)) {
-    $fallbackResult = $buildFallback($skillsText, $categories);
+    $fallbackResult = $buildFallback($skillsText, $role, $categories);
     echo json_encode(['ok' => true, 'data' => $fallbackResult]);
     exit;
 }
@@ -196,29 +311,52 @@ PROMPT;
 
 $providerPrompt = <<<PROMPT
 You are an intelligent campus marketplace assistant. A university student wants to register as a service provider on our campus platform.
-They provided the following description of their skills, experience, or service offering:
+They provided the following details about their role and service offering:
 
 ---
-User's Description:
-"{$skillsText}"
+User's Stated Role / Title: "{$role}"
+User's Skills & Services Description: "{$skillsText}"
 ---
 
-Below is our list of available service categories in the database:
+Available service categories in our database:
 {$categoriesListStr}
 
-Analyze the user's input and produce a structured JSON object with the following exact keys:
-1. "skills": An array of 3 to 6 concise, standardized skill tags (e.g. ["Python", "Web Scraping", "Automation"]). Strictly reflect only skills/services directly mentioned in the user's description.
-2. "suggested_additions": An array of 0 to 4 related skills, course topics, or tools that the provider might also be proficient in based on context, but did NOT explicitly state. Keep this strictly separate from "skills" so the student can review and manually choose whether to add them.
-3. "category_id": The integer ID of the best matching category from the list above.
-4. "category_name": The exact name of the selected category.
-5. "title": A clear, professional, appealing listing title suitable for campus buyers (max 70 characters).
-6. "description": An engaging, professional 2-3 sentence description summarizing what the provider delivers for fellow students. IMPORTANT: Base this description strictly on what the user actually stated. Do NOT invent, assume, or hallucinate specific courses, textbooks, or subject areas (e.g., do NOT invent "Linear Algebra", "Calculus III", or specific tools) unless explicitly mentioned by the student.
-7. "pricing_model": Either "hourly" (for tutoring, consulting, moving help, ongoing tech support) or "flat" (for logos, photo shoots, specific fixed projects).
-8. "suggested_price": A fair, student-friendly price in Turkish Lira (TRY) as a number (typically between 100 and 600 TRY).
-9. "delivery_days": An integer representing expected turnaround days (1 to 5) if flat pricing, or null if hourly.
-10. "suggested_bio": A clean, 1-2 sentence profile bio describing the student provider based strictly on their input.
+CRITICAL GUIDELINE RULES:
+1. TITLE FIDELITY (DO NOT OVER-GENERALIZE):
+   - The generated "title" MUST specifically reflect the student's stated role and skill.
+   - Example: If the user provides role "video editor" and description "video editing", the title MUST be focused on video editing (e.g. "Professional Video Editing & Content Creation" or "Video Editor for YouTube, Reels & Class Projects").
+   - NEVER replace the user's specific skill with a broader or unrelated category name (e.g. NEVER title video editing as "Graphic Design" or "Campus Graphic Design").
+2. ACCURATE CATEGORY MAPPING:
+   - Video editing, videography, filming, camera work, color grading, social media reels, TikTok video editing, YouTube edits, and photography MUST be assigned to "Photography & Videography" (NEVER "Graphic Design & Creative").
+   - Logos, banners, flyers, posters, illustrations, Figma, UI/UX, and Photoshop graphic art belong to "Graphic Design & Creative".
+   - Coding, programming, software, apps, and web development belong to "Web, Software & Tech Support".
+   - PC fixing, screen repair, and hardware troubleshooting belong to "Tech & Device Repair".
+   - Course tutoring, math, sciences, and exam prep belong to "Tutoring & Academic Help".
+   - Proofreading, essay review, and translation belong to "Writing, Translation & Admin".
+   - Dorm moving, luggage hauling, furniture assembly, and handyman tasks belong to "Moving & Hauling Assistance".
+   - Room cleaning, laundry, and dorm deep-cleaning belong to "Cleaning & Organization".
+   - Music production, beat making, and audio engineering belong to "Music & Audio Services".
+   - Campus errands and grocery deliveries belong to "Delivery & Errand Running".
+   - Personal training and fitness coaching belong to "Fitness & Personal Training".
+   - Hair styling, braids, barbering, and beauty belong to "Hair, Beauty & Grooming".
+3. SKILLS TAGS: Return 3 to 6 standardized, relevant skill tags directly matching the student's offering (e.g. for video editing: ["Video Editing", "Reels & Shorts", "Color Grading", "Content Creation"]).
+4. DESCRIPTION: An engaging, professional 2-3 sentence description summarizing what the provider delivers for fellow students based strictly on what they stated.
+5. PRICING & TURNAROUND: "pricing_model" must be "hourly" (for tutoring, consulting, moving) or "flat" (for videos, logos, shoots, specific deliverables). "suggested_price" must be a reasonable number in TRY (typically 150-500 TRY).
+6. BIO: A clean 1-2 sentence profile bio describing the student provider based on their stated role and skills.
 
-Return ONLY valid JSON matching this schema.
+Return ONLY valid JSON matching this schema:
+{
+  "skills": ["tag1", "tag2", "tag3"],
+  "suggested_additions": ["optional1", "optional2"],
+  "category_id": 26,
+  "category_name": "Photography & Videography",
+  "title": "Professional Video Editing & Content Creation",
+  "description": "...",
+  "pricing_model": "flat",
+  "suggested_price": 350,
+  "delivery_days": 2,
+  "suggested_bio": "..."
+}
 PROMPT;
 $prompt = $isRequestCategory ? $requestCategoryPrompt : $providerPrompt;
 $models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
@@ -345,6 +483,6 @@ if ($aiData !== null) {
         exit;
     }
     // Graceful fallback
-    $fallbackResult = $buildFallback($skillsText, $categories);
+    $fallbackResult = $buildFallback($skillsText, $role, $categories);
     echo json_encode(['ok' => true, 'data' => $fallbackResult]);
 }
